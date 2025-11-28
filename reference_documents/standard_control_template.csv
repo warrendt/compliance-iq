@@ -1,0 +1,86 @@
+﻿Control ID,Control Domain,Control Title,Control Description
+5.1, Information security policies, Management direction for information security,"The objective specified in ISO/IEC 27002:2013, 5.1 applies."
+SAMA-GOV-01,Cybersecurity Governance,Establish cybersecurity policy,"Define, approve, and annually review an enterprise cybersecurity policy covering scope, roles, risk appetite, and control baselines."
+SAMA-GOV-02,Cybersecurity Governance,Roles and responsibilities,"Assign accountable owners for cybersecurity, define RACI, and ensure separation of duties for administration and audit."
+SAMA-GOV-03,Cybersecurity Governance,Control framework adoption,"Adopt recognized security controls framework and tailor to organizational risk (e.g., benchmark or regulatory mapping)."
+SAMA-RM-01,Risk Management & Compliance,Risk assessment,"Perform periodic risk assessments, document risks, treatment plans, and track residual risk."
+SAMA-RM-02,Risk Management & Compliance,Compliance management,Identify applicable laws/regulations and monitor compliance posture and remediation.
+SAMA-RM-03,Risk Management & Compliance,Exception management,"Formal process to record, approve, time-bound, and monitor security exceptions."
+SAMA-TP-01,Third-Party Security,Vendor risk management,"Assess and monitor third-party cybersecurity, include security clauses and right-to-audit."
+SAMA-BC-01,Business Continuity & DR,Business continuity planning,"Define BIA, RTO/RPO targets, recovery strategies, and test plans annually."
+SAMA-BC-02,Business Continuity & DR,Disaster recovery,"Implement DR for critical systems, perform failover tests, and validate data integrity."
+SAMA-IR-01,Incident Response,Incident management program,"Define incident classifications, runbooks, communication, and escalation procedures; test semi-annually."
+SAMA-IR-02,Incident Response,Forensics and evidence,Preserve logs and chain-of-custody for investigations; ensure legal admissibility.
+SAMA-AC-01,Identity & Access Control,Strong authentication,Enforce MFA for privileged and user access; disable legacy protocols where possible.
+SAMA-AC-02,Identity & Access Control,Least privilege & RBAC,"Use role-based access, just-in-time elevation, and periodic access reviews."
+SAMA-AC-03,Identity & Access Control,Secrets & key management,"Manage keys/secrets in hardened vaults, rotate, and enforce CMK for sensitive workloads."
+SAMA-AC-04,Identity & Access Control,Disable local auth,Eliminate local/shared keys and legacy admin accounts; require identity-based auth.
+SAMA-NS-01,Network Security,Segmentation and zoning,"Segment networks, isolate sensitive workloads, enforce east-west controls."
+SAMA-NS-02,Network Security,Private access only,Disable public endpoints and require Private Link/private endpoints for data services.
+SAMA-NS-03,Network Security,Boundary protection,"Use Azure Firewall/WAF, DDoS Standard, and secure ingress/egress."
+SAMA-NS-04,Network Security,Secure protocols,"Require TLS 1.2+, enforce HTTPS-only, and disable insecure ciphers."
+SAMA-DP-01,Data Protection & Privacy,Data classification,"Classify data, apply labels, and enforce protection policies by sensitivity."
+SAMA-DP-02,Data Protection & Privacy,Encryption at rest & transit,Encrypt data at rest with CMK where required; enforce TLS in transit.
+SAMA-DP-03,Data Protection & Privacy,Data loss prevention,Apply DLP across channels; monitor and block sensitive data exfiltration.
+SAMA-DP-04,Data Protection & Privacy,Backup & recovery,"Back up critical data, validate restorability, and protect backup immutability."
+SAMA-LM-01,Logging & Monitoring,Centralized logging,Enable diagnostic logs and forward to a central SIEM/Log Analytics.
+SAMA-LM-02,Logging & Monitoring,Security monitoring,Enable cloud workload posture monitoring and real-time alerts.
+SAMA-LM-03,Logging & Monitoring,Retention & audit,"Define log retention, audit coverage, and tamper-evident storage."
+SAMA-VM-01,Vulnerability Management,Patch & vulnerability assessment,"Continuously assess and patch VMs, containers, databases, and apps."
+SAMA-SD-03,Secure Development & Change,Secure SDLC,"Threat modeling, code scanning, dependency management (SBOM), and secure builds."
+SAMA-SD-04,Secure Development & Change,Change control,"Formal change approval, peer review, and rollback strategies."
+SAMA-AI-01,AI Governance,Model risk management,"Assess model risks, document intended use, and test for harmful behavior."
+SAMA-AI-02,AI Governance,Data governance for AI,"Control prompts/responses, apply DLP, and safeguard training/grounding data."
+SAMA-AI-03,AI Governance,AI workload isolation,"Place AI services in private networks, restrict outbound, and protect secrets."
+SAMA-AI-04,AI Governance,Customer support access control,Require Customer Lockbox and no data persistence for sensitive AI workloads.
+SAMA-M365-01,Productivity AI (Copilot),Sensitive data protection in Copilot,Ensure DLP and sensitivity labels protect data used by Copilot; restrict summarization of highly confidential items.
+SAMA-M365-02,Productivity AI (Copilot),Audit & retention of AI interactions,Enable auditing and retention for Copilot interactions and outputs as applicable.
+SAMA-M365-03,Productivity AI (Copilot),eDiscovery & legal hold,Include AI-generated content and interactions in eDiscovery and legal hold.
+SAMA-M365-04,Productivity AI (Copilot),Communication compliance,Monitor Copilot usage for inappropriate or noncompliant content.
+SAMA-AC-06,Identity & Access Control,Strong authentication,Require multi-factor authentication for all accounts
+SAMA-AC-07,Identity & Access Control,Strong authentication,Azure SQL should use Microsoft Entra-only authentication
+SAMA-AC-08,Identity & Access Control,Least privilege & RBAC,Use managed identities for Azure resources
+SAMA-AC-09,Identity & Access Control,Disable local auth,Storage accounts should prevent Shared Key authorization
+SAMA-AC-10,Identity & Access Control,Disable local auth,Key Vault should use RBAC authorization
+SAMA-AC-11,Identity & Access Control,Secrets & key management,Key Vault should restrict network access and use Private Endpoints
+SAMA-AC-12,Identity & Access Control,Secrets & key management,Services should use customer-managed keys
+SAMA-NS-05,Network Security,Private access only,Public network access should be disabled
+SAMA-NS-06,Network Security,Segmentation and zoning,Subnets should be protected with NSGs; use Azure Firewall for egress control
+SAMA-NS-07,Network Security,Boundary protection,Enable DDoS Protection Plan for internet-facing workloads
+SAMA-NS-08,Network Security,Secure protocols,Resources should enforce HTTPS and minimum TLS version
+SAMA-DP-05,Data Protection & Privacy,Encryption at rest & transit,Encrypt managed disks and storage accounts; CMK where required
+SAMA-DP-06,Data Protection & Privacy,Backup & recovery,Enable Azure Backup for VMs and critical workloads
+SAMA-DP-07,Data Protection & Privacy,Data classification,Enable Microsoft Purview for data classification and labels
+SAMA-DP-08,Data Protection & Privacy,Data loss prevention,"Implement DLP for data channels (M365, endpoints, Azure AI egress)"
+SAMA-LM-04,Logging & Monitoring,Centralized logging,Deploy diagnostic settings to send logs to Log Analytics
+SAMA-LM-05,Logging & Monitoring,Security monitoring,Enable Defender for Cloud enhanced security plans
+SAMA-LM-06,Logging & Monitoring,Retention & audit,Set retention for activity logs and workspace data
+SAMA-VM-02,Vulnerability Management,Patch & vulnerability assessment,"Enable vulnerability assessment on VMs, containers, and SQL"
+SAMA-SD-01,Secure Development & Change,Secure SDLC,Apply Guest Configuration baselines (Windows/Linux)
+SAMA-SD-02,Secure Development & Change,Change control,Require tags and approved resource types
+SAMA-AI-14,AI Governance,AI workload isolation,Cognitive Services/Azure ML should disable public network access; restrict outbound to approved FQDNs
+SAMA-AI-15,AI Governance,Data governance for AI,Enable Purview policy for AI apps; govern prompts/responses
+SAMA-AI-16,AI Governance,Model risk management,Enable content safety and perform red-teaming for LLM apps
+SAMA-AI-17,AI Governance,Customer support access control,Require Customer Lockbox for support access to data
+SAMA-M365-10,Productivity AI (Copilot),Sensitive data protection in Copilot,Create DLP policy scoped to Microsoft 365 Copilot to block summarization of highly confidential items
+SAMA-M365-11,Productivity AI (Copilot),Audit & retention of AI interactions,Enable auditing of Copilot interactions and retention policies
+SAMA-M365-12,Productivity AI (Copilot),eDiscovery & legal hold,Include Copilot outputs and interactions in eDiscovery cases and legal holds
+SAMA-M365-13,Productivity AI (Copilot),Communication compliance,Enable Communication Compliance for Copilot-generated content
+SAMA-AI-13,Azure OpenAI,CMK encryption,Cognitive Services accounts should use customer-managed keys
+SAMA-AI-18,Azure OpenAI,Private networking,Public network access should be disabled (Cognitive Services)
+SAMA-AI-05,Azure OpenAI,Customer Lockbox,Enable Customer Lockbox for support access
+SAMA-AI-06,Azure AI Foundry,Restrict outbound,Restrict outbound network access; allowlist required FQDNs
+SAMA-AI-07,Azure AI Foundry,Model governance,Restrict models and connections via Azure Policy/custom guardrails
+SAMA-AI-08,Azure Machine Learning,Private endpoints,Public network access should be disabled; workspace private endpoints
+SAMA-AI-09,Azure Machine Learning,CMK & secrets,Use CMK for AML; Key Vault with firewall + RBAC
+SAMA-AI-10,Azure Machine Learning,Data egress control,Restrict outbound connections for compute clusters
+SAMA-AI-11,Azure Cognitive Search (AI Search),Private endpoints,Public network access should be disabled; use Private Link
+SAMA-AI-12,Azure Functions (AI APIs),HTTPS-only & managed identity,Web apps should only be accessible over HTTPS; use MI for secrets
+SAMA-M365-05,Data Protection & Privacy,DLP for Copilot,Create policy scoped to Microsoft 365 Copilot to block summarization of Highly Confidential
+SAMA-M365-06,Data Protection & Privacy,Sensitivity labels & encryption,Ensure Copilot honors EXTRACT/VIEW rights; configure label inheritance for generated content (where supported)
+SAMA-M365-07,Logging & Monitoring,Audit & retention,Enable auditing for Copilot interactions; configure retention for AI outputs
+SAMA-M365-08,Incident Response,eDiscovery & legal hold,Include Copilot-generated content in holds and cases
+SAMA-M365-09,Governance/Compliance,Communication compliance,Monitor Copilot content for policy violations
+,,,
+,,,
+,,,

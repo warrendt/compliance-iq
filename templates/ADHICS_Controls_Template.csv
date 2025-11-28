@@ -1,0 +1,37 @@
+Control ID,Control Domain,Control Title,Control Description
+ADHICS-GOV-01,Governance,Healthcare Cybersecurity Policy,Establish cybersecurity policies specific to healthcare data protection
+ADHICS-GOV-02,Governance,CISO/Security Leadership,Designate healthcare cybersecurity leadership with appropriate authority
+ADHICS-GOV-03,Governance,Risk Management Framework,Implement healthcare-specific risk management processes
+ADHICS-PHI-01,Protected Health Information,PHI Encryption at Rest,Encrypt all protected health information at rest
+ADHICS-PHI-02,Protected Health Information,PHI Encryption in Transit,Enforce TLS 1.2+ for all PHI transmissions
+ADHICS-PHI-03,Protected Health Information,PHI Access Controls,Implement role-based access for PHI with least privilege
+ADHICS-PHI-04,Protected Health Information,PHI Data Masking,Apply data masking for PHI in non-production environments
+ADHICS-PHI-05,Protected Health Information,PHI Audit Logging,Log all PHI access and modifications
+ADHICS-IAM-01,Identity & Access Management,Healthcare User Authentication,Implement MFA for all users accessing PHI
+ADHICS-IAM-02,Identity & Access Management,Privileged Access for Clinical Systems,Implement just-in-time access for privileged clinical system operations
+ADHICS-IAM-03,Identity & Access Management,Patient Identity Verification,Implement strong patient identity verification mechanisms
+ADHICS-IAM-04,Identity & Access Management,Clinician Credential Management,Manage and secure clinician credentials and digital certificates
+ADHICS-Net-01,Network Security,Clinical Network Segmentation,Segment clinical networks from administrative and guest networks
+ADHICS-Net-02,Network Security,Medical Device Network Isolation,Isolate medical devices on dedicated network segments
+ADHICS-Net-03,Network Security,Healthcare API Security,"Secure healthcare APIs (FHIR, HL7) with authentication and encryption"
+ADHICS-Net-04,Network Security,Telehealth Security,Implement security controls for telehealth platforms
+ADHICS-App-01,Application Security,Electronic Health Record Security,Secure EHR systems with encryption and access controls
+ADHICS-App-02,Application Security,Clinical Application Hardening,Harden clinical applications against common vulnerabilities
+ADHICS-App-03,Application Security,Medical Imaging Security,Secure medical imaging systems (PACS/DICOM) with encryption and access controls
+ADHICS-App-04,Application Security,Laboratory Information System Security,Implement security controls for laboratory information systems
+ADHICS-Dev-01,Medical Device Security,Medical Device Inventory,Maintain inventory of all connected medical devices
+ADHICS-Dev-02,Medical Device Security,Medical Device Patch Management,Implement patch management for medical devices with vendor coordination
+ADHICS-Dev-03,Medical Device Security,Medical Device Monitoring,Monitor medical device security events and anomalies
+ADHICS-Dev-04,Medical Device Security,Medical Device Incident Response,Implement incident response procedures for medical device security events
+ADHICS-Data-01,Data Management,Healthcare Data Classification,Classify healthcare data by sensitivity and regulatory requirements
+ADHICS-Data-02,Data Management,Clinical Data Retention,Define retention periods for clinical data per regulatory requirements
+ADHICS-Data-03,Data Management,Research Data De-identification,Implement de-identification for research data use
+ADHICS-Data-04,Data Management,Healthcare Data Backup,Implement backup and recovery for critical healthcare data
+ADHICS-Comp-01,Compliance,HIPAA Compliance,Maintain HIPAA compliance for PHI handling
+ADHICS-Comp-02,Compliance,Healthcare Audit Logging,Implement comprehensive audit logging per healthcare regulations
+ADHICS-Comp-03,Compliance,Breach Notification,Implement procedures for healthcare data breach notification
+ADHICS-Comp-04,Compliance,Patient Privacy Rights,"Implement processes for patient privacy rights (access, correction, deletion)"
+ADHICS-BC-01,Business Continuity,Clinical System Availability,Ensure high availability for critical clinical systems
+ADHICS-BC-02,Business Continuity,Emergency Access Procedures,Implement emergency access procedures for clinical systems
+ADHICS-BC-03,Business Continuity,Disaster Recovery for Healthcare,Test disaster recovery for healthcare systems regularly
+ADHICS-BC-04,Business Continuity,Clinical System Failover,Implement failover capabilities for critical clinical systems

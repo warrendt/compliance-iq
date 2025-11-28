@@ -1,0 +1,38 @@
+Control ID,Control Domain,Control Title,Control Description
+SAMA-GOV-01,Cybersecurity Governance,Establish cybersecurity policy,"Define, approve, and annually review an enterprise cybersecurity policy covering scope, roles, risk appetite, and control baselines."
+SAMA-GOV-02,Cybersecurity Governance,Roles and responsibilities,"Assign accountable owners for cybersecurity, define RACI, and ensure separation of duties for administration and audit."
+SAMA-GOV-03,Cybersecurity Governance,Control framework adoption,"Adopt recognized security controls framework and tailor to organizational risk (e.g., benchmark or regulatory mapping)."
+SAMA-RM-01,Risk Management & Compliance,Risk assessment,"Perform periodic risk assessments, document risks, treatment plans, and track residual risk."
+SAMA-RM-02,Risk Management & Compliance,Compliance management,Identify applicable laws/regulations and monitor compliance posture and remediation.
+SAMA-RM-03,Risk Management & Compliance,Exception management,"Formal process to record, approve, time-bound, and monitor security exceptions."
+SAMA-TP-01,Third-Party Security,Vendor risk management,"Assess and monitor third-party cybersecurity, include security clauses and right-to-audit."
+SAMA-BC-01,Business Continuity & DR,Business continuity planning,"Define BIA, RTO/RPO targets, recovery strategies, and test plans annually."
+SAMA-BC-02,Business Continuity & DR,Disaster recovery,"Implement DR for critical systems, perform failover tests, and validate data integrity."
+SAMA-IR-01,Incident Response,Incident management program,"Define incident classifications, runbooks, communication, and escalation procedures; test semi-annually."
+SAMA-IR-02,Incident Response,Forensics and evidence,Preserve logs and chain-of-custody for investigations; ensure legal admissibility.
+SAMA-AC-01,Identity & Access Control,Strong authentication,Enforce MFA for privileged and user access; disable legacy protocols where possible.
+SAMA-AC-02,Identity & Access Control,Least privilege & RBAC,"Use role-based access, just-in-time elevation, and periodic access reviews."
+SAMA-AC-03,Identity & Access Control,Secrets & key management,"Manage keys/secrets in hardened vaults, rotate, and enforce CMK for sensitive workloads."
+SAMA-AC-04,Identity & Access Control,Disable local auth,Eliminate local/shared keys and legacy admin accounts; require identity-based auth.
+SAMA-NS-01,Network Security,Segmentation and zoning,"Segment networks, isolate sensitive workloads, enforce east-west controls."
+SAMA-NS-02,Network Security,Private access only,Disable public endpoints and require Private Link/private endpoints for data services.
+SAMA-NS-03,Network Security,Boundary protection,"Use Azure Firewall/WAF, DDoS Standard, and secure ingress/egress."
+SAMA-NS-04,Network Security,Secure protocols,"Require TLS 1.2+, enforce HTTPS-only, and disable insecure ciphers."
+SAMA-DP-01,Data Protection & Privacy,Data classification,"Classify data, apply labels, and enforce protection policies by sensitivity."
+SAMA-DP-02,Data Protection & Privacy,Encryption at rest & transit,Encrypt data at rest with CMK where required; enforce TLS in transit.
+SAMA-DP-03,Data Protection & Privacy,Data loss prevention,Apply DLP across channels; monitor and block sensitive data exfiltration.
+SAMA-DP-04,Data Protection & Privacy,Backup & recovery,"Back up critical data, validate restorability, and protect backup immutability."
+SAMA-LM-01,Logging & Monitoring,Centralized logging,Enable diagnostic logs and forward to a central SIEM/Log Analytics.
+SAMA-LM-02,Logging & Monitoring,Security monitoring,Enable cloud workload posture monitoring and real-time alerts.
+SAMA-LM-03,Logging & Monitoring,Retention & audit,"Define log retention, audit coverage, and tamper-evident storage."
+SAMA-VM-01,Vulnerability Management,Patch & vulnerability assessment,"Continuously assess and patch VMs, containers, databases, and apps."
+SAMA-SD-01,Secure Development & Change,Secure SDLC,"Threat modeling, code scanning, dependency management (SBOM), and secure builds."
+SAMA-SD-02,Secure Development & Change,Change control,"Formal change approval, peer review, and rollback strategies."
+SAMA-AI-01,AI Governance,Model risk management,"Assess model risks, document intended use, and test for harmful behavior."
+SAMA-AI-02,AI Governance,Data governance for AI,"Control prompts/responses, apply DLP, and safeguard training/grounding data."
+SAMA-AI-03,AI Governance,AI workload isolation,"Place AI services in private networks, restrict outbound, and protect secrets."
+SAMA-AI-04,AI Governance,Customer support access control,Require Customer Lockbox and no data persistence for sensitive AI workloads.
+SAMA-M365-01,Productivity AI (Copilot),Sensitive data protection in Copilot,Ensure DLP and sensitivity labels protect data used by Copilot; restrict summarization of highly confidential items.
+SAMA-M365-02,Productivity AI (Copilot),Audit & retention of AI interactions,Enable auditing and retention for Copilot interactions and outputs as applicable.
+SAMA-M365-03,Productivity AI (Copilot),eDiscovery & legal hold,Include AI-generated content and interactions in eDiscovery and legal hold.
+SAMA-M365-04,Productivity AI (Copilot),Communication compliance,Monitor Copilot usage for inappropriate or noncompliant content.

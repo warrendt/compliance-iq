@@ -1,0 +1,33 @@
+Control ID,Control Domain,Control Title,Control Description
+CCC-IaaS-01,Infrastructure Security,Compute Instance Hardening,Harden virtual machine configurations and disable unnecessary services
+CCC-IaaS-02,Infrastructure Security,Virtual Network Isolation,Implement network segmentation and isolation for workloads
+CCC-IaaS-03,Infrastructure Security,Storage Encryption,Encrypt all storage at rest with strong encryption algorithms
+CCC-IaaS-04,Infrastructure Security,Secure Boot & Attestation,Enable secure boot and trusted platform module features
+CCC-PaaS-01,Platform Security,API Gateway Security,Implement API gateway with authentication and rate limiting
+CCC-PaaS-02,Platform Security,Database Security,Enable database encryption, audit logging, and access controls
+CCC-PaaS-03,Platform Security,Container Security,Scan container images and enforce pod security policies
+CCC-PaaS-04,Platform Security,Serverless Security,Implement least privilege for serverless functions and secure secrets
+CCC-Data-01,Data Security,Data Classification,Classify data based on sensitivity and apply appropriate controls
+CCC-Data-02,Data Security,Data Masking,Apply data masking for non-production environments
+CCC-Data-03,Data Security,Data Residency,Ensure data is stored in compliant geographic regions
+CCC-Data-04,Data Security,Data Retention,Define and enforce data retention and deletion policies
+CCC-IAM-01,Identity & Access,Identity Federation,Implement federated identity with SSO capabilities
+CCC-IAM-02,Identity & Access,Privileged Access Management,Implement just-in-time access for privileged operations
+CCC-IAM-03,Identity & Access,Service Account Management,Secure and rotate service account credentials
+CCC-IAM-04,Identity & Access,Access Review,Conduct periodic access reviews and certifications
+CCC-Net-01,Network Security,DDoS Protection,Enable DDoS protection for internet-facing services
+CCC-Net-02,Network Security,Web Application Firewall,Deploy WAF for web applications with OWASP rules
+CCC-Net-03,Network Security,Private Connectivity,Use private endpoints for PaaS services
+CCC-Net-04,Network Security,Network Monitoring,Implement network traffic monitoring and analysis
+CCC-Sec-01,Security Operations,SIEM Integration,Centralize logs to SIEM for correlation and alerting
+CCC-Sec-02,Security Operations,Threat Intelligence,Integrate threat intelligence feeds
+CCC-Sec-03,Security Operations,Security Automation,Automate security response and remediation
+CCC-Sec-04,Security Operations,Vulnerability Scanning,Continuously scan for vulnerabilities
+CCC-Comp-01,Compliance,Regulatory Mapping,Map controls to applicable regulatory frameworks
+CCC-Comp-02,Compliance,Audit Logging,Enable comprehensive audit logging
+CCC-Comp-03,Compliance,Compliance Reporting,Generate compliance reports and evidence
+CCC-Comp-04,Compliance,Third-Party Attestation,Obtain and maintain third-party certifications
+CCC-DR-01,Disaster Recovery,Backup Strategy,Implement automated backup for critical systems
+CCC-DR-02,Disaster Recovery,Geographic Redundancy,Deploy resources across multiple regions
+CCC-DR-03,Disaster Recovery,Recovery Testing,Regularly test disaster recovery procedures
+CCC-DR-04,Disaster Recovery,RTO/RPO Definition,Define and monitor RTO/RPO for critical services
