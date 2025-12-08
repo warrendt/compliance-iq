@@ -78,6 +78,60 @@ This toolkit provides comprehensive control catalogs for multiple compliance fra
 - Azure Policy: MFA, network security, customer-managed encryption keys
 - Defender for Cloud: Data sovereignty, government compliance, classified data protection
 
+### 5. POPIA_Framework_Azure_Mappings.csv
+**Framework:** Protection of Personal Information Act (POPIA) - South African Data Protection Law
+**Controls:** 16 controls covering data protection and privacy requirements
+**Key Domains:**
+- Accountability
+- Processing Limitation
+- Purpose Specification
+- Information Quality
+- Security Safeguards
+- Data Subject Rights
+- Consent Management
+- Cross-Border Transfer
+- Data Breach Notification
+- Privacy Impact Assessment
+
+**Azure Mappings Include:**
+- Azure Policy: Encryption, access controls, audit logging
+- Defender for Cloud: Data protection, regulatory compliance, information security
+
+### 6. eGovernment_Framework_Azure_Mappings.csv
+**Framework:** South African eGovernment Framework
+**Controls:** 15 controls covering digital government transformation
+**Key Domains:**
+- Digital Strategy
+- Service Delivery
+- Interoperability
+- Data Sharing
+- Digital Identity
+- Cloud-First Policy
+- Cybersecurity
+- Innovation & Capacity Building
+- Mobile Services
+
+**Azure Mappings Include:**
+- Azure Policy: Cloud security, identity management, data protection
+- Defender for Cloud: Government cybersecurity, identity & access management
+
+### 7. IGR_Framework_Azure_Mappings.csv
+**Framework:** Intergovernmental Relations (IGR) Framework Act 13 of 2005
+**Controls:** 10 controls covering government coordination and cooperation
+**Key Domains:**
+- Intergovernmental Coordination
+- Information Sharing
+- Dispute Resolution
+- Joint Planning
+- Service Delivery Coordination
+- Resource Allocation
+- Policy Alignment
+- Performance Monitoring
+
+**Azure Mappings Include:**
+- Azure Policy: Data sharing controls, monitoring, governance
+- Defender for Cloud: Governance, logging & monitoring, regulatory compliance
+
 ## CSV File Structure
 
 Each catalog CSV file contains the following columns:
@@ -189,14 +243,22 @@ Use Azure Policy Compliance view to generate reports showing:
 
 Many controls map across multiple frameworks:
 
-| Control Area | SAMA | CCC | ADHICS | SITA |
-|--------------|------|-----|--------|------|
-| MFA Enforcement | AC-01 | IAM-01 | IAM-01 | IAM-02 |
-| Network Segmentation | NS-01 | IaaS-02, Net-03 | Net-01 | Net-01 |
-| Encryption at Rest | DP-02, AC-03 | IaaS-03, Data-01 | PHI-01 | Data-02 |
-| Private Endpoints | NS-02 | Net-03 | Net-03 | Net-03 |
-| Vulnerability Management | VM-01 | Sec-04 | App-02 | Sec-04 |
-| Audit Logging | LM-01, LM-03 | Comp-02 | PHI-05 | SPO-10 |
+| Control Area | SAMA | CCC | ADHICS | SITA | POPIA | eGov | IGR |
+|--------------|------|-----|--------|------|-------|------|-----|
+| MFA Enforcement | AC-01 | IAM-01 | IAM-01 | IAM-02 | - | EGOV-06 | - |
+| Network Segmentation | NS-01 | IaaS-02, Net-03 | Net-01 | Net-01 | - | EGOV-09 | - |
+| Encryption at Rest | DP-02, AC-03 | IaaS-03, Data-01 | PHI-01 | Data-02 | POPIA-07 | EGOV-10 | - |
+| Private Endpoints | NS-02 | Net-03 | Net-03 | Net-03 | - | - | - |
+| Vulnerability Management | VM-01 | Sec-04 | App-02 | Sec-04 | - | EGOV-14 | - |
+| Audit Logging | LM-01, LM-03 | Comp-02 | PHI-05 | SPO-10 | POPIA-13 | - | IGR-08 |
+| Data Protection | DP-01, DP-02 | Data-01 | PHI-01 | Data-01 | POPIA-07 | EGOV-10 | - |
+| Privacy & Consent | - | - | PHI-03 | Comp-02 | POPIA-09 | - | - |
+| Data Subject Rights | - | - | PHI-04 | - | POPIA-08 | - | - |
+| Data Breach Response | IR-02 | - | - | IR-02 | POPIA-12 | - | - |
+| Interoperability | - | - | - | - | - | EGOV-03 | IGR-01 |
+| Information Sharing | - | - | - | SITA-Sec-02 | - | EGOV-04 | IGR-02 |
+| Cloud Strategy | - | CCC-All | - | SITA-SPO | - | EGOV-07 | - |
+| Digital Identity | - | IAM-01 | IAM-01 | IAM-01 | - | EGOV-06 | - |
 
 ## Next Steps
 
@@ -224,6 +286,19 @@ For questions or issues with these catalogs, please refer to:
 
 ---
 
-**Last Updated:** November 28, 2025
-**Toolkit Version:** 1.0
+**Last Updated:** December 4, 2025
+**Toolkit Version:** 1.1
 **Author:** Warren du Toit, Cloud Solution Architect @ Microsoft
+
+## Framework Summary Statistics
+
+| Framework | Controls | Primary Focus | Jurisdiction |
+|-----------|----------|---------------|--------------|
+| SAMA | 36 | Financial Sector Cybersecurity | Saudi Arabia |
+| CCC | 32 | Multi-Cloud Security | UAE |
+| ADHICS | 36 | Healthcare Information Security | UAE |
+| SITA | 36 | Sovereign Cloud Architecture | South Africa |
+| POPIA | 16 | Data Protection & Privacy | South Africa |
+| eGovernment | 15 | Digital Government Services | South Africa |
+| IGR | 10 | Intergovernmental Cooperation | South Africa |
+| **Total** | **181** | **Comprehensive Compliance** | **MENA & Africa** |

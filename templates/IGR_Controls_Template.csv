@@ -1,0 +1,11 @@
+Control_ID,Domain,Control_Name,Requirement_Summary
+IGR-01,Intergovernmental Coordination,Coordination Mechanisms,Establish coordination mechanisms between government spheres
+IGR-02,Information Sharing,Government Information Sharing,"Share information between national, provincial, and local government"
+IGR-03,Dispute Resolution,Intergovernmental Disputes,Resolve disputes between government entities
+IGR-04,Joint Planning,Collaborative Planning,Enable joint planning across government spheres
+IGR-05,Service Delivery,Integrated Service Delivery,Coordinate service delivery across government levels
+IGR-06,Resource Allocation,Resource Coordination,Coordinate resource allocation between government entities
+IGR-07,Policy Alignment,Policy Coherence,Ensure policy coherence across government spheres
+IGR-08,Monitoring & Reporting,Performance Monitoring,Monitor intergovernmental cooperation and performance
+IGR-09,Capacity Support,Capacity Building Support,Provide capacity support to other government spheres
+IGR-10,Communication,Intergovernmental Communication,Maintain effective communication between government entities

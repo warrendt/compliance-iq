@@ -1,0 +1,1 @@
+New-AzPolicySetDefinition -Name 'SA_GOV' -Metadata '{"category":"Regulatory Compliance"}' -GroupDefinition .\groups.json -PolicyDefinition .\policies.json -Parameter .\params.json

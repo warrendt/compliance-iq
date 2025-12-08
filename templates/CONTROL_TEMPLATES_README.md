@@ -78,6 +78,71 @@ Created four standardized control template CSV files following the format of `st
 - Compliance & Governance (4 controls)
 - Business Continuity (4 controls)
 
+### 5. POPIA_Controls_Template.csv
+**Location:** `/templates/POPIA_Controls_Template.csv`
+**Framework:** Protection of Personal Information Act (POPIA) - South Africa
+**Total Controls:** 16 controls
+**Format:** Same 4-column structure
+
+**Control Domains:**
+- Accountability (1 control)
+- Processing Limitation (1 control)
+- Purpose Specification (1 control)
+- Further Processing (1 control)
+- Information Quality (1 control)
+- Openness (1 control)
+- Security Safeguards (1 control)
+- Data Subject Participation (1 control)
+- Consent Management (1 control)
+- Cross-Border Transfer (1 control)
+- Direct Marketing (1 control)
+- Data Breach (1 control)
+- Records (1 control)
+- Data Officer (1 control)
+- Privacy Impact (1 control)
+- Retention (1 control)
+
+### 6. eGovernment_Controls_Template.csv
+**Location:** `/templates/eGovernment_Controls_Template.csv`
+**Framework:** South African eGovernment Framework
+**Total Controls:** 15 controls
+**Format:** Same 4-column structure
+
+**Control Domains:**
+- Digital Strategy (1 control)
+- Service Delivery (1 control)
+- Interoperability (1 control)
+- Data Sharing (1 control)
+- Citizen Access (1 control)
+- Digital Identity (1 control)
+- Cloud First (1 control)
+- Open Standards (1 control)
+- Cybersecurity (1 control)
+- Data Protection (1 control)
+- Transparency (1 control)
+- Innovation (1 control)
+- Capacity Building (1 control)
+- Infrastructure (1 control)
+- Mobile Services (1 control)
+
+### 7. IGR_Controls_Template.csv
+**Location:** `/templates/IGR_Controls_Template.csv`
+**Framework:** Intergovernmental Relations Framework Act 13 of 2005
+**Total Controls:** 10 controls
+**Format:** Same 4-column structure
+
+**Control Domains:**
+- Intergovernmental Coordination (1 control)
+- Information Sharing (1 control)
+- Dispute Resolution (1 control)
+- Joint Planning (1 control)
+- Service Delivery (1 control)
+- Resource Allocation (1 control)
+- Policy Alignment (1 control)
+- Monitoring & Reporting (1 control)
+- Capacity Support (1 control)
+- Communication (1 control)
+
 ## File Structure
 
 All files follow this consistent CSV format:
@@ -104,6 +169,9 @@ These template files are derived from the comprehensive mapping CSV files locate
 | CCC_Controls_Template.csv | CCC_Framework_Azure_Mappings.csv | Same additional columns |
 | ADHICS_Controls_Template.csv | ADHICS_Framework_Azure_Mappings.csv | Same additional columns |
 | SITA_Controls_Template.csv | SITA_Architecture_Azure_Mappings.csv | Same additional columns |
+| POPIA_Controls_Template.csv | POPIA_Framework_Azure_Mappings.csv | Same additional columns |
+| eGovernment_Controls_Template.csv | eGovernment_Framework_Azure_Mappings.csv | Same additional columns |
+| IGR_Controls_Template.csv | IGR_Framework_Azure_Mappings.csv | Same additional columns |
 
 ## Use Cases
 
@@ -163,9 +231,23 @@ These template files should be updated when:
 
 Maintain version control and document changes in the toolkit repository.
 
+## Framework Summary
+
+| Framework | Jurisdiction | Primary Focus | Total Controls |
+|-----------|-------------|---------------|----------------|
+| SAMA | Saudi Arabia | Financial Sector Cybersecurity | 37 |
+| CCC | UAE | Multi-Cloud Security | 32 |
+| ADHICS | UAE | Healthcare Information Security | 36 |
+| SITA | South Africa | Sovereign Cloud Architecture | 38 |
+| POPIA | South Africa | Data Protection & Privacy | 16 |
+| eGovernment | South Africa | Digital Government Services | 15 |
+| IGR | South Africa | Intergovernmental Cooperation | 10 |
+| **Total** | **MENA & Africa** | **Comprehensive Compliance** | **184** |
+
 ---
 
 **Created:** November 28, 2025
-**Toolkit Version:** 1.0
+**Last Updated:** December 4, 2025
+**Toolkit Version:** 1.1
 **Format Version:** Standard 4-column CSV
 **Author:** Warren du Toit, Cloud Solution Architect @ Microsoft

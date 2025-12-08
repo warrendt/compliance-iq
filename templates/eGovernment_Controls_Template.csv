@@ -1,0 +1,16 @@
+Control_ID,Domain,Control_Name,Requirement_Summary
+EGOV-01,Digital Strategy,National Digital Strategy,Align with national digital transformation strategy
+EGOV-02,Service Delivery,Online Service Delivery,Deliver government services through digital channels
+EGOV-03,Interoperability,Interoperability Standards,Ensure interoperability between government systems
+EGOV-04,Data Sharing,Government Data Sharing,Enable secure data sharing between government entities
+EGOV-05,Citizen Access,Citizen Digital Access,Provide accessible digital services to all citizens
+EGOV-06,Digital Identity,Digital Identity Services,Implement national digital identity infrastructure
+EGOV-07,Cloud First,Cloud-First Policy,Adopt cloud-first approach for government IT
+EGOV-08,Open Standards,Open Standards Compliance,Use open standards and avoid vendor lock-in
+EGOV-09,Cybersecurity,Government Cybersecurity,Implement cybersecurity measures for government services
+EGOV-10,Data Protection,Citizen Data Protection,Protect citizen data in government systems
+EGOV-11,Transparency,Government Transparency,Ensure transparency in digital government operations
+EGOV-12,Innovation,Digital Innovation,Foster innovation in government service delivery
+EGOV-13,Capacity Building,Digital Skills Development,Build digital capacity in government workforce
+EGOV-14,Infrastructure,Government IT Infrastructure,Maintain secure and reliable government IT infrastructure
+EGOV-15,Mobile Services,Mobile-First Services,Deliver mobile-accessible government services
