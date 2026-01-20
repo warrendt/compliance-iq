@@ -1,0 +1,112 @@
+{
+  "Name": "SAMA_Cybersecurity_Framework",
+  "Properties": {
+    "DisplayName": "SAMA Cybersecurity Framework",
+    "PolicyType": "Custom",
+    "Description": "Initiative for SAMA Cybersecurity Framework compliance based on SAMA Catalog Azure Mappings.",
+    "Metadata": {
+      "Version": "1.0.0",
+      "Category": "Regulatory Compliance"
+    },
+    "PolicyDefinitionGroups": [
+      {
+        "Name": "SAMA-AC-01",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-AC-03",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-NS-01",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-NS-02",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-DP-02",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-LM-01",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-VM-01",
+        "AdditionalMetadataId": null
+      },
+      {
+        "Name": "SAMA-AI-03",
+        "AdditionalMetadataId": null
+      }
+    ],
+    "PolicyDefinitions": [
+      {
+        "PolicyDefinitionReferenceId": "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-AC-01"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-AC-03"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "e71308d3-144b-4262-b144-efdc3cc90517",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-NS-01"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-NS-02"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "18adea5e-f416-4d0f-8aa8-d24321e3e274",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-DP-02"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "818719e5-1338-4776-9a9d-3c31e4df5986",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-LM-01"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-VM-01"
+        ]
+      },
+      {
+        "PolicyDefinitionReferenceId": "55d1f543-d1b0-4811-9663-d6d0dbc6326d",
+        "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55d1f543-d1b0-4811-9663-d6d0dbc6326d",
+        "Parameters": {},
+        "GroupNames": [
+          "SAMA-AI-03"
+        ]
+      }
+    ]
+  }
+}

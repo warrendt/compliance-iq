@@ -1,0 +1,1 @@
+New-AzPolicySetDefinition -Name 'SAMA_Cybersecurity_Framework' -DisplayName 'SAMA Cybersecurity Framework' -Description 'Initiative for SAMA Cybersecurity Framework compliance based on SAMA Catalog Azure Mappings.' -Metadata '{"version":"1.0.0","category":"Regulatory Compliance"}' -GroupDefinition .\groups.json -PolicyDefinition .\policies.json -Parameter .\params.json
