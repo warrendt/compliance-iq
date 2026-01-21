@@ -1,0 +1,18 @@
+# Streamlit framework
+streamlit==1.31.0
+
+# Interactive components
+streamlit-aggrid==0.3.4
+plotly==5.18.0
+
+# Data processing
+pandas==2.2.0
+numpy==1.26.3
+openpyxl==3.1.2
+
+# API client
+requests==2.31.0
+httpx==0.26.0
+
+# Utilities
+python-dotenv==1.0.0
