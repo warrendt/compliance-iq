@@ -132,6 +132,32 @@ This toolkit provides comprehensive control catalogs for multiple compliance fra
 - Azure Policy: Data sharing controls, monitoring, governance
 - Defender for Cloud: Governance, logging & monitoring, regulatory compliance
 
+### 8. OmanCDC_Framework_Azure_Mappings.csv
+**Framework:** Cyber Defense Centre (CDC) of Oman - Cloud Security Controls
+**Controls:** 47 controls covering cloud services usage in Oman
+**Key Domains:**
+- Network Security (Firewall, DDoS, Hardening)
+- Identity & Access Control (MFA, RBAC, Least Privilege)
+- Data Protection & Privacy (Encryption, Classification, DLP)
+- Logging & Monitoring (SIEM, Log Retention)
+- Endpoint Protection (Antivirus, Antimalware)
+- Vulnerability Management (Patching)
+- Business Continuity & DR (Backup, Recovery)
+- AI Governance (AI Usage, Training Restrictions)
+- Cybersecurity Governance (Approvals, Compliance)
+- Third-Party Security (Provider Requirements)
+
+**Azure Mappings Include:**
+- Azure Policy: Network security, encryption, MFA, logging, backup, key management
+- Defender for Cloud: Endpoint protection, vulnerability management, security monitoring
+
+**Special Features:**
+- Technical Requirements (CDC-TR-*): 16 automated controls
+- Policy Requirements (CDC-POL-*): 9 mapped controls (some manual)
+- Contractual Requirements (CDC-CON-*): 3 mapped controls
+- Geographic restrictions and CDC approval requirements
+- Azure Policy Initiative available in `/framework/Oman CDC/`
+
 ## CSV File Structure
 
 Each catalog CSV file contains the following columns:
@@ -301,4 +327,5 @@ For questions or issues with these catalogs, please refer to:
 | POPIA | 16 | Data Protection & Privacy | South Africa |
 | eGovernment | 15 | Digital Government Services | South Africa |
 | IGR | 10 | Intergovernmental Cooperation | South Africa |
-| **Total** | **181** | **Comprehensive Compliance** | **MENA & Africa** |
+| Oman CDC | 47 | Government Cloud Security | Oman |
+| **Total** | **228** | **Comprehensive Compliance** | **MENA & Africa** |

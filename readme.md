@@ -20,10 +20,10 @@ The **Cloud Compliance Toolkit** is a comprehensive framework for implementing s
 
 ### ✨ Key Features
 
-- 🎯 **Multi-Framework Support** - SAMA, ADHICS, CCC, and SITA frameworks included
+- 🎯 **Multi-Framework Support** - SAMA, ADHICS, CCC, SITA, and Oman CDC frameworks included
 - 🔗 **Azure-Native Mappings** - Pre-mapped Azure Policy definitions and Defender for Cloud controls
-- 📊 **143+ Security Controls** - Comprehensive coverage across 4 major compliance frameworks
-- 🚀 **Deployment Ready** - Control catalogs ready for Infrastructure as Code (IaC) implementation
+- 📊 **190+ Security Controls** - Comprehensive coverage across 5 major compliance frameworks
+- 🚀 **Deployment Ready** - Control catalogs and policy initiatives ready for Infrastructure as Code (IaC) implementation
 - 📈 **Continuous Compliance** - Integration with Microsoft Defender CSPM for ongoing monitoring
 
 ---
@@ -40,6 +40,7 @@ Located in [`catalogues/`](catalogues/):
 | **CCC** | 32 | Cloud Computing | [`CCC_Framework_Azure_Mappings.csv`](catalogues/CCC_Framework_Azure_Mappings.csv) |
 | **ADHICS** | 36 | Healthcare | [`ADHICS_Framework_Azure_Mappings.csv`](catalogues/ADHICS_Framework_Azure_Mappings.csv) |
 | **SITA** | 38 | Government/Sovereign | [`SITA_Architecture_Azure_Mappings.csv`](catalogues/SITA_Architecture_Azure_Mappings.csv) |
+| **Oman CDC** | 47 | Government Cloud Security | [`OmanCDC_Framework_Azure_Mappings.csv`](catalogues/OmanCDC_Framework_Azure_Mappings.csv) |
 
 Each catalog includes:
 - ✅ Control ID, domain, and detailed requirements
@@ -112,13 +113,13 @@ grep -o '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
 │                  Cloud Compliance Toolkit                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────┐│
-│  │   SAMA     │  │    CCC     │  │  ADHICS    │  │ SITA  ││
-│  │ Financial  │  │   Cloud    │  │ Healthcare │  │  Gov  ││
-│  │ 36 ctrl    │  │  32 ctrl   │  │  36 ctrl   │  │38 ctrl││
-│  └────────────┘  └────────────┘  └────────────┘  └───────┘│
-│         │              │                │            │      │
-│         └──────────────┴────────────────┴────────────┘      │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────┐ ┌────────┐│
+│  │  SAMA   │ │   CCC   │ │ ADHICS  │ │ SITA │ │Oman CDC││
+│  │Financial│ │  Cloud  │ │Healthcare│ │ Gov  │ │Oman Gov││
+│  │ 36 ctrl │ │ 32 ctrl │ │ 36 ctrl │ │38ctrl│ │ 47ctrl ││
+│  └─────────┘ └─────────┘ └─────────┘ └──────┘ └────────┘│
+│       │           │            │          │         │     │
+│       └───────────┴────────────┴──────────┴─────────┘     │
 │                          │                                  │
 │              ┌───────────▼──────────┐                       │
 │              │  Azure Policy Engine │                       │
@@ -210,6 +211,27 @@ grep -o '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
 - Security Clearances
 
 [→ View SITA Catalog](catalogues/SITA_Architecture_Azure_Mappings.csv)
+
+### 🏛️ Oman CDC - Cyber Defense Centre Cloud Controls
+
+**Target:** Organizations in Oman using external cloud services
+**Controls:** 47 across 3 categories (Technical, Policy, Contractual)
+**Key Focus:** Government cloud security, data sovereignty, encryption, AI governance
+
+**Control Categories:**
+- Technical Requirements (CDC-TR-*) - 16 controls
+- Policy Requirements (CDC-POL-*) - 14 controls  
+- Contractual Requirements (CDC-CON-*) - 17 controls
+
+**Unique Features:**
+- Geographic hosting restrictions
+- CDC approval and renewal requirements (2-year validity)
+- Semi-annual audit reporting to CDC
+- AI application governance
+- Prohibition on Secret/Top Secret data in cloud
+- Provider certification requirements (ISO 27001/17/18, SOC 2)
+
+[→ View Oman CDC Catalog](catalogues/OmanCDC_Framework_Azure_Mappings.csv) | [→ View Policy Initiative](framework/Oman%20CDC/)
 
 ---
 
@@ -355,12 +377,13 @@ az security pricing create \
 
 | Metric | Count |
 |--------|-------|
-| **Total Controls** | 143 |
-| **Azure Policies Mapped** | 50+ |
+| **Total Controls** | 190+ |
+| **Azure Policies Mapped** | 60+ |
 | **Defender Controls** | 8 categories |
-| **Frameworks Covered** | 4 |
+| **Frameworks Covered** | 5 |
 | **Industry Sectors** | 3 (Finance, Healthcare, Government) |
-| **Control Domains** | 35+ |
+| **Geographic Coverage** | Middle East & North Africa (MENA) |
+| **Control Domains** | 40+ |
 
 ---
 

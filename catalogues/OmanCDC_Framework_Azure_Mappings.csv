@@ -1,0 +1,84 @@
+CDC_Control_ID,Control_Domain,Control_Title,Control_Type,Azure_Policy_Name,Azure_Policy_ID,Azure_Service,Implementation_Status
+CDC-TR-01a,Network Security,Firewalls and DDoS Protection,Technical,Azure DDoS Network Protection should be enabled,055f3b15-58a8-4d91-a4f6-8437a6c8f7e8,"Azure DDoS Protection, Azure Firewall",Automated
+CDC-TR-01a,Network Security,Firewalls and DDoS Protection,Technical,Azure Firewall should be enabled on virtual networks,fc5e4038-4584-4632-8c85-c0448d374b2c,Azure Firewall,Automated
+CDC-TR-01a,Network Security,Firewalls and DDoS Protection,Technical,Subnets should be associated with a Network Security Group,e71308d3-144b-4262-b144-efdc3cc90517,Network Security Groups,Automated
+CDC-TR-01a,Network Security,Firewalls and DDoS Protection,Technical,Network Watcher should be enabled,1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d,Azure Network Watcher,Automated
+CDC-TR-01b,Network Security,OS and Network Hardening,Technical,System updates should be installed on your machines,e1145ab1-eb4f-43d8-911b-36ddf771d13f,Azure Update Manager,Automated
+CDC-TR-01b,Network Security,OS and Network Hardening,Technical,System updates should be installed on your machines (powered by Azure Update Manager),8e86a5b6-b9bd-49d1-8e21-4bb8a0862222,Azure Update Manager,Automated
+CDC-TR-02,Identity & Access Control,Centralized Identity and Access Management,Technical,Role-Based Access Control (RBAC) should be used on Kubernetes Services,34c877ad-507e-4c82-993e-3452a6e0ad3c,"Microsoft Entra ID, Azure RBAC",Automated
+CDC-TR-02,Identity & Access Control,Centralized Identity and Access Management,Technical,Just-In-Time network access control should be applied on virtual machines,1f314764-cb73-4fc9-b863-8eca98ac36e9,Microsoft Defender for Cloud JIT,Automated
+CDC-TR-02,Identity & Access Control,Centralized Identity and Access Management,Technical,Management ports should be closed on your virtual machines,0b15565f-aa9e-48ba-8619-45960f2c314d,Azure Virtual Machines,Automated
+CDC-TR-03,Logging & Monitoring,SIEM Integration and Log Aggregation,Technical,Enable logging by category group for Log Analytics workspaces to Log Analytics,818719e5-1338-4776-9a9d-3c31e4df5986,Log Analytics,Automated
+CDC-TR-03,Logging & Monitoring,SIEM Integration and Log Aggregation,Technical,Diagnostic settings for selected resource types should be enabled,428256e6-1fac-4f48-a757-df34c2b3336d,Azure Monitor,Automated
+CDC-TR-03,Logging & Monitoring,SIEM Integration and Log Aggregation,Technical,Activity log should be retained for at least one year,b79fa14e-238a-4c2d-b376-442ce508fc84,Activity Log,Automated
+CDC-TR-04a,Identity & Access Control,Multi-Factor Authentication,Technical,Role-Based Access Control (RBAC) should be used on Kubernetes Services,34c877ad-507e-4c82-993e-3452a6e0ad3c,Microsoft Entra ID,Automated
+CDC-TR-04a,Identity & Access Control,Multi-Factor Authentication,Technical,Users must authenticate with multi-factor authentication to create or update resources,4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b,Microsoft Entra Conditional Access,Automated
+CDC-TR-04b,Identity & Access Control,Geographic Access Restrictions,Operational,N/A - Configured via Conditional Access Named Locations,N/A,Microsoft Entra Conditional Access,Manual
+CDC-TR-05,Risk Management & Compliance,Penetration Testing and Risk Assessment,Operational,Vulnerability assessment should be enabled on your virtual machines,e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f,Microsoft Defender for Servers,Automated
+CDC-TR-06,Data Protection & Privacy,Data Classification,Operational,Sensitive data in your SQL databases should be classified,0b60c0b2-2dc2-4e1c-b5c9-abbed971de53,Microsoft Purview,Automated
+CDC-TR-07a,Data Protection & Privacy,Data Encryption in Transit and at Rest,Technical,Transparent Data Encryption on SQL databases should be enabled,7595c971-233d-4bcf-bd18-596129188c49,Azure SQL Database,Automated
+CDC-TR-07a,Data Protection & Privacy,Data Encryption in Transit and at Rest,Technical,Secure transfer to storage accounts should be enabled,404c3081-a854-4457-ae30-26a93ef643f9,Azure Storage,Automated
+CDC-TR-07a,Data Protection & Privacy,Data Encryption in Transit and at Rest,Technical,Storage accounts should require minimum TLS version,4733ea7b-a883-42fe-8cac-97454c2a9e4a,Azure Storage,Automated
+CDC-TR-07a,Data Protection & Privacy,Data Encryption in Transit and at Rest,Technical,Secure transfer to storage accounts should be enabled,a4af4a39-4135-47fb-b175-47fbdf85311d,Azure Storage,Automated
+CDC-TR-07b,Data Protection & Privacy,Customer-Managed Keys (BYOK),Technical,OS and data disks should be encrypted with a customer-managed key,702dd420-7fcc-42c5-afe8-4026edd20fe0,Azure Disk Encryption,Automated
+CDC-TR-07b,Data Protection & Privacy,Customer-Managed Keys (BYOK),Technical,PostgreSQL servers should use customer-managed keys to encrypt data at rest,18adea5e-f416-4d0f-8aa8-d24321e3e274,Azure Database for PostgreSQL,Automated
+CDC-TR-07b,Data Protection & Privacy,Customer-Managed Keys (BYOK),Technical,MySQL servers should use customer-managed keys to encrypt data at rest,0a370ff3-6cab-4e85-8995-295fd854c5b8,Azure Database for MySQL,Automated
+CDC-TR-07c,Identity & Access Control,Least Privilege Access,Technical,Just-In-Time network access control should be applied on virtual machines,1f314764-cb73-4fc9-b863-8eca98ac36e9,Microsoft Defender for Cloud JIT,Automated
+CDC-TR-07c,Identity & Access Control,Least Privilege Access,Technical,Management ports should be closed on your virtual machines,0b15565f-aa9e-48ba-8619-45960f2c314d,Azure Virtual Machines,Automated
+CDC-TR-08,Data Protection & Privacy,Cloud Data Loss Prevention,Operational,App Configuration should use private link,ca610c1d-041c-4332-9d88-7ed3094967c7,Azure App Configuration,Automated
+CDC-TR-08,Data Protection & Privacy,Cloud Data Loss Prevention,Operational,Cognitive Services should use private link,55d1f543-d1b0-4811-9663-d6d0dbc6326d,Azure Cognitive Services,Automated
+CDC-TR-09,Endpoint Protection,Antivirus and Antimalware,Technical,Microsoft Antimalware extension should be deployed on Windows servers,013e242c-8828-4970-87b3-ab247555486d,Microsoft Antimalware,Automated
+CDC-TR-09,Endpoint Protection,Antivirus and Antimalware,Technical,Endpoint protection solution should be installed on virtual machines,ac076320-ddcf-4066-b451-6154267e8ad2,Microsoft Defender for Endpoint,Automated
+CDC-TR-09,Endpoint Protection,Antivirus and Antimalware,Technical,Vulnerability assessment should be enabled on your virtual machines,e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f,Microsoft Defender for Servers,Automated
+CDC-TR-10,Vulnerability Management,Patch Management,Technical,System updates should be installed on your machines,e1145ab1-eb4f-43d8-911b-36ddf771d13f,Azure Update Manager,Automated
+CDC-TR-10,Vulnerability Management,Patch Management,Technical,System updates should be installed on your machines (powered by Azure Update Manager),8e86a5b6-b9bd-49d1-8e21-4bb8a0862222,Azure Update Manager,Automated
+CDC-TR-11,Business Continuity & DR,Backup and Recovery,Operational,Azure Backup should be enabled for Virtual Machines,09024ccc-0c5f-475e-9457-b7c0d9ed487b,Azure Backup,Automated
+CDC-TR-11,Business Continuity & DR,Backup and Recovery,Operational,Soft delete should be enabled for Recovery Services Vaults,013e242c-8828-4970-87b3-ab247555486d,Recovery Services Vault,Automated
+CDC-TR-11,Business Continuity & DR,Backup and Recovery,Operational,Long-term geo-redundant backup should be enabled for Azure SQL Databases,22bee202-a82f-4305-9a2a-6d7f44d4dedb,Azure SQL Database,Automated
+CDC-TR-12,Incident Response,Cyber Incident Response Plan,Operational,N/A - Requires documented incident response procedures,N/A,Microsoft Sentinel,Manual
+CDC-POL-01,Cybersecurity Governance,Data Classification Prerequisite,Management,Sensitive data in your SQL databases should be classified,0b60c0b2-2dc2-4e1c-b5c9-abbed971de53,Microsoft Purview,Automated
+CDC-POL-02,Cybersecurity Governance,CDC Policy Compliance,Management,N/A - Overall policy compliance monitoring,N/A,Azure Policy,Manual
+CDC-POL-03,Cybersecurity Governance,Geographic Hosting Approval,Management,Allowed locations for resources,e56962a6-4747-49cd-b67b-bf8b01975c4c,Azure Policy,Automated
+CDC-POL-03,Cybersecurity Governance,Geographic Hosting Approval,Management,Allowed locations for resource groups,37bc2e11-1d3c-4e6e-a9fc-62ca7b58b6c2,Azure Policy,Automated
+CDC-POL-04,Cybersecurity Governance,Non-Standard Region Approval,Management,N/A - Requires documentation and CDC approval,N/A,N/A,Manual
+CDC-POL-05,Risk Management & Compliance,Risk Assessment Documentation,Management,N/A - Requires documented risk assessment,N/A,Microsoft Defender CSPM,Manual
+CDC-POL-06,Logging & Monitoring,Semi-Annual Security Audit Reports,Management,N/A - Requires semi-annual reporting to CDC,N/A,Compliance Reporting,Manual
+CDC-POL-07,Business Continuity & DR,Local Backup Retention,Operational,Azure Backup should be enabled for Virtual Machines,09024ccc-0c5f-475e-9457-b7c0d9ed487b,Azure Backup,Automated
+CDC-POL-08,AI Governance,AI Application Usage,Operational,Cognitive Services should use private link,55d1f543-d1b0-4811-9663-d6d0dbc6326d,Azure OpenAI,Automated
+CDC-POL-09,Cybersecurity Governance,Communication Service Approvals,Management,N/A - Requires TRA approvals,N/A,Azure Communication Services,Manual
+CDC-POL-10,Data Protection & Privacy,Prohibition on Secret Data,Management,Resources with specified tags should be denied,c9d007d0-c057-4772-b18c-01693a6eae35,Azure Policy,Automated
+CDC-POL-11,Cybersecurity Governance,CDC Approval Validity,Management,N/A - Requires tracking and renewal,N/A,N/A,Manual
+CDC-POL-12,Cybersecurity Governance,Existing Hosting Notification,Management,N/A - Requires CDC notification,N/A,N/A,Manual
+CDC-POL-13,Data Protection & Privacy,Encryption Key Management,Technical,Key Vault keys should have an expiration date,0725b4dd-7e76-479c-a735-68e7ee23d5ca,Azure Key Vault,Automated
+CDC-POL-13,Data Protection & Privacy,Encryption Key Management,Technical,Keys should have the specified maximum validity period,8e826246-c976-48f6-b03e-619bb92b3d82,Azure Key Vault,Automated
+CDC-POL-13,Data Protection & Privacy,Encryption Key Management,Technical,Secrets should have the specified maximum validity period,5f0bc445-3935-4915-9981-011aa2b46147,Azure Key Vault,Automated
+CDC-POL-13,Data Protection & Privacy,Encryption Key Management,Technical,Certificates should have the specified maximum validity period,f4b53539-8df9-40e4-86c6-6b607703bd4e,Azure Key Vault,Automated
+CDC-POL-14,Cybersecurity Governance,Approval Revocation,Management,N/A - CDC revocation procedures,N/A,N/A,Manual
+CDC-CON-01,Third-Party Security,Provider Policy Change Notification,Contractual,N/A - Provider notification requirement,N/A,Azure Service Health,Manual
+CDC-CON-02,Third-Party Security,Prohibition on Unauthorized Data Access,Contractual,N/A - Provider access controls,N/A,Customer Lockbox,Manual
+CDC-CON-03,Data Protection & Privacy,Encryption at All Stages,Technical,Transparent Data Encryption on SQL databases should be enabled,7595c971-233d-4bcf-bd18-596129188c49,Azure SQL Database,Automated
+CDC-CON-03,Data Protection & Privacy,Encryption at All Stages,Technical,Secure transfer to storage accounts should be enabled,404c3081-a854-4457-ae30-26a93ef643f9,Azure Storage,Automated
+CDC-CON-03,Data Protection & Privacy,Encryption at All Stages,Technical,Storage accounts should require minimum TLS version,4733ea7b-a883-42fe-8cac-97454c2a9e4a,Azure Storage,Automated
+CDC-CON-03,Data Protection & Privacy,Encryption at All Stages,Technical,Secure transfer to storage accounts should be enabled,a4af4a39-4135-47fb-b175-47fbdf85311d,Azure Storage,Automated
+CDC-CON-04,Third-Party Security,Data Segregation,Contractual,N/A - Provider data segregation requirement,N/A,Azure Dedicated Host,Manual
+CDC-CON-05,Third-Party Security,Legal Request Notification,Contractual,N/A - Provider legal notification requirement,N/A,N/A,Manual
+CDC-CON-06,Incident Response,Security Incident Notification,Operational,Enable Azure Defender alert for Key Vault,2c89a2e5-7285-40fe-afe0-ae8654b92fb2,Microsoft Defender for Cloud,Automated
+CDC-CON-07,Logging & Monitoring,Audit Log Platform and Retention,Technical,Enable logging by category group for Log Analytics workspaces to Log Analytics,818719e5-1338-4776-9a9d-3c31e4df5986,Log Analytics,Automated
+CDC-CON-07,Logging & Monitoring,Audit Log Platform and Retention,Technical,Diagnostic settings for selected resource types should be enabled,428256e6-1fac-4f48-a757-df34c2b3336d,Azure Monitor,Automated
+CDC-CON-07,Logging & Monitoring,Audit Log Platform and Retention,Technical,Activity log should be retained for at least one year,b79fa14e-238a-4c2d-b376-442ce508fc84,Activity Log,Automated
+CDC-CON-08,AI Governance,Prohibition on AI Training with Customer Data,Contractual,N/A - Provider AI training restrictions,N/A,Azure OpenAI,Manual
+CDC-CON-09,Third-Party Security,Training and Knowledge Transfer,Contractual,N/A - Provider training requirements,N/A,Microsoft Learn,Manual
+CDC-CON-10,Third-Party Security,Provider Certifications,Contractual,N/A - Verification of ISO/SOC certifications,N/A,Microsoft Trust Center,Manual
+CDC-CON-11,Third-Party Security,Subcontractor Compliance,Contractual,N/A - Subcontractor compliance requirements,N/A,N/A,Manual
+CDC-CON-12,Third-Party Security,Support Staff Privacy,Contractual,N/A - Support staff requirements,N/A,Customer Lockbox,Manual
+CDC-CON-13,Business Continuity & DR,Contract Termination and Migration,Contractual,N/A - Contract termination procedures,N/A,N/A,Manual
+CDC-CON-14,Data Protection & Privacy,Data Ownership and Retrieval,Contractual,N/A - Data ownership and retrieval requirements,N/A,N/A,Manual
+CDC-CON-15,Third-Party Security,Service Level Agreement,Contractual,N/A - SLA requirements,N/A,N/A,Manual
+CDC-CON-16,Data Protection & Privacy,Data Destruction Procedures,Contractual,N/A - Data destruction requirements,N/A,N/A,Manual
+CDC-CON-17,Third-Party Security,Data Residency Compliance,Contractual,Allowed locations for resources,e56962a6-4747-49cd-b67b-bf8b01975c4c,Azure Policy,Automated
+CDC-REQ-ISO27001,Third-Party Security,ISO 27001 Certification,Contractual,N/A - Provider certification verification,N/A,Microsoft Trust Center,Manual
+CDC-REQ-ISO27002,Third-Party Security,ISO 27002 Compliance,Contractual,N/A - Provider compliance verification,N/A,Microsoft Trust Center,Manual
+CDC-REQ-ISO27017,Third-Party Security,ISO 27017 Certification,Contractual,N/A - Provider certification verification,N/A,Microsoft Trust Center,Manual
+CDC-REQ-ISO27018,Third-Party Security,ISO 27018 Certification,Contractual,N/A - Provider certification verification,N/A,Microsoft Trust Center,Manual
+CDC-REQ-ISO22237,Third-Party Security,ISO 22237 Certification,Contractual,N/A - Data center certification verification,N/A,Microsoft Trust Center,Manual
+CDC-REQ-SOC2,Third-Party Security,SOC 2 Type II Report,Contractual,N/A - Provider SOC 2 report verification,N/A,Microsoft Trust Center,Manual
