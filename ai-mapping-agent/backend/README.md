@@ -4,14 +4,38 @@ FastAPI backend service for AI-powered compliance control mapping.
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Option 1: Automated Setup (Recommended)
+
+Run the setup script that handles everything:
+
+```bash
+cd backend
+./setup.sh
+```
+
+This script will:
+- ✅ Activate the virtual environment
+- ✅ Install all dependencies
+- ✅ Create `.env` from template if needed
+- ✅ Check Azure CLI authentication
+- ✅ Optionally start the server
+
+### Option 2: Manual Setup
+
+**1. Activate Virtual Environment**
+
+```bash
+source /Users/wdt/Library/CloudStorage/OneDrive-Microsoft/The\ Quantum\ Crew/Cloud\ Compliance\ Toolkit/cctoolkit_v1/venv/bin/activate
+```
+
+**2. Install Dependencies**
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+**3. Configure Environment**
 
 ```bash
 cp .env.template .env
@@ -24,7 +48,7 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 ```
 
-### 3. Authenticate with Azure
+**4. Authenticate with Azure**
 
 ```bash
 az login
@@ -32,10 +56,16 @@ az login
 
 This allows the application to use your Azure CLI credentials for local development.
 
-### 4. Start Server
+**5. Start Server**
 
 ```bash
 uvicorn app.main:app --reload --host localhost --port 8000
+```
+
+Or use the quick-start script:
+
+```bash
+./start.sh
 ```
 
 Server will start at: **http://localhost:8000**

@@ -63,7 +63,7 @@ async def map_single_control(request: MapSingleRequest):
 
     try:
         ai_service = get_ai_mapping_service()
-        mapping = ai_service.map_control(request.control)
+        mapping = await ai_service.map_control(request.control)
 
         return MapSingleResponse(mapping=mapping)
 

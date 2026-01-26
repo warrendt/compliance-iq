@@ -11,7 +11,7 @@ from app.api.routes import health, mapping, policy
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG for detailed MCP server interaction logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
