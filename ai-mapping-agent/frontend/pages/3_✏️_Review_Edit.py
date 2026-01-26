@@ -1,0 +1,295 @@
+"""
+Review & Edit Page - Review and modify AI-generated mappings.
+"""
+
+import streamlit as st
+import pandas as pd
+from utils.api_client import get_api_client
+
+st.set_page_config(
+    page_title="Review & Edit | AI Mapping Agent",
+    page_icon="✏️",
+    layout="wide"
+)
+
+# Initialize session state
+if 'mappings' not in st.session_state:
+    st.session_state.mappings = []
+if 'framework_name' not in st.session_state:
+    st.session_state.framework_name = ""
+if 'mcsb_controls' not in st.session_state:
+    st.session_state.mcsb_controls = None
+
+# Header
+st.title("✏️ Review & Edit Mappings")
+st.markdown("Review and refine the AI-generated mappings before exporting")
+
+st.markdown("---")
+
+# Check if mappings exist
+if not st.session_state.mappings:
+    st.warning("⚠️ No mappings to review. Please complete the mapping step first.")
+    if st.button("Go to AI Mapping"):
+        st.switch_page("pages/2_🤖_AI_Mapping.py")
+    st.stop()
+
+# Get API client
+api_client = get_api_client()
+
+# Load MCSB controls for reference (cached)
+if st.session_state.mcsb_controls is None:
+    with st.spinner("Loading MCSB controls..."):
+        try:
+            st.session_state.mcsb_controls = api_client.get_mcsb_controls()
+        except Exception as e:
+            st.error(f"❌ Error loading MCSB controls: {str(e)}")
+            st.session_state.mcsb_controls = []
+
+# Create MCSB lookup dictionary
+mcsb_lookup = {c['control_id']: c for c in st.session_state.mcsb_controls} if st.session_state.mcsb_controls else {}
+mcsb_options = sorted([c['control_id'] for c in st.session_state.mcsb_controls]) if st.session_state.mcsb_controls else []
+
+# Display summary
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("Total Mappings", len(st.session_state.mappings))
+
+with col2:
+    avg_confidence = sum(m.get('confidence_score', 0) for m in st.session_state.mappings) / len(st.session_state.mappings)
+    st.metric("Avg Confidence", f"{avg_confidence:.0%}")
+
+with col3:
+    high_conf_count = sum(1 for m in st.session_state.mappings if m.get('confidence_score', 0) >= 0.8)
+    st.metric("High Confidence (≥80%)", high_conf_count)
+
+with col4:
+    low_conf_count = sum(1 for m in st.session_state.mappings if m.get('confidence_score', 0) < 0.6)
+    st.metric("Low Confidence (<60%)", low_conf_count)
+
+st.markdown("---")
+
+# Filter options
+st.markdown("### 🔍 Filter Mappings")
+
+col_filter1, col_filter2, col_filter3 = st.columns(3)
+
+with col_filter1:
+    confidence_filter = st.selectbox(
+        "Confidence Level",
+        options=["All", "High (≥80%)", "Medium (60-80%)", "Low (<60%)"],
+        index=0
+    )
+
+with col_filter2:
+    # Get unique MCSB domains
+    domains = sorted(set(mcsb_lookup[m.get('mcsb_control_id', '')].get('domain', 'Unknown') 
+                        for m in st.session_state.mappings 
+                        if m.get('mcsb_control_id', '') in mcsb_lookup))
+    
+    domain_filter = st.selectbox(
+        "MCSB Domain",
+        options=["All"] + domains,
+        index=0
+    )
+
+with col_filter3:
+    mapping_types = sorted(set(m.get('mapping_type', 'direct') for m in st.session_state.mappings))
+    
+    type_filter = st.selectbox(
+        "Mapping Type",
+        options=["All"] + mapping_types,
+        index=0
+    )
+
+# Apply filters
+filtered_mappings = st.session_state.mappings.copy()
+
+if confidence_filter == "High (≥80%)":
+    filtered_mappings = [m for m in filtered_mappings if m.get('confidence_score', 0) >= 0.8]
+elif confidence_filter == "Medium (60-80%)":
+    filtered_mappings = [m for m in filtered_mappings if 0.6 <= m.get('confidence_score', 0) < 0.8]
+elif confidence_filter == "Low (<60%)":
+    filtered_mappings = [m for m in filtered_mappings if m.get('confidence_score', 0) < 0.6]
+
+if domain_filter != "All" and mcsb_lookup:
+    filtered_mappings = [m for m in filtered_mappings 
+                         if m.get('mcsb_control_id', '') in mcsb_lookup 
+                         and mcsb_lookup[m.get('mcsb_control_id', '')].get('domain') == domain_filter]
+
+if type_filter != "All":
+    filtered_mappings = [m for m in filtered_mappings if m.get('mapping_type') == type_filter]
+
+st.info(f"📋 Showing **{len(filtered_mappings)}** of **{len(st.session_state.mappings)}** mappings")
+
+st.markdown("---")
+
+# Review and edit each mapping
+st.markdown("### 📝 Edit Mappings")
+
+if not filtered_mappings:
+    st.warning("No mappings match the current filters.")
+else:
+    # Track if any changes were made
+    changes_made = False
+    
+    for idx, mapping in enumerate(filtered_mappings):
+        with st.expander(
+            f"{'⚠️' if mapping.get('confidence_score', 0) < 0.6 else '✅'} "
+            f"{mapping.get('control_id', mapping.get('external_control_id', 'N/A'))} → {mapping.get('mcsb_control_id', 'N/A')} "
+            f"({mapping.get('confidence_score', 0):.0%})",
+            expanded=mapping.get('confidence_score', 0) < 0.6
+        ):
+            col_edit1, col_edit2 = st.columns([1, 1])
+            
+            with col_edit1:
+                st.markdown("#### 📋 Source Control")
+                control_id = mapping.get('control_id', mapping.get('external_control_id', 'N/A'))
+                control_name = mapping.get('control_name', mapping.get('external_control_name', 'N/A'))
+                st.markdown(f"**ID:** {control_id}")
+                st.markdown(f"**Name:** {control_name}")
+                st.markdown(f"**Description:** {mapping.get('description', 'N/A')}")
+                if mapping.get('domain'):
+                    st.markdown(f"**Domain:** {mapping['domain']}")
+            
+            with col_edit2:
+                st.markdown("#### 🎯 MCSB Mapping")
+                
+                # Edit MCSB control
+                current_mcsb = mapping.get('mcsb_control_id', '')
+                current_idx = mcsb_options.index(current_mcsb) if current_mcsb in mcsb_options else 0
+                control_id_key = mapping.get('control_id', mapping.get('external_control_id', f'unknown_{idx}'))
+                
+                new_mcsb = st.selectbox(
+                    "MCSB Control",
+                    options=mcsb_options,
+                    index=current_idx,
+                    key=f"mcsb_{idx}_{control_id_key}"
+                )
+                
+                if new_mcsb != current_mcsb:
+                    # Find the original mapping in session state and update it
+                    mapping_id = mapping.get('control_id', mapping.get('external_control_id'))
+                    for i, m in enumerate(st.session_state.mappings):
+                        m_id = m.get('control_id', m.get('external_control_id'))
+                        if m_id == mapping_id:
+                            st.session_state.mappings[i]['mcsb_control_id'] = new_mcsb
+                            st.session_state.mappings[i]['manual_override'] = True
+                            changes_made = True
+                            break
+                
+                # Show MCSB control details
+                if new_mcsb in mcsb_lookup:
+                    mcsb_control = mcsb_lookup[new_mcsb]
+                    st.caption(f"**Title:** {mcsb_control['title']}")
+                    st.caption(f"**Domain:** {mcsb_control.get('domain', 'N/A')}")
+                
+                # Confidence score (read-only if not manually overridden)
+                st.metric("Confidence Score", f"{mapping.get('confidence_score', 0):.0%}")
+                
+                # Mapping type
+                st.caption(f"**Type:** {mapping.get('mapping_type', 'direct').replace('_', ' ').title()}")
+            
+            # AI Reasoning
+            st.markdown("#### 💡 AI Reasoning")
+            st.info(mapping.get('reasoning', 'No reasoning provided'))
+            
+            # Azure Policies
+            if mapping.get('azure_policy_ids'):
+                st.markdown("#### 🎯 Recommended Azure Policies")
+                for policy_id in mapping['azure_policy_ids']:
+                    st.code(policy_id, language="text")
+            
+            # Delete mapping option
+            col_delete1, col_delete2 = st.columns([3, 1])
+            with col_delete2:
+                delete_id = mapping.get('control_id', mapping.get('external_control_id', f'unknown_{idx}'))
+                if st.button("🗑️ Delete", key=f"delete_{idx}_{delete_id}"):
+                    # Remove from session state
+                    mapping_id = mapping.get('control_id', mapping.get('external_control_id'))
+                    st.session_state.mappings = [m for m in st.session_state.mappings 
+                                                 if m.get('control_id', m.get('external_control_id')) != mapping_id]
+                    st.success(f"Deleted mapping for {delete_id}")
+                    st.rerun()
+
+# Show changes notification
+if changes_made:
+    st.success("✅ Changes saved! Mappings have been updated.")
+
+# Export statistics
+st.markdown("---")
+st.markdown("### 📊 Mapping Statistics")
+
+if st.session_state.mappings:
+    # Create DataFrame for analysis
+    df = pd.DataFrame(st.session_state.mappings)
+    
+    col_stat1, col_stat2 = st.columns(2)
+    
+    with col_stat1:
+        st.markdown("#### Confidence Distribution")
+        confidence_bins = pd.cut(df['confidence_score'], bins=[0, 0.6, 0.8, 1.0], labels=['Low', 'Medium', 'High'])
+        confidence_dist = confidence_bins.value_counts().sort_index()
+        st.bar_chart(confidence_dist)
+    
+    with col_stat2:
+        st.markdown("#### Top MCSB Controls")
+        top_mcsb = df['mcsb_control_id'].value_counts().head(10)
+        st.bar_chart(top_mcsb)
+
+# Action buttons
+st.markdown("---")
+
+col_action1, col_action2, col_action3 = st.columns(3)
+
+with col_action1:
+    if st.button("← Back to Mapping", use_container_width=True):
+        st.switch_page("pages/2_🤖_AI_Mapping.py")
+
+with col_action2:
+    # Download current mappings
+    import json
+    
+    if st.download_button(
+        label="📥 Download Mappings (JSON)",
+        data=json.dumps(st.session_state.mappings, indent=2),
+        file_name=f"{st.session_state.framework_name.replace(' ', '_')}_mappings_reviewed.json",
+        mime="application/json",
+        use_container_width=True
+    ):
+        st.success("✅ Mappings downloaded!")
+
+with col_action3:
+    if st.button("Continue to Export →", type="primary", use_container_width=True):
+        st.switch_page("pages/4_📦_Export_Policy.py")
+
+# Sidebar
+with st.sidebar:
+    st.markdown("### 📊 Review Status")
+    
+    st.metric("Mappings", len(st.session_state.mappings))
+    st.metric("Filtered View", len(filtered_mappings))
+    
+    manual_overrides = sum(1 for m in st.session_state.mappings if m.get('manual_override', False))
+    if manual_overrides > 0:
+        st.metric("Manual Edits", manual_overrides)
+    
+    st.markdown("---")
+    
+    st.markdown("### 💡 Tips")
+    st.markdown("""
+    - Review low confidence mappings first
+    - Use filters to focus on specific areas
+    - Change MCSB control if needed
+    - Delete incorrect mappings
+    - Download for backup
+    """)
+    
+    st.markdown("---")
+    
+    st.markdown("### ⚠️ Confidence Guide")
+    st.markdown("""
+    - **High (≥80%)**: Strong match
+    - **Medium (60-80%)**: Good match
+    - **Low (<60%)**: Review needed
+    """)

@@ -1,0 +1,31 @@
+# FastAPI and web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+
+# Pydantic for data validation (Python 3.14 compatible)
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+
+# Azure SDKs
+azure-identity>=1.19.0
+openai>=1.54.0
+azure-mgmt-policyinsights>=1.1.0b4
+
+# Data processing
+pandas>=2.2.0
+openpyxl>=3.1.5
+numpy>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.1
+httpx>=0.27.0
+aiofiles>=24.1.0
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=6.0.0
+
+# Logging and monitoring
+python-json-logger>=3.1.0
