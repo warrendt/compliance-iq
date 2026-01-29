@@ -4,8 +4,9 @@ Loads environment variables and provides application configuration.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Union
 
 
 class Settings(BaseSettings):
@@ -30,15 +31,23 @@ class Settings(BaseSettings):
     azure_client_id: Optional[str] = None
     azure_tenant_id: Optional[str] = None
 
-    # CORS Settings
-    cors_origins: list[str] = ["http://localhost:8501", "http://localhost:3000"]
+    # CORS Settings (can be comma-separated string or list)
+    cors_origins: Union[list[str], str] = "http://localhost:8501,http://localhost:3000"
+    
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
 
     # Data paths
     mcsb_data_path: str = "data/mcsb/mcsb_v1_controls.json"
     policy_mappings_path: str = "data/mcsb/azure_policy_mappings.json"
 
     # AI Mapping Settings
-    ai_temperature: float = 0.3  # Lower for consistency
+    ai_temperature: float = 0.3  # Lower for consistency (Note: GPT-5 ignores this)
     ai_max_tokens: int = 2000
     ai_batch_size: int = 5  # Process controls in batches
 

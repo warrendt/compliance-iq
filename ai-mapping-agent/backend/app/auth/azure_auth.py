@@ -95,7 +95,7 @@ def test_azure_openai_connection() -> bool:
         response = client.chat.completions.create(
             model=settings.azure_openai_deployment_name,
             messages=[{"role": "user", "content": "Hello, Azure OpenAI!"}],
-            max_tokens=10
+            max_completion_tokens=10
         )
 
         logger.info("Azure OpenAI connection test successful")
