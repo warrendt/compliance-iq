@@ -10,14 +10,12 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-VENV_PATH="/Users/wdt/Library/CloudStorage/OneDrive-Microsoft/The Quantum Crew/Cloud Compliance Toolkit/cctoolkit_v1/venv"
-
-# Activate virtual environment
-source "$VENV_PATH/bin/activate"
-
 # Navigate to backend directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
+
+# Activate virtual environment
+source "$SCRIPT_DIR/venv/bin/activate"
 
 echo -e "${BLUE}Starting AI Control Mapping Agent Backend...${NC}\n"
 echo -e "${GREEN}Available at:${NC}"

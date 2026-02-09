@@ -5,6 +5,7 @@ Pydantic models for control mappings.
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime
+from app.models.sovereignty import SovereigntyMapping
 
 
 class ControlMapping(BaseModel):
@@ -39,6 +40,12 @@ class ControlMapping(BaseModel):
     defender_recommendations: List[str] = Field(
         default_factory=list,
         description="Defender for Cloud recommendations"
+    )
+
+    # Sovereignty Landing Zone mapping (populated when SLZ context is available)
+    sovereignty: Optional[SovereigntyMapping] = Field(
+        default=None,
+        description="Sovereign Landing Zone mapping with recommended level, objectives, and policies"
     )
 
     class Config:

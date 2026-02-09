@@ -1,0 +1,689 @@
+{
+  "metadata": {
+    "source": "fallback-known-policies",
+    "slz_path": "N/A",
+    "policy_definition_count": 21,
+    "policy_set_definition_count": 2,
+    "policy_assignment_count": 4,
+    "archetype_count": 4
+  },
+  "sovereignty_objectives": {
+    "SO-1": {
+      "id": "SO-1",
+      "name": "Data Residency",
+      "description": "Ensure data stays within approved geographic regions. Enforces allowed locations for resources and resource groups.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "location",
+        "allowed locations",
+        "data residency",
+        "geographic",
+        "region"
+      ]
+    },
+    "SO-2": {
+      "id": "SO-2",
+      "name": "Customer Lockbox",
+      "description": "Require customer approval before Microsoft support can access customer data. No Azure Policy available \u2014 procedural control only.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "lockbox",
+        "customer approval",
+        "support access"
+      ],
+      "procedural_only": true
+    },
+    "SO-3": {
+      "id": "SO-3",
+      "name": "Customer-Managed Keys",
+      "description": "Encrypt data at rest using customer-managed keys (CMK) instead of Microsoft-managed keys.",
+      "applicable_levels": [
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "customer-managed key",
+        "CMK",
+        "encryption",
+        "encrypt",
+        "byok",
+        "bring your own key"
+      ]
+    },
+    "SO-4": {
+      "id": "SO-4",
+      "name": "Confidential Computing",
+      "description": "Restrict deployments to confidential computing-capable resource types and VM SKUs for encryption in-use.",
+      "applicable_levels": [
+        "L3"
+      ],
+      "keywords": [
+        "confidential",
+        "trusted execution",
+        "TEE",
+        "SGX",
+        "SEV-SNP",
+        "allowed resource types",
+        "allowed virtual machine"
+      ]
+    },
+    "SO-5": {
+      "id": "SO-5",
+      "name": "Trusted Launch",
+      "description": "Require Trusted Launch for virtual machines to protect against boot-level attacks.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "trusted launch",
+        "trustedlaunch",
+        "secure boot",
+        "vTPM"
+      ]
+    }
+  },
+  "built_in_initiatives": [
+    {
+      "initiative_id": "mcfs-baseline-global",
+      "display_name": "Sovereignty Baseline - Global Policies",
+      "description": "Built-in Azure Policy initiative enforcing SO-1 (Data Residency) and SO-5 (Trusted Launch) for all sovereign workloads.",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-5"
+      ],
+      "sovereignty_level": "L1",
+      "learn_url": "https://learn.microsoft.com/en-us/azure/governance/policy/samples/mcfs-baseline-global",
+      "is_built_in": true
+    },
+    {
+      "initiative_id": "mcfs-baseline-confidential",
+      "display_name": "Sovereignty Baseline - Confidential Policies",
+      "description": "Built-in Azure Policy initiative enforcing SO-1 (Data Residency), SO-3 (CMK), and SO-4 (Confidential Computing).",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-3",
+        "SO-4"
+      ],
+      "sovereignty_level": "L3",
+      "learn_url": "https://learn.microsoft.com/en-us/azure/governance/policy/samples/mcfs-baseline-confidential",
+      "is_built_in": true
+    }
+  ],
+  "policy_definitions": [
+    {
+      "name": "allowed-locations",
+      "display_name": "Allowed locations",
+      "description": "This policy enables you to restrict the locations your organization can specify when deploying resources.",
+      "effect": "Deny",
+      "sovereignty_level": "L1",
+      "sovereignty_objectives": [
+        "SO-1"
+      ],
+      "service_category": "General",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "General"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "listOfAllowedLocations"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "allowed-locations-for-resource-groups",
+      "display_name": "Allowed locations for resource groups",
+      "description": "This policy enables you to restrict the locations your organization can create resource groups in.",
+      "effect": "Deny",
+      "sovereignty_level": "L1",
+      "sovereignty_objectives": [
+        "SO-1"
+      ],
+      "service_category": "General",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "General"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "listOfAllowedLocations"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-recovery-services",
+      "display_name": "Azure Recovery Services vaults should use customer-managed keys for encrypting backup data",
+      "description": "Use customer-managed keys to manage the encryption at rest of your backup data.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Security",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Backup"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-container-instances",
+      "display_name": "Azure container instance container group should use customer-managed key for encryption",
+      "description": "Secure your containers with greater flexibility using customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Containers",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Container Instance"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-aks",
+      "display_name": "Azure Kubernetes Service clusters should use customer-managed keys for disk encryption",
+      "description": "Encrypt at rest OS and data disks of AKS cluster nodes with customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Containers",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Kubernetes"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-managed-disks",
+      "display_name": "Managed disks should be double encrypted with both platform-managed and customer-managed keys",
+      "description": "Customers can select double encryption with both platform- and customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Compute"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-mysql",
+      "display_name": "MySQL servers should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage the encryption at rest of your MySQL servers.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Databases",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "SQL"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-os-data-disks",
+      "display_name": "OS and data disks should be encrypted with a customer-managed key",
+      "description": "Use customer-managed keys to manage the encryption at rest of the contents of your managed disks.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Compute"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-postgresql",
+      "display_name": "PostgreSQL servers should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage the encryption at rest of your PostgreSQL servers.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Databases",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "SQL"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-queue-storage",
+      "display_name": "Queue Storage should use customer-managed key for encryption",
+      "description": "Secure your queue storage with greater flexibility using customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Storage",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Storage"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-sql-mi",
+      "display_name": "SQL managed instances should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys for TDE on your SQL managed instances.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Databases",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "SQL"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-sql-server",
+      "display_name": "SQL servers should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys for TDE on your SQL servers.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Databases",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "SQL"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-storage-scope",
+      "display_name": "Storage account encryption scopes should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys for encryption scopes on storage accounts.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Storage",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Storage"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-storage-account",
+      "display_name": "Storage accounts should use customer-managed key for encryption",
+      "description": "Secure your blob and file storage with customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Storage",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Storage"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-table-storage",
+      "display_name": "Table Storage should use customer-managed key for encryption",
+      "description": "Secure your table storage with greater flexibility using customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Storage",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Storage"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-hpc-cache",
+      "display_name": "HPC Cache accounts should use customer-managed key for encryption",
+      "description": "Manage encryption at rest of Azure HPC Cache with customer-managed keys.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Storage"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "cmk-cosmos-db",
+      "display_name": "Azure Cosmos DB accounts should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage the encryption at rest of your Azure Cosmos DB.",
+      "effect": "Audit",
+      "sovereignty_level": "L2",
+      "sovereignty_objectives": [
+        "SO-3"
+      ],
+      "service_category": "Databases",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Cosmos DB"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "allowed-resource-types-cc",
+      "display_name": "Allowed resource types",
+      "description": "Restrict resource types to only those supporting confidential computing.",
+      "effect": "Deny",
+      "sovereignty_level": "L3",
+      "sovereignty_objectives": [
+        "SO-4"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "General"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "listOfResourceTypesAllowed"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "allowed-vm-skus-cc",
+      "display_name": "Allowed virtual machine size SKUs",
+      "description": "Restrict VM SKU sizes to only confidential computing-capable series.",
+      "effect": "Deny",
+      "sovereignty_level": "L3",
+      "sovereignty_objectives": [
+        "SO-4"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Compute"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "listOfAllowedSKUs"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "disk-os-trustedlaunch",
+      "display_name": "Disks and OS image should support TrustedLaunch",
+      "description": "Ensure managed disks and OS images support Trusted Launch.",
+      "effect": "Audit",
+      "sovereignty_level": "L1",
+      "sovereignty_objectives": [
+        "SO-5"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Compute"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "vm-trustedlaunch",
+      "display_name": "Virtual Machine should have TrustedLaunch enabled",
+      "description": "Enable TrustedLaunch on virtual machine to protect from boot-level attacks.",
+      "effect": "Audit",
+      "sovereignty_level": "L1",
+      "sovereignty_objectives": [
+        "SO-5"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Compute"
+      },
+      "parameters": {},
+      "parameter_names": [
+        "effect"
+      ],
+      "policy_rule": {},
+      "source_file": "builtin"
+    }
+  ],
+  "policy_set_definitions": [
+    {
+      "name": "Sovereignty-Baseline-Global",
+      "display_name": "Sovereignty Baseline - Global Policies",
+      "description": "Enforces SO-1 (Data Residency) and SO-5 (Trusted Launch) across all sovereign workloads.",
+      "sovereignty_level": "L1",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-5"
+      ],
+      "service_category": "General",
+      "policy_type": "BuiltIn",
+      "metadata": {},
+      "parameters": [
+        "listOfAllowedLocations"
+      ],
+      "policy_definition_count": 4,
+      "policy_definitions": [],
+      "source_file": "builtin"
+    },
+    {
+      "name": "Sovereignty-Baseline-Confidential",
+      "display_name": "Sovereignty Baseline - Confidential Policies",
+      "description": "Enforces SO-1, SO-3 (CMK), and SO-4 (Confidential Computing) for confidential workloads.",
+      "sovereignty_level": "L3",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-3",
+        "SO-4"
+      ],
+      "service_category": "General",
+      "policy_type": "BuiltIn",
+      "metadata": {},
+      "parameters": [
+        "listOfAllowedLocations",
+        "listOfResourceTypesAllowed",
+        "listOfAllowedSKUs"
+      ],
+      "policy_definition_count": 18,
+      "policy_definitions": [],
+      "source_file": "builtin"
+    }
+  ],
+  "policy_assignments": [
+    {
+      "name": "Enforce-Sovereign-Global",
+      "display_name": "Enforce Sovereignty Baseline - Global",
+      "description": "Assigns the Sovereignty Baseline Global initiative at sovereignty root.",
+      "policy_definition_id": "Sovereignty-Baseline-Global",
+      "enforcement_mode": "Default",
+      "parameters": {},
+      "non_compliance_messages": [],
+      "identity": {},
+      "source_file": "builtin"
+    },
+    {
+      "name": "Enforce-Sovereign-Conf",
+      "display_name": "Enforce Sovereignty Baseline - Confidential",
+      "description": "Assigns the Sovereignty Baseline Confidential initiative at confidential MGs.",
+      "policy_definition_id": "Sovereignty-Baseline-Confidential",
+      "enforcement_mode": "Default",
+      "parameters": {},
+      "non_compliance_messages": [],
+      "identity": {},
+      "source_file": "builtin"
+    }
+  ],
+  "archetypes": [
+    {
+      "name": "Sovereign Root",
+      "description": "Top-level management group. Inherits ALZ root and adds sovereignty global policies.",
+      "parent": "alz_root",
+      "sovereignty_level": "L1",
+      "key_assignments": [
+        "Enforce-Sovereign-Global"
+      ]
+    },
+    {
+      "name": "Confidential Corp",
+      "description": "Connected workloads requiring confidential computing protections.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L3",
+      "key_assignments": [
+        "Enforce-Sovereign-Conf"
+      ]
+    },
+    {
+      "name": "Confidential Online",
+      "description": "Internet-facing workloads requiring confidential computing protections.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L3",
+      "key_assignments": [
+        "Enforce-Sovereign-Conf"
+      ]
+    },
+    {
+      "name": "Public",
+      "description": "Standard non-sovereign workloads with basic guardrails.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L1",
+      "key_assignments": []
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+SAMA_Domain,SAMA_Control_ID,SAMA_Control_Description,Azure_Microsoft_Control,Policy_Feature_ID,Alert_Capability,Implementation_Priority,Licensing_Required,Implementation_Complexity,Estimated_Days,AI_Service
+3.1.1,3.1.1.AI.1,AI governance committee establishment,Azure Policy - AI Foundry custom policies,AI governance policy definitions,Policy non-compliance alerts,Critical,Azure Policy + AI Foundry,Medium,15,AI Foundry
+3.1.1,3.1.1.AI.2,AI security contacts configuration,Defender for Cloud - AI workload alerts,ASC AI security contact,High-severity AI alert emails,Critical,Defender for Cloud,Low,2,AI Foundry
+3.1.1,3.1.1.AI.3,Board endorsement of AI usage,Azure AI Foundry governance docs,AI strategy documentation,N/A,High,Documentation,Low,5,Both
+3.1.1,3.1.1.AI.4,Independent AI security oversight,Azure RBAC - AI role separation,AI-specific role assignments,Conflicting AI role assignments,Critical,Azure AD P2,Medium,10,Both
+3.1.1,3.1.1.AI.5,AI risk appetite definition,Azure Policy - AI risk policies,Risk-based AI policies,AI risk threshold violations,Critical,Azure Policy,High,20,Both
+3.1.2,3.1.2.AI.1,AI strategy definition and approval,Azure AI Foundry planning guide,AI initiative documentation,N/A,Critical,Documentation,Medium,10,Both
+3.1.2,3.1.2.AI.2,AI alignment with org objectives,Azure Management Groups - AI hierarchy,Management group AI policies,AI policy inheritance alerts,High,Azure Management Groups,Low,5,Both
+3.1.2,3.1.2.AI.3,Banking sector AI alignment,Defender for Cloud - Financial benchmark,NIST/ISO/PCI for AI,AI compliance score changes,Critical,Defender for Cloud,Medium,15,Both
+3.1.2,3.1.2.AI.4,AI risk management framework,Azure AI Foundry - Responsible AI dashboard,RAI assessment metrics,AI risk threshold breaches,Critical,AI Foundry,High,30,AI Foundry
+3.1.3,3.1.3.AI.1,AI usage policy definition,Azure Policy - AI restrictions,AI usage policies,AI policy violations,Critical,Azure Policy,Medium,10,Both
+3.1.3,3.1.3.AI.2,Periodic AI policy review,Purview Compliance Manager - AI tracking,AI regulation monitoring,New AI compliance requirements,High,Microsoft 365 E5,Low,Quarterly,Both
+3.1.3,3.1.3.AI.3,AI security standards,Azure AI security baseline,AI security baseline policies,Baseline deviation alerts,Critical,Azure Policy,Medium,15,Both
+3.1.3,3.1.3.AI.4,AI data classification policy,Purview Information Protection - AI labels,Sensitivity labels for AI data,Unlabeled AI data detected,Critical,Microsoft 365 E5,High,30,Both
+3.2.1,3.2.1.AI.1,AI-specific risk assessment,AI Foundry - Model risk evaluation,Model risk assessment reports,High-risk model deployed,Critical,AI Foundry,High,30,AI Foundry
+3.2.1,3.2.1.AI.2,AI risk identification,AI Foundry - Responsible AI dashboard,AI risk metrics,New AI risk categories,Critical,AI Foundry,Medium,15,AI Foundry
+3.2.1,3.2.1.AI.3,Prompt injection risk mitigation,Defender for Cloud - Prompt injection detection,Prompt injection analytics,Malicious prompt detected,Critical,Defender for Cloud,Medium,20,Both
+3.2.1,3.2.1.AI.4,AI data leakage prevention,Purview DLP - AI workload policies,DLP for Copilot location,AI data leakage blocked,Critical,Microsoft 365 E5,High,30,Both
+3.2.1,3.2.1.AI.5,Model hallucination monitoring,AI Foundry - Evaluation metrics,Model accuracy monitoring,Model accuracy degradation,High,AI Foundry,Medium,45,AI Foundry
+3.2.1,3.2.1.AI.6,Bias and fairness assessment,AI Foundry - Fairness evaluation,Fairness assessment metrics,Bias threshold exceeded,High,AI Foundry,High,60,AI Foundry
+3.2.1,3.2.1.AI.7,Third-party model risk,Azure Policy - Model catalog restrictions,Approved model policy,Unauthorized model usage,High,Azure Policy,Medium,45,AI Foundry
+3.2.1,3.2.1.AI.8,AI supply chain security,Defender for Cloud - Container scanning,Container vulnerability scanning,Vulnerable AI dependencies,Medium,Defender for Cloud,High,60,AI Foundry
+3.2.2,3.2.2.AI.1,AI regulatory compliance,Purview Compliance Manager - AI regulations,ISO 42001 assessment,AI compliance failures,Critical,Microsoft 365 E5,High,45,Both
+3.2.2,3.2.2.AI.2,AI transparency requirements,AI Foundry - AI reports (SPDX),Model card generation,N/A,High,AI Foundry,Medium,20,AI Foundry
+3.2.2,3.2.2.AI.3,AI audit trail,Purview Audit - AI interactions,Copilot audit logging,Audit log gaps detected,Critical,Microsoft 365 E5,Low,10,Both
+3.2.2,3.2.2.AI.4,AI model documentation,AI Foundry - Model registry,Model metadata tracking,Undocumented models,High,AI Foundry,Medium,15,AI Foundry
+3.2.4,3.2.4.AI.1,Periodic AI security review,AI Foundry - Security assessments,AI security recommendations,New AI vulnerabilities,High,AI Foundry,Low,Ongoing,Both
+3.2.4,3.2.4.AI.2,AI penetration testing,Microsoft red team - AI assessment,Third-party AI pentests,Critical AI vulnerabilities,Critical,External service,High,Annual,Both
+3.2.4,3.2.4.AI.3,Prompt injection testing,AI Foundry - Adversarial testing,OWASP Top 10 LLM testing,Jailbreak successful,High,AI Foundry,High,Quarterly,Both
+3.2.4,3.2.4.AI.4,AI vulnerability scanning,Defender for Cloud - AI vulnerabilities,AI-specific CVE detection,AI CVEs detected,High,Defender for Cloud,Medium,Continuous,Both
+3.3.1,3.3.1.AI.1,AI staff security requirements,Entra ID - Lifecycle for AI roles,AI role provisioning,AI role access events,High,Azure AD Premium,Medium,20,Both
+3.3.1,3.3.1.AI.2,AI staff training requirements,Microsoft Learn - AI security training,Training completion tracking,Incomplete AI training,Medium,Microsoft Learn,Low,Ongoing,Both
+3.3.3,3.3.3.AI.1,AI asset inventory,Azure Resource Graph - AI queries,AI resource discovery queries,New AI resources deployed,High,Azure Resource Graph,Low,5,AI Foundry
+3.3.3,3.3.3.AI.2,AI model registry,AI Foundry - Model registry,Model version tracking,Model version changes,High,AI Foundry,Medium,10,AI Foundry
+3.3.3,3.3.3.AI.3,AI data classification,Purview Data Map - AI lineage,AI data lineage tracking,Unclassified AI data,Critical,Microsoft 365 E5,High,30,Both
+3.3.3,3.3.3.AI.4,AI resource ownership,Azure Tags - AI owner metadata,Owner tag requirements,AI resources without owners,High,Azure Policy,Low,3,Both
+3.3.3,3.3.3.AI.5,Copilot license management,Microsoft 365 admin - License tracking,Copilot license assignments,Unauthorized Copilot usage,Medium,Microsoft 365 admin,Low,2,M365 Copilot
+3.3.5,3.3.5.AI.1,MFA for AI access,Entra ID CA - AI resources,AI-specific CA policies,MFA failures for AI,Critical,Azure AD Premium,Medium,10,Both
+3.3.5,3.3.5.AI.2,Phishing-resistant auth for AI,Entra ID - FIDO2/Passkeys,Phishing-resistant auth strength,Weak auth for AI detected,Critical,Azure AD P2,Medium,15,Both
+3.3.5,3.3.5.AI.3,Privileged AI access management,Entra ID PIM - AI admin roles,PIM for AI administrators,AI privilege elevation,Critical,Azure AD P2,High,30,Both
+3.3.5,3.3.5.AI.4,AI service principals,Entra ID - Managed identities,Workload identity for AI,Service principal misuse,High,Azure AD Premium,Medium,15,Both
+3.3.5,3.3.5.AI.5,AI RBAC controls,Azure RBAC - AI Foundry roles,AI-specific RBAC,Unauthorized AI role assignments,High,Azure RBAC,Medium,10,AI Foundry
+3.3.5,3.3.5.AI.6,Just-in-time AI access,PIM - Time-bound AI access,Temporary AI admin access,Permanent AI privileges,High,Azure AD P2,Medium,15,Both
+3.3.5,3.3.5.AI.7,Copilot RBAC configuration,Microsoft 365 - Copilot roles,Copilot admin assignments,Copilot admin changes,High,Microsoft 365,Low,5,M365 Copilot
+3.3.6,3.3.6.AI.1,Secure AI SDLC,Defender for DevOps - AI scanning,AI code security scanning,AI code vulnerabilities,Critical,Defender for Cloud,High,45,Both
+3.3.6,3.3.6.AI.2,AI input validation,AI Content Safety - Input filtering,Prompt sanitization,Malicious prompts blocked,Critical,Azure AI Services,Medium,20,Both
+3.3.6,3.3.6.AI.3,AI output validation,Azure AI Content Safety,Content safety filtering,Harmful outputs blocked,Critical,Azure AI Services,Medium,20,Both
+3.3.6,3.3.6.AI.4,AI API security,Azure API Management - AI endpoints,API authentication and throttling,AI API abuse detected,High,API Management,High,30,AI Foundry
+3.3.6,3.3.6.AI.5,AI model security,AI Foundry - Model encryption,Model encryption at rest,Unencrypted models,Critical,AI Foundry,Medium,15,AI Foundry
+3.3.6,3.3.6.AI.6,Secure AI deployment,AI Foundry - Deployment approvals,Deployment approval gates,Unapproved AI deployments,Critical,Azure DevOps,Medium,20,AI Foundry
+3.3.6,3.3.6.AI.7,Copilot extensibility security,Microsoft Graph - Copilot connectors,Copilot plugin security,Malicious plugins detected,High,Microsoft 365 E5,High,30,M365 Copilot
+3.3.8,3.3.8.AI.1,AI network segmentation,Azure VNet - Private endpoints,AI private networking,Public AI endpoints detected,Critical,Azure Networking,High,30,AI Foundry
+3.3.8,3.3.8.AI.2,AI workload protection,Defender for Cloud - AI workload plan,AI infrastructure monitoring,AI infrastructure threats,Critical,Defender for Cloud,Medium,15,Both
+3.3.8,3.3.8.AI.3,AI malware protection,Defender for Containers - AI containers,Container malware scanning,AI container malware,High,Defender for Cloud,Medium,20,AI Foundry
+3.3.8,3.3.8.AI.4,AI DDoS protection,Azure DDoS - AI endpoints,DDoS mitigation for AI,AI service DDoS attack,High,Azure DDoS Standard,Medium,15,AI Foundry
+3.3.8,3.3.8.AI.5,AI encryption at rest,Azure Storage - CMK for AI,Customer-managed keys,AI data not encrypted,Critical,Azure Key Vault,High,30,Both
+3.3.8,3.3.8.AI.6,AI encryption in transit,TLS 1.3 - AI connections,Transport encryption enforcement,Weak AI transport encryption,Critical,Azure Networking,Low,5,Both
+3.3.8,3.3.8.AI.7,Copilot client protection,Defender for Endpoint - M365 apps,Endpoint AI threat detection,AI malware on endpoints,High,Microsoft 365 E5,Medium,15,M365 Copilot
+3.3.9,3.3.9.AI.1,AI data encryption,Azure Key Vault - AI CMK,Customer-managed key for AI,AI key rotation required,Critical,Azure Key Vault,High,30,Both
+3.3.9,3.3.9.AI.2,AI key lifecycle management,Key Vault - Automated rotation,90-day key rotation,Expired AI keys,Critical,Azure Key Vault,Medium,15,Both
+3.3.9,3.3.9.AI.3,AI secrets management,Key Vault - AI credentials,Managed identity for AI,Hardcoded AI credentials,Critical,Azure Key Vault,Medium,10,Both
+3.3.9,3.3.9.AI.4,Copilot double key encryption,Purview - DKE for Copilot,Double Key Encryption,DKE-protected data access,High,Microsoft 365 E5,High,45,M365 Copilot
+3.3.13,3.3.13.AI.1,AI chatbot security,AI Foundry - Agent safety controls,Agent content moderation,Unsafe agent responses,Critical,AI Foundry,High,30,AI Foundry
+3.3.13,3.3.13.AI.2,AI customer-facing security,Azure AI Content Safety,Public AI safety filters,Customer-facing AI violations,Critical,Azure AI Services,Medium,20,Both
+3.3.13,3.3.13.AI.3,AI fraud detection,AI Foundry - Anomaly detection,AI-based fraud models,Anomalous AI patterns,High,AI Foundry,High,45,AI Foundry
+3.3.13,3.3.13.AI.4,AI authentication in apps,Entra ID - AI app SSO,AI application MFA,Failed AI app auth,Critical,Azure AD Premium,Medium,15,Both
+3.3.13,3.3.13.AI.5,Copilot customer data protection,Purview - Customer data policies,Copilot customer DLP,Customer data in Copilot,Critical,Microsoft 365 E5,High,30,M365 Copilot
+3.3.14,3.3.14.AI.1,AI event logging,Azure Monitor - AI Foundry logs,AI diagnostic settings,AI logging gaps,Critical,Azure Monitor,Medium,15,Both
+3.3.14,3.3.14.AI.2,AI SIEM integration,Microsoft Sentinel - AI connectors,Sentinel AI data connectors,AI security event ingestion,Critical,Microsoft Sentinel,High,30,Both
+3.3.14,3.3.14.AI.3,AI anomaly detection,Defender for Cloud - AI anomalies,AI behavior analytics,Unusual AI activity,High,Defender for Cloud,Medium,20,Both
+3.3.14,3.3.14.AI.4,AI performance monitoring,Azure Monitor - AI metrics,AI latency and error metrics,AI performance degradation,Medium,Azure Monitor,Low,10,AI Foundry
+3.3.14,3.3.14.AI.5,Copilot audit logging,Purview Audit - Copilot logs,Copilot interaction logging,Copilot audit retention,Critical,Microsoft 365 E5,Low,10,M365 Copilot
+3.3.14,3.3.14.AI.6,Copilot usage analytics,Microsoft 365 - Copilot analytics,Usage reporting dashboards,Abnormal Copilot usage,Medium,Microsoft 365,Low,5,M365 Copilot
+3.3.15,3.3.15.AI.1,AI incident response,Defender XDR - AI incidents,AI incident playbooks,AI security incidents,Critical,Microsoft 365 E5,High,45,Both
+3.3.15,3.3.15.AI.2,AI breach notification,Security Center - AI alerts,SAMA notification workflow,Critical AI breaches,Critical,Custom automation,Medium,20,Both
+3.3.15,3.3.15.AI.3,AI forensics,Azure Monitor - AI audit trails,AI investigation queries,AI compromise evidence,Critical,Azure Monitor,High,30,Both
+3.3.15,3.3.15.AI.4,AI incident reporting to SAMA,Custom workflow - Compliance reporting,SAMA incident submission,High-severity AI incidents,Critical,Custom development,High,30,Both
+3.3.15,3.3.15.AI.5,Copilot incident management,Purview - Copilot incident handling,Copilot security playbooks,Copilot security events,High,Microsoft 365 E5,Medium,20,M365 Copilot
+3.3.16,3.3.16.AI.1,AI threat intelligence,Defender TI - AI threats,AI attack pattern tracking,Emerging AI threats,High,Defender TI,Medium,15,Both
+3.3.16,3.3.16.AI.2,Prompt injection detection,AI Content Safety - Jailbreak detection,Prompt attack analytics,Jailbreak attempts,Critical,Azure AI Services,Medium,20,Both
+3.3.16,3.3.16.AI.3,Model poisoning detection,AI Foundry - Model integrity,Model validation checks,Compromised model training,High,AI Foundry,High,45,AI Foundry
+3.3.16,3.3.16.AI.4,AI adversarial attack detection,Azure AI Content Safety,Adversarial input filtering,Evasion attempts detected,High,Azure AI Services,High,30,Both
+3.3.16,3.3.16.AI.5,Shadow AI detection,Defender for Cloud Apps - AI discovery,Unsanctioned AI app usage,Shadow AI tools detected,High,Microsoft 365 E5,Medium,20,Both
+3.3.16,3.3.16.AI.6,Copilot threat analysis,Microsoft Security Copilot,AI-assisted threat hunting,AI-powered threat insights,Medium,Security Copilot,Low,Ongoing,M365 Copilot
+3.3.17,3.3.17.AI.1,AI vulnerability scanning,Defender for Cloud - AI CVE detection,AI-specific vulnerabilities,Critical AI vulnerabilities,Critical,Defender for Cloud,Medium,Ongoing,Both
+3.3.17,3.3.17.AI.2,AI dependency scanning,Defender for DevOps - Supply chain,AI library vulnerabilities,Vulnerable AI dependencies,High,Defender for Cloud,High,30,AI Foundry
+3.3.17,3.3.17.AI.3,AI model vulnerabilities,AI Foundry - Model security assessment,Model vulnerability scanning,Model security issues,Critical,AI Foundry,High,45,AI Foundry
+3.3.17,3.3.17.AI.4,AI API vulnerabilities,API Management - Security assessment,API vulnerability testing,AI API security gaps,High,API Management,High,30,AI Foundry
+3.3.17,3.3.17.AI.5,AI patch management,Azure Update Manager - AI infrastructure,AI infrastructure patching,Unpatched AI systems,Critical,Azure Update Manager,Medium,Ongoing,Both
+3.3.17,3.3.17.AI.6,Copilot update management,Microsoft 365 - Auto-updates,Copilot version tracking,Outdated Copilot versions,Medium,Microsoft 365,Low,Automatic,M365 Copilot
+3.4.1,3.4.1.AI.1,AI vendor assessment,AI Foundry - Model provider evaluation,Third-party AI vendor reviews,Unapproved AI vendors,High,Documentation,High,60,AI Foundry
+3.4.1,3.4.1.AI.2,AI SLA requirements,Azure SLA - AI services,AI service availability SLAs,AI SLA violations,High,Azure subscription,Low,5,AI Foundry
+3.4.1,3.4.1.AI.3,Copilot SLA tracking,Microsoft 365 - Copilot SLA,Copilot uptime monitoring,Copilot outages,Medium,Microsoft 365,Low,Ongoing,M365 Copilot
+3.4.3,3.4.3.AI.1,AI cloud policy,Azure Policy - AI cloud restrictions,AI data location policies,AI data residency violations,Critical,Azure Policy,High,30,Both
+3.4.3,3.4.3.AI.2,AI data location enforcement,AI Foundry - Saudi regions,Region restriction policies,AI data outside Saudi Arabia,Critical,Azure Policy,Medium,15,Both
+3.4.3,3.4.3.AI.3,AI data sovereignty,Azure Policy - Data residency,Geographic restrictions,Data sovereignty violations,Critical,Azure Policy,Medium,20,Both
+3.4.3,3.4.3.AI.4,AI exit strategy,Azure - Data export procedures,AI data portability,N/A,High,Documentation,Medium,15,Both
+3.4.3,3.4.3.AI.5,Copilot data residency,Microsoft 365 - EU Data Boundary,Copilot data location,Data residency verification,Critical,Microsoft 365 E5,Medium,20,M365 Copilot
+3.4.3,3.4.3.AI.6,Copilot extensibility governance,Microsoft Graph - Plugin management,Approved Copilot plugins only,Unapproved plugin usage,High,Microsoft 365,High,30,M365 Copilot

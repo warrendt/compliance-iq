@@ -23,7 +23,7 @@ if 'generated_policy' not in st.session_state:
 
 # Header
 st.title("📦 Export Azure Policy Initiative")
-st.markdown("Generate and download Azure Policy Initiative with deployment scripts")
+st.markdown("Generate and download Azure Policy initiatives — MCSB and Sovereign Landing Zone")
 
 st.markdown("---")
 
@@ -34,8 +34,15 @@ if not st.session_state.mappings:
         st.switch_page("pages/2_🤖_AI_Mapping.py")
     st.stop()
 
+# Determine sovereignty status
+sov_mappings = [m for m in st.session_state.mappings if m.get('sovereignty')]
+has_sovereignty = len(sov_mappings) > 0
+
+# Get API client (used by both MCSB and SLZ export)
+api_client = get_api_client()
+
 # Display mapping summary
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric("Framework", st.session_state.framework_name)
@@ -50,6 +57,9 @@ with col3:
 with col4:
     unique_mcsb = len(set(m.get('mcsb_control_id', '') for m in st.session_state.mappings if m.get('mcsb_control_id')))
     st.metric("Unique MCSB Controls", unique_mcsb)
+
+with col5:
+    st.metric("Sovereignty Mapped", len(sov_mappings))
 
 st.markdown("---")
 
@@ -106,8 +116,6 @@ st.markdown("---")
 # Generate policy button
 if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_container_width=True):
     with st.spinner("Generating Azure Policy Initiative..."):
-        api_client = get_api_client()
-        
         try:
             # Prepare request
             request_data = {
@@ -338,6 +346,213 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
     
     st.success("✅ Package includes: JSON, PowerShell, Bicep, Mappings, and README")
 
+# ==================================================================
+# SLZ Sovereign Landing Zone Export
+# ==================================================================
+st.markdown("---")
+st.markdown("## 🏛️ Sovereign Landing Zone Export")
+
+if not has_sovereignty:
+    st.info(
+        "No sovereignty data found in current mappings. "
+        "Re-run AI mapping to generate sovereignty assignments."
+    )
+else:
+    st.success(f"**{len(sov_mappings)}** of **{len(st.session_state.mappings)}** mappings have sovereignty data")
+
+    # SLZ configuration
+    col_slz1, col_slz2 = st.columns(2)
+
+    with col_slz1:
+        slz_allowed_locations = st.text_input(
+            "Allowed Locations (comma-separated)",
+            value="uaenorth,uaecentral",
+            help="Azure regions for data-residency policies (e.g. uaenorth,uaecentral)"
+        )
+        locations_list = [loc.strip() for loc in slz_allowed_locations.split(",") if loc.strip()] if slz_allowed_locations else None
+
+    with col_slz2:
+        slz_min_confidence = st.slider(
+            "Min Confidence for SLZ export",
+            min_value=0.0, max_value=1.0, value=0.6, step=0.05,
+            help="Only include SLZ mappings with confidence >= this value"
+        )
+
+    # Filter sovereignty mappings by confidence
+    slz_export_mappings = [
+        m for m in sov_mappings
+        if m.get('confidence_score', 0) >= slz_min_confidence
+    ]
+
+    # Level breakdown
+    level_counts = {'L1': 0, 'L2': 0, 'L3': 0}
+    for m in slz_export_mappings:
+        lvl = m['sovereignty'].get('sovereignty_level', '')
+        if lvl in level_counts:
+            level_counts[lvl] += 1
+
+    col_l1, col_l2, col_l3 = st.columns(3)
+    with col_l1:
+        st.metric("🟢 L1 — Global", level_counts['L1'])
+    with col_l2:
+        st.metric("🟡 L2 — CMK", level_counts['L2'])
+    with col_l3:
+        st.metric("🔴 L3 — Confidential", level_counts['L3'])
+
+    st.info(f"📋 Will generate SLZ initiatives for **{len(slz_export_mappings)}** sovereignty-mapped controls")
+
+    # Generate SLZ initiatives
+    if 'slz_generated' not in st.session_state:
+        st.session_state.slz_generated = None
+
+    if st.button("🏛️ Generate SLZ Initiatives", type="primary", use_container_width=True):
+        with st.spinner("Generating per-archetype SLZ policy initiatives..."):
+            try:
+                slz_result = api_client.generate_slz_initiatives(
+                    mappings=slz_export_mappings,
+                    framework_name=st.session_state.framework_name,
+                    allowed_locations=locations_list,
+                )
+                st.session_state.slz_generated = slz_result
+                st.success("✅ SLZ initiatives generated!")
+                st.balloons()
+            except httpx.ConnectError:
+                st.error("❌ Cannot connect to backend.")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+
+    # Display generated SLZ artifacts
+    if st.session_state.slz_generated:
+        slz_data = st.session_state.slz_generated
+        archetypes = slz_data.get('archetypes', {})
+
+        st.markdown("### 📦 SLZ Archetype Artifacts")
+        st.caption(
+            f"Framework: **{slz_data.get('framework_name')}** | "
+            f"Sovereignty mappings: **{slz_data.get('sovereignty_mappings', 0)}**"
+        )
+
+        archetype_tabs = st.tabs([f"🏗️ {name}" for name in archetypes.keys()])
+
+        for tab, (arch_name, arch_data) in zip(archetype_tabs, archetypes.items()):
+            with tab:
+                st.markdown(f"#### {arch_name}")
+                st.caption(f"Policies included: **{arch_data.get('policy_count', 'N/A')}**")
+
+                sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
+                    "📋 Initiative JSON", "🔧 Bicep Template", "💻 CLI Script", "💠 PowerShell"
+                ])
+
+                with sub_tab1:
+                    initiative_json_str = json.dumps(arch_data.get('initiative_json', {}), indent=2)
+                    st.code(initiative_json_str, language="json", line_numbers=True)
+                    st.download_button(
+                        label=f"📥 Download {arch_name} Initiative JSON",
+                        data=initiative_json_str,
+                        file_name=f"slz_{arch_name}_initiative.json",
+                        mime="application/json",
+                        key=f"dl_slz_json_{arch_name}"
+                    )
+
+                with sub_tab2:
+                    bicep_content = arch_data.get('bicep', '// No Bicep generated')
+                    st.code(bicep_content, language="bicep", line_numbers=True)
+                    st.download_button(
+                        label=f"📥 Download {arch_name} Bicep",
+                        data=bicep_content,
+                        file_name=f"slz_{arch_name}_initiative.bicep",
+                        mime="text/plain",
+                        key=f"dl_slz_bicep_{arch_name}"
+                    )
+
+                with sub_tab3:
+                    cli_script = (arch_data.get('scripts') or {}).get('cli', '# No CLI script')
+                    st.code(cli_script, language="bash", line_numbers=True)
+                    st.download_button(
+                        label=f"📥 Download {arch_name} CLI Script",
+                        data=cli_script,
+                        file_name=f"deploy_slz_{arch_name}.sh",
+                        mime="text/plain",
+                        key=f"dl_slz_cli_{arch_name}"
+                    )
+
+                with sub_tab4:
+                    ps_script = (arch_data.get('scripts') or {}).get('powershell', '# No PowerShell script')
+                    st.code(ps_script, language="powershell", line_numbers=True)
+                    st.download_button(
+                        label=f"📥 Download {arch_name} PowerShell",
+                        data=ps_script,
+                        file_name=f"Deploy-SLZ-{arch_name}.ps1",
+                        mime="text/plain",
+                        key=f"dl_slz_ps_{arch_name}"
+                    )
+
+        # Download all SLZ artifacts as ZIP
+        st.markdown("---")
+        st.markdown("### 📦 Download Complete SLZ Package")
+
+        slz_zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(slz_zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for arch_name, arch_data in archetypes.items():
+                prefix = f"slz_{arch_name}"
+                zf.writestr(
+                    f"{prefix}/{prefix}_initiative.json",
+                    json.dumps(arch_data.get('initiative_json', {}), indent=2)
+                )
+                zf.writestr(
+                    f"{prefix}/{prefix}_initiative.bicep",
+                    arch_data.get('bicep', '')
+                )
+                scripts = arch_data.get('scripts') or {}
+                zf.writestr(
+                    f"{prefix}/deploy_{arch_name}.sh",
+                    scripts.get('cli', '')
+                )
+                zf.writestr(
+                    f"{prefix}/Deploy-SLZ-{arch_name}.ps1",
+                    scripts.get('powershell', '')
+                )
+
+            # Add SLZ README
+            slz_readme = f"""# Sovereign Landing Zone Policy Package
+## {st.session_state.framework_name}
+
+### Archetypes Generated
+{chr(10).join(f'- **{name}**: {data.get("policy_count", 0)} policies' for name, data in archetypes.items())}
+
+### Sovereignty Levels
+- **L1 (Global)**: Data residency & trusted launch — {level_counts['L1']} controls
+- **L2 (CMK)**: Customer-managed keys — {level_counts['L2']} controls
+- **L3 (Confidential)**: Confidential computing — {level_counts['L3']} controls
+
+### Deployment
+Each archetype folder contains:
+1. `*_initiative.json` — Policy initiative definition
+2. `*_initiative.bicep` — Bicep template (management-group scope)
+3. `deploy_*.sh` — Azure CLI deployment script
+4. `Deploy-SLZ-*.ps1` — PowerShell deployment script
+
+Target these at the appropriate management group in your SLZ hierarchy.
+
+### Allowed Locations
+{', '.join(locations_list) if locations_list else 'Not specified'}
+
+Generated by: AI Control Mapping Agent — SLZ Module
+"""
+            zf.writestr("README.md", slz_readme)
+
+        slz_zip_buffer.seek(0)
+
+        st.download_button(
+            label="📦 Download Complete SLZ Package (ZIP)",
+            data=slz_zip_buffer,
+            file_name=f"{st.session_state.framework_name.replace(' ', '_')}_slz_package.zip",
+            mime="application/zip",
+            type="primary",
+            key="dl_slz_zip_all"
+        )
+        st.success("✅ SLZ package: per-archetype JSON, Bicep, CLI & PowerShell scripts")
+
 # Action buttons
 st.markdown("---")
 
@@ -391,6 +606,18 @@ with st.sidebar:
     3. **Azure CLI**: Command line
     4. **Bicep**: Infrastructure as Code
     """)
+    
+    st.markdown("---")
+    
+    st.markdown("### 🏛️ SLZ Status")
+    if has_sovereignty:
+        st.success(f"✅ {len(sov_mappings)} sovereignty mappings")
+        if st.session_state.get('slz_generated'):
+            st.success("✅ SLZ initiatives generated")
+        else:
+            st.info("⏳ Ready to generate SLZ")
+    else:
+        st.caption("No sovereignty data")
 
 # Add pandas import
 import pandas as pd

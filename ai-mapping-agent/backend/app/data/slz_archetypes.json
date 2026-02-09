@@ -1,0 +1,150 @@
+{
+  "archetypes": [
+    {
+      "name": "Sovereign Root",
+      "description": "Top-level management group. Inherits ALZ root and adds sovereignty global policies.",
+      "parent": "alz_root",
+      "sovereignty_level": "L1",
+      "key_assignments": [
+        "Enforce-Sovereign-Global"
+      ]
+    },
+    {
+      "name": "Confidential Corp",
+      "description": "Connected workloads requiring confidential computing protections.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L3",
+      "key_assignments": [
+        "Enforce-Sovereign-Conf"
+      ]
+    },
+    {
+      "name": "Confidential Online",
+      "description": "Internet-facing workloads requiring confidential computing protections.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L3",
+      "key_assignments": [
+        "Enforce-Sovereign-Conf"
+      ]
+    },
+    {
+      "name": "Public",
+      "description": "Standard non-sovereign workloads with basic guardrails.",
+      "parent": "sovereign_root",
+      "sovereignty_level": "L1",
+      "key_assignments": []
+    }
+  ],
+  "sovereignty_objectives": {
+    "SO-1": {
+      "id": "SO-1",
+      "name": "Data Residency",
+      "description": "Ensure data stays within approved geographic regions. Enforces allowed locations for resources and resource groups.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "location",
+        "allowed locations",
+        "data residency",
+        "geographic",
+        "region"
+      ]
+    },
+    "SO-2": {
+      "id": "SO-2",
+      "name": "Customer Lockbox",
+      "description": "Require customer approval before Microsoft support can access customer data. No Azure Policy available \u2014 procedural control only.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "lockbox",
+        "customer approval",
+        "support access"
+      ],
+      "procedural_only": true
+    },
+    "SO-3": {
+      "id": "SO-3",
+      "name": "Customer-Managed Keys",
+      "description": "Encrypt data at rest using customer-managed keys (CMK) instead of Microsoft-managed keys.",
+      "applicable_levels": [
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "customer-managed key",
+        "CMK",
+        "encryption",
+        "encrypt",
+        "byok",
+        "bring your own key"
+      ]
+    },
+    "SO-4": {
+      "id": "SO-4",
+      "name": "Confidential Computing",
+      "description": "Restrict deployments to confidential computing-capable resource types and VM SKUs for encryption in-use.",
+      "applicable_levels": [
+        "L3"
+      ],
+      "keywords": [
+        "confidential",
+        "trusted execution",
+        "TEE",
+        "SGX",
+        "SEV-SNP",
+        "allowed resource types",
+        "allowed virtual machine"
+      ]
+    },
+    "SO-5": {
+      "id": "SO-5",
+      "name": "Trusted Launch",
+      "description": "Require Trusted Launch for virtual machines to protect against boot-level attacks.",
+      "applicable_levels": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "keywords": [
+        "trusted launch",
+        "trustedlaunch",
+        "secure boot",
+        "vTPM"
+      ]
+    }
+  },
+  "built_in_initiatives": [
+    {
+      "initiative_id": "mcfs-baseline-global",
+      "display_name": "Sovereignty Baseline - Global Policies",
+      "description": "Built-in Azure Policy initiative enforcing SO-1 (Data Residency) and SO-5 (Trusted Launch) for all sovereign workloads.",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-5"
+      ],
+      "sovereignty_level": "L1",
+      "learn_url": "https://learn.microsoft.com/en-us/azure/governance/policy/samples/mcfs-baseline-global",
+      "is_built_in": true
+    },
+    {
+      "initiative_id": "mcfs-baseline-confidential",
+      "display_name": "Sovereignty Baseline - Confidential Policies",
+      "description": "Built-in Azure Policy initiative enforcing SO-1 (Data Residency), SO-3 (CMK), and SO-4 (Confidential Computing).",
+      "sovereignty_objectives": [
+        "SO-1",
+        "SO-3",
+        "SO-4"
+      ],
+      "sovereignty_level": "L3",
+      "learn_url": "https://learn.microsoft.com/en-us/azure/governance/policy/samples/mcfs-baseline-confidential",
+      "is_built_in": true
+    }
+  ]
+}

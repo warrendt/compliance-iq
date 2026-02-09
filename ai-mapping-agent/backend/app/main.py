@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from app.config import get_settings
-from app.api.routes import health, mapping, policy
+from app.api.routes import health, mapping, policy, sovereignty
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.api_v1_prefix)
 app.include_router(mapping.router, prefix=settings.api_v1_prefix)
 app.include_router(policy.router, prefix=settings.api_v1_prefix)
+app.include_router(sovereignty.router, prefix=settings.api_v1_prefix)
 
 
 @app.on_event("startup")

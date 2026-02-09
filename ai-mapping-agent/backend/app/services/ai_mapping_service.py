@@ -10,8 +10,10 @@ from typing import List, Optional
 from pydantic import ValidationError
 
 from app.models import ExternalControl, MCSBControl, ControlMapping, MappingBatch
+from app.models.sovereignty import SovereigntyMapping
 from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
+from app.services.sovereignty_service import get_sovereignty_service
 from app.auth import get_azure_openai_client
 from app.config import get_settings
 
@@ -20,9 +22,13 @@ settings = get_settings()
 
 
 # System prompt for AI mapping
-SYSTEM_PROMPT = """You are an expert cybersecurity compliance analyst specializing in mapping compliance framework controls to the Microsoft Cloud Security Benchmark (MCSB).
+SYSTEM_PROMPT = """You are an expert cybersecurity compliance analyst specializing in mapping compliance framework controls to the Microsoft Cloud Security Benchmark (MCSB) and the Microsoft Sovereign Landing Zone (SLZ).
 
-Your task is to analyze external compliance framework controls and map them to the most appropriate MCSB controls.
+Your task is to analyze external compliance framework controls and:
+1. Map them to the most appropriate MCSB controls
+2. Recommend the appropriate Sovereign Landing Zone (SLZ) sovereignty level and policies
+
+## MCSB Mapping Guidelines
 
 For each external control, you should:
 1. Understand the primary security objective and intent
@@ -45,6 +51,31 @@ Mapping Type Guidelines:
 - "conceptual": Controls are related conceptually but address different scopes
 - "none": No appropriate MCSB control exists for this requirement
 
+## Sovereign Landing Zone (SLZ) Mapping Guidelines
+
+For EACH control, also determine the appropriate sovereignty dimensions:
+
+### Sovereignty Level (REQUIRED):
+- "L1" (Global): Data residency and in-transit encryption. For controls about data location, geographic restrictions, trusted launch, or basic sovereignty.
+- "L2" (CMK): Customer-managed keys for encryption at rest. For controls requiring encryption with customer-controlled keys, BYOK, or key management.
+- "L3" (Confidential): Confidential computing with encryption in-use. For controls requiring hardware-level isolation, TEEs, or strongest data protection.
+
+### Sovereignty Control Objectives (select all that apply):
+- SO-1: Data Residency — controls about data location, geographic restrictions, allowed regions
+- SO-2: Customer Lockbox — controls about customer approval for Microsoft support access (procedural, no Azure Policy)
+- SO-3: Customer-Managed Keys — controls about CMK, BYOK, encryption at rest with customer keys
+- SO-4: Confidential Computing — controls about hardware-level isolation, TEEs, VM SKU restrictions
+- SO-5: Trusted Launch — controls about secure boot, vTPM, boot integrity
+
+### Target Archetype:
+- "sovereign_root": Default for L1/L2 controls
+- "confidential_corp": For L3 controls on connected (internal) workloads
+- "confidential_online": For L3 controls on internet-facing workloads
+
+If a control has NO sovereignty relevance (e.g., purely governance/procedural), set sovereignty_level to "L1" with an empty objectives list.
+
+Always provide sovereignty reasoning explaining why you chose that level.
+
 Always be conservative with confidence scores - it's better to flag uncertain mappings for human review."""
 
 
@@ -56,6 +87,7 @@ class AIMappingService:
         self.client = get_azure_openai_client()
         self.learn_client = get_microsoft_learn_client()
         self.mcsb_service = get_mcsb_service()
+        self.sovereignty_service = get_sovereignty_service()
         self.model = settings.azure_openai_deployment_name
 
     async def map_control(
@@ -91,9 +123,14 @@ class AIMappingService:
         policy_context = await self._search_azure_policies(external_control)
         logger.debug(f"Policy search complete, context length: {len(policy_context)} chars")
 
+        # Get relevant SLZ sovereignty policies
+        logger.debug(f"Searching SLZ policies for {external_control.control_id}")
+        sovereignty_context = self._get_sovereignty_context(external_control)
+        logger.debug(f"Sovereignty context ready, length: {len(sovereignty_context)} chars")
+
         # Create user prompt with policy context
         logger.debug(f"Creating AI mapping prompt with {len(mcsb_controls)} MCSB controls")
-        user_prompt = self._create_mapping_prompt(external_control, mcsb_controls, policy_context)
+        user_prompt = self._create_mapping_prompt(external_control, mcsb_controls, policy_context, sovereignty_context)
         logger.info(f"Generated prompt for AI ({len(user_prompt)} chars) with {len(mcsb_controls)} MCSB controls and policy context")
         logger.debug(f"Prompt preview: {user_prompt[:300]}...")
 
@@ -270,7 +307,8 @@ Consider general security policies or provide custom policy recommendations base
         self,
         external_control: ExternalControl,
         mcsb_controls: List[MCSBControl],
-        policy_context: str = ""
+        policy_context: str = "",
+        sovereignty_context: str = ""
     ) -> str:
         """
         Create prompt for AI mapping.
@@ -279,6 +317,7 @@ Consider general security policies or provide custom policy recommendations base
             external_control: External control to map
             mcsb_controls: Available MCSB controls
             policy_context: Azure Policy search results from Microsoft Learn
+            sovereignty_context: SLZ sovereignty policy context
 
         Returns:
             Formatted prompt string
@@ -311,19 +350,86 @@ Azure Policy Context:
 --------------------
 {policy_context}
 
+{sovereignty_context}
+
 Task:
 -----
-Analyze the external control and identify the best matching MCSB control.
-Use the Azure Policy context to help identify relevant policy IDs that implement this control.
-Provide a confidence score, mapping type, and detailed reasoning.
-Include specific Azure Policy definition IDs (GUIDs or built-in policy names) that enforce this control.
+1. MCSB Mapping: Analyze the external control and identify the best matching MCSB control.
+   Use the Azure Policy context to help identify relevant policy IDs that implement this control.
+   Provide a confidence score, mapping type, and detailed reasoning.
+   Include specific Azure Policy definition IDs (GUIDs or built-in policy names) that enforce this control.
 
-Important: The azure_policy_ids field should contain actual Azure Policy definition IDs found in the Azure Policy Context above
-Analyze the external control and identify the best matching MCSB control.
-Provide a confidence score, mapping type, and detailed reasoning.
-Include any relevant Azure Policy IDs from the matched MCSB control.
+2. Sovereignty Mapping: Determine the appropriate SLZ sovereignty level (L1/L2/L3),
+   relevant sovereignty control objectives (SO-1 through SO-5), and matching SLZ policies.
+   Provide the sovereignty mapping in the 'sovereignty' field with:
+   - sovereignty_level: "L1", "L2", or "L3"
+   - sovereignty_objectives: list of applicable SO-* IDs
+   - slz_policy_names: list of specific SLZ policy names from the context above
+   - target_archetype: "sovereign_root", "confidential_corp", or "confidential_online"
+   - reasoning: brief explanation of why this sovereignty level was chosen
+
+Important: The azure_policy_ids field should contain actual Azure Policy definition IDs found in the Azure Policy Context above.
+The sovereignty field should reference specific SLZ policies from the Sovereignty Context above.
 """
         return prompt
+
+    def _get_sovereignty_context(self, external_control: ExternalControl) -> str:
+        """
+        Build sovereignty context string for the AI prompt.
+
+        Args:
+            external_control: External control to find sovereignty policies for
+
+        Returns:
+            Formatted sovereignty context string
+        """
+        try:
+            relevant_policies = self.sovereignty_service.get_relevant_policies_for_control(
+                control_description=external_control.description,
+                control_domain=external_control.domain,
+            )
+
+            if not relevant_policies:
+                # Return all policies as general context (limited)
+                relevant_policies = self.sovereignty_service.get_all_policies()[:15]
+
+            if not relevant_policies:
+                return ""
+
+            # Format the policies for the prompt
+            policy_lines = []
+            for p in relevant_policies:
+                policy_lines.append(
+                    f"  - Name: {p.name}\n"
+                    f"    Display Name: {p.display_name}\n"
+                    f"    Level: {p.sovereignty_level} | Objectives: {', '.join(p.sovereignty_objectives)} | Service: {p.service_category}\n"
+                    f"    Effect: {p.effect}"
+                )
+
+            # Include objectives reference
+            objectives = self.sovereignty_service.get_all_objectives()
+            obj_lines = []
+            for obj_id, obj in objectives.items():
+                if not obj.procedural_only:
+                    obj_lines.append(f"  - {obj_id}: {obj.name} — {obj.description}")
+                else:
+                    obj_lines.append(f"  - {obj_id}: {obj.name} — {obj.description} [PROCEDURAL ONLY - no Azure Policy]")
+
+            context = f"""Sovereign Landing Zone (SLZ) Context:
+-------------------------------------
+Sovereignty Control Objectives:
+{chr(10).join(obj_lines)}
+
+Available SLZ Policies (relevant to this control):
+{chr(10).join(policy_lines)}
+
+Use these SLZ policy names in the sovereignty.slz_policy_names field if they match the control requirements.
+"""
+            return context
+
+        except Exception as e:
+            logger.warning(f"Failed to build sovereignty context: {e}")
+            return ""
 
     def _generate_summary(
         self,

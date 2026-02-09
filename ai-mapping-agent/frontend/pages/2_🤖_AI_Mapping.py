@@ -25,7 +25,7 @@ if 'mapping_in_progress' not in st.session_state:
 
 # Header
 st.title("🤖 AI Control Mapping")
-st.markdown("Use GPT-4o to automatically map your controls to the Microsoft Cloud Security Benchmark")
+st.markdown("Use GPT-4o to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies")
 
 st.markdown("---")
 
@@ -127,6 +127,26 @@ if mapping_mode == "Single Control Test":
                     for policy_id in result['azure_policy_ids']:
                         st.code(policy_id, language="text")
                 
+                # Sovereignty mapping details
+                sov = result.get('sovereignty')
+                if sov:
+                    st.markdown("#### 🏛️ Sovereignty Mapping")
+                    sov_level = sov.get('sovereignty_level', 'N/A')
+                    level_colors = {'L1': '🟢', 'L2': '🟡', 'L3': '🔴'}
+                    level_labels = {'L1': 'Global (Data Residency)', 'L2': 'CMK (Customer-Managed Keys)', 'L3': 'Confidential Computing'}
+                    st.markdown(f"**Level:** {level_colors.get(sov_level, '⚪')} **{sov_level}** — {level_labels.get(sov_level, sov_level)}")
+                    
+                    if sov.get('sovereignty_objectives'):
+                        st.markdown("**Objectives:** " + ", ".join(sov['sovereignty_objectives']))
+                    if sov.get('slz_policy_names'):
+                        st.markdown("**SLZ Policies:**")
+                        for pname in sov['slz_policy_names']:
+                            st.caption(f"• {pname}")
+                    if sov.get('target_archetype'):
+                        st.markdown(f"**Target Archetype:** `{sov['target_archetype']}`")
+                    if sov.get('reasoning'):
+                        st.info(f"**Sovereignty Reasoning:** {sov['reasoning']}")
+                
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend. Make sure it's running.")
             except Exception as e:
@@ -179,7 +199,8 @@ else:
                             'confidence_score': result.get('confidence_score', 0.0),
                             'reasoning': result.get('reasoning', ''),
                             'azure_policy_ids': result.get('azure_policy_ids', []),
-                            'mapping_type': result.get('mapping_type', 'unknown')
+                            'mapping_type': result.get('mapping_type', 'unknown'),
+                            'sovereignty': result.get('sovereignty'),
                         }
                         mappings.append(mapping)
                         
@@ -248,6 +269,7 @@ if st.session_state.mappings:
             'Control Name': m.get('control_name', m.get('external_control_name', 'N/A')),
             'MCSB Control': m.get('mcsb_control_id', 'N/A'),
             'Confidence': f"{m.get('confidence_score', 0):.0%}",
+            'SLZ Level': (m.get('sovereignty') or {}).get('sovereignty_level', '—'),
             'Type': m.get('mapping_type', 'unknown')
         }
         for m in st.session_state.mappings

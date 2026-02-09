@@ -73,7 +73,8 @@ def get_azure_openai_client() -> AzureOpenAI:
     client = AzureOpenAI(
         api_version=settings.azure_openai_api_version,
         azure_endpoint=settings.azure_openai_endpoint,
-        azure_ad_token_provider=token_provider
+        azure_ad_token_provider=token_provider,
+        timeout=120.0  # 2 minutes timeout for API calls
     )
 
     logger.info(f"Azure OpenAI client initialized for endpoint: {settings.azure_openai_endpoint}")

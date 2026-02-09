@@ -13,31 +13,35 @@ This AI agent automates the manual process of mapping external compliance framew
 - **🔐 Secure Authentication**: DefaultAzureCredential (Managed Identity + Azure CLI)
 - **✏️ Interactive Review**: Web-based UI to review and adjust AI mappings
 - **📦 Policy Generation**: Creates valid Azure Policy initiative JSON
-- **⚡ End-to-End Pipeline**: Upload → Map → Review → Export
+- **🏛️ Sovereign Landing Zone (SLZ)**: AI-recommended sovereignty levels (L1/L2/L3) with per-archetype policy exports
+- **⚡ End-to-End Pipeline**: Upload → Map → Review → Export (MCSB + SLZ)
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────┐
-│   Streamlit Web Interface (8501)   │
-│  Upload │ Map │ Review │ Export     │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│   FastAPI Backend (8000)            │
-│  • MCSB Loader                      │
-│  • AI Mapping Service               │
-│  • Policy Generator                 │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│   Azure OpenAI (GPT-4o)             │
-│  • Structured outputs                │
-│  • Control analysis                  │
-│  • Confidence scoring                │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│    Streamlit Web Interface (8501)        │
+│  Upload │ Map │ Review │ Export (SLZ)    │
+└────────────────┬─────────────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────────────┐
+│    FastAPI Backend (8000)                │
+│  • MCSB Loader                           │
+│  • AI Mapping Service (MCSB + SLZ)       │
+│  • Sovereignty Service                   │
+│  • Policy Generator (Generic + SLZ)      │
+│  • Microsoft Learn Client                │
+└────────────────┬─────────────────────────┘
+                 │
+          ┌──────┴──────┐
+          ▼             ▼
+┌──────────────┐ ┌─────────────────────────┐
+│ Azure OpenAI │ │ Azure Landing Zones Lib  │
+│  GPT-4o      │ │  SLZ Policy Definitions  │
+│  Structured  │ │  Initiatives & Assign.   │
+│  Outputs     │ │  Sovereignty Objectives  │
+└──────────────┘ └─────────────────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -163,18 +167,39 @@ ai-mapping-agent/
 │   ├── app/
 │   │   ├── auth/              # Azure authentication
 │   │   ├── models/            # Pydantic models
+│   │   │   ├── control.py     # Control models
+│   │   │   ├── mapping.py     # Mapping models (+ sovereignty field)
+│   │   │   ├── policy.py      # Policy initiative models
+│   │   │   └── sovereignty.py # SLZ / sovereignty models (NEW)
 │   │   ├── services/          # Business logic
+│   │   │   ├── ai_mapping_service.py   # AI mapping (MCSB + SLZ)
+│   │   │   ├── mcsb_service.py         # MCSB control loader
+│   │   │   ├── microsoft_learn_client.py # MS Learn policy search
+│   │   │   ├── policy_service.py       # Policy gen (+ SLZ initiatives)
+│   │   │   └── sovereignty_service.py  # SLZ data service (NEW)
 │   │   ├── api/routes/        # API endpoints
+│   │   │   ├── health.py      # Health checks (+ SLZ status)
+│   │   │   ├── mapping.py     # Control mapping
+│   │   │   ├── policy.py      # Policy gen (+ SLZ endpoint)
+│   │   │   └── sovereignty.py # Sovereignty API (NEW)
+│   │   ├── data/              # Pre-bundled SLZ data
+│   │   │   ├── slz_policies.json
+│   │   │   └── slz_archetypes.json
 │   │   ├── config.py          # Configuration
 │   │   └── main.py            # FastAPI app
+│   ├── scripts/
+│   │   └── sync_slz_policies.py  # SLZ data sync script
 │   ├── requirements.txt
 │   └── .env.template
 │
 ├── frontend/                   # Streamlit frontend
 │   ├── pages/                 # Multi-page app
-│   ├── components/            # Reusable UI components
-│   ├── utils/                 # API client
-│   ├── app.py                 # Main app
+│   │   ├── 1_📁_Upload_Controls.py
+│   │   ├── 2_🤖_AI_Mapping.py    # Shows SLZ level badges
+│   │   ├── 3_✏️_Review_Edit.py    # Sovereignty filter + panels
+│   │   └── 4_📦_Export_Policy.py  # MCSB + SLZ export tabs
+│   ├── utils/                 # API client (+ SLZ methods)
+│   ├── app.py                 # Main app (SLZ status in sidebar)
 │   └── requirements.txt
 │
 ├── data/                      # Reference data
@@ -263,6 +288,51 @@ SAMA-AC-01,Strong Authentication,Enforce MFA and disable legacy protocols
 }
 ```
 
+## 🏛️ Sovereign Landing Zone (SLZ) Integration
+
+The agent also maps controls to Microsoft's Sovereign Landing Zone policies, assigning:
+
+### Sovereignty Levels
+| Level | Name | Description |
+|-------|------|-------------|
+| **L1** | Global | Data residency + Trusted Launch |
+| **L2** | CMK | Customer-Managed Keys (includes L1) |
+| **L3** | Confidential | Confidential Computing (includes L1+L2) |
+
+### Sovereignty Objectives
+| ID | Objective | Type |
+|----|-----------|------|
+| SO-1 | Data Residency | Policy-enforced |
+| SO-2 | Customer Lockbox | Procedural only |
+| SO-3 | Customer-Managed Keys | Policy-enforced |
+| SO-4 | Confidential Computing | Policy-enforced |
+| SO-5 | Trusted Launch | Policy-enforced |
+
+### SLZ Archetypes
+- **sovereign_root** — Foundation policies for all SLZ deployments
+- **confidential_corp** — Corporate workloads requiring confidential computing
+- **confidential_online** — Internet-facing workloads with sovereignty
+- **public** — Standard Azure workloads with baseline sovereignty
+
+### SLZ Data Sync
+
+```bash
+# Sync from Azure Landing Zones Library (requires git)
+cd backend
+python3 scripts/sync_slz_policies.py --output-dir app/data
+
+# Or generate fallback data (no git/network required)
+python3 scripts/sync_slz_policies.py --fallback --output-dir app/data
+```
+
+### SLZ Export
+
+The Export page generates per-archetype packages:
+- **JSON** — Policy initiative definition
+- **Bicep** — Management-group-scoped template
+- **Azure CLI** — Deployment shell script
+- **PowerShell** — Deployment PS1 script
+
 ## 🚢 Deployment
 
 ### Local Development
@@ -289,10 +359,26 @@ Once backend is running, visit:
 
 ### Key Endpoints
 
-- `POST /api/v1/mapping/analyze` - Upload and map controls
+**Mapping:**
+- `POST /api/v1/mapping/map-single` - Map a single control (MCSB + SLZ)
+- `POST /api/v1/mapping/analyze` - Batch-map controls
 - `GET /api/v1/mapping/status/{job_id}` - Check mapping progress
-- `POST /api/v1/policy/generate` - Generate policy initiative
-- `GET /api/health` - Health check
+
+**Policy Generation:**
+- `POST /api/v1/policy/generate` - Generate MCSB policy initiative
+- `POST /api/v1/policy/generate/slz` - Generate SLZ per-archetype initiatives
+- `POST /api/v1/policy/generate/bicep` - Download Bicep template
+- `POST /api/v1/policy/generate/scripts` - Get deployment scripts
+
+**Sovereignty (SLZ):**
+- `GET /api/v1/sovereignty/summary` - SLZ data summary
+- `GET /api/v1/sovereignty/policies` - Query SLZ policies (level, service, objective, search)
+- `GET /api/v1/sovereignty/objectives` - List sovereignty objectives (SO-1 to SO-5)
+- `GET /api/v1/sovereignty/archetypes` - List SLZ archetypes
+- `POST /api/v1/sovereignty/admin/sync-slz` - Sync SLZ data from Azure repo
+
+**Health:**
+- `GET /api/v1/health` - Health check (MCSB + SLZ + Azure OpenAI status)
 
 ## 🤝 Contributing
 

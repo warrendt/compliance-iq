@@ -8,7 +8,7 @@ import logging
 
 from app import __version__
 from app.auth import test_azure_openai_connection
-from app.services import get_mcsb_service
+from app.services import get_mcsb_service, get_sovereignty_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
@@ -21,6 +21,8 @@ class HealthResponse(BaseModel):
     azure_openai_connected: bool
     mcsb_controls_loaded: bool
     mcsb_control_count: int
+    slz_policies_loaded: bool = False
+    slz_policy_count: int = 0
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -50,12 +52,25 @@ async def health_check():
         mcsb_controls_loaded = False
         mcsb_control_count = 0
 
+    # Check SLZ sovereignty service
+    try:
+        slz_service = get_sovereignty_service()
+        slz_summary = slz_service.get_summary()
+        slz_policies_loaded = slz_summary["total_policies"] > 0
+        slz_policy_count = slz_summary["total_policies"]
+    except Exception as e:
+        logger.error(f"SLZ service health check failed: {e}")
+        slz_policies_loaded = False
+        slz_policy_count = 0
+
     return HealthResponse(
         status="healthy" if (azure_openai_connected and mcsb_controls_loaded) else "degraded",
         version=__version__,
         azure_openai_connected=azure_openai_connected,
         mcsb_controls_loaded=mcsb_controls_loaded,
-        mcsb_control_count=mcsb_control_count
+        mcsb_control_count=mcsb_control_count,
+        slz_policies_loaded=slz_policies_loaded,
+        slz_policy_count=slz_policy_count
     )
 
 

@@ -5,7 +5,7 @@ Generates valid Azure Policy initiative definitions from control mappings.
 
 import logging
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from app.models import (
@@ -17,6 +17,7 @@ from app.models import (
     PolicyGenerationRequest,
     PolicyGenerationResponse
 )
+from app.services.sovereignty_service import get_sovereignty_service
 
 logger = logging.getLogger(__name__)
 
@@ -391,6 +392,370 @@ Write-Host "Initiative created successfully"
         return {
             "cli": cli_script,
             "powershell": ps_script
+        }
+
+    # ── SLZ-Specific Initiative Generation ────────────────────────────
+
+    def generate_slz_initiatives(
+        self,
+        mappings: List[ControlMapping],
+        framework_name: str,
+        allowed_locations: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Generate SLZ-specific policy initiatives targeting management group archetypes.
+
+        Produces separate initiative artifacts for each SLZ archetype:
+        - sovereign_root: Global baseline (L1) policies
+        - confidential_corp / confidential_online: Confidential baseline (L2+L3) policies
+
+        Args:
+            mappings: List of control mappings (must include sovereignty field)
+            framework_name: Name of the compliance framework
+            allowed_locations: Optional list of allowed Azure regions (e.g., ["uaecentral", "uaenorth"])
+
+        Returns:
+            Dictionary with per-archetype initiative JSON, Bicep, and deployment scripts
+        """
+        logger.info(f"Generating SLZ initiatives for {framework_name}")
+
+        sovereignty_service = get_sovereignty_service()
+
+        # Separate mappings by sovereignty level
+        level_mappings: Dict[str, List[ControlMapping]] = {"L1": [], "L2": [], "L3": []}
+        for m in mappings:
+            if m.sovereignty and m.sovereignty.sovereignty_level:
+                level = m.sovereignty.sovereignty_level
+                level_mappings.setdefault(level, []).append(m)
+            else:
+                level_mappings["L1"].append(m)
+
+        # Collect SLZ policy names referenced across all mappings
+        all_slz_policy_names = set()
+        for m in mappings:
+            if m.sovereignty and m.sovereignty.slz_policy_names:
+                all_slz_policy_names.update(m.sovereignty.slz_policy_names)
+
+        # Build per-archetype artifacts
+        archetypes = sovereignty_service.get_all_archetypes()
+        archetype_artifacts: Dict[str, Dict[str, Any]] = {}
+
+        for archetype in archetypes:
+            arch_name = archetype.name
+            arch_level = archetype.sovereignty_level
+
+            # Determine which mappings apply to this archetype
+            applicable = []
+            level_hierarchy = {"L1": ["L1"], "L2": ["L1", "L2"], "L3": ["L1", "L2", "L3"]}
+            for lvl in level_hierarchy.get(arch_level, ["L1"]):
+                applicable.extend(level_mappings.get(lvl, []))
+
+            if not applicable:
+                continue
+
+            # Collect policy IDs (Azure Policy + SLZ)
+            policy_ids = set()
+            slz_names = set()
+            for m in applicable:
+                for pid in m.azure_policy_ids:
+                    policy_ids.add(pid)
+                if m.sovereignty and m.sovereignty.slz_policy_names:
+                    slz_names.update(m.sovereignty.slz_policy_names)
+
+            # Build initiative JSON
+            display_name = f"{framework_name} - SLZ {archetype.display_name or arch_name} Initiative"
+            description = (
+                f"Sovereign Landing Zone policy initiative for {framework_name} "
+                f"targeting the {archetype.display_name or arch_name} management group archetype. "
+                f"Sovereignty level: {arch_level}."
+            )
+
+            policy_defs = []
+            for pid in sorted(policy_ids):
+                policy_defs.append({
+                    "policyDefinitionId": f"/providers/Microsoft.Authorization/policyDefinitions/{pid}",
+                    "policyDefinitionReferenceId": pid[:50],
+                    "parameters": {}
+                })
+
+            initiative_json = {
+                "properties": {
+                    "displayName": display_name,
+                    "description": description,
+                    "metadata": {
+                        "category": "Regulatory Compliance",
+                        "source": "CCToolkit AI Mapping Agent - SLZ",
+                        "frameworkName": framework_name,
+                        "sovereigntyLevel": arch_level,
+                        "targetArchetype": arch_name,
+                        "slzPolicies": sorted(slz_names),
+                    },
+                    "parameters": {},
+                    "policyDefinitions": policy_defs,
+                }
+            }
+
+            # Add allowed locations parameter if provided
+            if allowed_locations:
+                initiative_json["properties"]["parameters"]["listOfAllowedLocations"] = {
+                    "type": "Array",
+                    "metadata": {
+                        "displayName": "Allowed locations",
+                        "description": "The list of locations that can be specified when deploying resources.",
+                    },
+                    "defaultValue": allowed_locations,
+                }
+
+            # Generate Bicep
+            bicep = self._generate_slz_bicep(
+                initiative_name=f"slz_{arch_name}_{framework_name.lower().replace(' ', '_')}",
+                display_name=display_name,
+                description=description,
+                policy_defs=policy_defs,
+                sovereignty_level=arch_level,
+                archetype_name=arch_name,
+                allowed_locations=allowed_locations,
+            )
+
+            # Generate deployment scripts targeting management groups
+            scripts = self._generate_slz_deployment_scripts(
+                initiative_name=f"slz-{arch_name}-{framework_name.lower().replace(' ', '-')}",
+                display_name=display_name,
+                description=description,
+                archetype_name=arch_name,
+                initiative_json=initiative_json,
+            )
+
+            archetype_artifacts[arch_name] = {
+                "archetype": archetype.model_dump(),
+                "sovereignty_level": arch_level,
+                "control_count": len(applicable),
+                "policy_count": len(policy_defs),
+                "slz_policy_names": sorted(slz_names),
+                "initiative_json": initiative_json,
+                "bicep_template": bicep,
+                "deployment_scripts": scripts,
+            }
+
+        # Summary
+        summary = {
+            "framework_name": framework_name,
+            "total_mappings": len(mappings),
+            "sovereignty_mappings": sum(1 for m in mappings if m.sovereignty),
+            "level_distribution": {k: len(v) for k, v in level_mappings.items()},
+            "archetypes_generated": list(archetype_artifacts.keys()),
+            "allowed_locations": allowed_locations,
+        }
+
+        logger.info(
+            f"Generated SLZ initiatives for {len(archetype_artifacts)} archetypes: "
+            f"{', '.join(archetype_artifacts.keys())}"
+        )
+
+        return {
+            "summary": summary,
+            "archetype_artifacts": archetype_artifacts,
+            "built_in_initiatives": sovereignty_service.get_built_in_initiatives(),
+        }
+
+    def _generate_slz_bicep(
+        self,
+        initiative_name: str,
+        display_name: str,
+        description: str,
+        policy_defs: List[Dict],
+        sovereignty_level: str,
+        archetype_name: str,
+        allowed_locations: Optional[List[str]] = None,
+    ) -> str:
+        """Generate Bicep template for an SLZ initiative."""
+
+        locations_param = ""
+        if allowed_locations:
+            locations_str = ", ".join(f"'{loc}'" for loc in allowed_locations)
+            locations_param = f"""
+@description('Allowed Azure regions for data residency (SO-1)')
+param allowedLocations array = [{locations_str}]
+"""
+
+        bicep = f"""// Sovereign Landing Zone Policy Initiative
+// Framework: {display_name}
+// Archetype: {archetype_name} | Level: {sovereignty_level}
+// Generated by CCToolkit AI Mapping Agent
+
+targetScope = 'managementGroup'
+
+@description('Management Group ID to assign this initiative')
+param managementGroupId string
+
+@description('Policy initiative display name')
+param displayName string = '{display_name}'
+
+@description('Policy initiative description')
+param initiativeDescription string = '{description}'
+{locations_param}
+resource policyInitiative 'Microsoft.Authorization/policySetDefinitions@2021-06-01' = {{
+  name: '{initiative_name}'
+  properties: {{
+    displayName: displayName
+    description: initiativeDescription
+    policyType: 'Custom'
+    metadata: {{
+      category: 'Regulatory Compliance'
+      source: 'CCToolkit AI Mapping Agent - SLZ'
+      sovereigntyLevel: '{sovereignty_level}'
+      targetArchetype: '{archetype_name}'
+    }}
+    policyDefinitions: [
+"""
+        for pd in policy_defs:
+            bicep += f"""      {{
+        policyDefinitionId: '{pd["policyDefinitionId"]}'
+        policyDefinitionReferenceId: '{pd["policyDefinitionReferenceId"]}'
+        parameters: {{}}
+      }}
+"""
+
+        bicep += f"""    ]
+  }}
+}}
+
+// Assign the initiative to the target management group
+resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {{
+  name: 'assign-{initiative_name}'
+  properties: {{
+    displayName: '${{displayName}} - Assignment'
+    description: 'Auto-assigned by CCToolkit for archetype {archetype_name}'
+    policyDefinitionId: policyInitiative.id
+    enforcementMode: 'Default'
+  }}
+}}
+
+output initiativeId string = policyInitiative.id
+output assignmentId string = policyAssignment.id
+"""
+        return bicep
+
+    def _generate_slz_deployment_scripts(
+        self,
+        initiative_name: str,
+        display_name: str,
+        description: str,
+        archetype_name: str,
+        initiative_json: Dict,
+    ) -> Dict[str, str]:
+        """Generate deployment scripts targeting management group archetypes."""
+
+        json_str = json.dumps(initiative_json, indent=2)
+
+        cli_script = f"""#!/bin/bash
+# =============================================================================
+# SLZ Policy Initiative Deployment - {display_name}
+# Target Archetype: {archetype_name}
+# =============================================================================
+
+set -euo pipefail
+
+# Configuration
+INITIATIVE_NAME="{initiative_name}"
+MANAGEMENT_GROUP_ID="${{1:?Usage: $0 <management-group-id>}}"
+
+echo "=== Deploying SLZ Initiative ==="
+echo "Initiative: {display_name}"
+echo "Archetype: {archetype_name}"
+echo "Management Group: $MANAGEMENT_GROUP_ID"
+echo ""
+
+# Save initiative definition
+cat > /tmp/${{INITIATIVE_NAME}}.json <<'EOF'
+{json_str}
+EOF
+
+# Create the policy set definition at management group scope
+az policy set-definition create \\
+  --name "$INITIATIVE_NAME" \\
+  --display-name "{display_name}" \\
+  --description "{description}" \\
+  --definitions /tmp/${{INITIATIVE_NAME}}.json \\
+  --management-group "$MANAGEMENT_GROUP_ID" \\
+  --metadata category="Regulatory Compliance"
+
+echo ""
+echo "=== Assigning Initiative ==="
+
+# Assign to the management group
+az policy assignment create \\
+  --name "assign-$INITIATIVE_NAME" \\
+  --display-name "{display_name} - Assignment" \\
+  --policy-set-definition "$INITIATIVE_NAME" \\
+  --scope "/providers/Microsoft.Management/managementGroups/$MANAGEMENT_GROUP_ID" \\
+  --enforcement-mode Default
+
+echo ""
+echo "✅ SLZ initiative deployed and assigned to management group: $MANAGEMENT_GROUP_ID"
+"""
+
+        ps_script = f"""# =============================================================================
+# SLZ Policy Initiative Deployment - {display_name}
+# Target Archetype: {archetype_name}
+# =============================================================================
+
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$ManagementGroupId
+)
+
+$ErrorActionPreference = 'Stop'
+
+$InitiativeName = "{initiative_name}"
+
+Write-Host "=== Deploying SLZ Initiative ===" -ForegroundColor Cyan
+Write-Host "Initiative: {display_name}"
+Write-Host "Archetype: {archetype_name}"
+Write-Host "Management Group: $ManagementGroupId"
+Write-Host ""
+
+# Initiative definition
+$InitiativeJson = @'
+{json_str}
+'@
+
+$TempFile = [System.IO.Path]::GetTempFileName()
+Set-Content -Path $TempFile -Value $InitiativeJson
+
+# Create policy set definition at management group scope
+New-AzPolicySetDefinition `
+    -Name $InitiativeName `
+    -DisplayName "{display_name}" `
+    -Description "{description}" `
+    -PolicyDefinition $TempFile `
+    -ManagementGroupName $ManagementGroupId `
+    -Metadata @{{category="Regulatory Compliance"}}
+
+Write-Host ""
+Write-Host "=== Assigning Initiative ===" -ForegroundColor Cyan
+
+# Get the policy set definition
+$PolicySetDef = Get-AzPolicySetDefinition -Name $InitiativeName -ManagementGroupName $ManagementGroupId
+
+# Assign to management group
+New-AzPolicyAssignment `
+    -Name "assign-$InitiativeName" `
+    -DisplayName "{display_name} - Assignment" `
+    -PolicySetDefinition $PolicySetDef `
+    -Scope "/providers/Microsoft.Management/managementGroups/$ManagementGroupId" `
+    -EnforcementMode Default
+
+Write-Host ""
+Write-Host "✅ SLZ initiative deployed and assigned to management group: $ManagementGroupId" -ForegroundColor Green
+
+# Cleanup
+Remove-Item $TempFile -Force
+"""
+
+        return {
+            "cli": cli_script,
+            "powershell": ps_script,
         }
 
 

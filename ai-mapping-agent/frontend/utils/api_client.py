@@ -17,7 +17,7 @@ class APIClient:
             base_url: Base URL of the backend API
         """
         self.base_url = base_url
-        self.timeout = 30.0  # Default timeout
+        self.timeout = 120.0  # Default timeout (2 minutes for AI operations)
         
     def _get_client(self) -> httpx.Client:
         """Get an HTTP client with configured timeout."""
@@ -61,7 +61,8 @@ class APIClient:
         control_id: str,
         control_name: str,
         description: str,
-        domain: Optional[str] = None
+        domain: Optional[str] = None,
+        timeout: float = 120.0
     ) -> Dict[str, Any]:
         """Map a single control to MCSB.
         
@@ -70,6 +71,7 @@ class APIClient:
             control_name: Control name
             description: Control description
             domain: Optional control domain
+            timeout: Request timeout in seconds (default: 120)
             
         Returns:
             Mapping result with confidence score and reasoning
@@ -83,13 +85,20 @@ class APIClient:
             }
         }
         
-        with self._get_client() as client:
-            response = client.post(
-                f"{self.base_url}/api/v1/mapping/map-single",
-                json=payload
-            )
-            response.raise_for_status()
-            return response.json()
+        # Use custom timeout for this request
+        original_timeout = self.timeout
+        self.timeout = timeout
+        
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/mapping/map-single",
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+        finally:
+            self.timeout = original_timeout
     
     def start_batch_mapping(
         self,
@@ -110,7 +119,7 @@ class APIClient:
             "framework_name": framework_name
         }
         
-        self.timeout = 300.0  # 5 minutes for batch jobs
+        self.timeout = 600.0  # 10 minutes for batch jobs
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/mapping/analyze",
@@ -162,6 +171,96 @@ class APIClient:
             response = client.post(
                 f"{self.base_url}/api/v1/policy/generate",
                 json=payload
+            )
+            response.raise_for_status()
+            return response.json()
+
+    # --- Sovereignty / SLZ endpoints ---
+
+    def get_sovereignty_summary(self) -> Dict[str, Any]:
+        """Get SLZ policy data summary."""
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/sovereignty/summary")
+            response.raise_for_status()
+            return response.json()
+
+    def get_sovereignty_objectives(self) -> List[Dict[str, Any]]:
+        """Get all sovereignty control objectives."""
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/sovereignty/objectives")
+            response.raise_for_status()
+            return response.json()
+
+    def get_sovereignty_archetypes(self) -> List[Dict[str, Any]]:
+        """Get SLZ archetypes."""
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/sovereignty/archetypes")
+            response.raise_for_status()
+            return response.json()
+
+    def get_sovereignty_policies(
+        self,
+        level: Optional[str] = None,
+        service: Optional[str] = None,
+        objective: Optional[str] = None,
+        q: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Query SLZ policies with optional filters."""
+        params: Dict[str, str] = {}
+        if level:
+            params["level"] = level
+        if service:
+            params["service"] = service
+        if objective:
+            params["objective"] = objective
+        if q:
+            params["q"] = q
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/sovereignty/policies",
+                params=params,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def generate_slz_initiatives(
+        self,
+        mappings: List[Dict[str, Any]],
+        framework_name: str,
+        allowed_locations: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Generate SLZ per-archetype policy initiatives.
+
+        Args:
+            mappings: Control mappings (must contain sovereignty data)
+            framework_name: Compliance framework name
+            allowed_locations: Optional Azure regions for data residency
+
+        Returns:
+            Per-archetype artifacts dict
+        """
+        payload: Dict[str, Any] = {
+            "framework_name": framework_name,
+            "mappings": mappings,
+        }
+        if allowed_locations:
+            payload["allowed_locations"] = allowed_locations
+
+        self.timeout = 120.0
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/policy/generate/slz",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def sync_slz_policies(self, fallback: bool = False) -> Dict[str, Any]:
+        """Trigger an SLZ data sync on the backend."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/sovereignty/admin/sync-slz",
+                params={"fallback": str(fallback).lower()},
             )
             response.raise_for_status()
             return response.json()

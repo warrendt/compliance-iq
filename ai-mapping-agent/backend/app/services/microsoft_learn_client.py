@@ -55,11 +55,26 @@ class MicrosoftLearnClient:
             
             # Search for Azure Policy documentation
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Search the documentation
+                # Standard policy search
                 search_results = await self._search_docs(
                     client,
                     query=full_query
                 )
+                
+                # Additional sovereignty-specific search if control relates to sovereignty topics
+                sovereignty_keywords = [
+                    "data residency", "location", "region", "encryption", "encrypt",
+                    "customer-managed key", "cmk", "byok", "confidential",
+                    "trusted launch", "secure boot", "lockbox",
+                ]
+                desc_lower = f"{control_name} {description}".lower()
+                is_sovereignty_relevant = any(kw in desc_lower for kw in sovereignty_keywords)
+                
+                if is_sovereignty_relevant:
+                    sovereignty_query = f"Sovereignty Baseline MCfS Azure Policy {control_name[:40]}"
+                    logger.info(f"Control has sovereignty relevance, adding SLZ search: {sovereignty_query}")
+                    slz_results = await self._search_docs(client, query=sovereignty_query, max_results=3)
+                    search_results.extend(slz_results)
                 
                 # Extract policy IDs and relevant info
                 logger.info(f"Extracting policy info from {len(search_results)} search results")

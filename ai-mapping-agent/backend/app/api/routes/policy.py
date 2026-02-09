@@ -4,9 +4,12 @@ Azure Policy generation endpoints.
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import logging
+import json
 
-from app.models import PolicyGenerationRequest, PolicyGenerationResponse
+from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
 
 logger = logging.getLogger(__name__)
@@ -150,4 +153,63 @@ async def generate_deployment_scripts(request: PolicyGenerationRequest):
 
     except Exception as e:
         logger.error(f"Failed to generate deployment scripts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- SLZ Initiative Generation ---
+
+class SLZGenerationRequest(BaseModel):
+    """Request to generate SLZ-specific policy initiatives per archetype."""
+    framework_name: str = Field(..., description="Compliance framework name")
+    mappings: List[ControlMapping] = Field(..., description="Control mappings with sovereignty data")
+    allowed_locations: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed Azure regions for data residency (e.g. ['uaenorth','uaecentral'])"
+    )
+
+
+@router.post("/generate/slz")
+async def generate_slz_initiatives(request: SLZGenerationRequest):
+    """
+    Generate Sovereign Landing Zone policy initiatives per archetype.
+
+    Produces per-archetype artifacts (JSON initiative, Bicep template,
+    deployment scripts) based on sovereignty mappings in each control.
+
+    Returns:
+        Dictionary keyed by archetype with JSON, Bicep, CLI, and PS artifacts
+    """
+    logger.info(
+        f"Generating SLZ initiatives for {request.framework_name} "
+        f"({len(request.mappings)} mappings)"
+    )
+
+    try:
+        policy_service = get_policy_service()
+
+        # Filter to mappings that have sovereignty data
+        sov_mappings = [m for m in request.mappings if m.sovereignty is not None]
+        if not sov_mappings:
+            raise HTTPException(
+                status_code=400,
+                detail="No mappings contain sovereignty data. Run AI mapping first."
+            )
+
+        result = policy_service.generate_slz_initiatives(
+            mappings=sov_mappings,
+            framework_name=request.framework_name,
+            allowed_locations=request.allowed_locations,
+        )
+
+        return {
+            "framework_name": request.framework_name,
+            "total_mappings": len(request.mappings),
+            "sovereignty_mappings": len(sov_mappings),
+            "archetypes": result,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate SLZ initiatives: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -50,7 +50,7 @@ mcsb_lookup = {c['control_id']: c for c in st.session_state.mcsb_controls} if st
 mcsb_options = sorted([c['control_id'] for c in st.session_state.mcsb_controls]) if st.session_state.mcsb_controls else []
 
 # Display summary
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric("Total Mappings", len(st.session_state.mappings))
@@ -67,12 +67,16 @@ with col4:
     low_conf_count = sum(1 for m in st.session_state.mappings if m.get('confidence_score', 0) < 0.6)
     st.metric("Low Confidence (<60%)", low_conf_count)
 
+with col5:
+    sov_count = sum(1 for m in st.session_state.mappings if m.get('sovereignty'))
+    st.metric("Sovereignty Mapped", sov_count)
+
 st.markdown("---")
 
 # Filter options
 st.markdown("### 🔍 Filter Mappings")
 
-col_filter1, col_filter2, col_filter3 = st.columns(3)
+col_filter1, col_filter2, col_filter3, col_filter4 = st.columns(4)
 
 with col_filter1:
     confidence_filter = st.selectbox(
@@ -102,6 +106,14 @@ with col_filter3:
         index=0
     )
 
+with col_filter4:
+    sov_level_filter = st.selectbox(
+        "Sovereignty Level",
+        options=["All", "L1 — Global", "L2 — CMK", "L3 — Confidential", "None"],
+        index=0,
+        help="Filter by AI-recommended sovereignty level"
+    )
+
 # Apply filters
 filtered_mappings = st.session_state.mappings.copy()
 
@@ -119,6 +131,14 @@ if domain_filter != "All" and mcsb_lookup:
 
 if type_filter != "All":
     filtered_mappings = [m for m in filtered_mappings if m.get('mapping_type') == type_filter]
+
+if sov_level_filter != "All":
+    if sov_level_filter == "None":
+        filtered_mappings = [m for m in filtered_mappings if not m.get('sovereignty')]
+    else:
+        target_level = sov_level_filter.split(" ")[0]  # "L1", "L2", "L3"
+        filtered_mappings = [m for m in filtered_mappings
+                             if m.get('sovereignty') and m['sovereignty'].get('sovereignty_level') == target_level]
 
 st.info(f"📋 Showing **{len(filtered_mappings)}** of **{len(st.session_state.mappings)}** mappings")
 
@@ -200,6 +220,37 @@ else:
                 for policy_id in mapping['azure_policy_ids']:
                     st.code(policy_id, language="text")
             
+            # Sovereignty mapping
+            sov = mapping.get('sovereignty')
+            if sov:
+                st.markdown("#### 🏛️ Sovereignty Mapping")
+                sov_level = sov.get('sovereignty_level', 'N/A')
+                _level_colors = {'L1': '🟢', 'L2': '🟡', 'L3': '🔴'}
+                _level_labels = {
+                    'L1': 'Global (Data Residency + Trusted Launch)',
+                    'L2': 'CMK (Customer-Managed Keys)',
+                    'L3': 'Confidential Computing',
+                }
+                col_sov1, col_sov2 = st.columns(2)
+                with col_sov1:
+                    st.markdown(
+                        f"**Level:** {_level_colors.get(sov_level, '⚪')} **{sov_level}** — "
+                        f"{_level_labels.get(sov_level, sov_level)}"
+                    )
+                    if sov.get('sovereignty_objectives'):
+                        st.markdown("**Objectives:** " + ", ".join(sov['sovereignty_objectives']))
+                    if sov.get('target_archetype'):
+                        st.markdown(f"**Target Archetype:** `{sov['target_archetype']}`")
+                with col_sov2:
+                    if sov.get('slz_policy_names'):
+                        st.markdown("**SLZ Policies:**")
+                        for pname in sov['slz_policy_names'][:5]:
+                            st.caption(f"• {pname}")
+                        if len(sov['slz_policy_names']) > 5:
+                            st.caption(f"  ... and {len(sov['slz_policy_names']) - 5} more")
+                    if sov.get('reasoning'):
+                        st.info(sov['reasoning'])
+            
             # Delete mapping option
             col_delete1, col_delete2 = st.columns([3, 1])
             with col_delete2:
@@ -236,6 +287,23 @@ if st.session_state.mappings:
         st.markdown("#### Top MCSB Controls")
         top_mcsb = df['mcsb_control_id'].value_counts().head(10)
         st.bar_chart(top_mcsb)
+    
+    # Sovereignty statistics
+    sov_mappings = [m for m in st.session_state.mappings if m.get('sovereignty')]
+    if sov_mappings:
+        st.markdown("#### 🏛️ Sovereignty Level Distribution")
+        col_sov_stat1, col_sov_stat2, col_sov_stat3 = st.columns(3)
+        level_counts = {'L1': 0, 'L2': 0, 'L3': 0}
+        for m in sov_mappings:
+            lvl = m['sovereignty'].get('sovereignty_level', '')
+            if lvl in level_counts:
+                level_counts[lvl] += 1
+        with col_sov_stat1:
+            st.metric("🟢 L1 — Global", level_counts['L1'])
+        with col_sov_stat2:
+            st.metric("🟡 L2 — CMK", level_counts['L2'])
+        with col_sov_stat3:
+            st.metric("🔴 L3 — Confidential", level_counts['L3'])
 
 # Action buttons
 st.markdown("---")

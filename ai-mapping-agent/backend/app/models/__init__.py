@@ -17,6 +17,15 @@ from app.models.policy import (
     PolicyGenerationRequest,
     PolicyGenerationResponse
 )
+from app.models.sovereignty import (
+    SovereigntyLevel,
+    SovereigntyControlObjective,
+    SovereigntyMapping,
+    SLZPolicyDefinition,
+    SLZInitiative,
+    SLZArchetype,
+    SLZPolicyAssignment,
+)
 
 __all__ = [
     # Control models
@@ -35,4 +44,12 @@ __all__ = [
     "PolicyInitiative",
     "PolicyGenerationRequest",
     "PolicyGenerationResponse",
+    # Sovereignty models
+    "SovereigntyLevel",
+    "SovereigntyControlObjective",
+    "SovereigntyMapping",
+    "SLZPolicyDefinition",
+    "SLZInitiative",
+    "SLZArchetype",
+    "SLZPolicyAssignment",
 ]

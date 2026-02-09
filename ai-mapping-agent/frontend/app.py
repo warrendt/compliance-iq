@@ -65,7 +65,7 @@ if 'job_id' not in st.session_state:
 
 # Main content
 st.markdown('<div class="main-header">🛡️ AI Control Mapping Agent</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automatically map compliance framework controls to Microsoft Cloud Security Benchmark</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Automatically map compliance framework controls to Microsoft Cloud Security Benchmark &amp; Sovereign Landing Zone policies</div>', unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
@@ -91,6 +91,13 @@ with st.sidebar:
         if health.get("status") == "healthy":
             st.success("✅ Backend Connected")
             st.caption(f"MCSB Controls: {health.get('mcsb_controls_loaded', 0)}")
+            
+            # SLZ policy status
+            slz_count = health.get("slz_policy_count", 0)
+            if slz_count > 0:
+                st.success(f"✅ SLZ Policies: {slz_count}")
+            else:
+                st.warning("⚠️ SLZ Policies not loaded")
             
             if health.get("azure_openai", {}).get("status") == "configured":
                 st.success("✅ Azure OpenAI Ready")
@@ -144,6 +151,7 @@ with col2:
     **Features:**
     - GPT-4o powered analysis
     - Confidence scoring
+    - Sovereignty level assignment
     - Detailed reasoning
     """)
     if st.button("Go to Mapping →", key="nav_mapping", use_container_width=True):
@@ -152,12 +160,12 @@ with col2:
 with col3:
     st.markdown("### 📦 Step 3: Export")
     st.markdown("""
-    Generate an Azure Policy initiative ready for deployment.
+    Generate Azure Policy initiatives ready for deployment.
     
     **Outputs:**
-    - JSON format
-    - Bicep templates
-    - Deployment scripts
+    - MCSB Policy Initiative
+    - SLZ Sovereign Initiatives
+    - Bicep templates & scripts
     """)
     if st.button("Go to Export →", key="nav_export", use_container_width=True):
         st.switch_page("pages/4_📦_Export_Policy.py")
@@ -220,6 +228,6 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 2rem;'>
     <p><strong>AI Control Mapping Agent</strong> | Built with ❤️ by the Cloud Compliance Toolkit Team</p>
-    <p>Powered by Azure OpenAI GPT-4o | Microsoft Cloud Security Benchmark</p>
+    <p>Powered by Azure OpenAI GPT-4o | Microsoft Cloud Security Benchmark | Sovereign Landing Zone</p>
 </div>
 """, unsafe_allow_html=True)
