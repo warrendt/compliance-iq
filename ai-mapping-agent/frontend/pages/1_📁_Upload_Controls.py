@@ -63,7 +63,12 @@ if uploaded_file is not None:
     try:
         # Read file based on type
         if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+            try:
+                df = pd.read_csv(uploaded_file)
+            except pd.errors.ParserError:
+                # Retry with flexible parsing for CSVs with inconsistent fields
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, on_bad_lines='warn', engine='python')
         else:
             df = pd.read_excel(uploaded_file)
         
@@ -194,21 +199,24 @@ if uploaded_file is not None:
                         st.session_state.framework_name = framework_name
                         st.session_state.mappings = []  # Reset mappings
                         
+                        st.session_state.controls_loaded = True
                         st.success(f"✅ Loaded {len(controls)} controls from **{framework_name}**")
                         st.balloons()
-                        
-                        # Show next step
-                        st.info("👉 Go to **AI Mapping** to start mapping these controls to MCSB")
-                        
-                        if st.button("Continue to AI Mapping →", type="primary"):
-                            st.switch_page("pages/2_🤖_AI_Mapping.py")
             
             with col_clear:
                 if st.button("🗑️ Clear Upload", use_container_width=True):
                     st.session_state.uploaded_df = None
                     st.session_state.controls = []
+                    st.session_state.controls_loaded = False
                     st.session_state.framework_name = ""
                     st.rerun()
+            
+            # Show navigation after controls are loaded (persists across reruns)
+            if st.session_state.get('controls_loaded') and st.session_state.controls:
+                st.markdown("---")
+                st.info("👉 Go to **AI Mapping** to start mapping these controls to MCSB")
+                if st.button("Continue to AI Mapping →", type="primary"):
+                    st.switch_page("pages/2_🤖_AI_Mapping.py")
         
         else:
             st.warning("⚠️ Please map all required fields (marked with *)")

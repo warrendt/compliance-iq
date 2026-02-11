@@ -60,13 +60,13 @@ with col_config1:
     )
 
 with col_config2:
-    temperature = st.slider(
-        "AI Temperature",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.3,
-        step=0.1,
-        help="Lower = more consistent, Higher = more creative"
+    concurrency = st.slider(
+        "Parallel Mappings",
+        min_value=1,
+        max_value=10,
+        value=5,
+        step=1,
+        help="Number of controls to map concurrently (higher = faster but uses more API quota)"
     )
 
 st.markdown("---")
@@ -100,12 +100,15 @@ if mapping_mode == "Single Control Test":
     if st.button("🚀 Map This Control", type="primary"):
         with st.spinner("Analyzing control and finding MCSB matches..."):
             try:
-                result = api_client.map_single_control(
+                raw_result = api_client.map_single_control(
                     control_id=selected_control['control_id'],
                     control_name=selected_control['control_name'],
                     description=selected_control['description'],
                     domain=selected_control.get('domain')
                 )
+                
+                # Unwrap the mapping key if present
+                result = raw_result.get('mapping', raw_result) if isinstance(raw_result, dict) else raw_result
                 
                 # Display results
                 st.success("✅ Mapping complete!")
@@ -158,9 +161,11 @@ else:
     
     st.info(f"📋 Ready to map **{len(st.session_state.controls)}** controls from **{st.session_state.framework_name}**")
     
-    # Warning about cost/time
-    estimated_time = len(st.session_state.controls) * 3  # ~3 seconds per control
-    st.warning(f"⏱️ Estimated time: ~{estimated_time} seconds ({estimated_time//60} minutes)")
+    # Estimated time with concurrency
+    num_controls = len(st.session_state.controls)
+    est_per_control = 45  # ~45 seconds per GPT-5 call
+    est_total = (num_controls / concurrency) * est_per_control
+    st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
     
     # Start mapping button
     col_start, col_cancel = st.columns([1, 1])
@@ -169,57 +174,61 @@ else:
         if st.button("▶️ Start Batch Mapping", type="primary", use_container_width=True, disabled=st.session_state.mapping_in_progress):
             st.session_state.mapping_in_progress = True
             
-            # Progress tracking
-            progress_bar = st.progress(0)
             status_text = st.empty()
-            
-            mappings = []
+            status_text.text(f"🚀 Mapping {num_controls} controls with {concurrency} parallel workers...")
             
             try:
-                for idx, control in enumerate(st.session_state.controls):
-                    status_text.text(f"Mapping control {idx + 1}/{len(st.session_state.controls)}: {control['control_id']}")
-                    
-                    try:
-                        result = api_client.map_single_control(
-                            control_id=control['control_id'],
-                            control_name=control['control_name'],
-                            description=control['description'],
-                            domain=control.get('domain')
-                        )
-                        
-                        # Merge control data with mapping result
-                        mapping = {
-                            'control_id': control['control_id'],
-                            'control_name': control['control_name'],
-                            'description': control['description'],
-                            'domain': control.get('domain'),
-                            'mcsb_control_id': result.get('mcsb_control_id', 'N/A'),
-                            'mcsb_control_name': result.get('mcsb_control_name', 'N/A'),
-                            'mcsb_domain': result.get('mcsb_domain', 'N/A'),
-                            'confidence_score': result.get('confidence_score', 0.0),
-                            'reasoning': result.get('reasoning', ''),
-                            'azure_policy_ids': result.get('azure_policy_ids', []),
-                            'mapping_type': result.get('mapping_type', 'unknown'),
-                            'sovereignty': result.get('sovereignty'),
-                        }
-                        mappings.append(mapping)
-                        
-                    except Exception as e:
-                        st.warning(f"⚠️ Error mapping {control['control_id']}: {str(e)}")
-                        # Continue with next control
-                    
-                    # Update progress
-                    progress_bar.progress((idx + 1) / len(st.session_state.controls))
-                    time.sleep(0.5)  # Small delay to avoid rate limiting
+                # Build control list for the batch API
+                controls_payload = [
+                    {
+                        "control_id": c['control_id'],
+                        "control_name": c['control_name'],
+                        "description": c['description'],
+                        "domain": c.get('domain')
+                    }
+                    for c in st.session_state.controls
+                ]
+                
+                # Call the concurrent batch endpoint
+                batch_result = api_client.map_batch_controls(
+                    controls=controls_payload,
+                    concurrency=concurrency,
+                    timeout=max(600.0, num_controls * 60.0)
+                )
+                
+                # Process results
+                raw_mappings = batch_result.get('mappings', [])
+                mappings = []
+                for m in raw_mappings:
+                    mapping = {
+                        'control_id': m.get('external_control_id', 'N/A'),
+                        'control_name': m.get('external_control_name', 'N/A'),
+                        'description': next((c['description'] for c in st.session_state.controls if c['control_id'] == m.get('external_control_id')), ''),
+                        'domain': next((c.get('domain') for c in st.session_state.controls if c['control_id'] == m.get('external_control_id')), None),
+                        'mcsb_control_id': m.get('mcsb_control_id', 'N/A'),
+                        'mcsb_control_name': m.get('mcsb_control_name', 'N/A'),
+                        'mcsb_domain': m.get('mcsb_domain', 'N/A'),
+                        'confidence_score': m.get('confidence_score', 0.0),
+                        'reasoning': m.get('reasoning', ''),
+                        'azure_policy_ids': m.get('azure_policy_ids', []),
+                        'mapping_type': m.get('mapping_type', 'unknown'),
+                        'sovereignty': m.get('sovereignty'),
+                    }
+                    mappings.append(mapping)
                 
                 # Save mappings
                 st.session_state.mappings = mappings
                 st.session_state.mapping_in_progress = False
                 
                 status_text.empty()
-                progress_bar.empty()
                 
-                st.success(f"✅ Successfully mapped {len(mappings)} controls!")
+                mapped_count = batch_result.get('mapped', 0)
+                failed_count = batch_result.get('failed', 0)
+                
+                if failed_count > 0:
+                    st.warning(f"⚠️ Mapped {mapped_count} controls, {failed_count} failed (fallback created)")
+                else:
+                    st.success(f"✅ Successfully mapped {mapped_count} controls!")
                 st.balloons()
                 
                 # Show summary

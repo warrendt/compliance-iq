@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime
 from app.models.sovereignty import SovereigntyMapping
+from app.models.control import ExternalControl
 
 
 class ControlMapping(BaseModel):
@@ -130,7 +131,6 @@ class MappingRequest(BaseModel):
     batch_mode: bool = Field(True, description="Process in batch mode")
 
     class Config:
-        from app.models.control import ExternalControl
         json_schema_extra = {
             "example": {
                 "framework_name": "SAMA Cybersecurity",

@@ -1,22 +1,22 @@
 """
-Microsoft Learn MCP Client for Azure Policy Discovery.
-Integrates with Microsoft Learn documentation to find relevant Azure Policies.
+Microsoft Learn Client for Azure Policy Discovery.
+Searches Microsoft Learn documentation to find relevant Azure Policies.
 """
 
 import logging
 import httpx
 from typing import List, Dict, Optional
-import json
+import re
 
 logger = logging.getLogger(__name__)
 
 
 class MicrosoftLearnClient:
-    """Client for Microsoft Learn MCP server."""
+    """Client for Microsoft Learn search API."""
     
     def __init__(self):
         """Initialize Microsoft Learn client."""
-        self.base_url = "https://learn.microsoft.com/api"
+        self.search_url = "https://learn.microsoft.com/api/search"
         self.timeout = 30.0
     
     async def search_azure_policies(
@@ -39,53 +39,33 @@ class MicrosoftLearnClient:
         logger.info(f"Searching Microsoft Learn for: {control_name}")
         
         try:
-            # Build search query - keep it concise to avoid 400 errors
-            query_parts = [control_name[:50]]  # Limit control name length
+            # Build a concise, targeted search query
+            query = f"Azure Policy built-in {control_name[:60]}"
             if domain:
-                query_parts.append(domain[:30])
-            # Add first 50 chars of description
-            if description:
-                query_parts.append(description[:50])
+                query += f" {domain[:30]}"
             
-            search_query = " ".join(query_parts)
-            full_query = f"Azure Policy {search_query} security compliance"
+            logger.info(f"Search query: {query}")
             
-            logger.info(f"Built search query (length={len(full_query)}): {full_query}")
-            logger.debug(f"Query components - name: '{control_name[:50]}', domain: '{domain[:30] if domain else 'N/A'}', desc: '{description[:50] if description else 'N/A'}'")
-            
-            # Search for Azure Policy documentation
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Standard policy search
-                search_results = await self._search_docs(
-                    client,
-                    query=full_query
-                )
+                # Primary search for Azure Policies
+                results = await self._search_docs(client, query)
                 
-                # Additional sovereignty-specific search if control relates to sovereignty topics
+                # If sovereignty-relevant, do an additional SLZ search
+                desc_lower = f"{control_name} {description}".lower()
                 sovereignty_keywords = [
                     "data residency", "location", "region", "encryption", "encrypt",
                     "customer-managed key", "cmk", "byok", "confidential",
                     "trusted launch", "secure boot", "lockbox",
                 ]
-                desc_lower = f"{control_name} {description}".lower()
-                is_sovereignty_relevant = any(kw in desc_lower for kw in sovereignty_keywords)
+                if any(kw in desc_lower for kw in sovereignty_keywords):
+                    slz_query = f"Azure Policy Sovereignty Baseline {control_name[:40]}"
+                    logger.info(f"Adding SLZ search: {slz_query}")
+                    slz_results = await self._search_docs(client, slz_query, max_results=3)
+                    results.extend(slz_results)
                 
-                if is_sovereignty_relevant:
-                    sovereignty_query = f"Sovereignty Baseline MCfS Azure Policy {control_name[:40]}"
-                    logger.info(f"Control has sovereignty relevance, adding SLZ search: {sovereignty_query}")
-                    slz_results = await self._search_docs(client, query=sovereignty_query, max_results=3)
-                    search_results.extend(slz_results)
-                
-                # Extract policy IDs and relevant info
-                logger.info(f"Extracting policy info from {len(search_results)} search results")
-                policies = await self._extract_policy_info(search_results)
-                
-                logger.info(f"✓ Found {len(policies)} relevant policies")
-                for i, policy in enumerate(policies, 1):
-                    logger.debug(f"  Policy {i}: {policy.get('policy_name', 'N/A')[:80]}")
-                    logger.debug(f"    ID: {policy.get('policy_id', 'N/A')}")
-                    logger.debug(f"    URL: {policy.get('learn_url', 'N/A')}")
-                
+                # Extract policy info from results
+                policies = self._extract_policy_info(results)
+                logger.info(f"Found {len(policies)} relevant policies")
                 return policies
                 
         except Exception as e:
@@ -110,48 +90,29 @@ class MicrosoftLearnClient:
             List of search results
         """
         try:
-            # Limit query length to avoid 400 errors
-            original_length = len(query)
-            if len(query) > 150:
-                query = query[:150]
-                logger.debug(f"Truncated query from {original_length} to 150 chars")
-            
-            # Build URL and params
-            url = f"{self.base_url}/search"
             params = {
                 "search": query,
-                "facet": "category:Azure,products:Azure Policy",
-                "top": max_results
+                "locale": "en-us",
+                "$top": max_results,
+                "scope": "Azure",
             }
             
-            logger.info(f"Calling Microsoft Learn API: {url}")
-            logger.debug(f"Request params: {params}")
-            
-            # Use Microsoft Learn search API
-            response = await client.get(url, params=params)
-            
-            logger.info(f"Microsoft Learn API response: {response.status_code}")
+            response = await client.get(self.search_url, params=params)
             
             if response.status_code == 200:
                 data = response.json()
                 results = data.get("results", [])
                 logger.info(f"Microsoft Learn returned {len(results)} results")
-                logger.debug(f"Response data keys: {list(data.keys())}")
                 return results
             else:
                 logger.warning(f"Search API returned {response.status_code}")
-                try:
-                    error_body = response.text[:500]
-                    logger.debug(f"Error response body: {error_body}")
-                except:
-                    pass
                 return []
                 
         except Exception as e:
             logger.error(f"Search request failed: {e}")
             return []
     
-    async def _extract_policy_info(self, search_results: List[Dict]) -> List[Dict]:
+    def _extract_policy_info(self, search_results: List[Dict]) -> List[Dict]:
         """
         Extract Azure Policy IDs and information from search results.
         
@@ -162,29 +123,28 @@ class MicrosoftLearnClient:
             List of policy information dictionaries
         """
         policies = []
+        seen_urls = set()
+        guid_pattern = re.compile(
+            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            re.IGNORECASE
+        )
         
-        logger.debug(f"Processing {len(search_results)} search results for policy extraction")
-        
-        for idx, result in enumerate(search_results, 1):
+        for result in search_results:
             try:
                 title = result.get("title", "")
                 url = result.get("url", "")
                 description = result.get("description", "")
                 
-                logger.debug(f"Result {idx}: {title[:60]}...")
-                logger.debug(f"  URL: {url}")
+                # Deduplicate
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
                 
-                # Look for policy IDs in the content
-                # Policy IDs are typically GUIDs or have format: /providers/Microsoft.Authorization/policyDefinitions/{guid}
-                policy_id = self._extract_policy_id_from_url(url)
+                # Look for policy GUID in URL
+                match = guid_pattern.search(url)
+                policy_id = match.group(0) if match else None
                 
-                if policy_id:
-                    logger.debug(f"  ✓ Found policy ID: {policy_id}")
-                elif "policy" in title.lower():
-                    logger.debug(f"  ✓ Title contains 'policy', including result")
-                else:
-                    logger.debug(f"  ✗ No policy ID found, title doesn't contain 'policy', skipping")
-                
+                # Include results that have a policy ID or mention policy in title
                 if policy_id or "policy" in title.lower():
                     policies.append({
                         "policy_id": policy_id or "See documentation",
@@ -194,31 +154,10 @@ class MicrosoftLearnClient:
                     })
                     
             except Exception as e:
-                logger.warning(f"Failed to extract policy info from result {idx}: {e}")
+                logger.warning(f"Failed to extract policy info: {e}")
                 continue
         
         return policies
-    
-    def _extract_policy_id_from_url(self, url: str) -> Optional[str]:
-        """
-        Extract Azure Policy ID from documentation URL.
-        
-        Args:
-            url: Documentation URL
-            
-        Returns:
-            Policy ID if found, None otherwise
-        """
-        # Look for GUID pattern (Azure Policy IDs are GUIDs)
-        import re
-        guid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-        
-        match = re.search(guid_pattern, url, re.IGNORECASE)
-        if match:
-            return match.group(0)
-        
-        return None
-    
 
 
 def get_microsoft_learn_client() -> MicrosoftLearnClient:

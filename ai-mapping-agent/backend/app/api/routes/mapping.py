@@ -3,10 +3,11 @@ Control mapping endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
 import uuid
+import asyncio
 
 from app.models import (
     ExternalControl,
@@ -32,6 +33,21 @@ class MapSingleRequest(BaseModel):
 class MapSingleResponse(BaseModel):
     """Response for single control mapping."""
     mapping: ControlMapping
+
+
+class MapBatchRequest(BaseModel):
+    """Request to map multiple controls concurrently."""
+    controls: List[ExternalControl]
+    concurrency: int = Field(default=5, ge=1, le=10, description="Max concurrent AI calls")
+
+
+class MapBatchResponse(BaseModel):
+    """Response for concurrent batch mapping."""
+    mappings: List[ControlMapping]
+    total: int
+    mapped: int
+    failed: int
+    avg_confidence: float
 
 
 @router.post("/map-single", response_model=MapSingleResponse)
@@ -70,6 +86,51 @@ async def map_single_control(request: MapSingleRequest):
     except Exception as e:
         logger.error(f"Failed to map control: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/map-batch", response_model=MapBatchResponse)
+async def map_batch_controls(request: MapBatchRequest):
+    """
+    Map multiple controls concurrently.
+
+    Processes controls in parallel (default 5 at a time) for faster throughput.
+    Returns all results once complete.
+    """
+    logger.info(f"Batch mapping {len(request.controls)} controls (concurrency={request.concurrency})")
+
+    ai_service = get_ai_mapping_service()
+    semaphore = asyncio.Semaphore(request.concurrency)
+    mappings: List[ControlMapping] = []
+    failed = 0
+
+    async def map_one(control: ExternalControl) -> Optional[ControlMapping]:
+        nonlocal failed
+        async with semaphore:
+            try:
+                return await ai_service.map_control(control)
+            except Exception as e:
+                logger.error(f"Failed to map {control.control_id}: {e}")
+                failed += 1
+                return ai_service._create_fallback_mapping(control, str(e))
+
+    tasks = [map_one(c) for c in request.controls]
+    results = await asyncio.gather(*tasks)
+    mappings = [m for m in results if m is not None]
+
+    avg_conf = (
+        sum(m.confidence_score for m in mappings) / len(mappings)
+        if mappings else 0.0
+    )
+
+    logger.info(f"Batch complete: {len(mappings)} mapped, {failed} failed, avg confidence {avg_conf:.2f}")
+
+    return MapBatchResponse(
+        mappings=mappings,
+        total=len(request.controls),
+        mapped=len(mappings) - failed,
+        failed=failed,
+        avg_confidence=avg_conf,
+    )
 
 
 @router.post("/analyze", response_model=MappingJob)

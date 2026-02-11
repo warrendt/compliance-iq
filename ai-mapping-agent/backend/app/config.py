@@ -24,12 +24,29 @@ class Settings(BaseSettings):
 
     # Azure Open AI Settings
     azure_openai_endpoint: str
-    azure_openai_deployment_name: str = "gpt-4o"
-    azure_openai_api_version: str = "2024-10-21"
+    azure_openai_deployment_name: str = "gpt-5"  # Primary model
+    azure_openai_fallback_model: str = "gpt-4o"  # Fallback if GPT-5 unavailable
+    azure_openai_api_version: str = "2024-12-01-preview"
 
     # Optional: For user-assigned managed identity
     azure_client_id: Optional[str] = None
     azure_tenant_id: Optional[str] = None
+
+    # Cosmos DB Settings
+    cosmos_db_endpoint: Optional[str] = None
+    cosmos_db_database_name: str = "cctoolkit-db"
+
+    # Application Insights
+    applicationinsights_connection_string: Optional[str] = None
+
+    # Authentication
+    enable_auth: bool = False  # Enable Azure AD authentication
+    azure_ad_tenant_id: Optional[str] = None
+    azure_ad_client_id: Optional[str] = None
+
+    # Environment
+    environment: str = "development"  # development, staging, production
+    log_level: str = "INFO"
 
     # CORS Settings (can be comma-separated string or list)
     cors_origins: Union[list[str], str] = "http://localhost:8501,http://localhost:3000"
@@ -48,7 +65,7 @@ class Settings(BaseSettings):
 
     # AI Mapping Settings
     ai_temperature: float = 0.3  # Lower for consistency (Note: GPT-5 ignores this)
-    ai_max_tokens: int = 2000
+    ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
 
     class Config:

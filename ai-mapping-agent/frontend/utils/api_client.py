@@ -100,6 +100,41 @@ class APIClient:
         finally:
             self.timeout = original_timeout
     
+    def map_batch_controls(
+        self,
+        controls: List[Dict[str, str]],
+        concurrency: int = 5,
+        timeout: float = 600.0
+    ) -> Dict[str, Any]:
+        """Map multiple controls concurrently via the batch endpoint.
+        
+        Args:
+            controls: List of control dicts with control_id, control_name, description, domain
+            concurrency: Max concurrent AI calls (1-10)
+            timeout: Request timeout in seconds
+            
+        Returns:
+            Batch result with mappings, total, mapped, failed, avg_confidence
+        """
+        payload = {
+            "controls": controls,
+            "concurrency": concurrency
+        }
+        
+        original_timeout = self.timeout
+        self.timeout = timeout
+        
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/mapping/map-batch",
+                    json=payload
+                )
+                response.raise_for_status()
+                return response.json()
+        finally:
+            self.timeout = original_timeout
+
     def start_batch_mapping(
         self,
         controls: List[Dict[str, str]],

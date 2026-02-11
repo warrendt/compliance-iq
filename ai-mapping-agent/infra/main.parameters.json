@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION=swedencentral}"
+    },
+    "openAiModelName": {
+      "value": "${AZURE_OPENAI_MODEL_NAME=gpt-4.1}"
+    },
+    "openAiModelVersion": {
+      "value": "${AZURE_OPENAI_MODEL_VERSION=2025-04-14}"
+    },
+    "openAiFallbackModel": {
+      "value": "${AZURE_OPENAI_FALLBACK_MODEL=gpt-4o}"
+    },
+    "openAiFallbackVersion": {
+      "value": "${AZURE_OPENAI_FALLBACK_VERSION=2024-11-20}"
+    }
+  }
+}

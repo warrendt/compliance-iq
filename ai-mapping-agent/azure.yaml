@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: cctoolkit
+metadata:
+  template: cctoolkit-ai-agent@1.0.0
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+services:
+  backend:
+    project: ./backend
+    language: python
+    host: containerapp
+    docker:
+      path: ./backend/Dockerfile
+      context: ./backend
+  
+  frontend:
+    project: ./frontend
+    language: python
+    host: containerapp
+    docker:
+      path: ./frontend/Dockerfile
+      context: ./frontend
+
+hooks:
+  preprovision:
+    posix:
+      shell: sh
+      run: |
+        echo "Pre-provisioning checks..."
+        # Check for required tools
+        if ! command -v az &> /dev/null; then
+          echo "Error: Azure CLI is not installed"
+          exit 1
+        fi
+        echo "✓ Azure CLI found"
+        
+        # Check Azure login
+        if ! az account show &> /dev/null; then
+          echo "Error: Not logged in to Azure. Run 'az login'"
+          exit 1
+        fi
+        echo "✓ Azure authentication verified"
+      continueOnError: false
+  
+  postprovision:
+    posix:
+      shell: sh
+      run: |
+        echo "Post-provisioning setup..."
+        echo "======================================"
+        echo "Deployment Summary:"
+        echo "======================================"
+        echo "Environment: ${AZURE_ENV_NAME}"
+        echo "Resource Group: ${AZURE_RESOURCE_GROUP}"
+        echo "Location: ${AZURE_LOCATION}"
+        echo ""
+        echo "Frontend URL: ${FRONTEND_URI}"
+        echo "Backend URL: ${BACKEND_URI}"
+        echo ""
+        echo "✓ Deployment complete!"
+        echo ""
+        echo "Next steps:"
+        echo "1. Configure Azure AD app registrations (if not done)"
+        echo "2. Update redirect URIs in Azure Portal"
+        echo "3. Visit the frontend URL to test the application"
+        echo "4. Check logs: azd logs --service backend"
+      continueOnError: true
