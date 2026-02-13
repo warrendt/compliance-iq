@@ -300,6 +300,82 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    # --- PDF Pipeline endpoints ---
+
+    def run_pipeline(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+        min_confidence: float = 0.5,
+        allowed_locations: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Submit a compliance PDF for end-to-end pipeline processing.
+
+        Args:
+            pdf_bytes: Raw PDF file bytes
+            filename: Original filename
+            min_confidence: Minimum mapping confidence threshold
+            allowed_locations: Optional comma-separated Azure regions
+
+        Returns:
+            Dict with job_id and initial status
+        """
+        data: Dict[str, str] = {"min_confidence": str(min_confidence)}
+        if allowed_locations:
+            data["allowed_locations"] = allowed_locations
+
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/run",
+                files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+                data=data,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_pipeline_status(self, job_id: str) -> Dict[str, Any]:
+        """Get the status of a pipeline job.
+
+        Args:
+            job_id: Pipeline job identifier
+
+        Returns:
+            Job status with progress, stage, and result info
+        """
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/pipeline/status/{job_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def download_pipeline_output(self, job_id: str) -> bytes:
+        """Download the pipeline output as a ZIP archive.
+
+        Args:
+            job_id: Pipeline job identifier
+
+        Returns:
+            Raw ZIP bytes
+        """
+        with httpx.Client(timeout=60.0) as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/pipeline/download/{job_id}"
+            )
+            response.raise_for_status()
+            return response.content
+
+    def list_pipeline_jobs(self) -> List[Dict[str, Any]]:
+        """List all pipeline jobs.
+
+        Returns:
+            List of pipeline job summaries
+        """
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/pipeline/jobs")
+            response.raise_for_status()
+            return response.json()
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:

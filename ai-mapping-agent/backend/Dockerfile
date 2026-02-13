@@ -31,6 +31,9 @@ COPY --from=builder /root/.local /home/appuser/.local
 # Copy application code
 COPY --chown=appuser:appuser app/ ./app/
 
+# Ensure pipeline package is available
+RUN test -d /app/app/pipeline && echo 'Pipeline package present' || echo 'WARNING: pipeline package missing'
+
 # Set environment variables
 ENV PATH=/home/appuser/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \

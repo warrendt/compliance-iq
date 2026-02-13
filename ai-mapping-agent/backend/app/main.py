@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 from app.config import get_settings
-from app.api.routes import health, mapping, policy, sovereignty
+from app.api.routes import health, mapping, policy, sovereignty, pipeline
 from app.logging_config import configure_logging, get_logger
 from app.monitoring import app_insights
 from app.db import cosmos_client
@@ -65,6 +65,7 @@ app.include_router(health.router, prefix=f"{settings.api_v1_prefix}/health")
 app.include_router(mapping.router, prefix=settings.api_v1_prefix)
 app.include_router(policy.router, prefix=settings.api_v1_prefix)
 app.include_router(sovereignty.router, prefix=settings.api_v1_prefix)
+app.include_router(pipeline.router, prefix=settings.api_v1_prefix)
 
 
 @app.on_event("startup")

@@ -11,6 +11,12 @@ param maxReplicas int = 10
 param environmentVariables array = []
 param cpu string = '0.5'
 param memory string = '1Gi'
+param containerRegistryName string = ''
+
+// Reference existing ACR to get admin credentials
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = if (!empty(containerRegistryName)) {
+  name: containerRegistryName
+}
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
@@ -34,8 +40,19 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
       }
-      registries: []
-      secrets: []
+      registries: !empty(containerRegistryName) ? [
+        {
+          server: containerRegistry.properties.loginServer
+          username: containerRegistry.listCredentials().username
+          passwordSecretRef: 'acr-password'
+        }
+      ] : []
+      secrets: !empty(containerRegistryName) ? [
+        {
+          name: 'acr-password'
+          value: containerRegistry.listCredentials().passwords[0].value
+        }
+      ] : []
     }
     template: {
       containers: [

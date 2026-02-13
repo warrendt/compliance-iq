@@ -1,21 +1,69 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+# =============================================================================
+# CCToolkit v1 — Root azure.yaml
+# 
+# The full deployment configuration lives in ai-mapping-agent/azure.yaml.
+# This root file delegates to it so `azd up` works from the repo root.
+# =============================================================================
 
 name: cctoolkit-v1
 metadata:
-    template: azd-init@1.23.3
+  template: cctoolkit-ai-agent@1.0.0
+
+infra:
+  provider: bicep
+  path: ai-mapping-agent/infra
+  module: main
+
 services:
-    backend:
-        project: ai-mapping-agent/backend
-        host: containerapp
-        language: python
-    frontend:
-        project: ai-mapping-agent/frontend
-        host: containerapp
-        language: python
-resources:
-    backend:
-        type: host.containerapp
-        port: 80
-    frontend:
-        type: host.containerapp
-        port: 80
+  backend:
+    project: ai-mapping-agent/backend
+    host: containerapp
+    language: python
+    docker:
+      path: ai-mapping-agent/backend/Dockerfile
+      context: ai-mapping-agent/backend
+
+  frontend:
+    project: ai-mapping-agent/frontend
+    host: containerapp
+    language: python
+    docker:
+      path: ai-mapping-agent/frontend/Dockerfile
+      context: ai-mapping-agent/frontend
+
+hooks:
+  preprovision:
+    posix:
+      shell: sh
+      run: |
+        echo "Pre-provisioning checks..."
+        if ! command -v az &> /dev/null; then
+          echo "Error: Azure CLI is not installed"
+          exit 1
+        fi
+        echo "✓ Azure CLI found"
+        if ! az account show &> /dev/null; then
+          echo "Error: Not logged in to Azure. Run 'az login'"
+          exit 1
+        fi
+        echo "✓ Azure authentication verified"
+      continueOnError: false
+
+  postprovision:
+    posix:
+      shell: sh
+      run: |
+        echo ""
+        echo "======================================"
+        echo " Deployment Summary"
+        echo "======================================"
+        echo "Environment: ${AZURE_ENV_NAME}"
+        echo "Resource Group: ${AZURE_RESOURCE_GROUP}"
+        echo "Location: ${AZURE_LOCATION}"
+        echo ""
+        echo "Frontend URL: ${FRONTEND_URI}"
+        echo "Backend URL: ${BACKEND_URI}"
+        echo ""
+        echo "✓ Deployment complete!"
+      continueOnError: true

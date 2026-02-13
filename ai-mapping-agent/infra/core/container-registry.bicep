@@ -15,12 +15,6 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
     adminUserEnabled: true
     publicNetworkAccess: 'Enabled'
     zoneRedundancy: 'Disabled'
-    policies: {
-      retentionPolicy: {
-        status: 'enabled'
-        days: 7
-      }
-    }
   }
 }
 

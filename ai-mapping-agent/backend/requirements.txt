@@ -18,6 +18,9 @@ azure-mgmt-cognitiveservices>=13.5.0
 fastapi-azure-auth>=5.0.0
 python-jose[cryptography]>=3.3.0
 
+# PDF extraction
+pypdf>=4.0.0
+
 # Data processing
 pandas>=2.2.0
 openpyxl>=3.1.5

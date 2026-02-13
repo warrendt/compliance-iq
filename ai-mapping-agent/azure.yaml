@@ -15,16 +15,16 @@ services:
     language: python
     host: containerapp
     docker:
-      path: ./backend/Dockerfile
-      context: ./backend
+      path: ./Dockerfile
+      context: .
   
   frontend:
     project: ./frontend
     language: python
     host: containerapp
     docker:
-      path: ./frontend/Dockerfile
-      context: ./frontend
+      path: ./Dockerfile
+      context: .
 
 hooks:
   preprovision:

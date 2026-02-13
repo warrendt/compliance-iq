@@ -76,7 +76,7 @@ module containerRegistry './core/container-registry.bicep' = {
     name: '${abbrs.containerRegistryRegistries}${resourceToken}'
     location: location
     tags: tags
-    sku: 'Standard'
+    sku: 'Basic'
   }
 }
 
@@ -136,6 +136,7 @@ module backendApp './core/container-app.bicep' = {
     maxReplicas: 10
     cpu: '0.5'
     memory: '1Gi'
+    containerRegistryName: containerRegistry.outputs.name
     environmentVariables: [
       {
         name: 'AZURE_OPENAI_ENDPOINT'
@@ -189,6 +190,7 @@ module frontendApp './core/container-app.bicep' = {
     maxReplicas: 5
     cpu: '0.25'
     memory: '0.5Gi'
+    containerRegistryName: containerRegistry.outputs.name
     environmentVariables: [
       {
         name: 'BACKEND_URL'

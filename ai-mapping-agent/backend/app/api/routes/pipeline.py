@@ -1,0 +1,272 @@
+"""
+API routes for the compliance pipeline — PDF to Defender for Cloud Initiative.
+Provides a POST endpoint that accepts a PDF upload and runs the full pipeline.
+"""
+
+import json
+import logging
+import os
+import shutil
+import tempfile
+import time
+import uuid
+import zipfile
+from datetime import datetime
+from io import BytesIO
+from pathlib import Path
+from typing import Optional
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
+
+# In-memory job store (production would use Cosmos DB)
+_jobs: dict[str, dict] = {}
+
+
+class PipelineJobStatus(BaseModel):
+    """Status of a pipeline job."""
+    job_id: str
+    status: str  # pending, extracting_text, extracting_controls, mapping_policies, validating, generating, completed, failed
+    progress: int = 0  # 0-100
+    stage: str = ""
+    framework_name: Optional[str] = None
+    controls_extracted: int = 0
+    controls_mapped: int = 0
+    error: Optional[str] = None
+    output_dir: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class PipelineRequest(BaseModel):
+    """Request options for the pipeline."""
+    min_confidence: float = Field(0.5, ge=0.0, le=1.0)
+    allowed_locations: Optional[list[str]] = None
+
+
+@router.post("/run", response_model=PipelineJobStatus)
+async def run_pipeline_endpoint(
+    background_tasks: BackgroundTasks,
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+    min_confidence: float = Form(0.5, ge=0.0, le=1.0),
+    allowed_locations: Optional[str] = Form(None, description="Comma-separated Azure regions"),
+):
+    """
+    Submit a compliance PDF for automated processing.
+
+    The pipeline will:
+    1. Extract text from the PDF
+    2. Use AI to extract all compliance controls
+    3. Map each control to Azure Policy definitions
+    4. Validate the mappings
+    5. Generate deployable initiative artifacts
+
+    Returns a job ID that can be polled for status.
+    """
+    # Validate file
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    # Read the uploaded file
+    content = await pdf_file.read()
+    if len(content) == 0:
+        raise HTTPException(400, "PDF file is empty")
+    if len(content) > 50 * 1024 * 1024:  # 50MB limit
+        raise HTTPException(400, "PDF file exceeds 50MB limit")
+
+    # Parse locations
+    locations = None
+    if allowed_locations:
+        locations = [loc.strip() for loc in allowed_locations.split(",") if loc.strip()]
+
+    # Create job
+    job_id = str(uuid.uuid4())
+    job = {
+        "job_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "stage": "Queued",
+        "framework_name": None,
+        "controls_extracted": 0,
+        "controls_mapped": 0,
+        "error": None,
+        "output_dir": None,
+        "started_at": datetime.utcnow().isoformat(),
+        "completed_at": None,
+        "pdf_filename": pdf_file.filename,
+        "pdf_content": content,
+        "min_confidence": min_confidence,
+        "allowed_locations": locations,
+    }
+    _jobs[job_id] = job
+
+    # Run pipeline in background
+    background_tasks.add_task(_run_pipeline_job, job_id)
+
+    logger.info(f"Pipeline job created: {job_id} for {pdf_file.filename}")
+
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.get("/status/{job_id}", response_model=PipelineJobStatus)
+async def get_pipeline_status(job_id: str):
+    """Get the current status of a pipeline job."""
+    if job_id not in _jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = _jobs[job_id]
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.get("/download/{job_id}")
+async def download_pipeline_output(job_id: str):
+    """Download the generated initiative artifacts as a ZIP file."""
+    if job_id not in _jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = _jobs[job_id]
+
+    if job["status"] != "completed":
+        raise HTTPException(400, f"Job is not completed (status: {job['status']})")
+
+    output_dir = job.get("output_dir")
+    if not output_dir or not Path(output_dir).exists():
+        raise HTTPException(500, "Output directory not found")
+
+    # Create ZIP in memory
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        out_path = Path(output_dir)
+        for file_path in out_path.iterdir():
+            if file_path.is_file():
+                zf.write(file_path, file_path.name)
+
+    zip_buffer.seek(0)
+
+    fw_name = job.get("framework_name", "initiative")
+    safe_name = fw_name.replace(" ", "_").replace("/", "_")
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}_Initiative.zip"'
+        },
+    )
+
+
+@router.get("/jobs", response_model=list[PipelineJobStatus])
+async def list_pipeline_jobs():
+    """List all pipeline jobs."""
+    return [
+        PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+        for job in _jobs.values()
+    ]
+
+
+async def _run_pipeline_job(job_id: str):
+    """Execute the pipeline in the background."""
+    from app.pipeline import (
+        PipelineConfig,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+        extract_controls_from_text,
+        map_controls_to_azure_policies,
+        validate_mappings,
+        build_initiative_artifacts,
+    )
+
+    job = _jobs[job_id]
+
+    try:
+
+        # Save PDF to temp file
+        tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_")
+        pdf_path = Path(tmp_dir) / job["pdf_filename"]
+        pdf_path.write_bytes(job["pdf_content"])
+
+        # Load config
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            job["status"] = "failed"
+            job["error"] = f"Config errors: {'; '.join(errors)}"
+            return
+
+        # ── Stage 1: Extract text ─────────────────────────────────────
+        job["status"] = "extracting_text"
+        job["stage"] = "Extracting text from PDF"
+        job["progress"] = 5
+
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+
+        job["progress"] = 15
+
+        # ── Stage 2: Extract controls ─────────────────────────────────
+        job["status"] = "extracting_controls"
+        job["stage"] = "AI extracting controls from document"
+        job["progress"] = 20
+
+        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+
+        job["framework_name"] = extraction.framework_name
+        job["controls_extracted"] = len(extraction.controls)
+        job["progress"] = 40
+
+        # ── Stage 3: Map to Azure Policies ────────────────────────────
+        job["status"] = "mapping_policies"
+        job["stage"] = "Mapping controls to Azure Policies"
+        job["progress"] = 45
+
+        def progress_cb(current, total):
+            pct = 45 + int((current / total) * 30)
+            job["progress"] = pct
+            job["controls_mapped"] = current
+
+        mappings = map_controls_to_azure_policies(extraction, config, progress_callback=progress_cb)
+        job["controls_mapped"] = len(mappings)
+        job["progress"] = 80
+
+        # ── Stage 4: Validate ─────────────────────────────────────────
+        job["status"] = "validating"
+        job["stage"] = "Validating mappings"
+        job["progress"] = 85
+
+        validation = validate_mappings(extraction, mappings, job["min_confidence"])
+        job["progress"] = 90
+
+        # ── Stage 5: Generate artifacts ───────────────────────────────
+        job["status"] = "generating"
+        job["stage"] = "Generating initiative artifacts"
+
+        output_dir = str(Path(tmp_dir) / "output")
+        files = build_initiative_artifacts(
+            extraction=extraction,
+            mappings=mappings,
+            validation=validation,
+            output_dir=output_dir,
+            allowed_locations=job["allowed_locations"],
+        )
+
+        job["output_dir"] = output_dir
+        job["status"] = "completed"
+        job["stage"] = "Complete"
+        job["progress"] = 100
+        job["completed_at"] = datetime.utcnow().isoformat()
+
+        logger.info(f"Pipeline job {job_id} completed: {len(files)} files generated")
+
+        # Remove the raw PDF content from memory
+        del job["pdf_content"]
+
+    except Exception as e:
+        logger.error(f"Pipeline job {job_id} failed: {e}", exc_info=True)
+        job["status"] = "failed"
+        job["error"] = str(e)
+        job["completed_at"] = datetime.utcnow().isoformat()
