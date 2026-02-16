@@ -27,6 +27,7 @@ class CosmosDBClient:
         self.AUDIT_LOGS = "audit-logs"
         self.USER_UPLOADS = "user-uploads"
         self.GENERATED_ARTIFACTS = "generated-artifacts"
+        self.MAPPING_JOBS = "mapping-jobs"
     
     async def initialize(self) -> None:
         """Initialize Cosmos DB client with managed identity"""
@@ -44,6 +45,13 @@ class CosmosDBClient:
             )
             
             self.database = self.client.get_database_client(self.database_name)
+
+            # Ensure containers needed at runtime exist (no-op if already provisioned)
+            await self.ensure_container(
+                self.MAPPING_JOBS,
+                partition_key_paths=["/job_id"],
+                default_ttl=2592000  # 30 days
+            )
             
             logger.info("Cosmos DB client initialized successfully", extra={
                 "endpoint": self.endpoint,
@@ -92,6 +100,30 @@ class CosmosDBClient:
             logger.error(f"Failed to insert document: {e}", extra={
                 "container": container_name,
                 "status_code": e.status_code
+            })
+            raise
+
+    async def upsert_document(self, container_name: str, document: Dict[str, Any],
+                               partition_key: Optional[str] = None) -> Dict[str, Any]:
+        """Create or replace a document (idempotent)."""
+        try:
+            container = self.database.get_container_client(container_name)
+
+            if '_ts' not in document:
+                document['timestamp'] = datetime.utcnow().isoformat()
+
+            kwargs = {"partition_key": partition_key} if partition_key else {}
+            result = await container.upsert_item(body=document, **kwargs)
+
+            logger.info("document_upserted", extra={
+                "container": container_name,
+                "document_id": document.get('id')
+            })
+            return result
+        except exceptions.CosmosHttpResponseError as e:
+            logger.error(f"Failed to upsert document: {e}", extra={
+                "container": container_name,
+                "status_code": getattr(e, 'status_code', None)
             })
             raise
     
@@ -221,6 +253,37 @@ class CosmosDBClient:
         except exceptions.CosmosHttpResponseError as e:
             logger.error(f"Failed to delete document: {e}")
             raise
+
+    async def ensure_container(
+        self,
+        container_name: str,
+        *,
+        partition_key_paths: List[str],
+        default_ttl: Optional[int] = None
+    ) -> None:
+        """Create container if it does not exist (idempotent)."""
+        if not self.database:
+            return
+
+        try:
+            if len(partition_key_paths) == 1:
+                pk = PartitionKey(path=partition_key_paths[0])
+            else:
+                pk = PartitionKey(paths=partition_key_paths, kind="MultiHash", version=2)
+
+            await self.database.create_container_if_not_exists(
+                id=container_name,
+                partition_key=pk,
+                default_ttl=default_ttl
+            )
+
+            logger.info("container_ready", extra={
+                "container": container_name,
+                "partition_keys": partition_key_paths
+            })
+
+        except Exception as e:
+            logger.warning(f"Failed to ensure container {container_name}: {e}")
 
 
 # Global client instance

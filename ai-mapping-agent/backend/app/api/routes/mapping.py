@@ -8,6 +8,7 @@ from typing import List, Optional
 import logging
 import uuid
 import asyncio
+from datetime import datetime
 
 from app.models import (
     ExternalControl,
@@ -17,12 +18,55 @@ from app.models import (
     MappingJob
 )
 from app.services import get_ai_mapping_service, get_mcsb_service
+from app.db import cosmos_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mapping", tags=["mapping"])
 
 # In-memory job storage (for MVP - use Redis/database in production)
 mapping_jobs: dict[str, MappingJob] = {}
+
+
+def _cosmos_ready() -> bool:
+    """Check if Cosmos DB is initialized."""
+    return bool(cosmos_client and cosmos_client.database)
+
+
+async def _persist_job(job: MappingJob) -> None:
+    """Persist the job to Cosmos DB if available."""
+    if not _cosmos_ready():
+        return
+
+    doc = job.model_dump(mode="json")
+    doc["id"] = job.job_id
+    doc["job_id"] = job.job_id
+    await cosmos_client.upsert_document(
+        cosmos_client.MAPPING_JOBS,
+        doc,
+        partition_key=job.job_id
+    )
+
+
+async def _load_job(job_id: str) -> Optional[MappingJob]:
+    """Load a job from memory or Cosmos DB."""
+    if job_id in mapping_jobs:
+        return mapping_jobs[job_id]
+
+    if not _cosmos_ready():
+        return None
+
+    doc = await cosmos_client.get_document(
+        cosmos_client.MAPPING_JOBS,
+        document_id=job_id,
+        partition_key=job_id
+    )
+
+    if not doc:
+        return None
+
+    job = MappingJob(**doc)
+    mapping_jobs[job_id] = job
+    return job
 
 
 class MapSingleRequest(BaseModel):
@@ -173,6 +217,9 @@ async def analyze_controls(
 
     mapping_jobs[job_id] = job
 
+    # Persist immediately so other replicas can serve status
+    await _persist_job(job)
+
     # Start background task
     background_tasks.add_task(
         process_mapping_job,
@@ -195,10 +242,11 @@ async def get_mapping_status(job_id: str):
     Returns:
         MappingJob with current status and results
     """
-    if job_id not in mapping_jobs:
+    job = await _load_job(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return mapping_jobs[job_id]
+    return job
 
 
 @router.get("/mcsb/controls")
@@ -255,27 +303,33 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         job_id: Job identifier
         controls: List of controls to map
     """
-    job = mapping_jobs[job_id]
+    job = await _load_job(job_id)
+    if not job:
+        logger.error(f"Job {job_id} not found in cache or Cosmos")
+        return
+
     job.status = "in_progress"
 
     try:
         ai_service = get_ai_mapping_service()
 
-        def progress_callback(current: int, total: int):
+        async def progress_callback(current: int, total: int):
             """Update job progress."""
             job.mapped_controls = current
             job.progress = int((current / total) * 100)
+            await _persist_job(job)
             logger.debug(f"Job {job_id}: {current}/{total} ({job.progress}%)")
 
         # Map controls
-        batch_result = ai_service.map_controls_batch(controls, progress_callback)
+        batch_result = await ai_service.map_controls_batch(controls, progress_callback)
 
         # Update job
         job.status = "completed"
         job.progress = 100
         job.result = batch_result
-        from datetime import datetime
         job.completed_at = datetime.utcnow()
+
+        await _persist_job(job)
 
         logger.info(f"Job {job_id} completed successfully")
 
@@ -283,3 +337,4 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         logger.error(f"Job {job_id} failed: {e}")
         job.status = "failed"
         job.error_message = str(e)
+        await _persist_job(job)

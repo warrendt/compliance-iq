@@ -3,6 +3,8 @@ param name string
 param location string = resourceGroup().location
 param tags object = {}
 param logAnalyticsWorkspaceId string
+param infrastructureSubnetId string
+param workloadSubnetId string
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: name
@@ -16,6 +18,18 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
         sharedKey: listKeys(logAnalyticsWorkspaceId, '2022-10-01').primarySharedKey
       }
     }
+    vnetConfiguration: {
+      infrastructureSubnetId: infrastructureSubnetId
+      internal: false
+    }
+    workloadProfiles: [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+        maximumCount: 10
+        minimumCount: 0
+      }
+    ]
     zoneRedundant: false
   }
 }

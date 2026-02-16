@@ -8,6 +8,8 @@ param fallbackModel string = 'gpt-4o'
 param fallbackVersion string = '2024-11-20'
 param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
+param privateEndpointSubnetId string
+param privateDnsZoneId string
 
 // Note: GPT-4.1 is preview and may not be available in all regions
 // This template deploys both primary and fallback models
@@ -21,11 +23,52 @@ resource openai 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
   properties: {
     customSubDomainName: name
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
     }
   }
+}
+
+resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+  name: '${name}-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${name}-pe-conn'
+        properties: {
+          privateLinkServiceId: openai.id
+          groupIds: [
+            'account'
+          ]
+        }
+      }
+    ]
+    privateDnsZoneGroups: [
+      {
+        name: '${name}-pe-dns'
+        properties: {
+          privateDnsZoneConfigs: [
+            {
+              name: 'openai'
+              properties: {
+                privateDnsZoneId: privateDnsZoneId
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    openai
+  ]
 }
 
 // Deploy requested model (gpt-4.1 or configured model)

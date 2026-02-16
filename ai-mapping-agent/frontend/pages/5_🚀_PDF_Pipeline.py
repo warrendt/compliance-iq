@@ -6,6 +6,7 @@ Upload a compliance PDF and get a ready-to-deploy Azure Policy initiative.
 import time
 import streamlit as st
 from utils.api_client import APIClient
+import os
 
 st.set_page_config(
     page_title="PDF Pipeline — CCToolkit",
@@ -45,7 +46,7 @@ with st.sidebar:
 
     api_url = st.text_input(
         "Backend API URL",
-        value="http://localhost:8000",
+        value=os.getenv("BACKEND_URL", "http://localhost:8000"),
         help="URL of the CCToolkit backend API",
     )
 

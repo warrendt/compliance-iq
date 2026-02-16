@@ -3,6 +3,7 @@ API Client for communicating with the FastAPI backend.
 """
 
 import httpx
+import os
 from typing import Dict, List, Any, Optional
 import streamlit as st
 
@@ -10,13 +11,14 @@ import streamlit as st
 class APIClient:
     """Client for interacting with the AI Mapping Agent backend API."""
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str | None = None):
         """Initialize the API client.
         
         Args:
-            base_url: Base URL of the backend API
+            base_url: Base URL of the backend API. If not provided, falls back to
+                the BACKEND_URL environment variable, then localhost.
         """
-        self.base_url = base_url
+        self.base_url = (base_url or os.getenv("BACKEND_URL") or "http://localhost:8000").rstrip("/")
         self.timeout = 120.0  # Default timeout (2 minutes for AI operations)
         
     def _get_client(self) -> httpx.Client:

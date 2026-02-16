@@ -3,6 +3,8 @@ param name string
 param location string = resourceGroup().location
 param tags object = {}
 param databaseName string = 'cctoolkit-db'
+param privateEndpointSubnetId string
+param privateDnsZoneId string
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: name
@@ -28,10 +30,49 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         name: 'EnableServerless'
       }
     ]
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     disableKeyBasedMetadataWriteAccess: false
     enableFreeTier: false
   }
+}
+
+resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+  name: '${name}-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${name}-pe-conn'
+        properties: {
+          privateLinkServiceId: cosmosAccount.id
+          groupIds: [
+            'Sql'
+          ]
+        }
+      }
+    ]
+    privateDnsZoneGroups: [
+      {
+        name: '${name}-pe-dns'
+        properties: {
+          privateDnsZoneConfigs: [
+            {
+              name: 'cosmosdb'
+              properties: {
+                privateDnsZoneId: privateDnsZoneId
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    cosmosAccount
+  ]
 }
 
 resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {

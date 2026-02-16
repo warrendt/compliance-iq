@@ -25,6 +25,8 @@ class HealthResponse(BaseModel):
     slz_policy_count: int = 0
 
 
+@router.get("", response_model=HealthResponse)
+@router.get("/", response_model=HealthResponse)
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """

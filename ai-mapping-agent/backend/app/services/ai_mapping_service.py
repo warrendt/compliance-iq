@@ -6,6 +6,7 @@ Enhanced with Microsoft Learn MCP server for Azure Policy discovery.
 
 import logging
 import json
+import inspect
 from typing import List, Optional
 from pydantic import ValidationError
 
@@ -183,51 +184,36 @@ class AIMappingService:
             # Return a default mapping instead of failing
             return self._create_fallback_mapping(external_control, str(e))
 
-    def map_controls_batch(
+    async def map_controls_batch(
         self,
         external_controls: List[ExternalControl],
         progress_callback: Optional[callable] = None
     ) -> MappingBatch:
+        """Map multiple controls in batch (async-safe).
+
+        Runs map_control with awaits to avoid nesting asyncio.run inside a running
+        loop (which was causing failures in background tasks).
         """
-        Map multiple controls in batch.
-
-        Args:
-            external_controls: List of external controls to map
-            progress_callback: Optional callback(current, total) for progress updates
-
-        Returns:
-            MappingBatch with all mappings and summary
-
-        Example:
-            ```python
-            service = AIMappingService()
-            controls = [ExternalControl(...), ...]
-            batch = service.map_controls_batch(controls)
-            print(f"Mapped {batch.mapped_count}/{batch.total_controls}")
-            ```
-        """
-        import asyncio
         logger.info(f"Starting batch mapping for {len(external_controls)} controls")
 
         mappings: List[ControlMapping] = []
         unmapped_controls: List[str] = []
+        total_controls = len(external_controls)
 
         for idx, control in enumerate(external_controls):
             try:
-                # Run async map_control in sync context
-                mapping = asyncio.run(self.map_control(control))
+                mapping = await self.map_control(control)
                 mappings.append(mapping)
-
-                # Call progress callback
-                if progress_callback:
-                    progress_callback(idx + 1, len(external_controls))
-
             except Exception as e:
                 logger.error(f"Failed to map {control.control_id}: {e}")
                 unmapped_controls.append(control.control_id)
 
-        # Calculate statistics
-        total_controls = len(external_controls)
+            if progress_callback:
+                if inspect.iscoroutinefunction(progress_callback):
+                    await progress_callback(idx + 1, total_controls)
+                else:
+                    progress_callback(idx + 1, total_controls)
+
         mapped_count = len(mappings)
         avg_confidence = (
             sum(m.confidence_score for m in mappings) / mapped_count

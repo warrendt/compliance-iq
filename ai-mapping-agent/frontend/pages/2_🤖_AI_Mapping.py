@@ -173,12 +173,12 @@ else:
     with col_start:
         if st.button("▶️ Start Batch Mapping", type="primary", use_container_width=True, disabled=st.session_state.mapping_in_progress):
             st.session_state.mapping_in_progress = True
-            
+            progress_bar = st.progress(0)
             status_text = st.empty()
-            status_text.text(f"🚀 Mapping {num_controls} controls with {concurrency} parallel workers...")
-            
+            log_box = st.empty()
+            log_lines: list[str] = []
+
             try:
-                # Build control list for the batch API
                 controls_payload = [
                     {
                         "control_id": c['control_id'],
@@ -188,16 +188,43 @@ else:
                     }
                     for c in st.session_state.controls
                 ]
-                
-                # Call the concurrent batch endpoint
-                batch_result = api_client.map_batch_controls(
+
+                job_id = api_client.start_batch_mapping(
                     controls=controls_payload,
-                    concurrency=concurrency,
-                    timeout=max(600.0, num_controls * 60.0)
+                    framework_name=st.session_state.framework_name,
                 )
-                
-                # Process results
-                raw_mappings = batch_result.get('mappings', [])
+
+                status_text.text(f"🚀 Mapping {num_controls} controls...")
+
+                last_mapped = -1
+                while True:
+                    status = api_client.get_job_status(job_id)
+                    mapped_controls = status.get("mapped_controls", 0)
+                    total_controls = status.get("total_controls", num_controls)
+                    progress = status.get("progress") or int((mapped_controls / max(total_controls, 1)) * 100)
+
+                    progress_bar.progress(progress / 100)
+                    status_line = f"Status: {status.get('status')} — {mapped_controls}/{total_controls} mapped ({progress}%)"
+                    status_text.text(status_line)
+
+                    if mapped_controls != last_mapped:
+                        log_lines.append(status_line)
+                        last_mapped = mapped_controls
+                        log_box.text("\n".join(log_lines[-15:]))
+
+                    if status.get("status") in ["completed", "failed"]:
+                        break
+
+                    time.sleep(2)
+
+                if status.get("status") == "failed":
+                    err = status.get("error_message", "Unknown error")
+                    st.error(f"❌ Mapping job failed: {err}")
+                    st.session_state.mapping_in_progress = False
+                    st.stop()
+
+                result = status.get("result", {}) or {}
+                raw_mappings = result.get("mappings", [])
                 mappings = []
                 for m in raw_mappings:
                     mapping = {
@@ -215,44 +242,39 @@ else:
                         'sovereignty': m.get('sovereignty'),
                     }
                     mappings.append(mapping)
-                
-                # Save mappings
+
                 st.session_state.mappings = mappings
                 st.session_state.mapping_in_progress = False
-                
-                status_text.empty()
-                
-                mapped_count = batch_result.get('mapped', 0)
-                failed_count = batch_result.get('failed', 0)
-                
+
+                mapped_count = result.get('mapped_count') or len(mappings)
+                failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
+
                 if failed_count > 0:
                     st.warning(f"⚠️ Mapped {mapped_count} controls, {failed_count} failed (fallback created)")
                 else:
                     st.success(f"✅ Successfully mapped {mapped_count} controls!")
                 st.balloons()
-                
-                # Show summary
+
                 st.markdown("### 📊 Mapping Summary")
-                
                 col_sum1, col_sum2, col_sum3 = st.columns(3)
-                
+
                 with col_sum1:
                     avg_confidence = sum(m.get('confidence_score', 0) for m in mappings) / len(mappings) if mappings else 0
                     st.metric("Average Confidence", f"{avg_confidence:.0%}")
-                
+
                 with col_sum2:
                     high_confidence = sum(1 for m in mappings if m.get('confidence_score', 0) >= 0.8)
                     st.metric("High Confidence (≥80%)", high_confidence)
-                
+
                 with col_sum3:
                     unique_mcsb = len(set(m.get('mcsb_control_id', '') for m in mappings))
                     st.metric("Unique MCSB Controls", unique_mcsb)
-                
+
                 st.info("👉 Go to **Review & Edit** to validate the mappings")
-                
+
                 if st.button("Continue to Review →", type="primary"):
                     st.switch_page("pages/3_✏️_Review_Edit.py")
-                    
+
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend. Make sure it's running.")
                 st.session_state.mapping_in_progress = False

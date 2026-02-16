@@ -20,6 +20,11 @@ if 'framework_name' not in st.session_state:
     st.session_state.framework_name = ""
 if 'uploaded_df' not in st.session_state:
     st.session_state.uploaded_df = None
+if 'controls_loaded' not in st.session_state:
+    st.session_state.controls_loaded = False
+for key in ["control_id_col", "control_name_col", "description_col", "domain_col"]:
+    if key not in st.session_state:
+        st.session_state[key] = ""
 
 # Header
 st.title("📁 Upload Framework Controls")
@@ -83,12 +88,15 @@ if uploaded_file is not None:
         col1, col2, col3, col4 = st.columns(4)
         
         available_columns = [''] + list(df.columns)
+
+        def _index_for(value: str) -> int:
+            return available_columns.index(value) if value in available_columns else 0
         
         with col1:
             control_id_col = st.selectbox(
                 "Control ID *",
                 options=available_columns,
-                index=0,
+                index=_index_for(st.session_state.control_id_col),
                 help="Column containing unique control identifiers"
             )
         
@@ -96,7 +104,7 @@ if uploaded_file is not None:
             control_name_col = st.selectbox(
                 "Control Name *",
                 options=available_columns,
-                index=0,
+                index=_index_for(st.session_state.control_name_col),
                 help="Column containing control names/titles"
             )
         
@@ -104,7 +112,7 @@ if uploaded_file is not None:
             description_col = st.selectbox(
                 "Description *",
                 options=available_columns,
-                index=0,
+                index=_index_for(st.session_state.description_col),
                 help="Column containing detailed descriptions"
             )
         
@@ -112,23 +120,29 @@ if uploaded_file is not None:
             domain_col = st.selectbox(
                 "Domain (optional)",
                 options=available_columns,
-                index=0,
+                index=_index_for(st.session_state.domain_col),
                 help="Column containing control domains/categories"
             )
+
+        # Persist current selections
+        st.session_state.control_id_col = control_id_col
+        st.session_state.control_name_col = control_name_col
+        st.session_state.description_col = description_col
+        st.session_state.domain_col = domain_col
         
         # Auto-detect columns
         if st.button("🔍 Auto-Detect Columns"):
             # Simple heuristic matching
             for col in df.columns:
                 col_lower = col.lower()
-                if 'id' in col_lower and not control_id_col:
-                    control_id_col = col
-                elif 'name' in col_lower and not control_name_col:
-                    control_name_col = col
-                elif 'description' in col_lower or 'desc' in col_lower:
-                    description_col = col
-                elif 'domain' in col_lower or 'category' in col_lower:
-                    domain_col = col
+                if 'id' in col_lower and not st.session_state.control_id_col:
+                    st.session_state.control_id_col = col
+                elif 'name' in col_lower and not st.session_state.control_name_col:
+                    st.session_state.control_name_col = col
+                elif ('description' in col_lower or 'desc' in col_lower) and not st.session_state.description_col:
+                    st.session_state.description_col = col
+                elif ('domain' in col_lower or 'category' in col_lower) and not st.session_state.domain_col:
+                    st.session_state.domain_col = col
             st.rerun()
         
         # Validation

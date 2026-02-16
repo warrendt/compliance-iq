@@ -44,6 +44,29 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   tags: tags
 }
 
+// Networking (VNet, subnets, NSG)
+module network './core/network.bicep' = {
+  name: 'network'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.networkVirtualNetworks}${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+// Private DNS zones linked to the VNet
+module privateDns './core/private-dns.bicep' = {
+  name: 'private-dns'
+  scope: resourceGroup
+  params: {
+    vnetId: network.outputs.vnetId
+    environmentName: environmentName
+    location: location
+    tags: tags
+  }
+}
+
 // Log Analytics Workspace
 module logAnalytics './core/log-analytics.bicep' = {
   name: 'log-analytics'
@@ -76,7 +99,9 @@ module containerRegistry './core/container-registry.bicep' = {
     name: '${abbrs.containerRegistryRegistries}${resourceToken}'
     location: location
     tags: tags
-    sku: 'Basic'
+    sku: 'Premium'
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneId: privateDns.outputs.acrZoneId
   }
 }
 
@@ -93,6 +118,8 @@ module openai './core/openai.bicep' = {
     fallbackModel: openAiFallbackModel
     fallbackVersion: openAiFallbackVersion
     apiVersion: openAiApiVersion
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneId: privateDns.outputs.openaiZoneId
   }
 }
 
@@ -105,6 +132,8 @@ module cosmos './core/cosmosdb.bicep' = {
     location: location
     tags: tags
     databaseName: cosmosDatabaseName
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneId: privateDns.outputs.cosmosZoneId
   }
 }
 
@@ -117,6 +146,8 @@ module containerAppsEnvironment './core/container-apps-environment.bicep' = {
     location: location
     tags: tags
     logAnalyticsWorkspaceId: logAnalytics.outputs.id
+    infrastructureSubnetId: network.outputs.infraSubnetId
+    workloadSubnetId: network.outputs.workloadSubnetId
   }
 }
 
