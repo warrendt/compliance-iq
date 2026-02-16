@@ -120,6 +120,7 @@ module openai './core/openai.bicep' = {
     apiVersion: openAiApiVersion
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.openaiZoneId
+    existingAccount: true
   }
 }
 

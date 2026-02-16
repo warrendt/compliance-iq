@@ -26,8 +26,6 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
       {
         name: 'Consumption'
         workloadProfileType: 'Consumption'
-        maximumCount: 10
-        minimumCount: 0
       }
     ]
     zoneRedundant: false
