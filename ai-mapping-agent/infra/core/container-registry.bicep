@@ -6,6 +6,7 @@ param sku string = 'Premium'
 param privateEndpointSubnetId string
 param privateDnsZoneId string = ''
 param enablePrivateEndpoint bool = true
+param allowPublicAccess bool = false
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: name
@@ -16,7 +17,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   }
   properties: {
     adminUserEnabled: true
-    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
+    publicNetworkAccess: allowPublicAccess ? 'Enabled' : (enablePrivateEndpoint ? 'Disabled' : 'Enabled')
     zoneRedundancy: 'Disabled'
   }
 }

@@ -27,6 +27,9 @@ param openAiApiVersion string = '2024-12-01-preview'
 @description('Cosmos DB database name')
 param cosmosDatabaseName string = 'cctoolkit-db'
 
+@description('Allow public network access to ACR (for temporary dev pushes)')
+param acrAllowPublicAccess bool = false
+
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -104,6 +107,7 @@ module containerRegistry './core/container-registry.bicep' = {
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.acrZoneId
     enablePrivateEndpoint: true
+    allowPublicAccess: acrAllowPublicAccess
   }
 }
 
