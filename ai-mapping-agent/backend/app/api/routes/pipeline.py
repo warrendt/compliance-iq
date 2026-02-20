@@ -58,6 +58,11 @@ class PipelineArtifacts(BaseModel):
     files: dict
 
 
+class PipelineRepackRequest(BaseModel):
+    """Request to repack initiative ZIP with edited mappings CSV."""
+    mappings_csv: str
+
+
 @router.post("/run", response_model=PipelineJobStatus)
 async def run_pipeline_endpoint(
     background_tasks: BackgroundTasks,
@@ -168,6 +173,50 @@ async def download_pipeline_output(job_id: str):
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{safe_name}_Initiative.zip"'
+        },
+    )
+
+
+@router.post("/repack/{job_id}")
+async def repack_pipeline_output(job_id: str, payload: PipelineRepackRequest):
+    """Repack initiative ZIP with edited mappings CSV (no full re-run)."""
+    if job_id not in _jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = _jobs[job_id]
+
+    if job.get("status") != "completed":
+        raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
+
+    output_dir = job.get("output_dir")
+    if not output_dir or not Path(output_dir).exists():
+        raise HTTPException(500, "Output directory not found")
+
+    out = Path(output_dir)
+    mappings_file = next((f for f in out.iterdir() if f.name.endswith("_Mappings.csv")), None)
+    if not mappings_file:
+        raise HTTPException(500, "Mappings CSV not found for this job")
+
+    # Overwrite mappings CSV with edited content
+    mappings_file.write_text(payload.mappings_csv, encoding="utf-8")
+
+    # Rebuild ZIP in-memory using current output directory contents
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file_path in out.iterdir():
+            if file_path.is_file():
+                zf.write(file_path, file_path.name)
+
+    zip_buffer.seek(0)
+
+    fw_name = job.get("framework_name", "initiative")
+    safe_name = fw_name.replace(" ", "_").replace("/", "_")
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}_Initiative_Edited.zip"'
         },
     )
 

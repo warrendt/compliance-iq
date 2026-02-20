@@ -367,6 +367,24 @@ class APIClient:
             response.raise_for_status()
             return response.content
 
+    def repack_pipeline_output(self, job_id: str, mappings_csv: str) -> bytes:
+        """Repack the initiative ZIP with edited mappings CSV.
+
+        Args:
+            job_id: Pipeline job identifier
+            mappings_csv: Edited CSV content
+
+        Returns:
+            Raw ZIP bytes
+        """
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/repack/{job_id}",
+                json={"mappings_csv": mappings_csv},
+            )
+            response.raise_for_status()
+            return response.content
+
     def get_pipeline_artifacts(self, job_id: str) -> Dict[str, Any]:
         """Fetch parsed pipeline artifacts for review/edit.
 

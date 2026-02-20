@@ -165,8 +165,10 @@ SAMA-NS-01,Network Segmentation,Implement network segmentation,Network Security
 2. Upload a compliance PDF, set min confidence and optional allowed locations
 3. Wait for completion (extract → map → validate → generate)
 4. Use **Review & Edit Mappings** to adjust control-to-policy mappings inline
-5. Download the edited mappings CSV (replace the CSV in the ZIP if you want to deploy with those edits)
-6. Download the initiative ZIP and deploy with the provided PowerShell/CLI scripts
+5. Edit mappings inline and either:
+  - Download the edited mappings CSV, or
+  - Repack and download a new initiative ZIP with your edits applied
+6. Deploy with the provided PowerShell/CLI scripts
 
 ## 🔧 Project Structure
 

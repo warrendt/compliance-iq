@@ -216,6 +216,26 @@ if uploaded_file:
                         use_container_width=True,
                     )
                     st.caption("Note: This exports the edited mappings CSV. Replace the CSV inside the ZIP if you want to deploy with these edits.")
+
+                    repack_col1, repack_col2 = st.columns([1, 2])
+                    with repack_col1:
+                        repack = st.button("📦 Repack ZIP with edits", use_container_width=True)
+                    if repack:
+                        if not csv_data.strip():
+                            st.warning("Edited mappings CSV is empty; cannot repack.")
+                        else:
+                            with st.spinner("Repacking ZIP with edited mappings..."):
+                                try:
+                                    zip_bytes = client.repack_pipeline_output(job_id, csv_data)
+                                    st.download_button(
+                                        "📥 Download edited initiative ZIP",
+                                        data=zip_bytes,
+                                        file_name=f"{status.get('framework_name','initiative').replace(' ','_')}_Initiative_Edited.zip",
+                                        mime="application/zip",
+                                        use_container_width=True,
+                                    )
+                                except Exception as e:
+                                    st.error(f"Failed to repack ZIP: {e}")
                 else:
                     st.info("No mappings found in artifacts.")
 
