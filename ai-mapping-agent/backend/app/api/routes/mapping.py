@@ -40,11 +40,15 @@ async def _persist_job(job: MappingJob) -> None:
     doc = job.model_dump(mode="json")
     doc["id"] = job.job_id
     doc["job_id"] = job.job_id
-    await cosmos_client.upsert_document(
-        cosmos_client.MAPPING_JOBS,
-        doc,
-        partition_key=job.job_id
-    )
+
+    try:
+        await cosmos_client.upsert_document(
+            cosmos_client.MAPPING_JOBS,
+            doc,
+            partition_key=job.job_id
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Cosmos persist failed for job {job.job_id}: {exc}")
 
 
 async def _load_job(job_id: str) -> Optional[MappingJob]:
@@ -55,11 +59,15 @@ async def _load_job(job_id: str) -> Optional[MappingJob]:
     if not _cosmos_ready():
         return None
 
-    doc = await cosmos_client.get_document(
-        cosmos_client.MAPPING_JOBS,
-        document_id=job_id,
-        partition_key=job_id
-    )
+    try:
+        doc = await cosmos_client.get_document(
+            cosmos_client.MAPPING_JOBS,
+            document_id=job_id,
+            partition_key=job_id
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Cosmos load failed for job {job_id}: {exc}")
+        return None
 
     if not doc:
         return None
