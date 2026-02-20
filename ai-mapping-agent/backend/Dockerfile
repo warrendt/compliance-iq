@@ -1,5 +1,6 @@
 # Multi-stage build for smaller image size
-FROM python:3.11-slim as builder
+# Use MCR devcontainer image to avoid Docker Hub dependency
+FROM mcr.microsoft.com/devcontainers/python:3.11 as builder
 
 # Set working directory
 WORKDIR /build
@@ -16,20 +17,15 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Final stage
-FROM python:3.11-slim
+FROM mcr.microsoft.com/devcontainers/python:3.11
 
 # Set working directory
 WORKDIR /app
-
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-
 # Copy Python dependencies from builder
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=builder /root/.local /home/vscode/.local
 
 # Copy application code
-COPY --chown=appuser:appuser app/ ./app/
+COPY app/ ./app/
 
 # Ensure pipeline package is available
 RUN test -d /app/app/pipeline && echo 'Pipeline package present' || echo 'WARNING: pipeline package missing'
@@ -40,8 +36,8 @@ ENV PATH=/home/appuser/.local/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
-# Switch to non-root user
-USER appuser
+# Switch to non-root user (provided by devcontainer base)
+USER vscode
 
 # Expose port
 EXPOSE 8000

@@ -28,11 +28,12 @@ param openAiApiVersion string = '2024-12-01-preview'
 param cosmosDatabaseName string = 'cctoolkit-db'
 
 @description('Allow public network access to ACR (for temporary dev pushes)')
-param acrAllowPublicAccess bool = false
+param acrAllowPublicAccess bool = true
 
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var acrName = '${abbrs.containerRegistryRegistries}${resourceToken}'
 var tags = {
   'azd-env-name': environmentName
   Environment: environmentName
@@ -100,7 +101,7 @@ module containerRegistry './core/container-registry.bicep' = {
   name: 'container-registry'
   scope: resourceGroup
   params: {
-    name: '${abbrs.containerRegistryRegistries}${resourceToken}'
+    name: acrName
     location: location
     tags: tags
     sku: 'Premium'
@@ -261,6 +262,32 @@ module backendCosmosRoleAssignment './core/cosmosdb-role-assignment.bicep' = {
     cosmosAccountName: cosmos.outputs.name
     principalId: backendApp.outputs.identityPrincipalId
     roleDefinitionId: cosmos.outputs.dataContributorRoleId
+  }
+}
+
+var acrPullRoleId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d'
+
+// RBAC: Backend identity -> ACR (AcrPull)
+module backendAcrRoleAssignment './core/acr-role-assignment.bicep' = {
+  name: 'backend-acr-role'
+  scope: resourceGroup
+  params: {
+    principalId: backendApp.outputs.identityPrincipalId
+    roleDefinitionId: acrPullRoleId
+    principalType: 'ServicePrincipal'
+    registryName: acrName
+  }
+}
+
+// RBAC: Frontend identity -> ACR (AcrPull)
+module frontendAcrRoleAssignment './core/acr-role-assignment.bicep' = {
+  name: 'frontend-acr-role'
+  scope: resourceGroup
+  params: {
+    principalId: frontendApp.outputs.identityPrincipalId
+    roleDefinitionId: acrPullRoleId
+    principalType: 'ServicePrincipal'
+    registryName: acrName
   }
 }
 

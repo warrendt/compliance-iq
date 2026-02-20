@@ -140,6 +140,12 @@ curl -X POST http://localhost:8000/api/v1/mapping/map-single \
 curl http://localhost:8000/api/v1/mapping/mcsb/controls | jq
 ```
 
+## 🚀 Azure Container Apps Deployment Notes
+
+- Container Apps pull images from ACR using the system-assigned managed identity (AcrPull granted in Bicep). No ACR admin credentials are needed at runtime.
+- ACR stays private; a toggle `acrAllowPublicAccess` exists in `infra/main.bicep` to temporarily enable public network access for dev pushes.
+- Private endpoints are provisioned for ACR/Cosmos/OpenAI with private DNS; keep client traffic inside the VNet when possible.
+
 ## 🏗️ Project Structure
 
 ```
