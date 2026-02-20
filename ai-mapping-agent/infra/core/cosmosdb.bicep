@@ -208,6 +208,28 @@ resource generatedArtifactsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlD
   }
 }
 
+// Container for mapping jobs (background mapping status/results)
+resource mappingJobsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: database
+  name: 'mapping-jobs'
+  properties: {
+    resource: {
+      id: 'mapping-jobs'
+      partitionKey: {
+        paths: [
+          '/job_id'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+      }
+      defaultTtl: 2592000 // 30 days in seconds
+    }
+  }
+}
+
 // Built-in Data Contributor role definition ID
 var dataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 
