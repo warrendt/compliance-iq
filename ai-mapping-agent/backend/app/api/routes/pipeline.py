@@ -3,6 +3,7 @@ API routes for the compliance pipeline — PDF to Defender for Cloud Initiative.
 Provides a POST endpoint that accepts a PDF upload and runs the full pipeline.
 """
 
+import csv
 import json
 import logging
 import os
@@ -16,6 +17,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -49,6 +51,13 @@ class PipelineRequest(BaseModel):
     allowed_locations: Optional[list[str]] = None
 
 
+class PipelineArtifacts(BaseModel):
+    """Artifacts returned for review/edit in UI."""
+    job_id: str
+    framework_name: Optional[str]
+    files: dict
+
+
 @router.post("/run", response_model=PipelineJobStatus)
 async def run_pipeline_endpoint(
     background_tasks: BackgroundTasks,
@@ -72,43 +81,46 @@ async def run_pipeline_endpoint(
     if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "File must be a PDF document")
 
-    # Read the uploaded file
     content = await pdf_file.read()
-    if len(content) == 0:
-        raise HTTPException(400, "PDF file is empty")
-    if len(content) > 50 * 1024 * 1024:  # 50MB limit
-        raise HTTPException(400, "PDF file exceeds 50MB limit")
+    job_id, job = _create_job(
+        filename=pdf_file.filename,
+        content=content,
+        min_confidence=min_confidence,
+        allowed_locations=_parse_locations(allowed_locations),
+    )
 
-    # Parse locations
-    locations = None
-    if allowed_locations:
-        locations = [loc.strip() for loc in allowed_locations.split(",") if loc.strip()]
-
-    # Create job
-    job_id = str(uuid.uuid4())
-    job = {
-        "job_id": job_id,
-        "status": "pending",
-        "progress": 0,
-        "stage": "Queued",
-        "framework_name": None,
-        "controls_extracted": 0,
-        "controls_mapped": 0,
-        "error": None,
-        "output_dir": None,
-        "started_at": datetime.utcnow().isoformat(),
-        "completed_at": None,
-        "pdf_filename": pdf_file.filename,
-        "pdf_content": content,
-        "min_confidence": min_confidence,
-        "allowed_locations": locations,
-    }
-    _jobs[job_id] = job
-
-    # Run pipeline in background
     background_tasks.add_task(_run_pipeline_job, job_id)
-
     logger.info(f"Pipeline job created: {job_id} for {pdf_file.filename}")
+
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.post("/selftest", response_model=PipelineJobStatus)
+async def run_pipeline_selftest(
+    background_tasks: BackgroundTasks,
+    pdf_url: str = Form("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"),
+    min_confidence: float = Form(0.5, ge=0.0, le=1.0),
+    allowed_locations: Optional[str] = Form(None, description="Comma-separated Azure regions"),
+):
+    """Run a self-test job using a small public PDF. Helpful for smoke testing inside the private app."""
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(pdf_url)
+            resp.raise_for_status()
+            content = resp.content
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Failed to download test PDF: {exc}") from exc
+
+    job_id, job = _create_job(
+        filename="selftest.pdf",
+        content=content,
+        min_confidence=min_confidence,
+        allowed_locations=_parse_locations(allowed_locations),
+    )
+
+    background_tasks.add_task(_run_pipeline_job, job_id)
+    logger.info(f"Pipeline self-test job created: {job_id} from {pdf_url}")
 
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
@@ -157,6 +169,56 @@ async def download_pipeline_output(job_id: str):
         headers={
             "Content-Disposition": f'attachment; filename="{safe_name}_Initiative.zip"'
         },
+    )
+
+
+@router.get("/artifacts/{job_id}", response_model=PipelineArtifacts)
+async def get_pipeline_artifacts(job_id: str):
+    """Return generated artifacts as JSON-friendly payload for UI preview/edit."""
+    if job_id not in _jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = _jobs[job_id]
+
+    if job.get("status") != "completed":
+        raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
+
+    output_dir = job.get("output_dir")
+    if not output_dir or not Path(output_dir).exists():
+        raise HTTPException(500, "Output directory not found")
+
+    out = Path(output_dir)
+
+    def _read_json(name: str):
+        p = out / name
+        if not p.exists():
+            return None
+        return json.loads(p.read_text(encoding="utf-8"))
+
+    def _read_csv(name: str):
+        p = out / name
+        if not p.exists():
+            return None
+        with p.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            return list(reader)
+
+    files: dict = {
+        "initiative": _read_json(next((f.name for f in out.iterdir() if f.name.endswith("_Initiative.json")), None)),
+        "groups": _read_json("groups.json"),
+        "policies": _read_json("policies.json"),
+        "params": _read_json("params.json"),
+        "validation_report": _read_json("validation_report.json"),
+        "mappings": _read_csv(next((f.name for f in out.iterdir() if f.name.endswith("_Mappings.csv")), None)),
+    }
+
+    # Remove None entries to keep payload tidy
+    files = {k: v for k, v in files.items() if v is not None}
+
+    return PipelineArtifacts(
+        job_id=job_id,
+        framework_name=job.get("framework_name"),
+        files=files,
     )
 
 
@@ -270,3 +332,40 @@ async def _run_pipeline_job(job_id: str):
         job["status"] = "failed"
         job["error"] = str(e)
         job["completed_at"] = datetime.utcnow().isoformat()
+
+
+def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
+    if not allowed_locations:
+        return None
+    parsed = [loc.strip() for loc in allowed_locations.split(",") if loc.strip()]
+    return parsed or None
+
+
+def _create_job(
+    *, filename: str, content: bytes, min_confidence: float, allowed_locations: Optional[list[str]]
+):
+    if len(content) == 0:
+        raise HTTPException(400, "PDF file is empty")
+    if len(content) > 50 * 1024 * 1024:  # 50MB limit
+        raise HTTPException(400, "PDF file exceeds 50MB limit")
+
+    job_id = str(uuid.uuid4())
+    job = {
+        "job_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "stage": "Queued",
+        "framework_name": None,
+        "controls_extracted": 0,
+        "controls_mapped": 0,
+        "error": None,
+        "output_dir": None,
+        "started_at": datetime.utcnow().isoformat(),
+        "completed_at": None,
+        "pdf_filename": filename,
+        "pdf_content": content,
+        "min_confidence": min_confidence,
+        "allowed_locations": allowed_locations,
+    }
+    _jobs[job_id] = job
+    return job_id, job

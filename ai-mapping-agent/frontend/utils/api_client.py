@@ -367,6 +367,45 @@ class APIClient:
             response.raise_for_status()
             return response.content
 
+    def get_pipeline_artifacts(self, job_id: str) -> Dict[str, Any]:
+        """Fetch parsed pipeline artifacts for review/edit.
+
+        Args:
+            job_id: Pipeline job identifier
+
+        Returns:
+            Dict with initiative, groups, policies, params, validation_report, mappings
+        """
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/pipeline/artifacts/{job_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def run_pipeline_selftest(
+        self,
+        pdf_url: str = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        min_confidence: float = 0.5,
+        allowed_locations: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Trigger the backend self-test pipeline run using a public PDF.
+
+        Returns:
+            Dict with job_id and status
+        """
+        data: Dict[str, str] = {"min_confidence": str(min_confidence), "pdf_url": pdf_url}
+        if allowed_locations:
+            data["allowed_locations"] = allowed_locations
+
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/selftest",
+                data=data,
+            )
+            response.raise_for_status()
+            return response.json()
+
     def list_pipeline_jobs(self) -> List[Dict[str, Any]]:
         """List all pipeline jobs.
 

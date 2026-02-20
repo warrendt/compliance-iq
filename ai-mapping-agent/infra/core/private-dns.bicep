@@ -3,6 +3,7 @@ param location string = resourceGroup().location
 param tags object = {}
 param vnetId string
 param environmentName string
+param enableAcrPrivateEndpoint bool = false
 
 resource cosmosZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: 'privatelink.documents.azure.com'
@@ -16,7 +17,7 @@ resource openaiZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   tags: tags
 }
 
-resource acrZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource acrZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (enableAcrPrivateEndpoint) {
   name: 'privatelink.azurecr.io'
   location: 'global'
   tags: tags
@@ -44,7 +45,7 @@ resource openaiLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-
   }
 }
 
-resource acrLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource acrLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (enableAcrPrivateEndpoint) {
   name: '${acrZone.name}/${environmentName}-link'
   location: 'global'
   properties: {
@@ -57,4 +58,4 @@ resource acrLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-
 
 output cosmosZoneId string = cosmosZone.id
 output openaiZoneId string = openaiZone.id
-output acrZoneId string = acrZone.id
+output acrZoneId string = enableAcrPrivateEndpoint ? acrZone.id : ''

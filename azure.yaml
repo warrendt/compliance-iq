@@ -21,16 +21,16 @@ services:
     host: containerapp
     language: python
     docker:
-      path: ai-mapping-agent/backend/Dockerfile
-      context: ai-mapping-agent/backend
+      path: ./Dockerfile
+      context: .
 
   frontend:
     project: ai-mapping-agent/frontend
     host: containerapp
     language: python
     docker:
-      path: ai-mapping-agent/frontend/Dockerfile
-      context: ai-mapping-agent/frontend
+      path: ./Dockerfile
+      context: .
 
 hooks:
   preprovision:

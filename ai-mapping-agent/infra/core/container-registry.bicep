@@ -4,7 +4,8 @@ param location string = resourceGroup().location
 param tags object = {}
 param sku string = 'Premium'
 param privateEndpointSubnetId string
-param privateDnsZoneId string
+param privateDnsZoneId string = ''
+param enablePrivateEndpoint bool = false
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: name
@@ -15,12 +16,12 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   }
   properties: {
     adminUserEnabled: true
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: 'Enabled'
     zoneRedundancy: 'Disabled'
   }
 }
 
-resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if (enablePrivateEndpoint) {
   name: '${name}-pe'
   location: location
   properties: {

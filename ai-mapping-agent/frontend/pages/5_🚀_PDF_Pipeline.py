@@ -4,9 +4,11 @@ Upload a compliance PDF and get a ready-to-deploy Azure Policy initiative.
 """
 
 import time
+import os
+import io
+import csv
 import streamlit as st
 from utils.api_client import APIClient
-import os
 
 st.set_page_config(
     page_title="PDF Pipeline — CCToolkit",
@@ -163,6 +165,85 @@ if uploaded_file:
                 )
             except Exception as e:
                 st.error(f"Failed to download: {e}")
+
+        # ── Review & Edit Mappings ───────────────────────────────────
+        st.divider()
+        st.header("📝 Review & Edit Mappings")
+
+        with st.spinner("Fetching artifacts for review..."):
+            artifacts = None
+            try:
+                artifacts = client.get_pipeline_artifacts(job_id)
+            except Exception as e:
+                st.warning(f"Artifacts not available: {e}")
+
+        if artifacts:
+            files = artifacts.get("files", {})
+
+            with st.expander("Mappings (edit as needed)", expanded=True):
+                mappings = files.get("mappings", [])
+                if mappings:
+                    edited_rows = st.data_editor(
+                        mappings,
+                        num_rows="dynamic",
+                        use_container_width=True,
+                        key="mappings_editor",
+                        column_config={
+                            "Azure_Policy_IDs": st.column_config.TextColumn(help="Semicolon-separated policy definition IDs"),
+                            "Azure_Policy_Names": st.column_config.TextColumn(help="Semicolon-separated policy names"),
+                            "Manual_Note": st.column_config.TextColumn(help="Notes for manual attestation"),
+                            "Mapping_Rationale": st.column_config.TextColumn(help="Reasoning / justification"),
+                        },
+                    )
+
+                    def _to_csv(rows):
+                        if not rows:
+                            return ""
+                        fieldnames = rows[0].keys()
+                        buf = io.StringIO()
+                        writer = csv.DictWriter(buf, fieldnames=fieldnames)
+                        writer.writeheader()
+                        for r in rows:
+                            writer.writerow(r)
+                        return buf.getvalue()
+
+                    csv_data = _to_csv(edited_rows)
+                    st.download_button(
+                        "💾 Download edited mappings CSV",
+                        data=csv_data,
+                        file_name="Edited_Mappings.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
+                    st.caption("Note: This exports the edited mappings CSV. Replace the CSV inside the ZIP if you want to deploy with these edits.")
+                else:
+                    st.info("No mappings found in artifacts.")
+
+            with st.expander("Initiative JSON (read-only)", expanded=False):
+                initiative = files.get("initiative")
+                if initiative:
+                    st.json(initiative, expanded=False)
+                else:
+                    st.info("Initiative file not found.")
+
+            with st.expander("Validation report", expanded=False):
+                vr = files.get("validation_report")
+                if vr:
+                    st.json(vr, expanded=False)
+                else:
+                    st.info("Validation report not found.")
+
+            with st.expander("Groups / Policies / Params", expanded=False):
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.subheader("Groups")
+                    st.json(files.get("groups"))
+                with col_b:
+                    st.subheader("Policies")
+                    st.json(files.get("policies"))
+                with col_c:
+                    st.subheader("Params")
+                    st.json(files.get("params"))
 
         # ── Deployment instructions ───────────────────────────────────
         st.header("🚀 Deploy to Azure")
