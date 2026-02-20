@@ -81,7 +81,7 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
   ]
 }
 
-resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = {
   name: '${name}-pe'
   location: location
   properties: {

@@ -7,6 +7,8 @@ param privateEndpointSubnetId string
 param privateDnsZoneId string
 @description('Also create regional Cosmos private DNS A record (host-suffix)')
 param addRegionalDnsRecord bool = true
+@description('IP addresses to use for the regional Cosmos private DNS record (optional)')
+param regionalDnsIpAddresses array = []
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: name
@@ -38,7 +40,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   }
 }
 
-resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = {
   name: '${name}-pe'
   location: location
   properties: {
@@ -79,23 +81,21 @@ resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' =
 
 // Private DNS record for regional endpoint (e.g., cosmos-<token>-swedencentral.privatelink.documents.azure.com)
 var regionalRecordName = '${name}-${toLower(replace(location, ' ', ''))}'
-var peIpAddresses = cosmosPrivateEndpoint.properties.customDnsConfigs[0].ipAddresses
 
 resource cosmosPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  id: privateDnsZoneId
+  name: 'privatelink.documents.azure.com'
+  scope: resourceGroup()
 }
 
-resource regionalRecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (addRegionalDnsRecord) {
-  name: '${cosmosPrivateDnsZone.name}/${regionalRecordName}'
+resource regionalARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (addRegionalDnsRecord && length(regionalDnsIpAddresses) > 0) {
+  parent: cosmosPrivateDnsZone
+  name: regionalRecordName
   properties: {
-    TTL: 3600
-    aRecords: [for ip in peIpAddresses: {
+    ttl: 3600
+    aRecords: [for ip in regionalDnsIpAddresses: {
       ipv4Address: ip
     }]
   }
-  dependsOn: [
-    cosmosPrivateEndpoint
-  ]
 }
 
 resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {
