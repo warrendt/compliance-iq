@@ -3,6 +3,7 @@ API routes for the compliance pipeline — PDF to Defender for Cloud Initiative.
 Provides a POST endpoint that accepts a PDF upload and runs the full pipeline.
 """
 
+import base64
 import csv
 import json
 import logging
@@ -18,6 +19,8 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
+from azure.cosmos import CosmosClient
+from azure.identity import DefaultAzureCredential
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -28,6 +31,9 @@ router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 
 # In-memory job store (production would use Cosmos DB)
 _jobs: dict[str, dict] = {}
+
+_cosmos_client = None
+_cosmos_container = None
 
 
 class PipelineJobStatus(BaseModel):
@@ -151,6 +157,8 @@ async def download_pipeline_output(job_id: str):
     if job["status"] != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job['status']})")
 
+    _ensure_output_dir(job_id, job)
+
     output_dir = job.get("output_dir")
     if not output_dir or not Path(output_dir).exists():
         raise HTTPException(500, "Output directory not found")
@@ -188,6 +196,8 @@ async def repack_pipeline_output(job_id: str, payload: PipelineRepackRequest):
     if job.get("status") != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
 
+    _ensure_output_dir(job_id, job)
+
     output_dir = job.get("output_dir")
     if not output_dir or not Path(output_dir).exists():
         raise HTTPException(500, "Output directory not found")
@@ -201,19 +211,13 @@ async def repack_pipeline_output(job_id: str, payload: PipelineRepackRequest):
     mappings_file.write_text(payload.mappings_csv, encoding="utf-8")
 
     # Rebuild ZIP in-memory using current output directory contents
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file_path in out.iterdir():
-            if file_path.is_file():
-                zf.write(file_path, file_path.name)
-
-    zip_buffer.seek(0)
+    zip_bytes = _zip_dir(out)
 
     fw_name = job.get("framework_name", "initiative")
     safe_name = fw_name.replace(" ", "_").replace("/", "_")
 
     return StreamingResponse(
-        zip_buffer,
+        BytesIO(zip_bytes),
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{safe_name}_Initiative_Edited.zip"'
@@ -231,6 +235,8 @@ async def get_pipeline_artifacts(job_id: str):
 
     if job.get("status") != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
+
+    _ensure_output_dir(job_id, job)
 
     output_dir = job.get("output_dir")
     if not output_dir or not Path(output_dir).exists():
@@ -371,6 +377,15 @@ async def _run_pipeline_job(job_id: str):
         job["progress"] = 100
         job["completed_at"] = datetime.utcnow().isoformat()
 
+        # Persist job and artifacts to Cosmos if enabled
+        try:
+            zip_bytes = _zip_dir(Path(output_dir))
+            job_copy = {k: v for k, v in job.items() if k != "pdf_content"}
+            job_copy["artifacts_zip_b64"] = base64.b64encode(zip_bytes).decode("utf-8")
+            _cosmos_upsert_job(job_copy)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Failed to persist artifacts for job {job_id}: {exc}")
+
         logger.info(f"Pipeline job {job_id} completed: {len(files)} files generated")
 
         # Remove the raw PDF content from memory
@@ -381,6 +396,7 @@ async def _run_pipeline_job(job_id: str):
         job["status"] = "failed"
         job["error"] = str(e)
         job["completed_at"] = datetime.utcnow().isoformat()
+        _cosmos_upsert_job(job)
 
 
 def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
@@ -417,4 +433,91 @@ def _create_job(
         "allowed_locations": allowed_locations,
     }
     _jobs[job_id] = job
+
+    _cosmos_upsert_job(job)
     return job_id, job
+
+
+def _zip_dir(out: Path) -> bytes:
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file_path in out.iterdir():
+            if file_path.is_file():
+                zf.write(file_path, file_path.name)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def _ensure_output_dir(job_id: str, job: dict):
+    output_dir = job.get("output_dir")
+    if output_dir and Path(output_dir).exists():
+        return
+
+    # Attempt to restore from Cosmos if available
+    if not _cosmos_container:
+        return
+
+    doc = _cosmos_get_job(job_id)
+    if not doc:
+        return
+
+    artifacts_b64 = doc.get("artifacts_zip_b64")
+    if not artifacts_b64:
+        return
+
+    tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_restored_")
+    zip_bytes = base64.b64decode(artifacts_b64)
+    with zipfile.ZipFile(BytesIO(zip_bytes), "r") as zf:
+        zf.extractall(tmp_dir)
+
+    job["output_dir"] = tmp_dir
+    _jobs[job_id] = job
+
+
+def _init_cosmos():
+    global _cosmos_client, _cosmos_container
+    if _cosmos_container is not None:
+        return
+
+    endpoint = os.getenv("COSMOS_DB_ENDPOINT")
+    database_name = os.getenv("COSMOS_DB_DATABASE_NAME", "cctoolkit-db")
+    container_name = os.getenv("COSMOS_DB_CONTAINER_NAME", "pipeline-jobs")
+
+    if not endpoint:
+        return
+
+    try:
+        cred = DefaultAzureCredential(exclude_interactive_browser_credential=False)
+        _cosmos_client = CosmosClient(endpoint, credential=cred)
+        db = _cosmos_client.create_database_if_not_exists(id=database_name)
+        _cosmos_container = db.create_container_if_not_exists(
+            id=container_name,
+            partition_key="/job_id",
+            offer_throughput=400,
+        )
+        logger.info("Cosmos persistence enabled for pipeline jobs")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Cosmos not enabled: {exc}")
+        _cosmos_container = None
+
+
+def _cosmos_upsert_job(job: dict):
+    if _cosmos_container is None:
+        _init_cosmos()
+    if _cosmos_container is None:
+        return
+    try:
+        _cosmos_container.upsert_item(job)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Failed to persist job {job.get('job_id')}: {exc}")
+
+
+def _cosmos_get_job(job_id: str) -> Optional[dict]:
+    if _cosmos_container is None:
+        _init_cosmos()
+    if _cosmos_container is None:
+        return None
+    try:
+        return _cosmos_container.read_item(item=job_id, partition_key=job_id)
+    except Exception:
+        return None
