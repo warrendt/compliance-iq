@@ -64,7 +64,7 @@ module privateDns './core/private-dns.bicep' = {
     environmentName: environmentName
     location: location
     tags: tags
-    enableAcrPrivateEndpoint: false
+    enableAcrPrivateEndpoint: true
   }
 }
 
@@ -103,7 +103,7 @@ module containerRegistry './core/container-registry.bicep' = {
     sku: 'Premium'
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.acrZoneId
-    enablePrivateEndpoint: false
+    enablePrivateEndpoint: true
   }
 }
 

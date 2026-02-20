@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 param tags object = {}
 param vnetId string
 param environmentName string
-param enableAcrPrivateEndpoint bool = false
+param enableAcrPrivateEndpoint bool = true
 
 resource cosmosZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: 'privatelink.documents.azure.com'

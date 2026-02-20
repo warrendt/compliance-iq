@@ -5,7 +5,7 @@ param tags object = {}
 param sku string = 'Premium'
 param privateEndpointSubnetId string
 param privateDnsZoneId string = ''
-param enablePrivateEndpoint bool = false
+param enablePrivateEndpoint bool = true
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: name
@@ -16,7 +16,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
   }
   properties: {
     adminUserEnabled: true
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
     zoneRedundancy: 'Disabled'
   }
 }
@@ -39,7 +39,7 @@ resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if
         }
       }
     ]
-    privateDnsZoneGroups: [
+    privateDnsZoneGroups: !empty(privateDnsZoneId) ? [
       {
         name: '${name}-pe-dns'
         properties: {
@@ -53,7 +53,7 @@ resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if
           ]
         }
       }
-    ]
+    ] : []
   }
   dependsOn: [
     containerRegistry
