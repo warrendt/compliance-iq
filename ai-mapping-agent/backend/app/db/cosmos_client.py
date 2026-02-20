@@ -105,15 +105,18 @@ class CosmosDBClient:
 
     async def upsert_document(self, container_name: str, document: Dict[str, Any],
                                partition_key: Optional[str] = None) -> Dict[str, Any]:
-        """Create or replace a document (idempotent)."""
+        """Create or replace a document (idempotent).
+
+        Note: We let the SDK infer the partition key from the document to avoid
+        passing unsupported kwargs through the HTTP client in older SDKs.
+        """
         try:
             container = self.database.get_container_client(container_name)
 
             if '_ts' not in document:
                 document['timestamp'] = datetime.utcnow().isoformat()
 
-            kwargs = {"partition_key": partition_key} if partition_key else {}
-            result = await container.upsert_item(body=document, **kwargs)
+            result = await container.upsert_item(body=document)
 
             logger.info("document_upserted", extra={
                 "container": container_name,
