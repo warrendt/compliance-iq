@@ -12,9 +12,9 @@ def test_pdf_pipeline_page_loads(home_page: Page):
 
 
 def test_pdf_page_shows_upload_widget(home_page: Page):
-    """Page 5 contains a file-upload input for PDFs."""
+    """Page 5 contains a file-upload widget for PDFs."""
     home_page.get_by_text("PDF Pipeline").first.click()
     home_page.wait_for_url("**/PDF_Pipeline**", timeout=10_000)
 
-    file_input = home_page.locator('input[type="file"]')
-    expect(file_input).to_be_attached(timeout=5_000)
+    uploader = home_page.locator('[data-testid="stFileUploader"]')
+    expect(uploader).to_be_visible(timeout=5_000)

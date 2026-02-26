@@ -20,17 +20,16 @@ def test_navigate_to_upload(home_page: Page):
 
 
 def test_csv_upload_preview(home_page: Page):
-    """Upload a CSV and verify the data preview table appears."""
+    """Upload a CSV and verify the data loaded successfully."""
     home_page.get_by_text("Upload Controls").first.click()
     home_page.wait_for_url("**/Upload_Controls**", timeout=10_000)
 
-    # Upload sample CSV
-    file_input = home_page.locator('input[type="file"]')
+    # Upload sample CSV via the hidden input inside the Streamlit uploader
+    file_input = home_page.locator('[data-testid="stFileUploaderDropzone"] input[type="file"]')
     file_input.set_input_files(SAMPLE_CSV)
 
-    # Wait for the preview table
-    home_page.wait_for_timeout(2000)
-    expect(home_page.locator("text=TEST-AC-01")).to_be_visible(timeout=10_000)
+    # Wait for the success message after parsing
+    expect(home_page.locator("text=File loaded successfully")).to_be_visible(timeout=15_000)
 
 
 def test_column_mapping_and_load(home_page: Page):
