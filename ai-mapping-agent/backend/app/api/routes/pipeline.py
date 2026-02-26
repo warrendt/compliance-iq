@@ -1,6 +1,7 @@
 """
 API routes for the compliance pipeline — PDF to Defender for Cloud Initiative.
 Provides a POST endpoint that accepts a PDF upload and runs the full pipeline.
+Also provides an extract-only endpoint that returns controls in CSV-flow format.
 """
 
 import base64
@@ -75,6 +76,26 @@ class PipelineRepackRequest(BaseModel):
     mappings_csv: str
 
 
+class ExtractedControlCSVFormat(BaseModel):
+    """A single extracted control in CSV-flow format (matches ExternalControl)."""
+    control_id: str
+    control_name: str
+    description: str
+    domain: Optional[str] = None
+    control_type: Optional[str] = None
+    requirements: Optional[str] = None
+
+
+class PipelineExtractResponse(BaseModel):
+    """Response from the extract-only endpoint."""
+    framework_name: str
+    framework_version: Optional[str] = None
+    issuing_authority: Optional[str] = None
+    country_or_region: Optional[str] = None
+    controls: list[ExtractedControlCSVFormat]
+    total_controls: int
+
+
 @router.post("/run", response_model=PipelineJobStatus)
 async def run_pipeline_endpoint(
     background_tasks: BackgroundTasks,
@@ -111,6 +132,77 @@ async def run_pipeline_endpoint(
     _log_debug(job_id, f"Job created for {pdf_file.filename}")
 
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.post("/extract", response_model=PipelineExtractResponse)
+async def extract_controls_from_pdf(
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+):
+    """
+    Extract controls from a compliance PDF (Stages 1-2 only).
+
+    Returns controls in CSV-flow format so the frontend can load them
+    directly into the Upload → Map → Review → Export flow.
+    No mapping, validation, or initiative generation is performed.
+    """
+    from app.pipeline import (
+        PipelineConfig,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+        extract_controls_from_text,
+    )
+
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    content = await pdf_file.read()
+    if len(content) == 0:
+        raise HTTPException(400, "PDF file is empty")
+    if len(content) > 50 * 1024 * 1024:
+        raise HTTPException(400, "PDF file exceeds 50MB limit")
+
+    # Save to temp file for pypdf
+    tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_extract_")
+    pdf_path = Path(tmp_dir) / pdf_file.filename
+    try:
+        pdf_path.write_bytes(content)
+
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            raise HTTPException(500, f"Config errors: {'; '.join(errors)}")
+
+        # Stage 1: Extract text
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+
+        # Stage 2: AI control extraction
+        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+
+        # Convert ExtractedControl → CSV-flow format (ExternalControl-compatible)
+        csv_controls = [
+            ExtractedControlCSVFormat(
+                control_id=c.control_id,
+                control_name=c.control_title,
+                description=c.control_description,
+                domain=c.domain,
+                control_type=c.control_type,
+                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
+            )
+            for c in extraction.controls
+        ]
+
+        return PipelineExtractResponse(
+            framework_name=extraction.framework_name,
+            framework_version=extraction.framework_version,
+            issuing_authority=extraction.issuing_authority,
+            country_or_region=extraction.country_or_region,
+            controls=csv_controls,
+            total_controls=len(csv_controls),
+        )
+    finally:
+        # Clean up temp files
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @router.post("/selftest", response_model=PipelineJobStatus)
