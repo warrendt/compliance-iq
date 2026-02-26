@@ -10,8 +10,8 @@ from utils.api_client import APIClient
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 st.set_page_config(
-    page_title="PDF Upload — CCToolkit",
-    page_icon="📄",
+    page_title="PDF Pipeline | ComplianceIQ",
+    page_icon="🛡️",
     layout="wide",
 )
 
@@ -42,7 +42,7 @@ with st.sidebar:
     api_url = st.text_input(
         "Backend API URL",
         value=os.getenv("BACKEND_URL", "http://localhost:8000"),
-        help="URL of the CCToolkit backend API",
+        help="URL of the ComplianceIQ backend API",
     )
 
 # ── Main content ──────────────────────────────────────────────────────────

@@ -77,26 +77,51 @@ def inject_azure_theme():
 def render_sidebar():
     """Render a consistent branded sidebar across all pages."""
     with st.sidebar:
-        st.markdown("### 🛡️ CCToolkit")
-        st.caption("Cloud Compliance Toolkit")
+        st.markdown("### 🛡️ ComplianceIQ")
+        st.caption("AI-Powered Compliance Mapping")
         st.markdown("---")
 
-        st.markdown("#### 📋 Navigation")
-        st.markdown(
-            "1. **📁 Upload Controls**\n"
-            "2. **🤖 AI Mapping**\n"
-            "3. **✏️ Review & Edit**\n"
-            "4. **📦 Export Policy**\n"
-            "5. **🚀 PDF Pipeline**"
-        )
+        # ── Clickable navigation ──
+        st.page_link("app.py", label="🏠 Home", icon=None)
+        st.page_link("pages/1_📁_Upload_Controls.py", label="📁 Upload Controls")
+        st.page_link("pages/2_🤖_AI_Mapping.py", label="🤖 AI Mapping")
+        st.page_link("pages/3_✏️_Review_Edit.py", label="✏️ Review & Edit")
+        st.page_link("pages/4_📦_Export_Policy.py", label="📦 Export Policy")
+        st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Pipeline")
         st.markdown("---")
 
-        st.markdown("#### 📊 Session")
-        st.metric("Controls", len(st.session_state.get("controls", [])))
-        st.metric("Mappings", len(st.session_state.get("mappings", [])))
+        # ── Progress tracker ──
+        controls = st.session_state.get("controls", [])
+        mappings = st.session_state.get("mappings", [])
         fw = st.session_state.get("framework_name", "")
+
+        steps_done = sum([
+            len(controls) > 0,
+            len(mappings) > 0,
+            bool(st.session_state.get("policy_generated")),
+        ])
+        total_steps = 3
+        pct = int(steps_done / total_steps * 100)
+
+        st.markdown("#### 📊 Progress")
+        st.progress(pct / 100, text=f"{pct}% complete")
+
+        step_icons = [
+            ("Upload controls", len(controls) > 0),
+            ("Run AI mapping", len(mappings) > 0),
+            ("Generate policy", bool(st.session_state.get("policy_generated"))),
+        ]
+        for label, done in step_icons:
+            st.markdown(f"{'✅' if done else '⬜'} {label}")
+
+        st.markdown("---")
+
+        # ── Session metrics ──
         if fw:
-            st.info(f"**{fw}**")
+            st.info(f"🗂️ **{fw}**")
+        col1, col2 = st.columns(2)
+        col1.metric("Controls", len(controls))
+        col2.metric("Mappings", len(mappings))
 
         st.markdown("---")
         st.caption("Made by **Warren DT**")
@@ -107,7 +132,7 @@ def render_footer():
     st.markdown("---")
     st.markdown(
         '<div class="wdt-footer">'
-        "<strong>CCToolkit — AI Control Mapping Agent</strong><br>"
+        "<strong>ComplianceIQ — AI Control Mapping Agent</strong><br>"
         "Made by <strong>Warren DT</strong> &nbsp;|&nbsp; "
         "Powered by Azure OpenAI &bull; MCSB &bull; Sovereign Landing Zone"
         "</div>",

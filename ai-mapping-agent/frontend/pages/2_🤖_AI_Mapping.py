@@ -9,8 +9,8 @@ from utils.theme import inject_azure_theme, render_sidebar, render_footer
 import httpx
 
 st.set_page_config(
-    page_title="AI Mapping | AI Mapping Agent",
-    page_icon="🤖",
+    page_title="AI Mapping | ComplianceIQ",
+    page_icon="🛡️",
     layout="wide"
 )
 

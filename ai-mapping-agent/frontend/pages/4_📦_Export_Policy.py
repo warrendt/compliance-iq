@@ -30,8 +30,8 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 st.set_page_config(
-    page_title="Export Policy | AI Mapping Agent",
-    page_icon="📦",
+    page_title="Export Policy | ComplianceIQ",
+    page_icon="🛡️",
     layout="wide"
 )
 

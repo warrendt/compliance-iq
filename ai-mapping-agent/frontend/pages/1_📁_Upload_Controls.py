@@ -9,8 +9,8 @@ from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 st.set_page_config(
-    page_title="Upload Controls | AI Mapping Agent",
-    page_icon="📁",
+    page_title="Upload Controls | ComplianceIQ",
+    page_icon="🛡️",
     layout="wide"
 )
 

@@ -9,7 +9,7 @@ import httpx
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Control Mapping Agent",
+    page_title="ComplianceIQ",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -29,8 +29,8 @@ if 'job_id' not in st.session_state:
     st.session_state.job_id = None
 
 # Main content
-st.markdown('<div class="main-header">🛡️ AI Control Mapping Agent</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automatically map compliance framework controls to Microsoft Cloud Security Benchmark &amp; Sovereign Landing Zone policies</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🛡️ ComplianceIQ</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">AI-Powered Compliance Framework Mapping to Microsoft Cloud Security Benchmark &amp; Sovereign Landing Zone Policies</div>', unsafe_allow_html=True)
 
 # Sidebar — shared branding + backend status
 render_sidebar()
