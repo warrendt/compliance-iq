@@ -213,3 +213,41 @@ async def generate_slz_initiatives(request: SLZGenerationRequest):
     except Exception as e:
         logger.error(f"Failed to generate SLZ initiatives: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Policy Details (cached lookup) ---
+
+class PolicyDetailsRequest(BaseModel):
+    """Request to look up Azure Policy details by GUID."""
+    policy_ids: List[str] = Field(
+        ...,
+        description="List of Azure Policy definition GUIDs",
+        min_length=1,
+        max_length=100,
+    )
+
+
+@router.post("/details")
+async def get_policy_details(request: PolicyDetailsRequest):
+    """
+    Batch-lookup Azure Policy details by GUID.
+
+    Returns cached results from Cosmos DB with Microsoft Learn fallback.
+    """
+    from app.services.policy_cache_service import get_policy_cache_service
+
+    logger.info(f"Looking up {len(request.policy_ids)} policy details")
+
+    try:
+        cache_service = get_policy_cache_service()
+        details = await cache_service.get_policy_details(request.policy_ids)
+
+        return {
+            "requested": len(request.policy_ids),
+            "found": len(details),
+            "policies": details,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to look up policy details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

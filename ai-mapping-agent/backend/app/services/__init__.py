@@ -7,6 +7,7 @@ from app.services.ai_mapping_service import AIMappingService, get_ai_mapping_ser
 from app.services.policy_service import PolicyGenerationService, get_policy_service
 from app.services.microsoft_learn_client import MicrosoftLearnClient, get_microsoft_learn_client
 from app.services.sovereignty_service import SovereigntyService, get_sovereignty_service
+from app.services.policy_cache_service import PolicyCacheService, get_policy_cache_service
 
 __all__ = [
     "MCSBService",
@@ -19,4 +20,6 @@ __all__ = [
     "get_microsoft_learn_client",
     "SovereigntyService",
     "get_sovereignty_service",
+    "PolicyCacheService",
+    "get_policy_cache_service",
 ]

@@ -28,6 +28,7 @@ class CosmosDBClient:
         self.USER_UPLOADS = "user-uploads"
         self.GENERATED_ARTIFACTS = "generated-artifacts"
         self.MAPPING_JOBS = "mapping-jobs"
+        self.POLICY_CACHE = "policy-cache"
     
     async def initialize(self) -> None:
         """Initialize Cosmos DB client with managed identity"""
@@ -51,6 +52,12 @@ class CosmosDBClient:
                 self.MAPPING_JOBS,
                 partition_key_paths=["/job_id"],
                 default_ttl=2592000  # 30 days
+            )
+
+            await self.ensure_container(
+                self.POLICY_CACHE,
+                partition_key_paths=["/policy_id"],
+                default_ttl=1209600  # 14 days
             )
             
             logger.info("Cosmos DB client initialized successfully", extra={
