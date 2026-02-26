@@ -11,3 +11,4 @@ venv/
 __pycache__/
 *.pyc
 .azure
+node_modules/

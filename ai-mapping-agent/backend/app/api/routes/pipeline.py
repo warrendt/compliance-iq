@@ -32,6 +32,12 @@ router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 # In-memory job store (production would use Cosmos DB)
 _jobs: dict[str, dict] = {}
 
+# Optional per-job debug log buffer (in-memory, not persisted)
+_job_logs: dict[str, list[dict]] = {}
+
+PIPELINE_DEBUG_LOG = os.getenv("PIPELINE_DEBUG_LOG", "0").lower() in {"1", "true", "yes"}
+PIPELINE_LOG_MAX_ENTRIES = int(os.getenv("PIPELINE_LOG_MAX_ENTRIES", "500"))
+
 _cosmos_client = None
 _cosmos_container = None
 
@@ -102,6 +108,7 @@ async def run_pipeline_endpoint(
 
     background_tasks.add_task(_run_pipeline_job, job_id)
     logger.info(f"Pipeline job created: {job_id} for {pdf_file.filename}")
+    _log_debug(job_id, f"Job created for {pdf_file.filename}")
 
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
@@ -132,6 +139,7 @@ async def run_pipeline_selftest(
 
     background_tasks.add_task(_run_pipeline_job, job_id)
     logger.info(f"Pipeline self-test job created: {job_id} from {pdf_url}")
+    _log_debug(job_id, f"Self-test job created from {pdf_url}")
 
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
@@ -144,6 +152,22 @@ async def get_pipeline_status(job_id: str):
 
     job = _jobs[job_id]
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.get("/logs/{job_id}")
+async def get_pipeline_logs(job_id: str, since: int = 0):
+    """Return buffered debug logs for a job. Available only when PIPELINE_DEBUG_LOG is enabled."""
+    if not PIPELINE_DEBUG_LOG:
+        raise HTTPException(404, "Pipeline logging is disabled")
+
+    if job_id not in _jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    logs = _job_logs.get(job_id, [])
+    sliced = logs[since:]
+    next_cursor = since + len(sliced)
+    job_status = PipelineJobStatus(**{k: v for k, v in _jobs[job_id].items() if k in PipelineJobStatus.model_fields})
+    return {"logs": sliced, "next_cursor": next_cursor, "status": job_status}
 
 
 @router.get("/download/{job_id}")
@@ -306,6 +330,7 @@ async def _run_pipeline_job(job_id: str):
         tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_")
         pdf_path = Path(tmp_dir) / job["pdf_filename"]
         pdf_path.write_bytes(job["pdf_content"])
+        _log_debug(job_id, f"Saved PDF to {pdf_path}")
 
         # Load config
         config = PipelineConfig.from_env()
@@ -313,15 +338,18 @@ async def _run_pipeline_job(job_id: str):
         if errors:
             job["status"] = "failed"
             job["error"] = f"Config errors: {'; '.join(errors)}"
+            _log_debug(job_id, job["error"])
             return
 
         # ── Stage 1: Extract text ─────────────────────────────────────
         job["status"] = "extracting_text"
         job["stage"] = "Extracting text from PDF"
         job["progress"] = 5
+        _log_debug(job_id, "Starting text extraction")
 
         pdf_metadata = get_pdf_metadata(str(pdf_path))
         pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        _log_debug(job_id, f"Extracted text ({len(pdf_text):,} chars) from {pdf_metadata.get('pages', '?')} pages")
 
         job["progress"] = 15
 
@@ -329,34 +357,42 @@ async def _run_pipeline_job(job_id: str):
         job["status"] = "extracting_controls"
         job["stage"] = "AI extracting controls from document"
         job["progress"] = 20
+        _log_debug(job_id, "Extracting controls with Azure OpenAI")
 
         extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
 
         job["framework_name"] = extraction.framework_name
         job["controls_extracted"] = len(extraction.controls)
         job["progress"] = 40
+        _log_debug(job_id, f"Extracted {len(extraction.controls)} controls (framework: {extraction.framework_name})")
 
         # ── Stage 3: Map to Azure Policies ────────────────────────────
         job["status"] = "mapping_policies"
         job["stage"] = "Mapping controls to Azure Policies"
         job["progress"] = 45
 
+        _log_debug(job_id, "Mapping controls to Azure Policies")
+
         def progress_cb(current, total):
             pct = 45 + int((current / total) * 30)
             job["progress"] = pct
             job["controls_mapped"] = current
+            _log_debug(job_id, f"Mapped {current}/{total} controls")
 
         mappings = map_controls_to_azure_policies(extraction, config, progress_callback=progress_cb)
         job["controls_mapped"] = len(mappings)
         job["progress"] = 80
+        _log_debug(job_id, f"Completed mapping for {len(mappings)} controls")
 
         # ── Stage 4: Validate ─────────────────────────────────────────
         job["status"] = "validating"
         job["stage"] = "Validating mappings"
         job["progress"] = 85
+        _log_debug(job_id, "Validating mappings")
 
         validation = validate_mappings(extraction, mappings, job["min_confidence"])
         job["progress"] = 90
+        _log_debug(job_id, "Validation complete")
 
         # ── Stage 5: Generate artifacts ───────────────────────────────
         job["status"] = "generating"
@@ -370,12 +406,14 @@ async def _run_pipeline_job(job_id: str):
             output_dir=output_dir,
             allowed_locations=job["allowed_locations"],
         )
+        _log_debug(job_id, f"Artifacts generated: {len(files)} files")
 
         job["output_dir"] = output_dir
         job["status"] = "completed"
         job["stage"] = "Complete"
         job["progress"] = 100
         job["completed_at"] = datetime.utcnow().isoformat()
+        _log_debug(job_id, "Pipeline completed")
 
         # Persist job and artifacts to Cosmos if enabled
         try:
@@ -385,6 +423,7 @@ async def _run_pipeline_job(job_id: str):
             _cosmos_upsert_job(job_copy)
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Failed to persist artifacts for job {job_id}: {exc}")
+            _log_debug(job_id, f"Failed to persist artifacts: {exc}")
 
         logger.info(f"Pipeline job {job_id} completed: {len(files)} files generated")
 
@@ -397,6 +436,7 @@ async def _run_pipeline_job(job_id: str):
         job["error"] = str(e)
         job["completed_at"] = datetime.utcnow().isoformat()
         _cosmos_upsert_job(job)
+        _log_debug(job_id, f"Pipeline failed: {e}")
 
 
 def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
@@ -433,6 +473,10 @@ def _create_job(
         "allowed_locations": allowed_locations,
     }
     _jobs[job_id] = job
+
+    if PIPELINE_DEBUG_LOG:
+        _job_logs[job_id] = []
+        _log_debug(job_id, "Job initialized")
 
     _cosmos_upsert_job(job)
     return job_id, job
@@ -521,3 +565,22 @@ def _cosmos_get_job(job_id: str) -> Optional[dict]:
         return _cosmos_container.read_item(item=job_id, partition_key=job_id)
     except Exception:
         return None
+
+
+def _log_debug(job_id: str, message: str):
+    """Append a debug log entry for a job if debug logging is enabled."""
+    if not PIPELINE_DEBUG_LOG:
+        return
+    if job_id not in _job_logs:
+        _job_logs[job_id] = []
+
+    entry = {
+        "ts": datetime.utcnow().isoformat() + "Z",
+        "message": message,
+    }
+    buf = _job_logs[job_id]
+    buf.append(entry)
+
+    # Trim buffer to max size to avoid unbounded growth
+    if len(buf) > PIPELINE_LOG_MAX_ENTRIES:
+        _job_logs[job_id] = buf[-PIPELINE_LOG_MAX_ENTRIES:]

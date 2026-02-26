@@ -52,8 +52,23 @@ with st.sidebar:
         help="URL of the CCToolkit backend API",
     )
 
+    debug_logs = st.checkbox(
+        "Enable debug logs",
+        value=False,
+        help="If enabled and allowed by backend, stream pipeline debug logs to this page.",
+    )
+    log_poll_seconds = st.slider(
+        "Log poll interval (seconds)",
+        min_value=1,
+        max_value=10,
+        value=3,
+        help="How often to poll for debug logs when enabled.",
+    )
+
 # ── File Upload ───────────────────────────────────────────────────────────
 st.header("📄 Upload Compliance PDF")
+
+client_for_list = APIClient(base_url=api_url)
 
 uploaded_file = st.file_uploader(
     "Choose a compliance control PDF",
@@ -96,12 +111,15 @@ if uploaded_file:
         progress_bar = st.progress(0)
         status_text = st.empty()
         stage_container = st.container()
+        log_container = st.empty()
 
         stages_shown = set()
         completed = False
+        log_cursor = 0
+        log_lines: list[str] = []
 
         while not completed:
-            time.sleep(2)
+            time.sleep(log_poll_seconds if debug_logs else 2)
 
             try:
                 status = client.get_pipeline_status(job_id)
@@ -132,6 +150,18 @@ if uploaded_file:
                 error = status.get("error", "Unknown error")
                 st.error(f"❌ Pipeline failed: {error}")
                 st.stop()
+
+            if debug_logs:
+                try:
+                    log_resp = client.get_pipeline_logs(job_id, since=log_cursor)
+                    new_logs = log_resp.get("logs", [])
+                    if new_logs:
+                        log_cursor = log_resp.get("next_cursor", log_cursor)
+                        for entry in new_logs:
+                            log_lines.append(f"{entry.get('ts','')} - {entry.get('message','')}")
+                        log_container.code("\n".join(log_lines[-200:]), language="text")
+                except Exception as e:
+                    log_container.warning(f"Log fetch error: {e}")
 
         # ── Show results ──────────────────────────────────────────────
         st.divider()
@@ -327,3 +357,50 @@ else:
         5. **Generate** — Initiative JSON, PowerShell scripts, and CSV reports are created
         6. **Download** — Get a ZIP with everything needed to deploy to Azure
         """)
+
+# ── Recent jobs & downloads ─────────────────────────────────────────────
+st.divider()
+st.header("📜 Recent pipeline jobs")
+
+try:
+    jobs = client_for_list.list_pipeline_jobs()
+except Exception as e:
+    st.warning(f"Could not load jobs: {e}")
+    jobs = []
+
+if not jobs:
+    st.info("No pipeline jobs yet. Run a PDF to see results here.")
+else:
+    # Sort by started_at desc when available
+    def _sort_key(j):
+        return j.get("started_at") or ""
+
+    for job in sorted(jobs, key=_sort_key, reverse=True):
+        cols = st.columns([3, 2, 2, 2, 3])
+        job_id = job.get("job_id")
+        with cols[0]:
+            st.text(job_id)
+        with cols[1]:
+            st.text(job.get("status", ""))
+        with cols[2]:
+            st.text(job.get("framework_name", ""))
+        with cols[3]:
+            st.text(job.get("started_at", ""))
+        with cols[4]:
+            if job.get("status") == "completed":
+                if st.button(f"Download {job_id[:8]}…", key=f"dl-{job_id}", use_container_width=True):
+                    with st.spinner("Preparing download..."):
+                        try:
+                            zip_bytes = client_for_list.download_pipeline_output(job_id)
+                            st.download_button(
+                                label="📥 Download ZIP",
+                                data=zip_bytes,
+                                file_name=f"{job.get('framework_name','initiative').replace(' ', '_')}_Initiative.zip",
+                                mime="application/zip",
+                                key=f"dl-btn-{job_id}",
+                                use_container_width=True,
+                            )
+                        except Exception as e:
+                            st.error(f"Download failed: {e}")
+            else:
+                st.caption("Pending/Failed")

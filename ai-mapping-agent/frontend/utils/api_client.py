@@ -351,6 +351,24 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    def get_pipeline_logs(self, job_id: str, since: int = 0) -> Dict[str, Any]:
+        """Fetch debug logs for a pipeline job (when enabled on backend).
+
+        Args:
+            job_id: Pipeline job identifier
+            since: Cursor offset to fetch new log entries
+
+        Returns:
+            Dict with logs list and next_cursor; raises if logging disabled.
+        """
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/pipeline/logs/{job_id}",
+                params={"since": since},
+            )
+            response.raise_for_status()
+            return response.json()
+
     def download_pipeline_output(self, job_id: str) -> bytes:
         """Download the pipeline output as a ZIP archive.
 
