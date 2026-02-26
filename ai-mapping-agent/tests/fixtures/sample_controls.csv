@@ -1,0 +1,4 @@
+control_id,control_name,description,domain,control_type,requirements
+TEST-AC-01,Multi-Factor Authentication,Enforce MFA for all privileged and user access,Identity & Access Control,Technical,MFA must be enabled for all accounts
+TEST-NS-01,Network Segmentation,Implement network segmentation between zones,Network Security,Technical,Deploy NSGs and firewall rules
+TEST-DP-01,Data Encryption at Rest,Encrypt all data at rest using approved algorithms,Data Protection,Technical,AES-256 encryption required
