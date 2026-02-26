@@ -65,27 +65,9 @@ Your task is to analyze the raw text extracted from a compliance control documen
 
 
 def get_openai_client(config: PipelineConfig):
-    """Create Azure OpenAI client using either API key or DefaultAzureCredential."""
-    from openai import AzureOpenAI
-
-    if config.azure_openai_api_key:
-        return AzureOpenAI(
-            azure_endpoint=config.azure_openai_endpoint,
-            api_key=config.azure_openai_api_key,
-            api_version=config.azure_openai_api_version,
-        )
-    else:
-        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-
-        credential = DefaultAzureCredential()
-        token_provider = get_bearer_token_provider(
-            credential, "https://cognitiveservices.azure.com/.default"
-        )
-        return AzureOpenAI(
-            azure_endpoint=config.azure_openai_endpoint,
-            azure_ad_token_provider=token_provider,
-            api_version=config.azure_openai_api_version,
-        )
+    """Get Azure OpenAI client — delegates to the central auth module."""
+    from app.auth.azure_auth import get_azure_openai_client
+    return get_azure_openai_client()
 
 
 def extract_controls_from_text(

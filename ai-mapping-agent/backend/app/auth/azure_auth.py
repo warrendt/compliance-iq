@@ -46,39 +46,37 @@ def get_azure_credential() -> DefaultAzureCredential:
 @lru_cache
 def get_azure_openai_client() -> AzureOpenAI:
     """
-    Get Azure OpenAI client with token-based authentication.
+    Get Azure OpenAI client.
 
-    Returns:
-        AzureOpenAI: Configured Azure OpenAI client
-
-    Example:
-        ```python
-        client = get_azure_openai_client()
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": "Hello"}]
-        )
-        ```
+    Auth priority:
+    1. API key (if AZURE_OPENAI_API_KEY is set)
+    2. DefaultAzureCredential (Managed Identity in Azure, `az login` locally)
     """
     logger.info("Initializing Azure OpenAI client")
 
-    credential = get_azure_credential()
-
-    # Get bearer token provider for Cognitive Services
-    token_provider = get_bearer_token_provider(
-        credential,
-        "https://cognitiveservices.azure.com/.default"
-    )
-
-    client = AzureOpenAI(
-        api_version=settings.azure_openai_api_version,
-        azure_endpoint=settings.azure_openai_endpoint,
-        azure_ad_token_provider=token_provider,
-        timeout=120.0  # 2 minutes timeout for API calls
-    )
+    if settings.azure_openai_api_key:
+        logger.info("Using API key authentication for Azure OpenAI")
+        client = AzureOpenAI(
+            api_version=settings.azure_openai_api_version,
+            azure_endpoint=settings.azure_openai_endpoint,
+            api_key=settings.azure_openai_api_key,
+            timeout=120.0,
+        )
+    else:
+        logger.info("Using DefaultAzureCredential for Azure OpenAI")
+        credential = get_azure_credential()
+        token_provider = get_bearer_token_provider(
+            credential,
+            "https://cognitiveservices.azure.com/.default"
+        )
+        client = AzureOpenAI(
+            api_version=settings.azure_openai_api_version,
+            azure_endpoint=settings.azure_openai_endpoint,
+            azure_ad_token_provider=token_provider,
+            timeout=120.0,
+        )
 
     logger.info(f"Azure OpenAI client initialized for endpoint: {settings.azure_openai_endpoint}")
-
     return client
 
 
