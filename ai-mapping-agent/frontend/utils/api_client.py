@@ -45,7 +45,11 @@ class APIClient:
         with self._get_client() as client:
             response = client.get(f"{self.base_url}/api/v1/mapping/mcsb/controls")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Backend wraps the list in {"controls": [...]}
+            if isinstance(data, dict) and "controls" in data:
+                return data["controls"]
+            return data
     
     def get_mcsb_domains(self) -> List[str]:
         """Get all MCSB domains.
@@ -56,7 +60,10 @@ class APIClient:
         with self._get_client() as client:
             response = client.get(f"{self.base_url}/api/v1/mapping/mcsb/domains")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if isinstance(data, dict) and "domains" in data:
+                return data["domains"]
+            return data
     
     def map_single_control(
         self, 
