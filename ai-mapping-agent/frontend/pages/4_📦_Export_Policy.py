@@ -5,8 +5,26 @@ Export Policy Page - Generate and download Azure Policy initiatives.
 import streamlit as st
 import json
 import httpx
+from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+
+
+def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert frontend session mapping dict to backend ControlMapping schema."""
+    return {
+        "external_control_id": m.get("control_id") or m.get("external_control_id", ""),
+        "external_control_name": m.get("control_name") or m.get("external_control_name", ""),
+        "mcsb_control_id": m.get("mcsb_control_id", ""),
+        "mcsb_control_name": m.get("mcsb_control_name", ""),
+        "mcsb_domain": m.get("mcsb_domain", ""),
+        "confidence_score": m.get("confidence_score", 0.0),
+        "reasoning": m.get("reasoning", ""),
+        "azure_policy_ids": m.get("azure_policy_ids", []),
+        "mapping_type": m.get("mapping_type", "conceptual"),
+        "defender_recommendations": m.get("defender_recommendations", []),
+        "sovereignty": m.get("sovereignty"),
+    }
 
 st.set_page_config(
     page_title="Export Policy | AI Mapping Agent",
@@ -121,16 +139,12 @@ st.markdown("---")
 if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_container_width=True):
     with st.spinner("Generating Azure Policy Initiative..."):
         try:
-            # Prepare request
-            request_data = {
-                "framework_name": st.session_state.framework_name,
-                "mappings": filtered_mappings,
-                "initiative_name": initiative_name,
-                "initiative_description": initiative_description
-            }
-            
             # Call API
-            result = api_client.generate_policy_initiative(request_data)
+            result = api_client.generate_policy_initiative(
+                mappings=[_to_backend_mapping(m) for m in filtered_mappings],
+                framework_name=st.session_state.framework_name,
+                min_confidence=min_confidence,
+            )
             
             st.session_state.generated_policy = result
             st.success("✅ Policy initiative generated successfully!")
@@ -446,7 +460,7 @@ else:
         with st.spinner("Generating per-archetype SLZ policy initiatives..."):
             try:
                 slz_result = api_client.generate_slz_initiatives(
-                    mappings=slz_export_mappings,
+                    mappings=[_to_backend_mapping(m) for m in slz_export_mappings],
                     framework_name=st.session_state.framework_name,
                     allowed_locations=locations_list,
                 )
