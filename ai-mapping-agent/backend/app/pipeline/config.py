@@ -19,6 +19,8 @@ class PipelineConfig:
     azure_openai_api_version: str = "2024-12-01-preview"
     azure_openai_api_key: Optional[str] = None  # If not set, uses DefaultAzureCredential
 
+    azure_openai_fallback_model: str = "gpt-4o-fallback"  # Fallback when primary model is rate-limited
+
     # Model settings
     max_tokens: int = 16000
     batch_size: int = 5  # Controls per LLM call for mapping
@@ -44,6 +46,7 @@ class PipelineConfig:
             azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1"),
             azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
             azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_openai_fallback_model=os.getenv("AZURE_OPENAI_FALLBACK_MODEL", "gpt-4o"),
             max_tokens=int(os.getenv("AI_MAX_TOKENS", "16000")),
             batch_size=int(os.getenv("AI_BATCH_SIZE", "5")),
             min_confidence_threshold=float(os.getenv("MIN_CONFIDENCE", "0.5")),

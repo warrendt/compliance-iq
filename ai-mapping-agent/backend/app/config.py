@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Azure Open AI Settings
     azure_openai_endpoint: str
     azure_openai_deployment_name: str = "gpt-4.1"  # Primary model
-    azure_openai_fallback_model: str = "gpt-4o"  # Fallback if gpt-4.1 unavailable
+    azure_openai_fallback_model: str = "gpt-4o-fallback"  # Fallback if gpt-4.1 unavailable
     azure_openai_api_version: str = "2024-12-01-preview"
     azure_openai_api_key: Optional[str] = None  # If set, uses API key; else DefaultAzureCredential
 

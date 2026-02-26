@@ -4,7 +4,10 @@ Uses Azure OpenAI with structured outputs to extract compliance controls from ra
 """
 
 import logging
+import time
 from typing import Optional
+
+import openai
 
 from .models import ControlExtractionResult, ExtractedControl
 from .config import PipelineConfig
@@ -110,6 +113,60 @@ def extract_controls_from_text(
         return _extract_multi_chunk(client, config, chunks, metadata_context)
 
 
+def _get_retry_after(exc: openai.RateLimitError, default: float) -> float:
+    """Extract retry-after seconds from a 429 response, with a floor of default."""
+    # Try the response header first
+    try:
+        if exc.response and exc.response.headers:
+            val = exc.response.headers.get("retry-after")
+            if val:
+                return max(float(val), default)
+    except Exception:
+        pass
+    return default
+
+
+def _parse_with_retry(
+    client,
+    config: PipelineConfig,
+    messages: list[dict],
+    response_format,
+    max_retries: int = 3,
+):
+    """Call client.beta.chat.completions.parse with retry + model fallback on 429."""
+    models = [config.azure_openai_deployment]
+    if config.azure_openai_fallback_model and config.azure_openai_fallback_model != config.azure_openai_deployment:
+        models.append(config.azure_openai_fallback_model)
+
+    for model in models:
+        for attempt in range(1, max_retries + 1):
+            try:
+                return client.beta.chat.completions.parse(
+                    model=model,
+                    messages=messages,
+                    response_format=response_format,
+                    max_completion_tokens=config.max_tokens,
+                )
+            except openai.RateLimitError as e:
+                retry_after = _get_retry_after(e, default=30.0 * attempt)
+                if attempt < max_retries:
+                    logger.warning(
+                        f"Rate limited on {model} (attempt {attempt}/{max_retries}). "
+                        f"Retrying in {retry_after}s..."
+                    )
+                    time.sleep(retry_after)
+                else:
+                    logger.warning(
+                        f"Rate limited on {model} after {max_retries} attempts. "
+                        f"{'Falling back to next model...' if model != models[-1] else 'No more models to try.'}"
+                    )
+    raise openai.RateLimitError(
+        message="All models exhausted after retries",
+        response=None,
+        body=None,
+    )
+
+
 def _extract_single(
     client,
     config: PipelineConfig,
@@ -131,14 +188,14 @@ Return the structured result with framework metadata and a complete list of cont
 
     logger.info(f"Sending {len(user_prompt):,} chars to Azure OpenAI for control extraction...")
 
-    completion = client.beta.chat.completions.parse(
-        model=config.azure_openai_deployment,
+    completion = _parse_with_retry(
+        client,
+        config,
         messages=[
             {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         response_format=ControlExtractionResult,
-        max_completion_tokens=config.max_tokens,
     )
 
     result = completion.choices[0].message.parsed
@@ -183,14 +240,14 @@ Extract ALL compliance controls found in this portion of the document.
 This is part {i + 1} of {len(chunks)} parts of the same document.
 Be thorough — capture every control, requirement, and sub-requirement found in this section."""
 
-        completion = client.beta.chat.completions.parse(
-            model=config.azure_openai_deployment,
+        completion = _parse_with_retry(
+            client,
+            config,
             messages=[
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
             ],
             response_format=ControlExtractionResult,
-            max_completion_tokens=config.max_tokens,
         )
 
         result = completion.choices[0].message.parsed
