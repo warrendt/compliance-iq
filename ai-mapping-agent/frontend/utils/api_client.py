@@ -201,7 +201,7 @@ class APIClient:
         payload = {
             "mappings": mappings,
             "framework_name": framework_name,
-            "min_confidence": min_confidence
+            "min_confidence_threshold": min_confidence
         }
         
         with self._get_client() as client:

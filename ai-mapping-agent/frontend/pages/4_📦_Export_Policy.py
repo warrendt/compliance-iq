@@ -4,7 +4,10 @@ Export Policy Page - Generate and download Azure Policy initiatives.
 
 import streamlit as st
 import json
+import io
+import zipfile
 import httpx
+import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
@@ -302,7 +305,6 @@ if st.session_state.generated_policy:
                     st.session_state._export_policy_details = {}
             _pd_map = st.session_state._export_policy_details
 
-            import pandas as _pd_lib
             _rows = []
             for pid in _all_pids:
                 d = _pd_map.get(pid, {})
@@ -312,16 +314,13 @@ if st.session_state.generated_policy:
                     "Description": d.get("description", "")[:120],
                     "Learn URL": d.get("learn_url", ""),
                 })
-            st.dataframe(_pd_lib.DataFrame(_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(_rows), use_container_width=True, hide_index=True)
         else:
             st.info("No Azure Policy GUIDs in the included mappings.")
 
     # Download all as ZIP
     st.markdown("---")
     st.markdown("### 📦 Download Complete Package")
-    
-    import io
-    import zipfile
     
     # Create ZIP file
     zip_buffer = io.BytesIO()
@@ -669,6 +668,3 @@ with st.sidebar:
             st.info("⏳ Ready to generate SLZ")
     else:
         st.caption("No sovereignty data")
-
-# Add pandas import
-import pandas as pd

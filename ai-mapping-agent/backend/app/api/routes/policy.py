@@ -16,26 +16,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
-@router.post("/generate", response_model=PolicyGenerationResponse)
+@router.post("/generate")
 async def generate_policy_initiative(request: PolicyGenerationRequest):
     """
     Generate Azure Policy initiative from control mappings.
 
-    Example:
-        ```python
-        import requests
-
-        response = requests.post(
-            "http://localhost:8000/api/v1/policy/generate",
-            json={
-                "framework_name": "SAMA Cybersecurity",
-                "mappings": [...],  # List of ControlMapping objects
-                "min_confidence_threshold": 0.7
-            }
-        )
-
-        initiative_json = response.json()["initiative"]
-        ```
+    Returns an enriched response including the initiative JSON in Azure
+    format, a Bicep template, and PowerShell / CLI deployment scripts.
     """
     logger.info(f"Generating policy initiative for {request.framework_name}")
 
@@ -47,7 +34,23 @@ async def generate_policy_initiative(request: PolicyGenerationRequest):
             f"Generated initiative with {response.included_policies} policies"
         )
 
-        return response
+        # Build enriched response with all artifacts the frontend needs
+        initiative_name = request.framework_name.replace(" ", "_").lower()
+        initiative_json = response.initiative.to_azure_json()
+        bicep_template = policy_service.export_as_bicep(
+            response.initiative, initiative_name
+        )
+        scripts = policy_service.generate_deployment_script(
+            response.initiative, initiative_name
+        )
+
+        result = response.model_dump()
+        result["initiative_id"] = f"{initiative_name}-compliance"
+        result["initiative_json"] = initiative_json
+        result["bicep_template"] = bicep_template
+        result["powershell_script"] = scripts["powershell"]
+        result["cli_script"] = scripts.get("cli", "")
+        return result
 
     except Exception as e:
         logger.error(f"Failed to generate policy initiative: {e}")
