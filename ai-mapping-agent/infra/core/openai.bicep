@@ -126,7 +126,7 @@ var openAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 output id string = openaiId
 output name string = name
 output endpoint string = openaiEndpoint
-output deploymentName string = existingAccount ? '' : modelDeployment.name
-output fallbackDeploymentName string = (!existingAccount && modelName != fallbackModel) ? fallbackDeployment.name : ''
+output deploymentName string = existingAccount ? modelName : modelDeployment.name
+output fallbackDeploymentName string = existingAccount ? '${fallbackModel}-fallback' : (modelName != fallbackModel ? fallbackDeployment.name : '')
 output apiVersion string = apiVersion
 output openAiUserRoleId string = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAiUserRoleId)

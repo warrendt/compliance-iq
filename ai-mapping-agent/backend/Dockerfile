@@ -31,7 +31,7 @@ COPY app/ ./app/
 RUN test -d /app/app/pipeline && echo 'Pipeline package present' || echo 'WARNING: pipeline package missing'
 
 # Set environment variables
-ENV PATH=/home/appuser/.local/bin:$PATH \
+ENV PATH=/home/vscode/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000

@@ -190,6 +190,10 @@ module backendApp './core/container-app.bicep' = {
         value: openai.outputs.apiVersion
       }
       {
+        name: 'AZURE_OPENAI_FALLBACK_MODEL'
+        value: openai.outputs.fallbackDeploymentName
+      }
+      {
         name: 'COSMOS_DB_ENDPOINT'
         value: cosmos.outputs.endpoint
       }
