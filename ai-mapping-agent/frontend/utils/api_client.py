@@ -335,6 +335,30 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    def extract_controls_from_pdf(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+    ) -> Dict[str, Any]:
+        """Extract controls from a compliance PDF (Stages 1-2 only).
+
+        Returns controls in CSV-flow format ready for session_state.controls.
+
+        Args:
+            pdf_bytes: Raw PDF file bytes
+            filename: Original filename
+
+        Returns:
+            Dict with framework_name, controls list, total_controls, etc.
+        """
+        with httpx.Client(timeout=300.0) as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/extract",
+                files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+            )
+            response.raise_for_status()
+            return response.json()
+
     def get_pipeline_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of a pipeline job.
 
