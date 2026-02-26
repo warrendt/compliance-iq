@@ -41,6 +41,10 @@ if not st.session_state.mappings:
 api_client = get_api_client()
 
 # Load MCSB controls for reference (cached)
+# Fix stale cache: if a previous run stored a dict instead of a list, clear it
+if isinstance(st.session_state.mcsb_controls, dict):
+    st.session_state.mcsb_controls = None
+
 if st.session_state.mcsb_controls is None:
     with st.spinner("Loading MCSB controls..."):
         try:
