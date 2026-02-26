@@ -43,7 +43,7 @@ az portal
 
 ### Common First-Time Issues
 
-1. **"Region doesn't support gpt-5"**
+1. **"Region doesn't support gpt-4.1"**
    ```bash
    # Use GPT-4o instead
    azd env set AZURE_OPENAI_MODEL_NAME gpt-4o
@@ -181,7 +181,7 @@ Then: `azd provision`
 - Update dependencies in requirements.txt
 
 ### Quarterly
-- Review OpenAI model availability (GPT-5 → GPT-6?)
+- Review OpenAI model availability (GPT-4.1 → newer models?)
 - Optimize Cosmos DB indexing based on query patterns
 - Review and update alert thresholds
 - Audit role assignments
@@ -263,7 +263,7 @@ If you improve the deployment:
 - [x] Logging and monitoring
 - [x] Cosmos DB integration
 - [x] Azure AD authentication (placeholder)
-- [x] GPT-5 with fallback
+- [x] GPT-4.1 with fallback
 - [x] Deployment documentation
 - [x] Troubleshooting guide
 - [ ] Deploy to Azure (you're about to do this!)

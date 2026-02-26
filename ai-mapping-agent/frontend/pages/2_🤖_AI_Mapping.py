@@ -163,7 +163,7 @@ else:
     
     # Estimated time with concurrency
     num_controls = len(st.session_state.controls)
-    est_per_control = 45  # ~45 seconds per GPT-5 call
+    est_per_control = 45  # ~45 seconds per AI mapping call
     est_total = (num_controls / concurrency) * est_per_control
     st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
     

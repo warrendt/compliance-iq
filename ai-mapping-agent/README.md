@@ -8,7 +8,7 @@ This AI agent automates the manual process of mapping external compliance framew
 
 ### Key Features
 
-- **🤖 Intelligent Control Mapping**: Uses Azure OpenAI GPT-4o to analyze and map controls
+- **🤖 Intelligent Control Mapping**: Uses Azure OpenAI GPT-4.1 to analyze and map controls
 - **📊 Structured Outputs**: Enforces JSON schema for consistent, validated mappings
 - **🔐 Secure Authentication**: DefaultAzureCredential (Managed Identity + Azure CLI)
 - **✏️ Interactive Review**: Web-based UI to review and adjust AI mappings
@@ -38,7 +38,7 @@ This AI agent automates the manual process of mapping external compliance framew
           ▼             ▼
 ┌──────────────┐ ┌─────────────────────────┐
 │ Azure OpenAI │ │ Azure Landing Zones Lib  │
-│  GPT-4o      │ │  SLZ Policy Definitions  │
+│  GPT-4.1    │ │  SLZ Policy Definitions  │
 │  Structured  │ │  Initiatives & Assign.   │
 │  Outputs     │ │  Sovereignty Objectives  │
 └──────────────┘ └─────────────────────────┘
@@ -49,7 +49,7 @@ This AI agent automates the manual process of mapping external compliance framew
 ### Prerequisites
 
 - Python 3.10+
-- Azure OpenAI resource with GPT-4o deployment
+- Azure OpenAI resource with GPT-4.1 deployment
 - Azure CLI (for local development)
 
 ### 1. Clone and Setup
@@ -85,7 +85,7 @@ nano .env
 **Required settings**:
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
 ```
 
 ### 3. Authenticate with Azure

@@ -351,7 +351,7 @@ else:
     with st.expander("ℹ️ How it works"):
         st.markdown("""
         1. **Upload** — Your PDF is sent to the backend
-        2. **Extract** — pypdf extracts the text, then Azure OpenAI (GPT-5) identifies every control
+        2. **Extract** — pypdf extracts the text, then Azure OpenAI (GPT-4.1) identifies every control
         3. **Map** — Each control is mapped to Azure Policy definitions and MCSB controls
         4. **Validate** — Policy GUIDs are verified, confidence scores are checked
         5. **Generate** — Initiative JSON, PowerShell scripts, and CSV reports are created

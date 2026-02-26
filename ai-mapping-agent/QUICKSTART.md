@@ -21,7 +21,7 @@ azd up
 
 - ✅ 2 Container Apps (backend + frontend)
 - ✅ Azure Cosmos DB (serverless)
-- ✅ Azure OpenAI (GPT-5 or GPT-4o)
+- ✅ Azure OpenAI (GPT-4.1 with GPT-4o fallback)
 - ✅ Container Registry
 - ✅ Application Insights + Log Analytics
 - ✅ Managed Identity with RBAC

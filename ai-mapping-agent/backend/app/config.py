@@ -24,8 +24,8 @@ class Settings(BaseSettings):
 
     # Azure Open AI Settings
     azure_openai_endpoint: str
-    azure_openai_deployment_name: str = "gpt-5"  # Primary model
-    azure_openai_fallback_model: str = "gpt-4o"  # Fallback if GPT-5 unavailable
+    azure_openai_deployment_name: str = "gpt-4.1"  # Primary model
+    azure_openai_fallback_model: str = "gpt-4o"  # Fallback if gpt-4.1 unavailable
     azure_openai_api_version: str = "2024-12-01-preview"
 
     # Optional: For user-assigned managed identity
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     policy_mappings_path: str = "data/mcsb/azure_policy_mappings.json"
 
     # AI Mapping Settings
-    ai_temperature: float = 0.3  # Lower for consistency (Note: GPT-5 ignores this)
+    ai_temperature: float = 0.3  # Lower for consistency
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
 

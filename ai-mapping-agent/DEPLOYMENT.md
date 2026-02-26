@@ -7,7 +7,7 @@ Complete guide for deploying the CCToolkit AI Mapping Agent to Azure using Azure
 This deployment uses:
 - **Azure Container Apps** (Consumption plan) - Serverless containers that scale to zero
 - **Azure Cosmos DB** (Serverless) - NoSQL database for mapping results and audit logs  
-- **Azure OpenAI** (GPT-5 with GPT-4o fallback) - AI model for control mapping
+- **Azure OpenAI** (GPT-4.1 with GPT-4o fallback) - AI model for control mapping
 - **Application Insights** - Monitoring, logging, and telemetry
 - **Managed Identity** - Secure, keyless authentication
 
@@ -109,7 +109,7 @@ azd up
 ```
 
 Uses defaults:
-- Model: gpt-5 (falls back to gpt-4o if unavailable)
+- Model: gpt-4.1 (falls back to gpt-4o if unavailable)
 - Region: Sweden Central
 - Authentication: Disabled
 
@@ -216,7 +216,7 @@ azd deploy
 - `AZURE_SUBSCRIPTION_ID` - Azure subscription ID
 
 ### Optional
-- `AZURE_OPENAI_MODEL_NAME` - Model to deploy (default: gpt-5)
+- `AZURE_OPENAI_MODEL_NAME` - Model to deploy (default: gpt-4.1)
 - `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model (default: gpt-4o)
 - `ENABLE_AUTH` - Enable Azure AD auth (default: false)
 - `AZURE_AD_TENANT_ID` - Azure AD tenant ID
@@ -426,7 +426,7 @@ docker build -t cctoolkit-frontend ./frontend
 |---------|--------------|-----------|
 | Container Apps (2) | Consumption, scale-to-zero | $0-5 |
 | Cosmos DB | Serverless, 1GB storage | $1-5 |
-| OpenAI GPT-5 | Pay-per-token | Variable* |
+| OpenAI GPT-4.1 | Pay-per-token | Variable* |
 | Container Registry | Basic | $5 |
 | Log Analytics | First 5GB free | $0-2 |
 | Application Insights | Included with Log Analytics | $0 |

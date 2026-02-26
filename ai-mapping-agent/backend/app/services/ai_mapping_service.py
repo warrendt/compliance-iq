@@ -137,7 +137,7 @@ class AIMappingService:
 
         try:
             # Call Azure OpenAI with structured output
-            # Note: GPT-5 doesn't support temperature parameter (always 1.0)
+            # Note: Using gpt-4.1 primary model with max_completion_tokens
             # and uses max_completion_tokens instead of max_tokens
             completion = self.client.beta.chat.completions.parse(
                 model=self.model,

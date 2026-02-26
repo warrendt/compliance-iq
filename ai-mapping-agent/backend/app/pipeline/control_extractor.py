@@ -118,7 +118,7 @@ def extract_controls_from_text(
             f"  Pages: {pdf_metadata.get('pages', 'Unknown')}\n"
         )
 
-    # Chunk if necessary (GPT-5 has ~128k context but we stay conservative)
+    # Chunk if necessary (gpt-4.1 has ~128k context but we stay conservative)
     chunks = chunk_text(pdf_text, max_chars=100000)
 
     if len(chunks) == 1:

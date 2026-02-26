@@ -16,7 +16,7 @@ Usage:
 
 Environment:
   AZURE_OPENAI_ENDPOINT         (required) Azure OpenAI endpoint URL
-  AZURE_OPENAI_DEPLOYMENT_NAME  (optional) Model deployment name (default: gpt-5)
+  AZURE_OPENAI_DEPLOYMENT_NAME  (optional) Model deployment name (default: gpt-4.1)
   AZURE_OPENAI_API_KEY          (optional) API key — if omitted, uses DefaultAzureCredential
   AZURE_OPENAI_API_VERSION      (optional) API version (default: 2024-12-01-preview)
 """
@@ -292,7 +292,7 @@ Examples:
 
 Environment Variables:
   AZURE_OPENAI_ENDPOINT          Azure OpenAI endpoint (required)
-  AZURE_OPENAI_DEPLOYMENT_NAME   Model deployment name (default: gpt-5)
+  AZURE_OPENAI_DEPLOYMENT_NAME   Model deployment name (default: gpt-4.1)
   AZURE_OPENAI_API_KEY           API key (optional — uses DefaultAzureCredential if omitted)
   AZURE_OPENAI_API_VERSION       API version (default: 2024-12-01-preview)
 """,

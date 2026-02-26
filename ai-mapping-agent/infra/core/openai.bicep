@@ -12,7 +12,7 @@ param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
 
-// Note: GPT-4.1 is preview and may not be available in all regions
+// Note: gpt-4.1 may not be available in all regions
 // This template deploys both primary and fallback models
 resource openai 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (!existingAccount) {
   name: name

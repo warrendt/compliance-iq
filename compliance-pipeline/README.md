@@ -21,7 +21,7 @@ This pipeline automates the entire journey from a compliance control PDF documen
 - Chunks large documents for LLM processing
 
 ### Stage 2: AI Control Extraction
-- Sends PDF text to Azure OpenAI (GPT-5/GPT-4o)
+- Sends PDF text to Azure OpenAI (GPT-4.1/GPT-4o)
 - Uses **structured outputs** to extract every control with:
   - Control ID, title, description, domain, type
   - Sub-controls and requirements

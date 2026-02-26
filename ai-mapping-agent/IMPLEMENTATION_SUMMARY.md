@@ -7,7 +7,7 @@ Full Azure deployment infrastructure has been implemented with:
 - Comprehensive logging and monitoring with Application Insights
 - Cosmos DB integration for data persistence
 - Azure AD authentication support (optional)
-- GPT-5 model with automatic fallback to GPT-4o
+- GPT-4.1 model with automatic fallback to GPT-4o
 - Production-ready observability and troubleshooting tools
 
 ---
@@ -68,7 +68,7 @@ Full Azure deployment infrastructure has been implemented with:
 
 **Configuration:**
 - `backend/app/config.py` - Updated with:
-  - GPT-5 model + fallback
+  - GPT-4.1 model + fallback
   - Cosmos DB settings
   - Application Insights
   - Azure AD settings
@@ -157,7 +157,7 @@ Full Azure deployment infrastructure has been implemented with:
 │  │                      ▼          ▼          ▼          │  │
 │  │              ┌────────────┐ ┌─────────┐ ┌──────────┐ │  │
 │  │              │Azure OpenAI│ │Cosmos DB│ │App       │ │  │
-│  │              │(GPT-5/4o)  │ │(NoSQL)  │ │Insights  │ │  │
+│  │              │(GPT-4.1/4o)│ │(NoSQL)  │ │Insights  │ │  │
 │  │              └────────────┘ └─────────┘ └──────────┘ │  │
 │  │                                                         │  │
 │  │              ┌──────────────────────────────┐         │  │
@@ -309,7 +309,7 @@ curl https://backend-url/api/v1/health/ping
 
 **Required:**
 - `AZURE_OPENAI_ENDPOINT` - OpenAI resource endpoint
-- `AZURE_OPENAI_DEPLOYMENT_NAME` - Model name (gpt-5)
+- `AZURE_OPENAI_DEPLOYMENT_NAME` - Model name (gpt-4.1)
 - `AZURE_OPENAI_API_VERSION` - API version
 
 **Optional:**

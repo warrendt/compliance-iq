@@ -22,7 +22,7 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-5"
+      "defaultValue": "gpt-4.1"
     },
     "fallbackModel": {
       "type": "string",
