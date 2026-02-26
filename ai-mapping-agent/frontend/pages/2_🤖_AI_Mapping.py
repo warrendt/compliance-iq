@@ -5,6 +5,7 @@ AI Mapping Page - Map controls to MCSB using AI.
 import streamlit as st
 import time
 from utils.api_client import get_api_client
+from utils.theme import inject_azure_theme, render_sidebar, render_footer
 import httpx
 
 st.set_page_config(
@@ -12,6 +13,9 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide"
 )
+
+inject_azure_theme()
+render_sidebar()
 
 # Initialize session state
 if 'controls' not in st.session_state:

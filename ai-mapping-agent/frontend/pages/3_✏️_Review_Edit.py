@@ -5,12 +5,16 @@ Review & Edit Page - Review and modify AI-generated mappings.
 import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
+from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 st.set_page_config(
     page_title="Review & Edit | AI Mapping Agent",
     page_icon="✏️",
     layout="wide"
 )
+
+inject_azure_theme()
+render_sidebar()
 
 # Initialize session state
 if 'mappings' not in st.session_state:

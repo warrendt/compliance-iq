@@ -6,12 +6,16 @@ import streamlit as st
 import pandas as pd
 import io
 from typing import Optional, List, Dict
+from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 st.set_page_config(
     page_title="Upload Controls | AI Mapping Agent",
     page_icon="📁",
     layout="wide"
 )
+
+inject_azure_theme()
+render_sidebar()
 
 # Initialize session state
 if 'controls' not in st.session_state:

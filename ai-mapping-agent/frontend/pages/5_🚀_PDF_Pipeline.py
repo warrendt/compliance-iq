@@ -7,12 +7,16 @@ import os
 import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient
+from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 st.set_page_config(
     page_title="PDF Upload — CCToolkit",
     page_icon="📄",
     layout="wide",
 )
+
+inject_azure_theme()
+render_sidebar()
 
 # ── Session state init ────────────────────────────────────────────────────
 if "controls" not in st.session_state:
