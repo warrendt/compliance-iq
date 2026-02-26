@@ -161,7 +161,7 @@ if st.session_state.generated_policy:
     st.markdown("---")
     
     # Tabs for different outputs
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 Initiative JSON", "🔧 PowerShell Script", "📊 Bicep Template", "📖 Deployment Guide"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Initiative JSON", "🔧 PowerShell Script", "📊 Bicep Template", "📖 Deployment Guide", "🔍 Policy Details"])
     
     with tab1:
         st.markdown("#### Azure Policy Initiative JSON")
@@ -265,6 +265,39 @@ if st.session_state.generated_policy:
         - [Compliance monitoring](https://learn.microsoft.com/azure/governance/policy/how-to/get-compliance-data)
         """)
     
+    with tab5:
+        st.markdown("#### Azure Policy Details")
+        st.markdown("Enriched policy information from the cache (Microsoft Learn backed)")
+
+        # Collect all unique policy GUIDs from filtered mappings
+        _all_pids = set()
+        for m in filtered_mappings:
+            for pid in m.get("azure_policy_ids", []):
+                _all_pids.add(pid)
+        _all_pids = sorted(_all_pids)
+
+        if _all_pids:
+            if "_export_policy_details" not in st.session_state:
+                try:
+                    st.session_state._export_policy_details = api_client.get_policy_details(_all_pids).get("policies", {})
+                except Exception:
+                    st.session_state._export_policy_details = {}
+            _pd_map = st.session_state._export_policy_details
+
+            import pandas as _pd_lib
+            _rows = []
+            for pid in _all_pids:
+                d = _pd_map.get(pid, {})
+                _rows.append({
+                    "Policy ID": pid,
+                    "Display Name": d.get("display_name", "—"),
+                    "Description": d.get("description", "")[:120],
+                    "Learn URL": d.get("learn_url", ""),
+                })
+            st.dataframe(_pd_lib.DataFrame(_rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("No Azure Policy GUIDs in the included mappings.")
+
     # Download all as ZIP
     st.markdown("---")
     st.markdown("### 📦 Download Complete Package")

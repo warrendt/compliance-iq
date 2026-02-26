@@ -217,8 +217,25 @@ else:
             # Azure Policies
             if mapping.get('azure_policy_ids'):
                 st.markdown("#### 🎯 Recommended Azure Policies")
-                for policy_id in mapping['azure_policy_ids']:
-                    st.code(policy_id, language="text")
+                # Batch-fetch display names from cache
+                _pids = mapping['azure_policy_ids']
+                _cache_key = f"_policy_detail_cache_{hash(tuple(_pids))}"
+                if _cache_key not in st.session_state:
+                    try:
+                        st.session_state[_cache_key] = api_client.get_policy_details(_pids).get("policies", {})
+                    except Exception:
+                        st.session_state[_cache_key] = {}
+                _details = st.session_state[_cache_key]
+                for policy_id in _pids:
+                    _pd = _details.get(policy_id)
+                    if _pd and _pd.get("display_name"):
+                        _url = _pd.get("learn_url", "")
+                        if _url:
+                            st.markdown(f"- **{_pd['display_name']}** — `{policy_id}` ([docs]({_url}))")
+                        else:
+                            st.markdown(f"- **{_pd['display_name']}** — `{policy_id}`")
+                    else:
+                        st.code(policy_id, language="text")
             
             # Sovereignty mapping
             sov = mapping.get('sovereignty')

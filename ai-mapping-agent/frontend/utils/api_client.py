@@ -212,6 +212,24 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    def get_policy_details(self, policy_ids: List[str]) -> Dict[str, Any]:
+        """Batch-lookup Azure Policy details by GUID (cached).
+
+        Args:
+            policy_ids: List of Azure Policy definition GUIDs
+
+        Returns:
+            Dict with 'policies' key mapping GUIDs to detail dicts
+        """
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/policy/details",
+                json={"policy_ids": policy_ids},
+                timeout=60.0,
+            )
+            response.raise_for_status()
+            return response.json()
+
     # --- Sovereignty / SLZ endpoints ---
 
     def get_sovereignty_summary(self) -> Dict[str, Any]:
