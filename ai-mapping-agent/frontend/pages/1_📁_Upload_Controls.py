@@ -85,6 +85,20 @@ if uploaded_file is not None:
         st.success(f"✅ File loaded successfully: **{uploaded_file.name}**")
         st.info(f"📊 Found {len(df)} rows and {len(df.columns)} columns")
         
+        # Auto-detect columns on first upload (when no columns are mapped yet)
+        if not any([st.session_state.control_id_col, st.session_state.control_name_col,
+                     st.session_state.description_col, st.session_state.domain_col]):
+            for col in df.columns:
+                col_lower = col.lower()
+                if 'id' in col_lower and not st.session_state.control_id_col:
+                    st.session_state.control_id_col = col
+                elif 'name' in col_lower and not st.session_state.control_name_col:
+                    st.session_state.control_name_col = col
+                elif ('description' in col_lower or 'desc' in col_lower) and not st.session_state.description_col:
+                    st.session_state.description_col = col
+                elif ('domain' in col_lower or 'category' in col_lower) and not st.session_state.domain_col:
+                    st.session_state.domain_col = col
+        
         # Column mapping section
         st.markdown("### 2️⃣ Map Columns")
         st.markdown("Match your file columns to the required fields:")
