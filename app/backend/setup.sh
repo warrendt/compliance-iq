@@ -21,13 +21,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # Check if virtual environment exists
-VENV_PATH="/Users/wdt/Library/CloudStorage/OneDrive-Microsoft/The Quantum Crew/Cloud Compliance Toolkit/cctoolkit_v1/venv"
+VENV_PATH="$SCRIPT_DIR/../.venv"
 
 if [ ! -d "$VENV_PATH" ]; then
-    echo -e "${RED}❌ Virtual environment not found at: $VENV_PATH${NC}"
-    echo -e "${YELLOW}Please create a virtual environment first:${NC}"
-    echo -e "  python3.14 -m venv $VENV_PATH"
-    exit 1
+    echo -e "${YELLOW}⚠ Virtual environment not found. Creating...${NC}"
+    python3 -m venv "$VENV_PATH"
 fi
 
 echo -e "${GREEN}✓ Found virtual environment${NC}"

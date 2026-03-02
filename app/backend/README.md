@@ -25,7 +25,8 @@ This script will:
 **1. Activate Virtual Environment**
 
 ```bash
-source /Users/wdt/Library/CloudStorage/OneDrive-Microsoft/The\ Quantum\ Crew/Cloud\ Compliance\ Toolkit/cctoolkit_v1/venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 **2. Install Dependencies**

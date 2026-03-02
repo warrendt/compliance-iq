@@ -1,23 +1,23 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 # =============================================================================
-# CCToolkit v1 — Root azure.yaml
+# ComplianceIQ — Root azure.yaml
 # 
-# The full deployment configuration lives in ai-mapping-agent/azure.yaml.
+# The full deployment configuration lives in app/azure.yaml.
 # This root file delegates to it so `azd up` works from the repo root.
 # =============================================================================
 
-name: cctoolkit-v1
+name: compliance-iq
 metadata:
-  template: cctoolkit-ai-agent@1.0.0
+  template: compliance-iq@1.0.0
 
 infra:
   provider: bicep
-  path: ai-mapping-agent/infra
+  path: app/infra
   module: main
 
 services:
   backend:
-    project: ai-mapping-agent/backend
+    project: app/backend
     host: containerapp
     language: python
     docker:
@@ -25,7 +25,7 @@ services:
       context: .
 
   frontend:
-    project: ai-mapping-agent/frontend
+    project: app/frontend
     host: containerapp
     language: python
     docker:
