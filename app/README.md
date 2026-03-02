@@ -56,7 +56,7 @@ This AI agent automates the manual process of mapping external compliance framew
 
 ```bash
 # Navigate to project directory
-cd ai-mapping-agent
+cd app
 
 # Create virtual environment
 python -m venv venv
@@ -173,7 +173,7 @@ SAMA-NS-01,Network Segmentation,Implement network segmentation,Network Security
 ## 🔧 Project Structure
 
 ```
-ai-mapping-agent/
+app/
 ├── backend/                    # FastAPI backend
 │   ├── app/
 │   │   ├── auth/              # Azure authentication
@@ -358,7 +358,7 @@ Quick deploy:
 ```bash
 cd deployment/azure/bicep
 az deployment group create \
-  --resource-group rg-cctoolkit \
+  --resource-group rg-compliance-iq \
   --template-file main.bicep
 ```
 
@@ -393,26 +393,26 @@ Once backend is running, visit:
 
 ## 🤝 Contributing
 
-This is part of the Cloud Compliance Toolkit (CCToolkit) project.
+This is part of the Cloud Compliance Toolkit (ComplianceIQ) project.
 
 See existing frameworks in `/catalogues` for reference mappings.
 
 ## 📝 License
 
-MIT License - Same as parent CCToolkit repository
+MIT License - Same as parent ComplianceIQ repository
 
 ## 🙏 Acknowledgments
 
 - Microsoft Cloud Security Benchmark team
 - Azure OpenAI service
-- Existing CCToolkit framework mappings (SAMA, CCC, ADHICS, SITA)
+- Existing ComplianceIQ framework mappings (SAMA, CCC, ADHICS, SITA)
 
 ## 🔗 Related Resources
 
 - [Microsoft Cloud Security Benchmark](https://learn.microsoft.com/en-us/security/benchmark/azure/introduction)
 - [Azure Policy Documentation](https://learn.microsoft.com/en-us/azure/governance/policy/)
 - [Azure OpenAI Structured Outputs](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/structured-outputs)
-- [CCToolkit Repository](../README.md)
+- [ComplianceIQ Repository](../README.md)
 
 ---
 

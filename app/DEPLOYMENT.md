@@ -1,6 +1,6 @@
 # Deployment Guide - Azure Cloud Deployment
 
-Complete guide for deploying the CCToolkit AI Mapping Agent to Azure using Azure Developer CLI (azd).
+Complete guide for deploying the ComplianceIQ AI Mapping Agent to Azure using Azure Developer CLI (azd).
 
 ## Overview
 
@@ -46,7 +46,7 @@ This deployment uses:
 ### 1. Clone and Navigate
 
 ```bash
-cd ai-mapping-agent
+cd app
 ```
 
 ### 2. Login to Azure
@@ -66,10 +66,10 @@ az account set --subscription "<subscription-id-or-name>"
 
 ```bash
 # Create new environment
-azd env new cctoolkit-dev
+azd env new compliance-iq-dev
 
 # Or use existing environment
-azd env select cctoolkit-dev
+azd env select compliance-iq-dev
 ```
 
 ### 4. Deploy Everything
@@ -81,7 +81,7 @@ azd up
 
 **What happens:**
 1. Prompts for Azure region (defaults to Sweden Central)
-2. Creates resource group: `rg-cctoolkit-dev`
+2. Creates resource group: `rg-compliance-iq-dev`
 3. Provisions infrastructure (Cosmos DB, OpenAI, Container Apps, etc.)
 4. Builds Docker images
 5. Pushes images to Azure Container Registry
@@ -175,7 +175,7 @@ To enable:
 ```bash
 # Backend API app registration
 az ad app create \
-  --display-name "CCToolkit Backend API" \
+  --display-name "ComplianceIQ Backend API" \
   --sign-in-audience AzureADMyOrg \
   --enable-id-token-issuance true
 
@@ -184,7 +184,7 @@ BACKEND_CLIENT_ID="<client-id-from-output>"
 
 # Frontend SPA app registration  
 az ad app create \
-  --display-name "CCToolkit Frontend" \
+  --display-name "ComplianceIQ Frontend" \
   --sign-in-audience AzureADMyOrg \
   --enable-id-token-issuance true \
   --enable-access-token-issuance true \
@@ -269,10 +269,10 @@ azd logs --tail 100
 az portal
 
 # View resource group
-az group show --name rg-cctoolkit-dev
+az group show --name rg-compliance-iq-dev
 
 # View Container Apps
-az containerapp list --resource-group rg-cctoolkit-dev -o table
+az containerapp list --resource-group rg-compliance-iq-dev -o table
 ```
 
 ---
@@ -297,7 +297,7 @@ az ad app delete --id $FRONTEND_CLIENT_ID
 
 ```bash
 # Keeps Azure resources, removes local environment
-azd env delete cctoolkit-dev
+azd env delete compliance-iq-dev
 ```
 
 ---
@@ -307,7 +307,7 @@ azd env delete cctoolkit-dev
 ### Development
 
 ```bash
-azd env new cctoolkit-dev
+azd env new compliance-iq-dev
 azd env set AZURE_LOCATION swedencentral
 azd up
 ```
@@ -315,7 +315,7 @@ azd up
 ### Production
 
 ```bash
-azd env new cctoolkit-prod
+azd env new compliance-iq-prod
 azd env set AZURE_LOCATION eastus
 azd env set ENABLE_AUTH true
 azd up
@@ -328,7 +328,7 @@ azd up
 azd env list
 
 # Switch
-azd env select cctoolkit-prod
+azd env select compliance-iq-prod
 
 # Auto-selects env for commands
 azd logs --service backend
@@ -412,8 +412,8 @@ az deployment sub validate \
   --parameters infra/main.parameters.json
 
 # Check Docker builds locally
-docker build -t cctoolkit-backend ./backend
-docker build -t cctoolkit-frontend ./frontend
+docker build -t compliance-iq-backend ./backend
+docker build -t compliance-iq-frontend ./frontend
 ```
 
 ---

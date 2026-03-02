@@ -25,7 +25,7 @@ param openAiFallbackVersion string = '2024-11-20'
 param openAiApiVersion string = '2024-12-01-preview'
 
 @description('Cosmos DB database name')
-param cosmosDatabaseName string = 'cctoolkit-db'
+param cosmosDatabaseName string = 'compliance-iq-db'
 
 @description('Allow public network access to ACR (for temporary dev pushes)')
 param acrAllowPublicAccess bool = true
@@ -47,7 +47,7 @@ var tags = {
   'azd-env-name': environmentName
   Environment: environmentName
   ManagedBy: 'azd'
-  Project: 'cctoolkit-ai-agent'
+  Project: 'compliance-iq'
 }
 
 // Resource Group

@@ -38,8 +38,8 @@ class PipelineConfig:
             _load_dotenv(env_file)
         elif Path(".env").exists():
             _load_dotenv(".env")
-        # Also check parent ai-mapping-agent/.env
-        agent_env = Path(__file__).parent.parent / "ai-mapping-agent" / "backend" / ".env"
+        # Also check parent app/.env
+        agent_env = Path(__file__).parent.parent / "app" / "backend" / ".env"
         if agent_env.exists():
             _load_dotenv(str(agent_env))
 

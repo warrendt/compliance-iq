@@ -75,7 +75,7 @@ class ContextFilter(logging.Filter):
     
     def filter(self, record: logging.LogRecord) -> bool:
         # Add service name
-        record.service_name = "cctoolkit-backend"
+        record.service_name = "compliance-iq-backend"
         return True
 
 
@@ -85,6 +85,6 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
     
     def add_fields(self, log_record: dict, record: logging.LogRecord, message_dict: dict) -> None:
         super().add_fields(log_record, record, message_dict)
-        log_record['service_name'] = 'cctoolkit-backend'
+        log_record['service_name'] = 'compliance-iq-backend'
         log_record['level'] = record.levelname
         log_record['logger'] = record.name

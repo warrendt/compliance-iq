@@ -162,7 +162,7 @@ async def extract_controls_from_pdf(
         raise HTTPException(400, "PDF file exceeds 50MB limit")
 
     # Save to temp file for pypdf
-    tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_extract_")
+    tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_extract_")
     pdf_path = Path(tmp_dir) / pdf_file.filename
     try:
         pdf_path.write_bytes(content)
@@ -419,7 +419,7 @@ async def _run_pipeline_job(job_id: str):
     try:
 
         # Save PDF to temp file
-        tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_")
+        tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_")
         pdf_path = Path(tmp_dir) / job["pdf_filename"]
         pdf_path.write_bytes(job["pdf_content"])
         _log_debug(job_id, f"Saved PDF to {pdf_path}")
@@ -601,7 +601,7 @@ def _ensure_output_dir(job_id: str, job: dict):
     if not artifacts_b64:
         return
 
-    tmp_dir = tempfile.mkdtemp(prefix="cctoolkit_restored_")
+    tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_restored_")
     zip_bytes = base64.b64decode(artifacts_b64)
     with zipfile.ZipFile(BytesIO(zip_bytes), "r") as zf:
         zf.extractall(tmp_dir)
@@ -616,7 +616,7 @@ def _init_cosmos():
         return
 
     endpoint = os.getenv("COSMOS_DB_ENDPOINT")
-    database_name = os.getenv("COSMOS_DB_DATABASE_NAME", "cctoolkit-db")
+    database_name = os.getenv("COSMOS_DB_DATABASE_NAME", "compliance-iq-db")
     container_name = os.getenv("COSMOS_DB_CONTAINER_NAME", "pipeline-jobs")
 
     if not endpoint:

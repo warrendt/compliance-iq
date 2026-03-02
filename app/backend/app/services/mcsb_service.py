@@ -43,7 +43,7 @@ class MCSBService:
 
             if not file_path.exists():
                 logger.warning(f"MCSB data file not found: {file_path}")
-                # Load from existing CCToolkit catalogs as fallback
+                # Load from existing ComplianceIQ catalogs as fallback
                 self._load_from_existing_catalogs()
                 return
 
@@ -75,10 +75,10 @@ class MCSBService:
 
     def _load_from_existing_catalogs(self) -> None:
         """
-        Load MCSB-like structure from existing CCToolkit catalogs.
+        Load MCSB-like structure from existing ComplianceIQ catalogs.
         This provides a fallback if the MCSB JSON file doesn't exist.
         """
-        logger.info("Loading MCSB data from existing CCToolkit catalogs")
+        logger.info("Loading MCSB data from existing ComplianceIQ catalogs")
 
         try:
             import pandas as pd

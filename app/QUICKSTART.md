@@ -7,7 +7,7 @@
 azd auth login
 
 # 2. Create environment
-azd env new cctoolkit-dev
+azd env new compliance-iq-dev
 
 # 3. Deploy everything
 azd up

@@ -42,7 +42,7 @@ class PolicyInitiativeMetadata(BaseModel):
     """Metadata for Azure Policy initiative."""
 
     category: str = Field(default="Regulatory Compliance")
-    source: str = Field(default="CCToolkit AI Mapping Agent")
+    source: str = Field(default="ComplianceIQ AI Mapping Agent")
     version: str = Field(default="1.0.0")
     generated_date: datetime = Field(default_factory=datetime.utcnow)
     framework_name: Optional[str] = None
@@ -52,7 +52,7 @@ class PolicyInitiativeMetadata(BaseModel):
         json_schema_extra = {
             "example": {
                 "category": "Regulatory Compliance",
-                "source": "CCToolkit AI Mapping Agent",
+                "source": "ComplianceIQ AI Mapping Agent",
                 "version": "1.0.0",
                 "generatedDate": "2026-01-20T10:00:00Z",
                 "frameworkName": "SAMA Cybersecurity Framework",

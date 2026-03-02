@@ -16,7 +16,7 @@ class AppInsightsConfig:
         self.connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
         self.enabled = bool(self.connection_string)
         self.environment = os.getenv("ENVIRONMENT", "development")
-        self.service_name = "cctoolkit-backend"
+        self.service_name = "compliance-iq-backend"
         
         # Sampling rate: 100% for dev, 10% for production
         self.sampling_rate = 1.0 if self.environment == "development" else 0.1

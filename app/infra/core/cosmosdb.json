@@ -22,7 +22,7 @@
     },
     "databaseName": {
       "type": "string",
-      "defaultValue": "cctoolkit-db"
+      "defaultValue": "compliance-iq-db"
     }
   },
   "variables": {

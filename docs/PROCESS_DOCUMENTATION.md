@@ -79,23 +79,23 @@ Collect and organize the following documents in a `reference_documents/` folder:
 Create the following directory structure:
 
 ```
-cctoolkit_v1/
-├── readme.md
+compliance-iq/
+├── README.md
 ├── reference_documents/
 │   ├── [Framework PDFs]
 │   └── standard_control_template.csv
 ├── catalogues/
 │   └── [Generated mapping files will go here]
-└── cctoolkit/
-    └── [Application code if applicable]
+└── app/
+    └── [Application code]
 ```
 
 **Commands:**
 ```bash
-mkdir -p cctoolkit_v1/reference_documents
-mkdir -p cctoolkit_v1/catalogues
-mkdir -p cctoolkit_v1/cctoolkit
-cd cctoolkit_v1
+mkdir -p compliance-iq/reference_documents
+mkdir -p compliance-iq/catalogues
+mkdir -p compliance-iq/app
+cd compliance-iq
 git init
 ```
 

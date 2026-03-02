@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CCToolkit Compliance Pipeline — PDF to Defender for Cloud Initiative
+ComplianceIQ Compliance Pipeline — PDF to Defender for Cloud Initiative
 
 End-to-end automation:
   1. Extract text from a compliance PDF
@@ -56,7 +56,7 @@ def print_banner():
     """Print the pipeline banner."""
     print()
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║   CCToolkit Compliance Pipeline                            ║")
+    print("║   ComplianceIQ Compliance Pipeline                            ║")
     print("║   PDF → Controls → Azure Policy → Defender for Cloud       ║")
     print("╚══════════════════════════════════════════════════════════════╝")
     print()
@@ -268,7 +268,7 @@ def run_pipeline(
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="CCToolkit Compliance Pipeline — PDF to Defender for Cloud Initiative",
+        description="ComplianceIQ Compliance Pipeline — PDF to Defender for Cloud Initiative",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

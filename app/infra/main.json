@@ -61,7 +61,7 @@
     },
     "cosmosDatabaseName": {
       "type": "string",
-      "defaultValue": "cctoolkit-db",
+      "defaultValue": "compliance-iq-db",
       "metadata": {
         "description": "Cosmos DB database name"
       }
@@ -211,7 +211,7 @@
       "azd-env-name": "[parameters('environmentName')]",
       "Environment": "[parameters('environmentName')]",
       "ManagedBy": "azd",
-      "Project": "cctoolkit-ai-agent"
+      "Project": "compliance-iq"
     }
   },
   "resources": [
@@ -745,7 +745,7 @@
             },
             "databaseName": {
               "type": "string",
-              "defaultValue": "cctoolkit-db"
+              "defaultValue": "compliance-iq-db"
             }
           },
           "variables": {

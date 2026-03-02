@@ -17,7 +17,7 @@ class CosmosDBClient:
     
     def __init__(self):
         self.endpoint = os.getenv("COSMOS_DB_ENDPOINT")
-        self.database_name = os.getenv("COSMOS_DB_DATABASE_NAME", "cctoolkit-db")
+        self.database_name = os.getenv("COSMOS_DB_DATABASE_NAME", "compliance-iq-db")
         self.client: Optional[CosmosClient] = None
         self.database = None
         self.credential = None

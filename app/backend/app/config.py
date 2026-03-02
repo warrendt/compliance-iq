@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # Cosmos DB Settings
     cosmos_db_endpoint: Optional[str] = None
-    cosmos_db_database_name: str = "cctoolkit-db"
+    cosmos_db_database_name: str = "compliance-iq-db"
 
     # Application Insights
     applicationinsights_connection_string: Optional[str] = None

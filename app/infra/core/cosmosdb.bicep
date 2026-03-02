@@ -2,7 +2,7 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param databaseName string = 'cctoolkit-db'
+param databaseName string = 'compliance-iq-db'
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 @description('Also create regional Cosmos private DNS A record (host-suffix)')

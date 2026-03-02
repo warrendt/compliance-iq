@@ -12,7 +12,7 @@ services:
       - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4.1}
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-10-21}
       - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_DATABASE_NAME=${COSMOS_DB_DATABASE_NAME:-cctoolkit-db}
+      - COSMOS_DB_DATABASE_NAME=${COSMOS_DB_DATABASE_NAME:-compliance-iq-db}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=development
       - ENABLE_AUTH=${ENABLE_AUTH:-false}
@@ -22,7 +22,7 @@ services:
     volumes:
       - ./backend/app:/app/app:ro
     networks:
-      - cctoolkit
+      - compliance-iq
 
   frontend:
     build:
@@ -38,8 +38,8 @@ services:
     depends_on:
       - backend
     networks:
-      - cctoolkit
+      - compliance-iq
 
 networks:
-  cctoolkit:
+  compliance-iq:
     driver: bridge

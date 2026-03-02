@@ -405,7 +405,7 @@ Get-AzPolicyStateSummary -PolicySetDefinitionName "OmanCDC_Cloud_Compliance"
 
 ## Contributing
 
-This initiative is maintained as part of the **Cloud Compliance Toolkit (CCToolkit)** project. To contribute:
+This initiative is maintained as part of the **Cloud Compliance Toolkit (ComplianceIQ)** project. To contribute:
 
 1. Review existing mappings in `/catalogues`
 2. Suggest additional policy mappings

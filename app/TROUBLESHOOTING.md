@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Common issues and solutions for deploying and running the CCToolkit AI Mapping Agent.
+Common issues and solutions for deploying and running the ComplianceIQ AI Mapping Agent.
 
 ## Quick Diagnostics
 
@@ -12,7 +12,7 @@ azd show
 azd logs --tail 100
 
 # Check Azure resources
-az resource list --resource-group rg-cctoolkit-dev -o table
+az resource list --resource-group rg-compliance-iq-dev -o table
 
 # Validate Bicep templates
 az deployment sub validate \
@@ -107,7 +107,7 @@ azd logs --service backend --tail 50
 # Verify environment variables
 az containerapp show \
   --name ca-backend-<token> \
-  --resource-group rg-cctoolkit-dev \
+  --resource-group rg-compliance-iq-dev \
   --query properties.template.containers[0].env -o table
 ```
 
@@ -142,7 +142,7 @@ azd logs --service backend --follow
 # Verify managed identity role assignment
 az cosmosdb sql role assignment list \
   --account-name cosmos-<token> \
-  --resource-group rg-cctoolkit-dev
+  --resource-group rg-compliance-iq-dev
 
 # Recreate role assignment if missing
 azd provision
@@ -174,13 +174,13 @@ azd env get-values | grep FRONTEND_URI
 # Check Container App status
 az containerapp show \
   --name ca-frontend-<token> \
-  --resource-group rg-cctoolkit-dev \
+  --resource-group rg-compliance-iq-dev \
   --query properties.managementState
 
 # Check if ingress is enabled
 az containerapp show \
   --name ca-frontend-<token> \
-  --resource-group rg-cctoolkit-dev \
+  --resource-group rg-compliance-iq-dev \
   --query properties.configuration.ingress
 ```
 
@@ -267,8 +267,8 @@ azd logs --service backend | grep cosmos
 # Verify Cosmos DB containers exist
 az cosmosdb sql database show \
   --account-name cosmos-<token> \
-  --resource-group rg-cctoolkit-dev \
-  --name cctoolkit-db
+  --resource-group rg-compliance-iq-dev \
+  --name compliance-iq-db
 ```
 
 ---
@@ -388,7 +388,7 @@ azd logs --service backend --follow
 az portal
 
 # Navigate to:
-# - Resource Group: rg-cctoolkit-dev
+# - Resource Group: rg-compliance-iq-dev
 # - Application Insights: Live Metrics
 # - Container Apps: Logs and Monitoring
 # - Cosmos DB: Data Explorer and Metrics
@@ -410,7 +410,7 @@ az portal
 # Set up health check endpoint monitoring
 az monitor app-insights web-test create \
   --name backend-health-check \
-  --resource-group rg-cctoolkit-dev \
+  --resource-group rg-compliance-iq-dev \
   --location swedencentral \
   --web-test-kind ping \
   --frequency 300 \
@@ -424,7 +424,7 @@ az monitor app-insights web-test create \
 ```bash
 # Set budget alert
 az consumption budget create \
-  --budget-name cctoolkit-budget \
+  --budget-name compliance-iq-budget \
   --amount 50 \
   --category Cost \
   --time-grain Monthly \

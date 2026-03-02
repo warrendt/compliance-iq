@@ -1,4 +1,4 @@
-# CCToolkit Compliance Pipeline
+# ComplianceIQ Compliance Pipeline
 
 **PDF → Controls → Azure Policy → Defender for Cloud — in one command.**
 
@@ -123,7 +123,7 @@ Running against an Oman CDC document:
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║   CCToolkit Compliance Pipeline                            ║
+║   ComplianceIQ Compliance Pipeline                            ║
 ║   PDF → Controls → Azure Policy → Defender for Cloud       ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -203,7 +203,7 @@ Once deployed and assigned:
 - ❌ Scanned/image-only PDFs (OCR not yet supported)
 - ❌ Password-protected PDFs
 
-## Integration with Existing CCToolkit
+## Integration with Existing ComplianceIQ
 
 This pipeline generates the same artifact format as the existing frameworks in `../framework/`:
 - `framework/Oman CDC/` — CDC_Initiative.json, cdc_policies.json, cdc_groups.json
