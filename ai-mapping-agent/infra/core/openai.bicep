@@ -122,7 +122,8 @@ resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' =
     ]
   }
   dependsOn: existingAccount ? [] : [
-    openai
+    modelDeployment
+    fallbackDeployment
   ]
 }
 
