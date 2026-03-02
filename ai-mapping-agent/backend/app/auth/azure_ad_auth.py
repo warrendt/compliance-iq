@@ -108,6 +108,8 @@ def _find_signing_key(jwks: dict, kid: str) -> dict | None:
 
 async def _validate_token(token: str) -> dict:
     """Validate a JWT issued by Entra ID and return its claims."""
+    global _jwks_cache_ts
+
     audience = os.getenv(
         "AZURE_AD_AUDIENCE",
         os.getenv("AZURE_AD_CLIENT_ID", ""),
@@ -127,8 +129,6 @@ async def _validate_token(token: str) -> dict:
     signing_key = _find_signing_key(jwks, kid)
     if not signing_key:
         # JWKS may have rotated — force refresh once
-        _jwks_cache_ts_old = _jwks_cache_ts
-        global _jwks_cache_ts
         _jwks_cache_ts = 0
         jwks = await _fetch_jwks()
         signing_key = _find_signing_key(jwks, kid)
