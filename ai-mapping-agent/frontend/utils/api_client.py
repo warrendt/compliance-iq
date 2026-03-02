@@ -510,13 +510,18 @@ class APIClient:
         Returns:
             Dict with framework_name, controls list, total_controls, etc.
         """
-        with httpx.Client(timeout=300.0) as client:
-            response = client.post(
-                f"{self.base_url}/api/v1/pipeline/extract",
-                files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
-            )
-            response.raise_for_status()
-            return response.json()
+        saved_timeout = self.timeout
+        self.timeout = 300.0  # PDF extraction can be slow
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/pipeline/extract",
+                    files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+                )
+                response.raise_for_status()
+                return response.json()
+        finally:
+            self.timeout = saved_timeout
 
     def get_pipeline_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of a pipeline job.

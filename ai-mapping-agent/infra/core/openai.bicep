@@ -7,7 +7,7 @@ param modelVersion string = '2025-04-14'
 param fallbackModel string = 'gpt-4o'
 param fallbackVersion string = '2024-11-20'
 param apiVersion string = '2024-12-01-preview'
-param sku string = 'S0'
+param sku string = 'S1'
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
