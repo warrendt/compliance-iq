@@ -44,12 +44,9 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
       }
-      registries: !empty(containerRegistryName) ? [
-        {
-          server: containerRegistry.properties.loginServer
-          identity: 'System'
-        }
-      ] : []
+      // Registry config is added by azd deploy when pushing real images
+      // to avoid circular dependency with managed identity RBAC on first deploy
+      registries: []
       secrets: []
     }
     template: {
