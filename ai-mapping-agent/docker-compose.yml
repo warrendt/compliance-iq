@@ -15,6 +15,10 @@ services:
       - COSMOS_DB_DATABASE_NAME=${COSMOS_DB_DATABASE_NAME:-cctoolkit-db}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=development
+      - ENABLE_AUTH=${ENABLE_AUTH:-false}
+      - AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID:-}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID:-}
+      - AZURE_AD_AUDIENCE=${AZURE_AD_AUDIENCE:-}
     volumes:
       - ./backend/app:/app/app:ro
     networks:
@@ -28,6 +32,9 @@ services:
       - "8501:8501"
     environment:
       - BACKEND_URL=http://backend:8000
+      - ENABLE_AUTH=${ENABLE_AUTH:-false}
+      - AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID:-}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID:-}
     depends_on:
       - backend
     networks:

@@ -30,6 +30,12 @@ param cosmosDatabaseName string = 'cctoolkit-db'
 @description('Allow public network access to ACR (for temporary dev pushes)')
 param acrAllowPublicAccess bool = true
 
+@description('Entra ID app registration client ID for Easy Auth (leave empty to disable auth)')
+param authClientId string = ''
+
+@description('Entra ID tenant ID for Easy Auth (defaults to deployment tenant when empty)')
+param authTenantId string = ''
+
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -213,6 +219,18 @@ module backendApp './core/container-app.bicep' = {
         name: 'ENVIRONMENT'
         value: environmentName
       }
+      {
+        name: 'ENABLE_AUTH'
+        value: !empty(authClientId) ? 'true' : 'false'
+      }
+      {
+        name: 'AZURE_AD_TENANT_ID'
+        value: !empty(authTenantId) ? authTenantId : tenant().tenantId
+      }
+      {
+        name: 'AZURE_AD_CLIENT_ID'
+        value: authClientId
+      }
     ]
   }
 }
@@ -234,6 +252,8 @@ module frontendApp './core/container-app.bicep' = {
     cpu: '0.25'
     memory: '0.5Gi'
     containerRegistryName: containerRegistry.outputs.name
+    authClientId: authClientId
+    authTenantId: authTenantId
     environmentVariables: [
       {
         name: 'BACKEND_URL'
@@ -242,6 +262,18 @@ module frontendApp './core/container-app.bicep' = {
       {
         name: 'ENVIRONMENT'
         value: environmentName
+      }
+      {
+        name: 'ENABLE_AUTH'
+        value: !empty(authClientId) ? 'true' : 'false'
+      }
+      {
+        name: 'AZURE_AD_CLIENT_ID'
+        value: authClientId
+      }
+      {
+        name: 'AZURE_AD_TENANT_ID'
+        value: !empty(authTenantId) ? authTenantId : tenant().tenantId
       }
     ]
   }

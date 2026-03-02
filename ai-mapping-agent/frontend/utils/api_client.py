@@ -22,8 +22,17 @@ class APIClient:
         self.timeout = 120.0  # Default timeout (2 minutes for AI operations)
         
     def _get_client(self) -> httpx.Client:
-        """Get an HTTP client with configured timeout."""
-        return httpx.Client(timeout=self.timeout)
+        """Get an HTTP client with configured timeout and auth headers."""
+        headers: Dict[str, str] = {}
+        try:
+            from utils.auth import get_access_token
+
+            token = get_access_token()
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+        except Exception:
+            pass  # auth module unavailable or no token
+        return httpx.Client(timeout=self.timeout, headers=headers)
     
     def health_check(self) -> Dict[str, Any]:
         """Check if the backend is healthy.

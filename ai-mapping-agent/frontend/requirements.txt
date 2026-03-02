@@ -14,5 +14,8 @@ openpyxl==3.1.2
 requests==2.31.0
 httpx==0.26.0
 
+# Authentication
+msal>=1.28.0
+
 # Utilities
 python-dotenv==1.0.0

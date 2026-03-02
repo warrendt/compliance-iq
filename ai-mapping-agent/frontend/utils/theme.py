@@ -126,6 +126,21 @@ def render_sidebar():
         st.markdown("---")
         st.caption("Made by **Warren DT**")
 
+        # ── Authenticated user ──
+        try:
+            from utils.auth import get_current_user, logout
+
+            user = get_current_user()
+            if user:
+                st.markdown("---")
+                st.markdown(f"👤 **{user.display_name}**")
+                st.caption(user.email)
+                if st.button("Sign out", key="sidebar_signout"):
+                    logout()
+                    st.rerun()
+        except Exception:
+            pass  # auth module may not be available
+
 
 def render_footer():
     """Render the page footer with branding."""

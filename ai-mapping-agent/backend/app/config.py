@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     enable_auth: bool = False  # Enable Azure AD authentication
     azure_ad_tenant_id: Optional[str] = None
     azure_ad_client_id: Optional[str] = None
+    azure_ad_audience: Optional[str] = None  # Defaults to client_id if not set
 
     # Environment
     environment: str = "development"  # development, staging, production
