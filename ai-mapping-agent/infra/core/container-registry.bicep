@@ -40,25 +40,25 @@ resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = if
         }
       }
     ]
-    privateDnsZoneGroups: !empty(privateDnsZoneId) ? [
-      {
-        name: '${name}-pe-dns'
-        properties: {
-          privateDnsZoneConfigs: [
-            {
-              name: 'acr'
-              properties: {
-                privateDnsZoneId: privateDnsZoneId
-              }
-            }
-          ]
-        }
-      }
-    ] : []
   }
   dependsOn: [
     containerRegistry
   ]
+}
+
+resource acrPeDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-08-01' = if (enablePrivateEndpoint && !empty(privateDnsZoneId)) {
+  parent: acrPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'acr'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
+  }
 }
 
 output id string = containerRegistry.id

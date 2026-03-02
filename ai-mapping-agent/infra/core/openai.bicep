@@ -105,26 +105,26 @@ resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' =
         }
       }
     ]
-    privateDnsZoneGroups: [
-      {
-        name: '${name}-pe-dns'
-        properties: {
-          privateDnsZoneConfigs: [
-            {
-              name: 'openai'
-              properties: {
-                privateDnsZoneId: privateDnsZoneId
-              }
-            }
-          ]
-        }
-      }
-    ]
   }
   dependsOn: existingAccount ? [] : [
     modelDeployment
     fallbackDeployment
   ]
+}
+
+resource openAiPeDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-08-01' = {
+  parent: openAiPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'openai'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
+  }
 }
 
 // Cognitive Services OpenAI User role definition ID

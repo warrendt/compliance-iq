@@ -65,25 +65,25 @@ resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' =
         }
       }
     ]
-    privateDnsZoneGroups: [
-      {
-        name: '${name}-pe-dns'
-        properties: {
-          privateDnsZoneConfigs: [
-            {
-              name: 'cosmosdb'
-              properties: {
-                privateDnsZoneId: privateDnsZoneId
-              }
-            }
-          ]
-        }
-      }
-    ]
   }
   dependsOn: [
     cosmosAccount
   ]
+}
+
+resource cosmosPeDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-08-01' = {
+  parent: cosmosPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'cosmosdb'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
+  }
 }
 
 // Private DNS record for regional endpoint (e.g., cosmos-<token>-swedencentral.privatelink.documents.azure.com)
