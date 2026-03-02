@@ -214,7 +214,7 @@ else:
                 # Show MCSB control details
                 if new_mcsb in mcsb_lookup:
                     mcsb_control = mcsb_lookup[new_mcsb]
-                    st.caption(f"**Title:** {mcsb_control['title']}")
+                    st.caption(f"**Title:** {mcsb_control.get('control_name', 'N/A')}")
                     st.caption(f"**Domain:** {mcsb_control.get('domain', 'N/A')}")
                 
                 # Confidence score (read-only if not manually overridden)

@@ -13,8 +13,14 @@ from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 
 
+_VALID_MAPPING_TYPES = {"exact", "partial", "conceptual", "none"}
+
+
 def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
     """Convert frontend session mapping dict to backend ControlMapping schema."""
+    mt = m.get("mapping_type", "conceptual")
+    if mt not in _VALID_MAPPING_TYPES:
+        mt = "conceptual"
     return {
         "external_control_id": m.get("control_id") or m.get("external_control_id", ""),
         "external_control_name": m.get("control_name") or m.get("external_control_name", ""),
@@ -24,7 +30,7 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         "confidence_score": m.get("confidence_score", 0.0),
         "reasoning": m.get("reasoning", ""),
         "azure_policy_ids": m.get("azure_policy_ids", []),
-        "mapping_type": m.get("mapping_type", "conceptual"),
+        "mapping_type": mt,
         "defender_recommendations": m.get("defender_recommendations", []),
         "sovereignty": m.get("sovereignty"),
     }
@@ -474,7 +480,9 @@ else:
     # Display generated SLZ artifacts
     if st.session_state.slz_generated:
         slz_data = st.session_state.slz_generated
-        archetypes = slz_data.get('archetypes', {})
+        # Backend nests per-archetype data under archetypes.archetype_artifacts
+        _raw_arch = slz_data.get('archetypes', {})
+        archetypes = _raw_arch.get('archetype_artifacts', _raw_arch) if isinstance(_raw_arch, dict) else {}
 
         st.markdown("### 📦 SLZ Archetype Artifacts")
         st.caption(
@@ -505,7 +513,7 @@ else:
                     )
 
                 with sub_tab2:
-                    bicep_content = arch_data.get('bicep', '// No Bicep generated')
+                    bicep_content = arch_data.get('bicep_template', arch_data.get('bicep', '// No Bicep generated'))
                     st.code(bicep_content, language="bicep", line_numbers=True)
                     st.download_button(
                         label=f"📥 Download {arch_name} Bicep",
@@ -516,7 +524,8 @@ else:
                     )
 
                 with sub_tab3:
-                    cli_script = (arch_data.get('scripts') or {}).get('cli', '# No CLI script')
+                    _scripts = arch_data.get('deployment_scripts') or arch_data.get('scripts') or {}
+                    cli_script = _scripts.get('cli', '# No CLI script')
                     st.code(cli_script, language="bash", line_numbers=True)
                     st.download_button(
                         label=f"📥 Download {arch_name} CLI Script",
@@ -527,7 +536,8 @@ else:
                     )
 
                 with sub_tab4:
-                    ps_script = (arch_data.get('scripts') or {}).get('powershell', '# No PowerShell script')
+                    _scripts2 = arch_data.get('deployment_scripts') or arch_data.get('scripts') or {}
+                    ps_script = _scripts2.get('powershell', '# No PowerShell script')
                     st.code(ps_script, language="powershell", line_numbers=True)
                     st.download_button(
                         label=f"📥 Download {arch_name} PowerShell",
@@ -551,9 +561,9 @@ else:
                 )
                 zf.writestr(
                     f"{prefix}/{prefix}_initiative.bicep",
-                    arch_data.get('bicep', '')
+                    arch_data.get('bicep_template', arch_data.get('bicep', ''))
                 )
-                scripts = arch_data.get('scripts') or {}
+                scripts = arch_data.get('deployment_scripts') or arch_data.get('scripts') or {}
                 zf.writestr(
                     f"{prefix}/deploy_{arch_name}.sh",
                     scripts.get('cli', '')

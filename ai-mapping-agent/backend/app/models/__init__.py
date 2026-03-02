@@ -53,3 +53,6 @@ __all__ = [
     "SLZArchetype",
     "SLZPolicyAssignment",
 ]
+
+# Resolve forward reference "ControlMapping" inside PolicyGenerationRequest
+PolicyGenerationRequest.model_rebuild()

@@ -2,9 +2,14 @@
 Pydantic models for Azure Policy initiatives.
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from app.models.mapping import ControlMapping
 
 
 class PolicyDefinitionReference(BaseModel):
@@ -133,7 +138,7 @@ class PolicyGenerationRequest(BaseModel):
 
     framework_name: str = Field(..., description="Framework name")
     framework_version: Optional[str] = Field(None, description="Framework version")
-    mappings: List[Any] = Field(..., description="List of control mappings")  # ControlMapping
+    mappings: List["ControlMapping"] = Field(..., description="List of control mappings")
     include_all_policies: bool = Field(
         True,
         description="Include all mapped policies or only high-confidence ones"

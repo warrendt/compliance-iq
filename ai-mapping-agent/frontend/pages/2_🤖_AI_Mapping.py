@@ -276,8 +276,7 @@ else:
 
                 st.info("👉 Go to **Review & Edit** to validate the mappings")
 
-                if st.button("Continue to Review →", type="primary"):
-                    st.switch_page("pages/3_✏️_Review_Edit.py")
+                st.page_link("pages/3_✏️_Review_Edit.py", label="Continue to Review →", icon="➡️")
 
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend. Make sure it's running.")
