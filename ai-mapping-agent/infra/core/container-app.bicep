@@ -44,10 +44,19 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
       }
-      // Registry config is added by azd deploy when pushing real images
-      // to avoid circular dependency with managed identity RBAC on first deploy
-      registries: []
-      secrets: []
+      registries: !empty(containerRegistryName) ? [
+        {
+          server: containerRegistry.properties.loginServer
+          username: containerRegistry.listCredentials().username
+          passwordSecretRef: 'acr-password'
+        }
+      ] : []
+      secrets: !empty(containerRegistryName) ? [
+        {
+          name: 'acr-password'
+          value: containerRegistry.listCredentials().passwords[0].value
+        }
+      ] : []
     }
     template: {
       containers: [
