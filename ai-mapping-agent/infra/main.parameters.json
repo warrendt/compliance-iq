@@ -19,6 +19,9 @@
     },
     "openAiFallbackVersion": {
       "value": "${AZURE_OPENAI_FALLBACK_VERSION=2024-11-20}"
+    },
+    "devPublicIpAddress": {
+      "value": "${DEV_PUBLIC_IP=}"
     }
   }
 }

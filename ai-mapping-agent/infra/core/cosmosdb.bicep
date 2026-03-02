@@ -9,6 +9,8 @@ param privateDnsZoneId string
 param addRegionalDnsRecord bool = true
 @description('IP addresses to use for the regional Cosmos private DNS record (optional)')
 param regionalDnsIpAddresses array = []
+@description('Developer public IP address for firewall rule (empty to keep fully private)')
+param devPublicIpAddress string = ''
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: name
@@ -34,7 +36,12 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         name: 'EnableServerless'
       }
     ]
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: !empty(devPublicIpAddress) ? 'Enabled' : 'Disabled'
+    ipRules: !empty(devPublicIpAddress) ? [
+      {
+        ipAddressOrRange: devPublicIpAddress
+      }
+    ] : []
     disableKeyBasedMetadataWriteAccess: false
     enableFreeTier: false
   }
@@ -195,7 +202,7 @@ resource generatedArtifactsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlD
       id: 'generated-artifacts'
       partitionKey: {
         paths: [
-          '/userId'
+          '/session_id'
         ]
         kind: 'Hash'
       }
@@ -226,6 +233,28 @@ resource mappingJobsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
         automatic: true
       }
       defaultTtl: 2592000 // 30 days in seconds
+    }
+  }
+}
+
+// Container for policy cache (Azure Policy artifacts)
+resource policyCacheContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: database
+  name: 'policy-cache'
+  properties: {
+    resource: {
+      id: 'policy-cache'
+      partitionKey: {
+        paths: [
+          '/policy_id'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+      }
+      defaultTtl: 1209600 // 14 days in seconds
     }
   }
 }

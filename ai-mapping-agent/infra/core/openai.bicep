@@ -11,6 +11,8 @@ param sku string = 'S0'
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
+@description('Developer public IP address for firewall rule (empty to keep fully private)')
+param devPublicIpAddress string = ''
 
 // Note: gpt-4.1 may not be available in all regions
 // This template deploys both primary and fallback models
@@ -24,10 +26,14 @@ resource openai 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (!existin
   }
   properties: {
     customSubDomainName: name
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: !empty(devPublicIpAddress) ? 'Enabled' : 'Disabled'
     networkAcls: {
       defaultAction: 'Deny'
-      ipRules: []
+      ipRules: !empty(devPublicIpAddress) ? [
+        {
+          value: devPublicIpAddress
+        }
+      ] : []
       virtualNetworkRules: []
     }
   }

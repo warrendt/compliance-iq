@@ -36,6 +36,9 @@ param authClientId string = ''
 @description('Entra ID tenant ID for Easy Auth (defaults to deployment tenant when empty)')
 param authTenantId string = ''
 
+@description('Developer public IP address for resource firewall rules (empty to keep fully private)')
+param devPublicIpAddress string = ''
+
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -133,7 +136,8 @@ module openai './core/openai.bicep' = {
     apiVersion: openAiApiVersion
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.openaiZoneId
-    existingAccount: true
+    existingAccount: false
+    devPublicIpAddress: devPublicIpAddress
   }
 }
 
@@ -148,6 +152,7 @@ module cosmos './core/cosmosdb.bicep' = {
     databaseName: cosmosDatabaseName
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.cosmosZoneId
+    devPublicIpAddress: devPublicIpAddress
   }
 }
 
