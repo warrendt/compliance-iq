@@ -59,6 +59,12 @@ class CosmosDBClient:
                 partition_key_paths=["/policy_id"],
                 default_ttl=1209600  # 14 days
             )
+
+            await self.ensure_container(
+                self.GENERATED_ARTIFACTS,
+                partition_key_paths=["/session_id"],
+                default_ttl=7776000  # 90 days
+            )
             
             logger.info("Cosmos DB client initialized successfully", extra={
                 "endpoint": self.endpoint,

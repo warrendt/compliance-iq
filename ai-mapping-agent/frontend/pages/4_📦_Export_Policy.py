@@ -7,6 +7,7 @@ import json
 import io
 import zipfile
 import httpx
+import uuid
 import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
@@ -51,6 +52,30 @@ if 'framework_name' not in st.session_state:
     st.session_state.framework_name = ""
 if 'generated_policy' not in st.session_state:
     st.session_state.generated_policy = None
+if 'session_uuid' not in st.session_state:
+    st.session_state.session_uuid = str(uuid.uuid4())
+
+# --- Recent Generations (reload from Cosmos) ---
+if st.session_state.generated_policy is None:
+    try:
+        _client = get_api_client()
+        recent = _client.list_artifacts(
+            artifact_type="mcsb_initiative",
+            limit=5,
+            session_id=st.session_state.session_uuid,
+        )
+        artifacts = recent.get("artifacts", [])
+        if artifacts:
+            with st.expander("📂 Recent Generations (click to reload)", expanded=False):
+                for art in artifacts:
+                    label = f"{art.get('framework_name', 'Unknown')} — {art.get('created_at', '')[:19]}"
+                    if st.button(f"🔄 {label}", key=f"reload_{art['id']}"):
+                        full = _client.get_artifact(art["id"], session_id=st.session_state.session_uuid)
+                        st.session_state.generated_policy = full
+                        st.session_state.policy_generated = True
+                        st.rerun()
+    except Exception:
+        pass  # Cosmos may be unavailable — silently skip
 
 # Header
 st.title("📦 Export Azure Policy Initiative")
@@ -153,6 +178,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 mappings=[_to_backend_mapping(m) for m in filtered_mappings],
                 framework_name=st.session_state.framework_name,
                 min_confidence=min_confidence,
+                session_id=st.session_state.session_uuid,
             )
             
             st.session_state.generated_policy = result
@@ -469,6 +495,7 @@ else:
                     mappings=[_to_backend_mapping(m) for m in slz_export_mappings],
                     framework_name=st.session_state.framework_name,
                     allowed_locations=locations_list,
+                    session_id=st.session_state.session_uuid,
                 )
                 st.session_state.slz_generated = slz_result
                 st.success("✅ SLZ initiatives generated!")

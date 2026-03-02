@@ -193,7 +193,8 @@ class APIClient:
         self,
         mappings: List[Dict[str, Any]],
         framework_name: str,
-        min_confidence: float = 0.7
+        min_confidence: float = 0.7,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate an Azure Policy initiative.
         
@@ -201,6 +202,7 @@ class APIClient:
             mappings: List of control mappings
             framework_name: Name of the framework
             min_confidence: Minimum confidence threshold
+            session_id: Session identifier for artifact persistence
             
         Returns:
             Policy initiative JSON
@@ -210,11 +212,15 @@ class APIClient:
             "framework_name": framework_name,
             "min_confidence_threshold": min_confidence
         }
+        headers = {}
+        if session_id:
+            headers["X-Session-ID"] = session_id
         
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/policy/generate",
-                json=payload
+                json=payload,
+                headers=headers,
             )
             response.raise_for_status()
             return response.json()
@@ -290,6 +296,7 @@ class APIClient:
         mappings: List[Dict[str, Any]],
         framework_name: str,
         allowed_locations: Optional[List[str]] = None,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate SLZ per-archetype policy initiatives.
 
@@ -297,6 +304,7 @@ class APIClient:
             mappings: Control mappings (must contain sovereignty data)
             framework_name: Compliance framework name
             allowed_locations: Optional Azure regions for data residency
+            session_id: Session identifier for artifact persistence
 
         Returns:
             Per-archetype artifacts dict
@@ -308,11 +316,73 @@ class APIClient:
         if allowed_locations:
             payload["allowed_locations"] = allowed_locations
 
+        headers = {}
+        if session_id:
+            headers["X-Session-ID"] = session_id
+
         self.timeout = 120.0
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/policy/generate/slz",
                 json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    # --- Artifact retrieval ---
+
+    def list_artifacts(
+        self,
+        artifact_type: Optional[str] = None,
+        limit: int = 20,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """List recently generated policy artifacts.
+
+        Args:
+            artifact_type: Filter by type (mcsb_initiative, slz_initiative)
+            limit: Max number of results
+            session_id: Session identifier for header
+
+        Returns:
+            Dict with 'artifacts' list and 'total' count
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if artifact_type:
+            params["artifact_type"] = artifact_type
+
+        headers = {}
+        if session_id:
+            headers["X-Session-ID"] = session_id
+
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/policy/artifacts",
+                params=params,
+                headers=headers,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_artifact(self, artifact_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Retrieve a single generated artifact by ID.
+
+        Args:
+            artifact_id: Artifact UUID
+            session_id: Session identifier for header
+
+        Returns:
+            Full artifact document
+        """
+        headers = {}
+        if session_id:
+            headers["X-Session-ID"] = session_id
+
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/policy/artifacts/{artifact_id}",
+                headers=headers,
             )
             response.raise_for_status()
             return response.json()

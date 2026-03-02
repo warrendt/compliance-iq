@@ -2,27 +2,53 @@
 Azure Policy generation endpoints.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
 import json
+import uuid
+from datetime import datetime, timezone
 
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
+from app.db import cosmos_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
+def _cosmos_ready() -> bool:
+    """Check if Cosmos DB is initialized."""
+    return bool(cosmos_client and cosmos_client.database)
+
+
+async def _persist_artifact(artifact: dict) -> Optional[str]:
+    """Persist a generated artifact to Cosmos DB. Returns artifact_id or None."""
+    if not _cosmos_ready():
+        return None
+    try:
+        await cosmos_client.upsert_document(
+            cosmos_client.GENERATED_ARTIFACTS,
+            artifact,
+        )
+        logger.info("artifact_persisted", extra={"artifact_id": artifact["id"]})
+        return artifact["id"]
+    except Exception as exc:
+        logger.warning(f"Failed to persist artifact: {exc}")
+        return None
+
+
 @router.post("/generate")
-async def generate_policy_initiative(request: PolicyGenerationRequest):
+async def generate_policy_initiative(request: PolicyGenerationRequest,
+                                      http_request: Request):
     """
     Generate Azure Policy initiative from control mappings.
 
     Returns an enriched response including the initiative JSON in Azure
     format, a Bicep template, and PowerShell / CLI deployment scripts.
+    Artifacts are persisted to Cosmos DB when available.
     """
     logger.info(f"Generating policy initiative for {request.framework_name}")
 
@@ -50,6 +76,29 @@ async def generate_policy_initiative(request: PolicyGenerationRequest):
         result["bicep_template"] = bicep_template
         result["powershell_script"] = scripts["powershell"]
         result["cli_script"] = scripts.get("cli", "")
+
+        # Persist to Cosmos DB
+        session_id = http_request.headers.get("X-Session-ID", "anonymous")
+        artifact_id = str(uuid.uuid4())
+        artifact_doc = {
+            "id": artifact_id,
+            "session_id": session_id,
+            "type": "mcsb_initiative",
+            "framework_name": request.framework_name,
+            "initiative_id": result["initiative_id"],
+            "initiative_json": initiative_json,
+            "bicep_template": bicep_template,
+            "powershell_script": scripts["powershell"],
+            "cli_script": scripts.get("cli", ""),
+            "mappings_count": len(request.mappings),
+            "included_policies": response.included_policies,
+            "excluded_policies": response.excluded_policies,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        persisted_id = await _persist_artifact(artifact_doc)
+        if persisted_id:
+            result["artifact_id"] = persisted_id
+
         return result
 
     except Exception as e:
@@ -172,7 +221,8 @@ class SLZGenerationRequest(BaseModel):
 
 
 @router.post("/generate/slz")
-async def generate_slz_initiatives(request: SLZGenerationRequest):
+async def generate_slz_initiatives(request: SLZGenerationRequest,
+                                    http_request: Request):
     """
     Generate Sovereign Landing Zone policy initiatives per archetype.
 
@@ -204,17 +254,91 @@ async def generate_slz_initiatives(request: SLZGenerationRequest):
             allowed_locations=request.allowed_locations,
         )
 
-        return {
+        response_data = {
             "framework_name": request.framework_name,
             "total_mappings": len(request.mappings),
             "sovereignty_mappings": len(sov_mappings),
             "archetypes": result,
         }
 
+        # Persist to Cosmos DB
+        session_id = http_request.headers.get("X-Session-ID", "anonymous")
+        artifact_id = str(uuid.uuid4())
+        artifact_doc = {
+            "id": artifact_id,
+            "session_id": session_id,
+            "type": "slz_initiative",
+            "framework_name": request.framework_name,
+            "archetypes": result,
+            "mappings_count": len(request.mappings),
+            "sovereignty_mappings_count": len(sov_mappings),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        persisted_id = await _persist_artifact(artifact_doc)
+        if persisted_id:
+            response_data["artifact_id"] = persisted_id
+
+        return response_data
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to generate SLZ initiatives: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Artifact Retrieval ---
+
+
+@router.get("/artifacts")
+async def list_artifacts(
+    http_request: Request,
+    artifact_type: str = Query(None, description="Filter by type (mcsb_initiative, slz_initiative)"),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """List recently generated policy artifacts for the current session."""
+    if not _cosmos_ready():
+        return {"artifacts": [], "total": 0}
+
+    session_id = http_request.headers.get("X-Session-ID", "anonymous")
+    query = "SELECT c.id, c.type, c.framework_name, c.initiative_id, c.mappings_count, c.included_policies, c.created_at FROM c WHERE c.session_id = @sid"
+    params: list[dict] = [{"name": "@sid", "value": session_id}]
+
+    if artifact_type:
+        query += " AND c.type = @atype"
+        params.append({"name": "@atype", "value": artifact_type})
+
+    query += " ORDER BY c.created_at DESC OFFSET 0 LIMIT @lim"
+    params.append({"name": "@lim", "value": limit})
+
+    try:
+        items = await cosmos_client.query_documents(
+            cosmos_client.GENERATED_ARTIFACTS, query, params, session_id
+        )
+        return {"artifacts": items, "total": len(items)}
+    except Exception as e:
+        logger.warning(f"Failed to list artifacts: {e}")
+        return {"artifacts": [], "total": 0}
+
+
+@router.get("/artifacts/{artifact_id}")
+async def get_artifact(artifact_id: str, http_request: Request):
+    """Retrieve a single generated policy artifact by ID."""
+    if not _cosmos_ready():
+        raise HTTPException(status_code=503, detail="Cosmos DB not available")
+
+    session_id = http_request.headers.get("X-Session-ID", "anonymous")
+    try:
+        doc = await cosmos_client.get_document(
+            cosmos_client.GENERATED_ARTIFACTS, artifact_id, session_id
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        return doc
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve artifact {artifact_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
