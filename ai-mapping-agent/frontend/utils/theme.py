@@ -123,6 +123,11 @@ def render_sidebar():
         col1.metric("Controls", len(controls))
         col2.metric("Mappings", len(mappings))
 
+        # ── Developer tools ──
+        st.markdown("---")
+        st.checkbox("📡 Show API Logs", key="show_api_logs",
+                     help="Show request/response log panel at the bottom of each page")
+
         st.markdown("---")
         st.caption("Made by **Warren DT**")
 

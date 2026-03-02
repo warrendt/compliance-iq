@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from components.log_viewer import render_log_viewer
 
 st.set_page_config(
     page_title="PDF Pipeline | ComplianceIQ",
@@ -210,3 +211,5 @@ else:
         4. **Load** — Click to load controls into the mapping flow
         5. **Map → Review → Export** — Continue through Pages 2, 3, and 4 as normal
         """)
+
+render_log_viewer()

@@ -6,6 +6,7 @@ import streamlit as st
 import time
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from components.log_viewer import render_log_viewer
 import httpx
 
 st.set_page_config(
@@ -358,3 +359,5 @@ with st.sidebar:
     with col_nav2:
         if st.button("Review →", use_container_width=True):
             st.switch_page("pages/3_✏️_Review_Edit.py")
+
+render_log_viewer()

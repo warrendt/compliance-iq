@@ -12,6 +12,7 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from components.log_viewer import render_log_viewer
 
 
 _VALID_MAPPING_TYPES = {"exact", "partial", "conceptual", "none"}
@@ -706,3 +707,5 @@ with st.sidebar:
             st.info("⏳ Ready to generate SLZ")
     else:
         st.caption("No sovereignty data")
+
+render_log_viewer()

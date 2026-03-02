@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from components.log_viewer import render_log_viewer
 
 st.set_page_config(
     page_title="Review & Edit | ComplianceIQ",
@@ -391,3 +392,5 @@ with st.sidebar:
     - **Medium (60-80%)**: Good match
     - **Low (<60%)**: Review needed
     """)
+
+render_log_viewer()

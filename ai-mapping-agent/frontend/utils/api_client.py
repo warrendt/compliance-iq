@@ -4,8 +4,59 @@ API Client for communicating with the FastAPI backend.
 
 import httpx
 import os
+import time
+from collections import deque
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 import streamlit as st
+
+# ---------------------------------------------------------------------------
+# API request/response log (session-scoped ring buffer)
+# ---------------------------------------------------------------------------
+_MAX_LOG_ENTRIES = 100
+
+
+def _ensure_log() -> deque:
+    """Return the session-scoped API log deque."""
+    if "api_logs" not in st.session_state:
+        st.session_state["api_logs"] = deque(maxlen=_MAX_LOG_ENTRIES)
+    return st.session_state["api_logs"]
+
+
+def _on_response(response: httpx.Response) -> None:
+    """httpx event hook — called after every response."""
+    elapsed_ms = response.elapsed.total_seconds() * 1000 if response.elapsed else 0
+    req = response.request
+
+    # Truncate bodies for display
+    req_body = ""
+    if req.content:
+        try:
+            req_body = req.content.decode("utf-8", errors="replace")[:2048]
+        except Exception:
+            req_body = "<binary>"
+
+    resp_body = ""
+    try:
+        resp_body = response.text[:2048]
+    except Exception:
+        resp_body = ""
+
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "method": str(req.method),
+        "url": str(req.url),
+        "status": response.status_code,
+        "elapsed_ms": round(elapsed_ms, 1),
+        "request_body": req_body,
+        "response_body": resp_body,
+        "error": None,
+    }
+
+    try:
+        _ensure_log().append(entry)
+    except Exception:
+        pass  # outside Streamlit context (e.g. tests)
 
 
 class APIClient:
@@ -22,7 +73,7 @@ class APIClient:
         self.timeout = 120.0  # Default timeout (2 minutes for AI operations)
         
     def _get_client(self) -> httpx.Client:
-        """Get an HTTP client with configured timeout and auth headers."""
+        """Get an HTTP client with configured timeout, auth headers, and logging."""
         headers: Dict[str, str] = {}
         try:
             from utils.auth import get_access_token
@@ -32,7 +83,11 @@ class APIClient:
                 headers["Authorization"] = f"Bearer {token}"
         except Exception:
             pass  # auth module unavailable or no token
-        return httpx.Client(timeout=self.timeout, headers=headers)
+        return httpx.Client(
+            timeout=self.timeout,
+            headers=headers,
+            event_hooks={"response": [_on_response]},
+        )
     
     def health_check(self) -> Dict[str, Any]:
         """Check if the backend is healthy.
