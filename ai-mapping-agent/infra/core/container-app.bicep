@@ -62,32 +62,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             memory: memory
           }
           env: environmentVariables
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: isExternalIngress ? '/_stcore/health' : '/api/v1/health/ping'
-                port: containerPort
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 30
-              periodSeconds: 30
-              timeoutSeconds: 10
-              failureThreshold: 3
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: isExternalIngress ? '/_stcore/health' : '/api/v1/health/ping'
-                port: containerPort
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 10
-              timeoutSeconds: 5
-              failureThreshold: 3
-            }
-          ]
         }
       ]
       scale: {
