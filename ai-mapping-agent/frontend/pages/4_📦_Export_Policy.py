@@ -156,6 +156,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
             )
             
             st.session_state.generated_policy = result
+            st.session_state.policy_generated = True
             st.success("✅ Policy initiative generated successfully!")
             st.balloons()
             

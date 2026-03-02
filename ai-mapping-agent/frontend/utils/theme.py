@@ -98,7 +98,7 @@ def render_sidebar():
         steps_done = sum([
             len(controls) > 0,
             len(mappings) > 0,
-            bool(st.session_state.get("policy_generated")),
+            bool(st.session_state.get("generated_policy")),
         ])
         total_steps = 3
         pct = int(steps_done / total_steps * 100)
@@ -109,7 +109,7 @@ def render_sidebar():
         step_icons = [
             ("Upload controls", len(controls) > 0),
             ("Run AI mapping", len(mappings) > 0),
-            ("Generate policy", bool(st.session_state.get("policy_generated"))),
+            ("Generate policy", bool(st.session_state.get("generated_policy"))),
         ]
         for label, done in step_icons:
             st.markdown(f"{'✅' if done else '⬜'} {label}")
