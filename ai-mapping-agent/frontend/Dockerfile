@@ -28,7 +28,9 @@ COPY --chown=appuser:appuser components/ ./components/
 RUN mkdir -p /app/.streamlit && chown -R appuser:appuser /app/.streamlit
 
 # Create Streamlit config
-RUN echo "[server]\n\
+COPY --chown=appuser:appuser .streamlit/config.toml /app/.streamlit/config.toml
+RUN echo "\n\
+[server]\n\
 port = 8501\n\
 address = \"0.0.0.0\"\n\
 headless = true\n\
@@ -45,7 +47,7 @@ primaryColor = \"#0078D4\"\n\
 backgroundColor = \"#FFFFFF\"\n\
 secondaryBackgroundColor = \"#F5F5F5\"\n\
 textColor = \"#262730\"\n\
-" > /app/.streamlit/config.toml
+" >> /app/.streamlit/config.toml
 
 # Set environment variables
 ENV PORT=8501 \
