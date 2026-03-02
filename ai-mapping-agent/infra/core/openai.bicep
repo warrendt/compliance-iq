@@ -7,7 +7,7 @@ param modelVersion string = '2025-04-14'
 param fallbackModel string = 'gpt-4o'
 param fallbackVersion string = '2024-11-20'
 param apiVersion string = '2024-12-01-preview'
-param sku string = 'S1'
+param sku string = 'S0'
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
@@ -52,7 +52,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   name: modelName
   sku: {
     name: 'Standard'
-    capacity: 10 // TPM (tokens per minute) in thousands
+    capacity: 80 // TPM (tokens per minute) in thousands
   }
   properties: {
     model: {
@@ -71,7 +71,7 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
   name: '${fallbackModel}-fallback'
   sku: {
     name: 'Standard'
-    capacity: 10
+    capacity: 80
   }
   properties: {
     model: {
