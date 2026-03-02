@@ -430,6 +430,91 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
     
     st.success("✅ Package includes: JSON, PowerShell, Bicep, Mappings, and README")
 
+    # ==============================================================
+    # Deploy to Azure (using caller's Entra ID token)
+    # ==============================================================
+    st.markdown("---")
+    st.markdown("### 🚀 Deploy to Azure")
+    st.markdown("Deploy the generated initiative directly to your Azure tenant using your signed-in identity.")
+
+    try:
+        from utils.auth import get_access_token
+        _has_token = bool(get_access_token())
+    except Exception:
+        _has_token = False
+
+    if not _has_token:
+        st.warning("⚠️ Sign in with Entra ID to deploy policies to Azure.")
+    else:
+        # Fetch available scopes
+        if "deploy_scopes" not in st.session_state:
+            with st.spinner("Loading Azure scopes..."):
+                try:
+                    st.session_state.deploy_scopes = api_client.list_deploy_scopes().get("scopes", [])
+                except Exception as _e:
+                    st.error(f"❌ Failed to load scopes: {_e}")
+                    st.session_state.deploy_scopes = []
+
+        _scopes = st.session_state.deploy_scopes
+        if not _scopes:
+            st.info("No subscriptions or management groups found for your account.")
+        else:
+            scope_labels = [f"{s['type'].replace('_', ' ').title()}: {s['display']}" for s in _scopes]
+            col_d1, col_d2 = st.columns(2)
+
+            with col_d1:
+                selected_scope_idx = st.selectbox("Target Scope", range(len(scope_labels)),
+                                                   format_func=lambda i: scope_labels[i], key="deploy_scope_sel")
+                selected_scope = _scopes[selected_scope_idx]["scope"]
+
+            with col_d2:
+                deploy_name = st.text_input(
+                    "Initiative Name (ARM)",
+                    value=initiative_name.replace(" ", "-").lower()[:128],
+                    max_chars=128,
+                    key="deploy_init_name",
+                )
+                do_assign = st.checkbox("Also create a policy assignment", key="deploy_assign")
+
+            col_val, col_dep = st.columns(2)
+
+            with col_val:
+                if st.button("✅ Validate", use_container_width=True, key="btn_validate_deploy"):
+                    with st.spinner("Validating..."):
+                        try:
+                            vr = api_client.validate_deploy(
+                                scope=selected_scope,
+                                initiative_name=deploy_name,
+                                initiative_body=policy.get("initiative_json", {}),
+                            )
+                            if vr.get("status_code", 0) < 300:
+                                st.success(f"✅ Validation passed (HTTP {vr['status_code']})")
+                            else:
+                                st.warning(f"⚠️ ARM returned HTTP {vr['status_code']}")
+                                st.json(vr.get("body", {}))
+                        except Exception as _e:
+                            st.error(f"❌ Validation failed: {_e}")
+
+            with col_dep:
+                if st.button("🚀 Deploy", type="primary", use_container_width=True, key="btn_deploy"):
+                    with st.spinner("Deploying initiative..."):
+                        try:
+                            dr = api_client.deploy_initiative_to_azure(
+                                scope=selected_scope,
+                                initiative_name=deploy_name,
+                                initiative_body=policy.get("initiative_json", {}),
+                                assign=do_assign,
+                                assignment_display_name=initiative_name if do_assign else None,
+                                assignment_description=initiative_description if do_assign else "",
+                            )
+                            st.success("✅ Initiative deployed successfully!")
+                            if dr.get("assignment"):
+                                st.success("✅ Policy assignment created.")
+                            with st.expander("ARM Response"):
+                                st.json(dr)
+                        except Exception as _e:
+                            st.error(f"❌ Deployment failed: {_e}")
+
 # ==================================================================
 # SLZ Sovereign Landing Zone Export
 # ==================================================================

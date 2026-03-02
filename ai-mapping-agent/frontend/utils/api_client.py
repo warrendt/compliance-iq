@@ -636,6 +636,93 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    # --- Deploy & Explorer endpoints ---
+
+    def list_deploy_scopes(self) -> Dict[str, Any]:
+        """List subscriptions and management groups visible to the caller."""
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/deploy/scopes")
+            response.raise_for_status()
+            return response.json()
+
+    def validate_deploy(
+        self, scope: str, initiative_name: str, initiative_body: dict
+    ) -> Dict[str, Any]:
+        """Dry-run validation of an initiative deployment."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/deploy/validate",
+                json={
+                    "scope": scope,
+                    "initiative_name": initiative_name,
+                    "initiative_body": initiative_body,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def deploy_initiative_to_azure(
+        self,
+        scope: str,
+        initiative_name: str,
+        initiative_body: dict,
+        assign: bool = False,
+        assignment_display_name: Optional[str] = None,
+        assignment_description: str = "",
+    ) -> Dict[str, Any]:
+        """Deploy a policy set definition (and optionally assign it)."""
+        payload: Dict[str, Any] = {
+            "scope": scope,
+            "initiative_name": initiative_name,
+            "initiative_body": initiative_body,
+            "assign": assign,
+        }
+        if assignment_display_name:
+            payload["assignment_display_name"] = assignment_display_name
+        if assignment_description:
+            payload["assignment_description"] = assignment_description
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/deploy/initiative",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def list_policy_definitions_arm(
+        self, scope: str, custom_only: bool = True
+    ) -> Dict[str, Any]:
+        """List policy definitions at scope via ARM."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/deploy/definitions",
+                params={"scope": scope, "custom_only": str(custom_only).lower()},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def list_policy_initiatives_arm(
+        self, scope: str, custom_only: bool = True
+    ) -> Dict[str, Any]:
+        """List initiative definitions at scope via ARM."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/deploy/initiatives",
+                params={"scope": scope, "custom_only": str(custom_only).lower()},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def list_policy_assignments_arm(self, scope: str) -> Dict[str, Any]:
+        """List policy assignments at scope via ARM."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/deploy/assignments",
+                params={"scope": scope},
+            )
+            response.raise_for_status()
+            return response.json()
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:
