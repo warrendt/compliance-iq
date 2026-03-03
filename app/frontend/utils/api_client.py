@@ -24,13 +24,26 @@ def _ensure_log() -> deque:
 
 
 def _on_response(response: httpx.Response) -> None:
-    """httpx event hook — called after every response."""
+    """httpx event hook — called after every response.
+
+    In httpx 0.27+, the hook fires before the response body is consumed, so
+    ``response.elapsed`` and ``response.text`` are both unavailable at this
+    point.  Calling ``response.read()`` buffers the body which (a) makes
+    ``elapsed`` available and (b) lets ``response.text`` work; the buffered
+    bytes are cached by httpx so the caller's ``.json()`` / ``.text`` calls
+    still work normally.
+    """
+    try:
+        response.read()
+    except Exception:
+        pass  # network error or already-read response — carry on
+
+    elapsed_ms = 0
     try:
         elapsed_ms = response.elapsed.total_seconds() * 1000
     except Exception:
-        # .elapsed is unavailable on streaming responses until the body is read.
-        # Swallow silently — elapsed timing is non-critical for the log viewer.
-        elapsed_ms = 0
+        pass
+
     req = response.request
 
     # Truncate bodies for display
