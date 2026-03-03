@@ -1,6 +1,6 @@
 [
   {
-    "policyDefinitionReferenceId": "OMN_NET_01_Firewall",
+    "policyDefinitionReferenceId": "OMN_NET_AzFirewall",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/fc5e4038-4584-4632-8c85-c0448d374b2c",
     "parameters": {},
     "groupNames": [
@@ -8,7 +8,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_NET_01_NSG",
+    "policyDefinitionReferenceId": "OMN_NET_NSG_Subnets",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
     "parameters": {},
     "groupNames": [
@@ -16,15 +16,47 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_NET_02_SystemUpdates",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
+    "policyDefinitionReferenceId": "OMN_NET_NSG_Subnets2",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-a4bb-42d5-8a17-af8c0bcc1e79",
     "parameters": {},
     "groupNames": [
       "OMN_NET"
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_IAM_01_RBAC",
+    "policyDefinitionReferenceId": "OMN_NET_VMInternet_NSG",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+    "parameters": {},
+    "groupNames": [
+      "OMN_NET"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_NET_RemoteDbgWeb",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bb91dfba-f30e-4b18-ac8b-4d4e2b57d7c8",
+    "parameters": {},
+    "groupNames": [
+      "OMN_NET"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_NET_RemoteDbgFunc",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cb510bfd-1cba-4d9f-a1ea-5d395ade7625",
+    "parameters": {},
+    "groupNames": [
+      "OMN_NET"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_NET_PE_SQL",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ae89ebf1-7f27-46ee-a28c-eb1f3e0b0e51",
+    "parameters": {},
+    "groupNames": [
+      "OMN_NET"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_IAM_RBAC_K8s",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
     "parameters": {},
     "groupNames": [
@@ -32,7 +64,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_IAM_01_JIT",
+    "policyDefinitionReferenceId": "OMN_IAM_JIT",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f314764-cb73-4fc9-b863-8eca98ac36e9",
     "parameters": {},
     "groupNames": [
@@ -40,7 +72,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_IAM_01_MgmtPorts",
+    "policyDefinitionReferenceId": "OMN_IAM_MgmtPorts",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b15565f-aa9e-48ba-8619-45960f2c314d",
     "parameters": {},
     "groupNames": [
@@ -48,31 +80,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_MON_01_LogAnalytics",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
-    "parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
-    "groupNames": [
-      "OMN_MON"
-    ]
-  },
-  {
-    "policyDefinitionReferenceId": "OMN_MON_01_DiagSettings",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
-    "parameters": {},
-    "groupNames": [
-      "OMN_MON"
-    ]
-  },
-  {
-    "policyDefinitionReferenceId": "OMN_MON_01_ActivityLog",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b79fa14e-238a-4c2d-b376-442ce508fc84",
-    "parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
-    "groupNames": [
-      "OMN_MON"
-    ]
-  },
-  {
-    "policyDefinitionReferenceId": "OMN_IAM_02_MFA",
+    "policyDefinitionReferenceId": "OMN_IAM_MFA_Owners",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
     "parameters": {},
     "groupNames": [
@@ -80,7 +88,75 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_RSK_01_VulnAssess",
+    "policyDefinitionReferenceId": "OMN_IAM_MFA_Write",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2d0a-4958-8955-00b9f6db96d0",
+    "parameters": {},
+    "groupNames": [
+      "OMN_IAM"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_IAM_DeprecatedOwner",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a8eff44e-8a0e-49e8-b78f-6424f5f5b9a6",
+    "parameters": {},
+    "groupNames": [
+      "OMN_IAM"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_IAM_DeprecatedAccts",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
+    "parameters": {},
+    "groupNames": [
+      "OMN_IAM"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_IAM_AADAdmin_SQL",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9bc48460-f641-4ef6-b0d7-e6e3c6a51acf",
+    "parameters": {},
+    "groupNames": [
+      "OMN_IAM"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_MON_ActivityLog",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
+    "parameters": {
+      "logAnalytics": {
+        "value": "[parameters('logAnalytics')]"
+      }
+    },
+    "groupNames": [
+      "OMN_MON"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_MON_DiagSettings",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
+    "parameters": {},
+    "groupNames": [
+      "OMN_MON"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_MON_SQLAudit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/89099bee-89e0-4b26-a5f4-165451757743",
+    "parameters": {},
+    "groupNames": [
+      "OMN_MON"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_MON_SQLMIAudit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b954148f-4c11-4c38-8221-be76711e194e",
+    "parameters": {},
+    "groupNames": [
+      "OMN_MON"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_RSK_VulnSQL",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
     "parameters": {},
     "groupNames": [
@@ -88,7 +164,31 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_01_SQLClassify",
+    "policyDefinitionReferenceId": "OMN_RSK_VulnSQLMI",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1b7aa243-0aae-4b6f-a25b-a9e7430c5e29",
+    "parameters": {},
+    "groupNames": [
+      "OMN_RSK"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_RSK_CustomRBAC",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-1bef-4a42-83a4-621c6455c474",
+    "parameters": {},
+    "groupNames": [
+      "OMN_RSK"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_RSK_SecurityContact",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b0d14bf4-d4fb-44cd-94a8-e7c8e6be68a5",
+    "parameters": {},
+    "groupNames": [
+      "OMN_RSK"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_DAT_SQLDataClass",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
     "parameters": {},
     "groupNames": [
@@ -96,7 +196,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_02_TDE",
+    "policyDefinitionReferenceId": "OMN_DAT_SQLTDE",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7595c971-233d-4bcf-bd18-596129188c49",
     "parameters": {},
     "groupNames": [
@@ -104,7 +204,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_02_SecureTransfer",
+    "policyDefinitionReferenceId": "OMN_DAT_SecureTransfer",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
     "parameters": {},
     "groupNames": [
@@ -112,7 +212,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_02_TLSVersion",
+    "policyDefinitionReferenceId": "OMN_DAT_TLSVersion",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4733ea7b-a883-42fe-8cac-97454c2a9e4a",
     "parameters": {},
     "groupNames": [
@@ -120,7 +220,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_03_CMKDisk",
+    "policyDefinitionReferenceId": "OMN_DAT_CMKDisk",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
     "parameters": {},
     "groupNames": [
@@ -128,7 +228,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_03_CMKPostgres",
+    "policyDefinitionReferenceId": "OMN_DAT_CMKPostgres",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
     "parameters": {},
     "groupNames": [
@@ -136,7 +236,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_03_CMKMySQL",
+    "policyDefinitionReferenceId": "OMN_DAT_CMKMySQL",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0a370ff3-6cab-4e85-8995-295fd854c5b8",
     "parameters": {},
     "groupNames": [
@@ -144,7 +244,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_DLP_AppConfig",
+    "policyDefinitionReferenceId": "OMN_DAT_PrivateLink",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
     "parameters": {},
     "groupNames": [
@@ -152,15 +252,31 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_DAT_DLP_CogSvc",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55d1f543-d1b0-4811-9663-d6d0dbc6326d",
+    "policyDefinitionReferenceId": "OMN_DAT_StorageCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a4af4a39-4135-4a60-8bf6-d34b2a1d4f2c",
     "parameters": {},
     "groupNames": [
       "OMN_DAT"
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_END_01_Antimalware",
+    "policyDefinitionReferenceId": "OMN_DAT_CogSvcCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/67121cc7-4b87-484c-b351-8d39bda0a285",
+    "parameters": {},
+    "groupNames": [
+      "OMN_DAT"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_DAT_TempDiskEncrypt",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0961003e-5a0a-4549-abde-af6a37f2724d",
+    "parameters": {},
+    "groupNames": [
+      "OMN_DAT"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_END_BackupVM",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/013e242c-8828-4970-87b3-ab247555486d",
     "parameters": {},
     "groupNames": [
@@ -168,7 +284,7 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_END_01_EPProtection",
+    "policyDefinitionReferenceId": "OMN_END_EndpointProt",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ac076320-ddcf-4066-b451-6154267e8ad2",
     "parameters": {},
     "groupNames": [
@@ -176,7 +292,15 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_VUL_01_SystemUpdates",
+    "policyDefinitionReferenceId": "OMN_END_AdaptiveApp",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
+    "parameters": {},
+    "groupNames": [
+      "OMN_END"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_VUL_SystemUpdates",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
     "parameters": {},
     "groupNames": [
@@ -184,23 +308,47 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_VUL_01_UpdateManager",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
+    "policyDefinitionReferenceId": "OMN_VUL_UpdateCheck",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
     "parameters": {},
     "groupNames": [
       "OMN_VUL"
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_BCM_01_Backup",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+    "policyDefinitionReferenceId": "OMN_VUL_VMSSUpdates",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9c276cf7-4e72-4578-b1ef-9d0a3b94f61e",
+    "parameters": {},
+    "groupNames": [
+      "OMN_VUL"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_VUL_AdaptiveNet",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/83e0d761-a202-44ec-a836-340498e1b9fe",
+    "parameters": {},
+    "groupNames": [
+      "OMN_VUL"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_VUL_VulnVM",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/44e1ad92-5222-4c49-a0f3-0a2b023a47f9",
+    "parameters": {},
+    "groupNames": [
+      "OMN_VUL"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_BCM_BackupVM",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/013e242c-8828-4970-87b3-ab247555486d",
     "parameters": {},
     "groupNames": [
       "OMN_BCM"
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_BCM_01_GeoBackupSQL",
+    "policyDefinitionReferenceId": "OMN_BCM_GeoBackupSQL",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/22bee202-a82f-4305-9a2a-6d7f44d4dedb",
     "parameters": {},
     "groupNames": [
@@ -208,8 +356,72 @@
     ]
   },
   {
-    "policyDefinitionReferenceId": "OMN_GOV_01_SQLClassify",
+    "policyDefinitionReferenceId": "OMN_BCM_VMSSUpdates",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9c276cf7-4e72-4578-b1ef-9d0a3b94f61e",
+    "parameters": {},
+    "groupNames": [
+      "OMN_BCM"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_INC_DiagSettings",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
+    "parameters": {},
+    "groupNames": [
+      "OMN_INC"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_INC_SQLAudit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/89099bee-89e0-4b26-a5f4-165451757743",
+    "parameters": {},
+    "groupNames": [
+      "OMN_INC"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_INC_SecurityContact",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b0d14bf4-d4fb-44cd-94a8-e7c8e6be68a5",
+    "parameters": {},
+    "groupNames": [
+      "OMN_INC"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_INC_SQLMIAudit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b954148f-4c11-4c38-8221-be76711e194e",
+    "parameters": {},
+    "groupNames": [
+      "OMN_INC"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_GOV_SQLDataClass",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+    "parameters": {},
+    "groupNames": [
+      "OMN_GOV"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_GOV_CustomRBAC",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-1bef-4a42-83a4-621c6455c474",
+    "parameters": {},
+    "groupNames": [
+      "OMN_GOV"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_GOV_RBAC_K8s",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
+    "parameters": {},
+    "groupNames": [
+      "OMN_GOV"
+    ]
+  },
+  {
+    "policyDefinitionReferenceId": "OMN_GOV_SecurityContact",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b0d14bf4-d4fb-44cd-94a8-e7c8e6be68a5",
     "parameters": {},
     "groupNames": [
       "OMN_GOV"

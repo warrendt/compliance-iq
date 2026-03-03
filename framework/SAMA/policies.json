@@ -1,6 +1,6 @@
 [
   {
-    "PolicyDefinitionReferenceId": "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+    "PolicyDefinitionReferenceId": "SAMA_AC01_MFA_Owners",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
     "Parameters": {},
     "GroupNames": [
@@ -8,7 +8,95 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "702dd420-7fcc-42c5-afe8-4026edd20fe0",
+    "PolicyDefinitionReferenceId": "SAMA_AC01_MFA_Write",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2d0a-4958-8955-00b9f6db96d0",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_MFA_Read",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e3576e28-8602-4d61-b977-31a496128c53",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_JIT_VM",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f314764-cb73-4fc9-b863-8eca98ac36e9",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_MgmtPorts",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b15565f-aa9e-48ba-8619-45960f2c314d",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_DeprecatedOwner",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a8eff44e-8a0e-49e8-b78f-6424f5f5b9a6",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_DeprecatedAccts",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_ExtWrite",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5c607a2e-c700-4744-8254-d77e7c9eb5e4",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC01_ExtRead",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cca13f66-60b6-4671-a56e-3c97aba9f5d0",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC03_CustomRBAC",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-1bef-4a42-83a4-621c6455c474",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-03"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC03_AADAdmin_SQL",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9bc48460-f641-4ef6-b0d7-e6e3c6a51acf",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-03"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC03_AADAdmin_SQLMI",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/abfb7388-7082-4c07-bde4-9494d6b4e4b0",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-03"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AC03_CMKDisk",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
     "Parameters": {},
     "GroupNames": [
@@ -16,7 +104,15 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "e71308d3-144b-4262-b144-efdc3cc90517",
+    "PolicyDefinitionReferenceId": "SAMA_AC03_SecurityContact",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b0d14bf4-d4fb-44cd-94a8-e7c8e6be68a5",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AC-03"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS01_NSG_Subnets",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
     "Parameters": {},
     "GroupNames": [
@@ -24,7 +120,47 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "ca610c1d-041c-4332-9d88-7ed3094967c7",
+    "PolicyDefinitionReferenceId": "SAMA_NS01_NSG_Subnets2",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-a4bb-42d5-8a17-af8c0bcc1e79",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS01_VMInternet_NSG",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS01_RemoteDbgWeb",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bb91dfba-f30e-4b18-ac8b-4d4e2b57d7c8",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS01_RemoteDbgFunc",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cb510bfd-1cba-4d9f-a1ea-5d395ade7625",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS01_RemoteDbgAPI",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/f9d614c5-c173-4d34-b42f-e7d0c5d9f89f",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS02_PrivateLink",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
     "Parameters": {},
     "GroupNames": [
@@ -32,7 +168,39 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "18adea5e-f416-4d0f-8aa8-d24321e3e274",
+    "PolicyDefinitionReferenceId": "SAMA_NS02_PE_KeyVault",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1c06e275-d469-4136-9c30-cc65e2a9bfb6",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS02_KV_Firewall",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1e66c121-a66d-4b99-b523-e2cf4bf16934",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS02_PE_SQL",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ae89ebf1-7f27-46ee-a28c-eb1f3e0b0e51",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_NS02_SQLMIPublic",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9dfea752-dd46-4766-aed1-c355fa93fb91",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-NS-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_CMKPostgres",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
     "Parameters": {},
     "GroupNames": [
@@ -40,15 +208,107 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "818719e5-1338-4776-9a9d-3c31e4df5986",
+    "PolicyDefinitionReferenceId": "SAMA_DP02_SQLTDE",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7595c971-233d-4bcf-bd18-596129188c49",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_SecureTransfer",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_TLSVersion",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4733ea7b-a883-42fe-8cac-97454c2a9e4a",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_CMKMySQL",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0a370ff3-6cab-4e85-8995-295fd854c5b8",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_TempDiskEncrypt",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0961003e-5a0a-4549-abde-af6a37f2724d",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_StorageCMK",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a4af4a39-4135-4a60-8bf6-d34b2a1d4f2c",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_CosmosDBCMK",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f905d99-2622-4c13-100b-f7c8e2078bc5",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_DP02_SQLDataClass",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-DP-02"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_LM01_ActivityLog",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
-    "Parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
+    "Parameters": {
+      "logAnalytics": {
+        "value": "[parameters('logAnalytics')]"
+      }
+    },
     "GroupNames": [
       "SAMA-LM-01"
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "86b3d65f-7626-441e-b690-81a8b71cff60",
+    "PolicyDefinitionReferenceId": "SAMA_LM01_DiagSettings",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-LM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_LM01_SQLAudit",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/89099bee-89e0-4b26-a5f4-165451757743",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-LM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_LM01_SQLMIAudit",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b954148f-4c11-4c38-8221-be76711e194e",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-LM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_SystemUpdates",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
     "Parameters": {},
     "GroupNames": [
@@ -56,9 +316,73 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "55d1f543-d1b0-4811-9663-d6d0dbc6326d",
-    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55d1f543-d1b0-4811-9663-d6d0dbc6326d",
-    "Parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
+    "PolicyDefinitionReferenceId": "SAMA_VM01_UpdateCheck",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_VMSSUpdates",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9c276cf7-4e72-4578-b1ef-9d0a3b94f61e",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_EndpointProt",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4da35fc9-8a1e-4f77-bb53-96d4c4e4a64f",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_AdaptiveApp",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_VulnSQL",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_VulnSQLMI",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1b7aa243-0aae-4b6f-a25b-a9e7430c5e29",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_VM01_AdaptiveNet",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/83e0d761-a202-44ec-a836-340498e1b9fe",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-VM-01"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AI03_CogSvcCMK",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/67121cc7-4b87-484c-b351-8d39bda0a285",
+    "Parameters": {},
+    "GroupNames": [
+      "SAMA-AI-03"
+    ]
+  },
+  {
+    "PolicyDefinitionReferenceId": "SAMA_AI03_CogSvcPublicNet",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0725b4dd-7e76-479c-a078-d51d9a7e9891",
+    "Parameters": {},
     "GroupNames": [
       "SAMA-AI-03"
     ]
