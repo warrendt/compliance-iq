@@ -30,6 +30,8 @@ FRAMEWORKS = [
     "Saudi Arabia Government",
     "South African Government",
     "Oman Government",
+    "NDMO",
+    "NCA",
 ]
 
 

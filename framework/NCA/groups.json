@@ -1,0 +1,47 @@
+[
+  {
+    "name": "NCA_GOV",
+    "displayName": "Cybersecurity Governance",
+    "description": "NCA CSCC: cybersecurity strategy, risk management, IT project security, audit, and human resources security."
+  },
+  {
+    "name": "NCA_INF",
+    "displayName": "Infrastructure Security",
+    "description": "Compute hardening, VM patch management, NSG enforcement, disk encryption, and Defender coverage."
+  },
+  {
+    "name": "NCA_PLA",
+    "displayName": "Platform Security",
+    "description": "Database public access, App Service/Function/API app hardening, storage encryption, subscription resiliency."
+  },
+  {
+    "name": "NCA_DAT",
+    "displayName": "Data Security",
+    "description": "CMK encryption for databases and storage, private endpoints, secure transfer, SQL audit logging."
+  },
+  {
+    "name": "NCA_IAM",
+    "displayName": "Identity & Access Management",
+    "description": "MFA enforcement, Entra ID administrators, guest account removal, custom owner role prohibition."
+  },
+  {
+    "name": "NCA_NET",
+    "displayName": "Network Security",
+    "description": "Key Vault private link and firewall, SQL private endpoints, storage network restrictions."
+  },
+  {
+    "name": "NCA_SEC",
+    "displayName": "Security Operations",
+    "description": "Vulnerability assessment, adaptive hardening, Defender for Servers, ML workload security."
+  },
+  {
+    "name": "NCA_COM",
+    "displayName": "Compliance & Audit",
+    "description": "Resource log retention, SQL audit retention, RBAC audit for NCA annual self-assessment."
+  },
+  {
+    "name": "NCA_DR",
+    "displayName": "Disaster Recovery & Business Continuity",
+    "description": "VM Backup, Redis secure connections, VMSS update compliance for RTO/RPO assurance."
+  }
+]

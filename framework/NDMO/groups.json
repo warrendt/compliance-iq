@@ -1,0 +1,47 @@
+[
+  {
+    "name": "NDMO_DGV",
+    "displayName": "Data Governance",
+    "description": "Governance authority, CDO/steward roles, accountability frameworks, and oversight for Saudi government data assets."
+  },
+  {
+    "name": "NDMO_CAT",
+    "displayName": "Data Catalog & Metadata",
+    "description": "Comprehensive data catalog, metadata management, data discovery, and lineage tracking."
+  },
+  {
+    "name": "NDMO_QUA",
+    "displayName": "Data Quality",
+    "description": "Data accuracy, completeness, validation rules, quality scoring, anomaly detection, and remediation governance."
+  },
+  {
+    "name": "NDMO_OPS",
+    "displayName": "Data Operations & Lifecycle",
+    "description": "Retention and archival policies, lifecycle management, backup, and data disposal controls."
+  },
+  {
+    "name": "NDMO_ARC",
+    "displayName": "Data Architecture & Integration",
+    "description": "Secure data architecture patterns, storage encryption, integration security, and interoperability standards."
+  },
+  {
+    "name": "NDMO_SHR",
+    "displayName": "Data Sharing",
+    "description": "Controlled data sharing, private endpoint enforcement, public access restrictions, and sharing audit trails."
+  },
+  {
+    "name": "NDMO_CLS",
+    "displayName": "Data Classification",
+    "description": "NDMO classification taxonomy (Critical/High/Medium/Low), automated labelling, classification registry."
+  },
+  {
+    "name": "NDMO_PRV",
+    "displayName": "Data Privacy (PDPL)",
+    "description": "Personal Data Protection Law: consent, data subject rights, privacy by design, breach notification."
+  },
+  {
+    "name": "NDMO_SEC",
+    "displayName": "Data Protection & Security",
+    "description": "Encryption at rest/in transit, access control, vulnerability management, security monitoring, and audit logging."
+  }
+]

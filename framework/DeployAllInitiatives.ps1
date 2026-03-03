@@ -79,6 +79,20 @@ $frameworks = @(
         DisplayName = "Oman Government Cloud Security Controls"
         Description = "Oman CDC cloud security controls framework."
         Version     = "1.0.0"
+    },
+    @{
+        Dir         = "NDMO"
+        Name        = "NDMO-Data-Management-Framework"
+        DisplayName = "Saudi Arabia NDMO Data Management Framework"
+        Description = "NDMO data management and personal data protection standard (PDPL) controls."
+        Version     = "1.0.0"
+    },
+    @{
+        Dir         = "NCA"
+        Name        = "NCA-CSCC-Framework"
+        DisplayName = "Saudi Arabia NCA Cloud Security Controls (CSCC)"
+        Description = "NCA CSCC v1.5 cloud security controls for Saudi government entities and critical national infrastructure."
+        Version     = "1.5.0"
     }
 )
 
@@ -131,24 +145,35 @@ foreach ($fw in $frameworks) {
 
     $existingAssignment = Get-AzPolicyAssignment -Scope $subScope | Where-Object { $_.Name -eq $assignmentName }
     if ($existingAssignment) {
-        if ($existingAssignment.IdentityType -eq 'SystemAssigned') {
-            Write-Host "  Assignment already exists for $($fw.Name) — skipping" -ForegroundColor Yellow
+        if ($existingAssignment.IdentityType -ne 'SystemAssigned') {
+            Write-Host "  Existing assignment lacks managed identity — recreating..." -ForegroundColor Yellow
+            Remove-AzPolicyAssignment -Name $assignmentName -Scope $subScope -ErrorAction SilentlyContinue
+        } elseif ($existingAssignment.EnforcementMode -ne 'DoNotEnforce') {
+            Write-Host "  Updating enforcement mode to DoNotEnforce (audit-only)..." -ForegroundColor Yellow
+            try {
+                Set-AzPolicyAssignment -Name $assignmentName -Scope $subScope -EnforcementMode 'DoNotEnforce' -ErrorAction Stop
+                Write-Host "  ✅ Updated to audit-only mode" -ForegroundColor Green
+            } catch {
+                Write-Host "  ❌ Failed to update enforcement mode: $_" -ForegroundColor Red
+            }
+            continue
+        } else {
+            Write-Host "  Assignment already exists in audit-only (DoNotEnforce) mode — skipping" -ForegroundColor Yellow
             continue
         }
-        Write-Host "  Existing assignment lacks managed identity — recreating..." -ForegroundColor Yellow
-        Remove-AzPolicyAssignment -Name $assignmentName -Scope $subScope -ErrorAction SilentlyContinue
     }
 
     try {
         New-AzPolicyAssignment `
-            -Name               $assignmentName `
-            -DisplayName        $fw.DisplayName `
+            -Name                $assignmentName `
+            -DisplayName         $fw.DisplayName `
             -PolicySetDefinition $def `
-            -Scope              $subScope `
-            -IdentityType       'SystemAssigned' `
-            -Location           'southafricanorth' `
-            -ErrorAction        Stop
-        Write-Host "  ✅ Assigned: $($fw.DisplayName)" -ForegroundColor Green
+            -Scope               $subScope `
+            -IdentityType        'SystemAssigned' `
+            -Location            'southafricanorth' `
+            -EnforcementMode     'DoNotEnforce' `
+            -ErrorAction         Stop
+        Write-Host "  ✅ Assigned (audit-only): $($fw.DisplayName)" -ForegroundColor Green
     } catch {
         Write-Host "  ❌ Assignment failed: $_" -ForegroundColor Red
     }

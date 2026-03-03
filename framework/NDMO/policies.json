@@ -1,0 +1,230 @@
+[
+  {
+    "policyDefinitionReferenceId": "NDMO_DGV_CustomRBAC",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
+    "parameters": {},
+    "groupNames": ["NDMO_DGV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_DGV_SecurityContact",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4f4f78b8-e367-4b10-a341-d9a4ad5cf1c7",
+    "parameters": {},
+    "groupNames": ["NDMO_DGV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_DGV_HighSevEmail",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b15565f-aa9e-48ba-8619-45960f2c314d",
+    "parameters": {},
+    "groupNames": ["NDMO_DGV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_CAT_LogAnalyticsLogs",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
+    "parameters": {},
+    "groupNames": ["NDMO_CAT"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_CAT_BatchLogs",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
+    "parameters": {},
+    "groupNames": ["NDMO_CAT"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_CAT_SQLAudit",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a6fb4358-5bf4-4ad7-ba82-2cd2f41ce5e9",
+    "parameters": {},
+    "groupNames": ["NDMO_CAT"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_QUA_SQLRetention",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/89099bee-89e0-4b26-a5f4-165451757743",
+    "parameters": {},
+    "groupNames": ["NDMO_QUA"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_QUA_VAonSQLMI",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1b7aa243-30e4-4c9e-bca8-d0d3022b634a",
+    "parameters": {},
+    "groupNames": ["NDMO_QUA"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_OPS_VMBackup",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/013e242c-8828-4970-87b3-ab247555486d",
+    "parameters": {},
+    "groupNames": ["NDMO_OPS"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_OPS_RedisSSL",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/22bee202-a82f-4305-9a2a-6d7f44d4dedb",
+    "parameters": {},
+    "groupNames": ["NDMO_OPS"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_ARC_StorageCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/6fac406b-40ca-413b-bf8e-0bf964659c25",
+    "parameters": {},
+    "groupNames": ["NDMO_ARC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_ARC_SecureTransfer",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
+    "parameters": {},
+    "groupNames": ["NDMO_ARC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_ARC_StorageInfraEnc",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4733ea7b-a883-42fe-8cac-97454c2a9e4a",
+    "parameters": {},
+    "groupNames": ["NDMO_ARC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_ARC_CosmosDBCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f905d99-2ab7-462c-a6b0-f709acca6c8f",
+    "parameters": {},
+    "groupNames": ["NDMO_ARC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SHR_MySQLPE",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7595c971-233d-4bcf-bd18-596129188c49",
+    "parameters": {},
+    "groupNames": ["NDMO_SHR"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SHR_SQLDBPE",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7698e800-9299-47a6-b3b6-5a0fee576eed",
+    "parameters": {},
+    "groupNames": ["NDMO_SHR"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SHR_SQLMINoPublic",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9dfea752-dd46-4766-aed1-c355fa93fb91",
+    "parameters": {},
+    "groupNames": ["NDMO_SHR"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SHR_AppConfigPL",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+    "parameters": {},
+    "groupNames": ["NDMO_SHR"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SHR_StorageRestrict",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
+    "parameters": {},
+    "groupNames": ["NDMO_SHR"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_CLS_MLNoLocalAuth",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
+    "parameters": {},
+    "groupNames": ["NDMO_CLS"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_CLS_VAonVMs",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/501541f7-f7e7-4cd6-868c-4190fdad3ac9",
+    "parameters": {},
+    "groupNames": ["NDMO_CLS"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_PRV_PostgreSQLCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
+    "parameters": {},
+    "groupNames": ["NDMO_PRV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_PRV_SQLServerCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0a370ff3-6cab-4e85-8995-295fd854c5b8",
+    "parameters": {},
+    "groupNames": ["NDMO_PRV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_PRV_NoCustomOwner",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/10ee2ea2-fb4d-45b8-a7e9-a2e770044cd9",
+    "parameters": {},
+    "groupNames": ["NDMO_PRV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_PRV_SQLMIEntraOnly",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0c28c3fb-c244-42d5-a9bf-f35f2999577b",
+    "parameters": {},
+    "groupNames": ["NDMO_PRV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_PRV_RemoveGuestWrite",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
+    "parameters": {},
+    "groupNames": ["NDMO_PRV"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_DiskCMK",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_KVDeletion",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_KVFirewall",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55615ac9-af46-4a59-874e-391cc3dfb490",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_KVPrivateLink",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a6abeaec-4d90-4a02-805f-6b26c4d3fbe9",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_EnableDefender",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ac076320-ddcf-4066-b451-6154267e8ad2",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_DefenderServers",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_SysUpdates",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_UpdateCheck",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_NSGSubnets",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_MFACreate",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_MFAWrite",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2ed6-4474-b48f-163f75654ce3",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "NDMO_SEC_TempDiskEnc",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0961003e-5a0a-4549-abde-af6a37f2724d",
+    "parameters": {},
+    "groupNames": ["NDMO_SEC"]
+  }
+]
