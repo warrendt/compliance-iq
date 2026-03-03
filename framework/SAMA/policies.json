@@ -9,7 +9,7 @@
   },
   {
     "PolicyDefinitionReferenceId": "SAMA_AC01_MFA_Write",
-    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2d0a-4958-8955-00b9f6db96d0",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2ed6-4474-b48f-163f75654ce3",
     "Parameters": {},
     "GroupNames": [
       "SAMA-AC-01"
@@ -73,7 +73,7 @@
   },
   {
     "PolicyDefinitionReferenceId": "SAMA_AC03_CustomRBAC",
-    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-1bef-4a42-83a4-621c6455c474",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-51ff-4ce3-8d8c-f3f8f0be26b8",
     "Parameters": {},
     "GroupNames": [
       "SAMA-AC-03"
@@ -121,7 +121,7 @@
   },
   {
     "PolicyDefinitionReferenceId": "SAMA_NS01_NSG_Subnets2",
-    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-a4bb-42d5-8a17-af8c0bcc1e79",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-7285-40fe-afe0-ae8654b92fb2",
     "Parameters": {},
     "GroupNames": [
       "SAMA-NS-01"

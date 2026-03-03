@@ -1,7 +1,7 @@
 [
   {
     "policyDefinitionReferenceId": "KSA_GOV_CustomRBAC",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-1bef-4a42-83a4-621c6455c474",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0015ea4d-51ff-4ce3-8d8c-f3f8f0be26b8",
     "parameters": {},
     "groupNames": [
       "KSA_GOV"
@@ -201,7 +201,7 @@
   },
   {
     "policyDefinitionReferenceId": "KSA_IAM_MFA_Write",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2d0a-4958-8955-00b9f6db96d0",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9297c21d-2ed6-4474-b48f-163f75654ce3",
     "parameters": {},
     "groupNames": [
       "KSA_IAM"
@@ -265,7 +265,7 @@
   },
   {
     "policyDefinitionReferenceId": "KSA_NET_NSG_Subnets",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-a4bb-42d5-8a17-af8c0bcc1e79",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/2c89a2e5-7285-40fe-afe0-ae8654b92fb2",
     "parameters": {},
     "groupNames": [
       "KSA_NET"
