@@ -121,9 +121,7 @@ foreach ($fw in $frameworks) {
         -Name               $assignmentName `
         -DisplayName        $fw.DisplayName `
         -PolicySetDefinition $def `
-        -Scope              $subScope `
-        -Location           "southafricanorth" `
-        -AssignIdentity
+        -Scope              $subScope
 
     Write-Host "  ✅ Assigned: $($fw.DisplayName)" -ForegroundColor Green
 }

@@ -42,7 +42,7 @@
   {
     "PolicyDefinitionReferenceId": "818719e5-1338-4776-9a9d-3c31e4df5986",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
-    "Parameters": {},
+    "Parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
     "GroupNames": [
       "SAMA-LM-01"
     ]

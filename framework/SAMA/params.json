@@ -1,1 +1,10 @@
-{}
+{
+  "logAnalytics": {
+    "type": "String",
+    "metadata": {
+      "displayName": "Log Analytics Workspace",
+      "description": "Resource ID of the Log Analytics workspace to stream activity logs to."
+    },
+    "defaultValue": ""
+  }
+}
