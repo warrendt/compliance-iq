@@ -80,8 +80,12 @@ async def startup_event():
     )
     
     # Initialize Application Insights
-    app_insights.initialize()
-    logger.info("application_insights_initialized")
+    try:
+        app_insights.initialize()
+        logger.info("application_insights_initialized")
+    except Exception as e:
+        # opencensus is incompatible with Python 3.14 — skip gracefully
+        print(f"[WARN] Application Insights init skipped: {e}")
     
     # Initialize Cosmos DB client
     if settings.cosmos_db_endpoint:

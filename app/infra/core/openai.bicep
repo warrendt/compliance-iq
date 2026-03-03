@@ -52,7 +52,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   name: modelName
   sku: {
     name: 'Standard'
-    capacity: 80 // TPM (tokens per minute) in thousands
+    capacity: 150 // TPM (tokens per minute) in thousands
   }
   properties: {
     model: {
@@ -71,7 +71,7 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
   name: '${fallbackModel}-fallback'
   sku: {
     name: 'Standard'
-    capacity: 80
+    capacity: 150
   }
   properties: {
     model: {

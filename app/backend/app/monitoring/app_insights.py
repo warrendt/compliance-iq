@@ -4,7 +4,6 @@ Application Insights integration for monitoring and telemetry
 import os
 from typing import Optional
 from opencensus.ext.azure.trace_exporter import AzureExporter
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
 import logging
@@ -26,7 +25,7 @@ class AppInsightsConfig:
     def initialize(self) -> None:
         """Initialize Application Insights exporters"""
         if not self.enabled:
-            logging.warning("Application Insights connection string not found. Telemetry disabled.")
+            print("Application Insights: connection string not set. Telemetry disabled.")
             return
             
         try:
@@ -41,21 +40,14 @@ class AppInsightsConfig:
                 sampler=ProbabilitySampler(self.sampling_rate)
             )
             
-            # Add Azure log handler to root logger
-            logger = logging.getLogger()
-            azure_handler = AzureLogHandler(
-                connection_string=self.connection_string
-            )
-            logger.addHandler(azure_handler)
+            # NOTE: AzureLogHandler is intentionally not added — it is incompatible
+            # with Python 3.14 due to the logging lock laziness change. Trace
+            # exporting still works; log forwarding to App Insights is skipped locally.
             
-            logging.info("Application Insights initialized successfully", extra={
-                "service_name": self.service_name,
-                "environment": self.environment,
-                "sampling_rate": self.sampling_rate
-            })
+            print(f"[INFO] Application Insights initialized (service={self.service_name}, env={self.environment})")
             
         except Exception as e:
-            logging.error(f"Failed to initialize Application Insights: {e}")
+            print(f"[WARN] Failed to initialize Application Insights: {e}")
             self.enabled = False
     
     def get_tracer(self) -> Optional[Tracer]:
