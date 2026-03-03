@@ -58,7 +58,7 @@
   {
     "PolicyDefinitionReferenceId": "55d1f543-d1b0-4811-9663-d6d0dbc6326d",
     "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55d1f543-d1b0-4811-9663-d6d0dbc6326d",
-    "Parameters": {},
+    "Parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
     "GroupNames": [
       "SAMA-AI-03"
     ]

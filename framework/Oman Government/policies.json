@@ -58,7 +58,7 @@
   {
     "policyDefinitionReferenceId": "OMN_MON_01_DiagSettings",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
-    "parameters": {},
+    "parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
     "groupNames": [
       "OMN_MON"
     ]
@@ -66,7 +66,7 @@
   {
     "policyDefinitionReferenceId": "OMN_MON_01_ActivityLog",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b79fa14e-238a-4c2d-b376-442ce508fc84",
-    "parameters": {},
+    "parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
     "groupNames": [
       "OMN_MON"
     ]
