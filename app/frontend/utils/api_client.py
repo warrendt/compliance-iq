@@ -47,12 +47,14 @@ def _on_response(response: httpx.Response) -> None:
     req = response.request
 
     # Truncate bodies for display
+    # req.content raises httpx.RequestNotRead for streaming/multipart uploads
+    # (e.g. PDF file uploads) where the request body was never buffered.
     req_body = ""
-    if req.content:
-        try:
+    try:
+        if req.content:
             req_body = req.content.decode("utf-8", errors="replace")[:2048]
-        except Exception:
-            req_body = "<binary>"
+    except Exception:
+        req_body = "<multipart/binary>"
 
     resp_body = ""
     try:
