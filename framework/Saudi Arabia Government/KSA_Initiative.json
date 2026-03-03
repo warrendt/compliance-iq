@@ -1,0 +1,121 @@
+{
+  "properties": {
+    "displayName": "Saudi Arabia Government Cloud Security Controls",
+    "policyType": "Custom",
+    "description": "Saudi Arabia Government consolidated cloud security compliance framework covering NCA Critical Systems Cybersecurity Controls (CSCC-1:2019), National Data Management Office (NDMO) data management and personal data protection standards, and Saudi Personal Data Protection Law (PDPL). Applicable to Saudi government entities and operators of critical national infrastructure deploying cloud services.",
+    "metadata": {
+      "category": "Regulatory Compliance",
+      "version": "1.0.0",
+      "country": "Saudi Arabia",
+      "authority": "National Cybersecurity Authority (NCA), National Data Management Office (NDMO)",
+      "source": "https://nca.gov.sa"
+    },
+    "parameters": {},
+    "policyDefinitionGroups": [
+      {
+        "name": "KSA_GOV",
+        "displayName": "Cybersecurity Governance",
+        "description": "NCA CSCC requirements for cybersecurity strategy, risk management, IT project security, periodic audit, and human resources security for critical systems."
+      },
+      {
+        "name": "KSA_INF",
+        "displayName": "Infrastructure Security",
+        "description": "Compute hardening, virtual network isolation, storage encryption with customer-managed keys, and secure boot requirements for cloud infrastructure."
+      },
+      {
+        "name": "KSA_PLA",
+        "displayName": "Platform Security",
+        "description": "API gateway security, database security controls, container image scanning, and serverless function security requirements."
+      },
+      {
+        "name": "KSA_DAT",
+        "displayName": "Data Security",
+        "description": "Data classification per NCA and NDMO guidelines, data masking, data residency within Saudi Arabia, and data retention and deletion policies."
+      },
+      {
+        "name": "KSA_IAM",
+        "displayName": "Identity & Access Management",
+        "description": "Identity federation with national infrastructure, just-in-time privileged access management, service account security, and periodic access reviews."
+      },
+      {
+        "name": "KSA_NET",
+        "displayName": "Network Security",
+        "description": "DDoS protection, web application firewall with OWASP rules, private connectivity via private endpoints, and network traffic monitoring."
+      },
+      {
+        "name": "KSA_SEC",
+        "displayName": "Security Operations",
+        "description": "SIEM integration, threat intelligence sharing with NCA, security automation, and vulnerability management within NCA-mandated timelines."
+      },
+      {
+        "name": "KSA_COM",
+        "displayName": "Compliance & Audit",
+        "description": "Regulatory mapping to NCA CSCC, NDMO, and PDPL; comprehensive audit logging; compliance reporting; and third-party attestation requirements."
+      },
+      {
+        "name": "KSA_DR",
+        "displayName": "Disaster Recovery",
+        "description": "Automated and tested backup and recovery strategies for all critical systems and data."
+      },
+      {
+        "name": "KSA_NDM",
+        "displayName": "Data Management (NDMO)",
+        "description": "NDMO requirements for data governance, enterprise data catalog, data quality standards, data architecture, and interoperability between government entities."
+      },
+      {
+        "name": "KSA_NDP",
+        "displayName": "Data Privacy (PDPL)",
+        "description": "Saudi Personal Data Protection Law (PDPL) and NDMO privacy requirements: personal data protection, consent management, and data subject rights."
+      },
+      {
+        "name": "KSA_NDS",
+        "displayName": "Data Sharing (NDMO)",
+        "description": "NDMO authorized data sharing between government entities, formal data sharing agreements with security requirements and audit obligations."
+      }
+    ],
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "KSA_INF_01_UpdateCheck",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+        "parameters": {},
+        "groupNames": ["KSA_INF"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_INF_02_NSG",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+        "parameters": {},
+        "groupNames": ["KSA_INF"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_INF_03_CMKDisk",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "parameters": {},
+        "groupNames": ["KSA_INF"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_PLA_02_SQLMIPublic",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9dfea752-dd46-4766-aed1-c355fa93fb91",
+        "parameters": {},
+        "groupNames": ["KSA_PLA"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_NET_03_PrivateLink",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "parameters": {},
+        "groupNames": ["KSA_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_SEC_04_SystemUpdates",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "parameters": {},
+        "groupNames": ["KSA_SEC"]
+      },
+      {
+        "policyDefinitionReferenceId": "KSA_NDM_01_RBAC",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
+        "parameters": {},
+        "groupNames": ["KSA_NDM"]
+      }
+    ]
+  }
+}

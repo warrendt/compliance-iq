@@ -1,0 +1,44 @@
+[
+  {
+    "policyDefinitionReferenceId": "KSA_INF_01_UpdateCheck",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+    "parameters": {},
+    "groupNames": ["KSA_INF"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_INF_02_NSG",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+    "parameters": {},
+    "groupNames": ["KSA_INF"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_INF_03_CMKDisk",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+    "parameters": {},
+    "groupNames": ["KSA_INF"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_PLA_02_SQLMIPublic",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/9dfea752-dd46-4766-aed1-c355fa93fb91",
+    "parameters": {},
+    "groupNames": ["KSA_PLA"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_NET_03_PrivateLink",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+    "parameters": {},
+    "groupNames": ["KSA_NET"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_SEC_04_SystemUpdates",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+    "parameters": {},
+    "groupNames": ["KSA_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "KSA_NDM_01_RBAC",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
+    "parameters": {},
+    "groupNames": ["KSA_NDM"]
+  }
+]

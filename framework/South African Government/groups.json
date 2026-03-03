@@ -1,0 +1,47 @@
+[
+  {
+    "name": "SAG_DGV",
+    "displayName": "Digital Strategy & Governance",
+    "description": "National digital strategy alignment, eGovernment framework, cloud-first policy, intergovernmental coordination, and open standards compliance."
+  },
+  {
+    "name": "SAG_PDP",
+    "displayName": "Personal Data Protection (POPIA)",
+    "description": "Protection of Personal Information Act (POPIA) requirements: lawful processing, consent, data subject rights, breach notification, retention, and DPO designation."
+  },
+  {
+    "name": "SAG_CLD",
+    "displayName": "Cloud Architecture & Sovereignty",
+    "description": "SITA sovereign cloud requirements: data residency in South Africa, local key management, government network connectivity, background-checked personnel, exit strategy."
+  },
+  {
+    "name": "SAG_NET",
+    "displayName": "Network Security",
+    "description": "Government network segmentation, secure internet gateway, private connectivity to PaaS services, and network traffic inspection."
+  },
+  {
+    "name": "SAG_IAM",
+    "displayName": "Identity & Access Management",
+    "description": "Government identity federation, MFA enforcement, privileged access management, and security clearance integration."
+  },
+  {
+    "name": "SAG_DAT",
+    "displayName": "Data Security",
+    "description": "Data classification, encryption with CMK, secure data sanitization, and government records management."
+  },
+  {
+    "name": "SAG_SEC",
+    "displayName": "Security Operations",
+    "description": "Government SOC integration, threat intelligence sharing, security event correlation, and vulnerability management."
+  },
+  {
+    "name": "SAG_GOV",
+    "displayName": "Compliance & Governance",
+    "description": "POPIA, SITA Act, PFMA, and Public Service Regulations compliance, government audit requirements, and change management."
+  },
+  {
+    "name": "SAG_BCM",
+    "displayName": "Business Continuity",
+    "description": "Critical service availability, DR requirements with RTOs/RPOs, national emergency preparedness, and restoration priority."
+  }
+]

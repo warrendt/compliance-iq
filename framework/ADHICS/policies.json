@@ -1,0 +1,26 @@
+[
+  {
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
+    "policyDefinitionReferenceId": "ADHICS-PHI-01-postgres-cmk",
+    "groupNames": ["ADHICS_PHI"],
+    "parameters": {}
+  },
+  {
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+    "policyDefinitionReferenceId": "ADHICS-IAM-01-mfa",
+    "groupNames": ["ADHICS_IAM"],
+    "parameters": {}
+  },
+  {
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+    "policyDefinitionReferenceId": "ADHICS-Net-01-nsg",
+    "groupNames": ["ADHICS_NET"],
+    "parameters": {}
+  },
+  {
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+    "policyDefinitionReferenceId": "ADHICS-App-02-system-updates",
+    "groupNames": ["ADHICS_APP"],
+    "parameters": {}
+  }
+]

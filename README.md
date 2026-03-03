@@ -8,7 +8,7 @@
 
 [![Azure](https://img.shields.io/badge/Azure-0078D4?style=flat&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Compliance](https://img.shields.io/badge/Frameworks-8%20Supported-green)](#supported-frameworks)
+[![Compliance](https://img.shields.io/badge/Frameworks-5%20Supported-green)](#supported-frameworks)
 
 </div>
 
@@ -21,7 +21,7 @@
 ### Key Capabilities
 
 - **AI-Powered Mapping** — Upload a compliance PDF, and GPT-4.1 maps controls to Azure policies and Defender for Cloud recommendations
-- **8 Pre-Built Catalogs** — Ready-to-use mappings for SAMA, ADHICS, CCC, SITA, Oman CDC, eGovernment, IGR, and POPIA
+- **5 Pre-Built Catalogs** — Ready-to-use mappings for SAMA, ADHICS, Saudi Arabia Government, South African Government, and Oman Government
 - **Azure Policy Generation** — Export compliant Azure Policy initiative JSON, including Sovereign Landing Zone (SLZ) archetypes
 - **Interactive Review UI** — Streamlit-based web interface for reviewing, editing, and approving AI-generated mappings
 - **End-to-End Pipeline** — Upload PDF → Extract Controls → AI Map → Review → Export Policy
@@ -51,12 +51,9 @@ compliance-iq/
 ├── catalogues/                # Pre-built compliance control mappings (CSV)
 │   ├── SAMA_Catalog_Azure_Mappings.csv
 │   ├── ADHICS_Framework_Azure_Mappings.csv
-│   ├── CCC_Framework_Azure_Mappings.csv
-│   ├── SITA_Architecture_Azure_Mappings.csv
-│   ├── OmanCDC_Framework_Azure_Mappings.csv
-│   ├── eGovernment_Framework_Azure_Mappings.csv
-│   ├── IGR_Framework_Azure_Mappings.csv
-│   ├── POPIA_Framework_Azure_Mappings.csv
+│   ├── Saudi_Arabia_Government_Azure_Mappings.csv
+│   ├── South_African_Government_Azure_Mappings.csv
+│   ├── Oman_Government_Azure_Mappings.csv
 │   └── CATALOG_SUMMARY.md
 │
 ├── compliance-pipeline/       # Standalone CLI tool for batch processing
@@ -74,12 +71,9 @@ compliance-iq/
 |-----------|--------|--------|----------|---------|
 | **SAMA** | Saudi Arabia | Financial | 36 | [View](catalogues/SAMA_Catalog_Azure_Mappings.csv) |
 | **ADHICS** | Abu Dhabi | Healthcare | 36 | [View](catalogues/ADHICS_Framework_Azure_Mappings.csv) |
-| **CCC** | Saudi Arabia | Cloud Computing | 32 | [View](catalogues/CCC_Framework_Azure_Mappings.csv) |
-| **SITA** | South Africa | Government | 38 | [View](catalogues/SITA_Architecture_Azure_Mappings.csv) |
-| **Oman CDC** | Oman | Government | 47 | [View](catalogues/OmanCDC_Framework_Azure_Mappings.csv) |
-| **eGovernment** | South Africa | Government | — | [View](catalogues/eGovernment_Framework_Azure_Mappings.csv) |
-| **IGR** | South Africa | Government | — | [View](catalogues/IGR_Framework_Azure_Mappings.csv) |
-| **POPIA** | South Africa | Privacy | — | [View](catalogues/POPIA_Framework_Azure_Mappings.csv) |
+| **Saudi Arabia Government** | Saudi Arabia | Government | 43 | [View](catalogues/Saudi_Arabia_Government_Azure_Mappings.csv) |
+| **South African Government** | South Africa | Government | 62 | [View](catalogues/South_African_Government_Azure_Mappings.csv) |
+| **Oman Government** | Oman | Government | 18 | [View](catalogues/Oman_Government_Azure_Mappings.csv) |
 
 Each catalog maps controls to:
 - Azure Policy names and definition IDs (GUIDs)
@@ -97,9 +91,11 @@ git clone https://github.com/warrendt/compliance-iq.git
 cd compliance-iq
 
 # Browse catalogs for your sector
-cat catalogues/SAMA_Catalog_Azure_Mappings.csv       # Financial
-cat catalogues/ADHICS_Framework_Azure_Mappings.csv    # Healthcare
-cat catalogues/SITA_Architecture_Azure_Mappings.csv   # Government
+cat catalogues/SAMA_Catalog_Azure_Mappings.csv                    # Financial
+cat catalogues/ADHICS_Framework_Azure_Mappings.csv               # Healthcare
+cat catalogues/South_African_Government_Azure_Mappings.csv       # South Africa
+cat catalogues/Saudi_Arabia_Government_Azure_Mappings.csv        # Saudi Arabia
+cat catalogues/Oman_Government_Azure_Mappings.csv                # Oman
 ```
 
 ### Option 2: Run the AI Mapping Agent Locally

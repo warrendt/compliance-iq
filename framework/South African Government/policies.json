@@ -1,0 +1,38 @@
+[
+  {
+    "policyDefinitionReferenceId": "SAG_NET_01_NSG",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+    "parameters": {},
+    "groupNames": ["SAG_NET"]
+  },
+  {
+    "policyDefinitionReferenceId": "SAG_NET_03_PrivateLink",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+    "parameters": {},
+    "groupNames": ["SAG_NET"]
+  },
+  {
+    "policyDefinitionReferenceId": "SAG_IAM_02_MFA",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+    "parameters": {},
+    "groupNames": ["SAG_IAM"]
+  },
+  {
+    "policyDefinitionReferenceId": "SAG_DAT_02_CMKDisk",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+    "parameters": {},
+    "groupNames": ["SAG_DAT"]
+  },
+  {
+    "policyDefinitionReferenceId": "SAG_SEC_04_SystemUpdates",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+    "parameters": {},
+    "groupNames": ["SAG_SEC"]
+  },
+  {
+    "policyDefinitionReferenceId": "SAG_CLD_10_UpdateCheck",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+    "parameters": {},
+    "groupNames": ["SAG_CLD"]
+  }
+]

@@ -1,0 +1,86 @@
+{
+  "name": "ADHICS-v2-initiative",
+  "type": "Microsoft.Authorization/policySetDefinitions",
+  "properties": {
+    "displayName": "Abu Dhabi Healthcare Information and Cyber Security Standard v2",
+    "description": "This initiative maps Azure Policy definitions to the Abu Dhabi Health Information and Cyber Security Standard (ADHICS) v2 controls for healthcare organisations in the Abu Dhabi emirate. It covers PHI protection, clinical system security, medical device security, and healthcare-specific governance.",
+    "metadata": {
+      "version": "2.0.0",
+      "category": "Regulatory Compliance"
+    },
+    "parameters": {},
+    "policyDefinitionGroups": [
+      {
+        "name": "ADHICS_GOV",
+        "displayName": "Governance",
+        "description": "Controls covering healthcare cybersecurity policy, CISO leadership, and risk management framework requirements."
+      },
+      {
+        "name": "ADHICS_PHI",
+        "displayName": "Protected Health Information",
+        "description": "Controls covering PHI encryption at rest and in transit, access controls, data masking, and audit logging for protected health information."
+      },
+      {
+        "name": "ADHICS_IAM",
+        "displayName": "Identity & Access Management",
+        "description": "Controls covering healthcare user authentication with MFA, privileged access for clinical systems, patient identity verification, and clinician credential management."
+      },
+      {
+        "name": "ADHICS_NET",
+        "displayName": "Network Security",
+        "description": "Controls covering clinical network segmentation, medical device network isolation, healthcare API security, and telehealth platform security."
+      },
+      {
+        "name": "ADHICS_APP",
+        "displayName": "Application Security",
+        "description": "Controls covering EHR system security, clinical application hardening, medical imaging (PACS/DICOM) security, and laboratory information system security."
+      },
+      {
+        "name": "ADHICS_DEV",
+        "displayName": "Medical Device Security",
+        "description": "Controls covering medical device inventory management, patch management with vendor coordination, device security monitoring, and device incident response."
+      },
+      {
+        "name": "ADHICS_DATA",
+        "displayName": "Data Management",
+        "description": "Controls covering healthcare data classification, clinical data retention, research data de-identification, and healthcare data backup and recovery."
+      },
+      {
+        "name": "ADHICS_COMP",
+        "displayName": "Compliance",
+        "description": "Controls covering HIPAA compliance, healthcare audit logging, breach notification procedures, and patient privacy rights management."
+      },
+      {
+        "name": "ADHICS_BC",
+        "displayName": "Business Continuity",
+        "description": "Controls covering clinical system high availability, emergency access procedures, disaster recovery testing, and clinical system failover capabilities."
+      }
+    ],
+    "policyDefinitions": [
+      {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
+        "policyDefinitionReferenceId": "ADHICS-PHI-01-postgres-cmk",
+        "groupNames": ["ADHICS_PHI"],
+        "parameters": {}
+      },
+      {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+        "policyDefinitionReferenceId": "ADHICS-IAM-01-mfa",
+        "groupNames": ["ADHICS_IAM"],
+        "parameters": {}
+      },
+      {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+        "policyDefinitionReferenceId": "ADHICS-Net-01-nsg",
+        "groupNames": ["ADHICS_NET"],
+        "parameters": {}
+      },
+      {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "policyDefinitionReferenceId": "ADHICS-App-02-system-updates",
+        "groupNames": ["ADHICS_APP"],
+        "parameters": {}
+      }
+    ]
+  }
+}

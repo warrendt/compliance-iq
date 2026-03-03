@@ -1,0 +1,62 @@
+[
+  {
+    "name": "KSA_GOV",
+    "displayName": "Cybersecurity Governance",
+    "description": "NCA CSCC: cybersecurity strategy, risk management, IT project security, periodic audit, and human resources security for critical systems."
+  },
+  {
+    "name": "KSA_INF",
+    "displayName": "Infrastructure Security",
+    "description": "Compute hardening, virtual network isolation, storage encryption with CMK, and secure boot for cloud infrastructure."
+  },
+  {
+    "name": "KSA_PLA",
+    "displayName": "Platform Security",
+    "description": "API gateway security, database security controls, container image scanning, and serverless function security."
+  },
+  {
+    "name": "KSA_DAT",
+    "displayName": "Data Security",
+    "description": "Data classification per NCA and NDMO, data masking, data residency within Saudi Arabia, and data retention and deletion."
+  },
+  {
+    "name": "KSA_IAM",
+    "displayName": "Identity & Access Management",
+    "description": "Identity federation, just-in-time privileged access management, service account security, and periodic access reviews."
+  },
+  {
+    "name": "KSA_NET",
+    "displayName": "Network Security",
+    "description": "DDoS protection, WAF with OWASP rules, private endpoints for PaaS services, and network traffic monitoring."
+  },
+  {
+    "name": "KSA_SEC",
+    "displayName": "Security Operations",
+    "description": "SIEM integration, threat intelligence sharing with NCA, security automation, and vulnerability management."
+  },
+  {
+    "name": "KSA_COM",
+    "displayName": "Compliance & Audit",
+    "description": "Regulatory mapping to NCA CSCC, NDMO, and PDPL; audit logging; compliance reporting; and third-party attestation."
+  },
+  {
+    "name": "KSA_DR",
+    "displayName": "Disaster Recovery",
+    "description": "Automated and tested backup and recovery for all critical systems and data."
+  },
+  {
+    "name": "KSA_NDM",
+    "displayName": "Data Management (NDMO)",
+    "description": "NDMO: data governance framework, enterprise data catalog, data quality, data architecture, and interoperability."
+  },
+  {
+    "name": "KSA_NDP",
+    "displayName": "Data Privacy (PDPL)",
+    "description": "Saudi PDPL and NDMO privacy: personal data protection, consent management, and data subject rights."
+  },
+  {
+    "name": "KSA_NDS",
+    "displayName": "Data Sharing (NDMO)",
+    "description": "NDMO authorized data sharing between government entities and formal data sharing agreements."
+  }
+]

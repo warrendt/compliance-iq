@@ -1,0 +1,45 @@
+Control_ID,Control_Domain,Control_Title,Control_Description
+KSA-GOV-01,Cybersecurity Governance,Cybersecurity Strategy,Develop and maintain a cybersecurity strategy that prioritizes the protection of critical systems and national infrastructure in compliance with NCA guidelines
+KSA-GOV-02,Cybersecurity Governance,Risk Management,Conduct annual cybersecurity risk assessments and maintain a regularly reviewed risk register for critical systems per NCA CSCC requirements
+KSA-GOV-03,Cybersecurity Governance,Cybersecurity in IT Projects,Integrate security requirements into IT project management including secure development practices testing procedures and deployment controls
+KSA-GOV-04,Cybersecurity Governance,Periodic Cybersecurity Review and Audit,Conduct annual cybersecurity implementation reviews by the cybersecurity function and independent third-party audits every three years
+KSA-GOV-05,Cybersecurity Governance,Human Resources Security,Implement personnel screening and vetting for all workers with access to critical systems and ensure technical positions are filled by experienced professionals
+KSA-INF-01,Infrastructure Security,Compute Instance Hardening,Harden virtual machine configurations by applying security baselines disabling unnecessary services and periodically checking for missing system updates
+KSA-INF-02,Infrastructure Security,Virtual Network Isolation,Implement virtual network segmentation and isolation for workloads using network security groups and defined security boundaries
+KSA-INF-03,Infrastructure Security,Storage Encryption,Encrypt all storage at rest using strong government-approved encryption algorithms including customer-managed key options
+KSA-INF-04,Infrastructure Security,Secure Boot and Attestation,Enable secure boot and trusted platform module capabilities for virtual machines to ensure hardware-level integrity
+KSA-PLA-01,Platform Security,API Gateway Security,Implement API gateway controls including authentication authorization rate limiting and monitoring for all exposed APIs
+KSA-PLA-02,Platform Security,Database Security,Enable database encryption audit logging least-privilege access controls and disable public network access for all database services
+KSA-PLA-03,Platform Security,Container Security,Scan container images for vulnerabilities and enforce pod security policies in all containerized environments
+KSA-PLA-04,Platform Security,Serverless Security,Implement least-privilege access and secure secret management for all serverless functions and cloud-native services
+KSA-DAT-01,Data Security,Data Classification,Classify all data based on sensitivity levels per NCA and NDMO classification guidelines before deploying to cloud environments
+KSA-DAT-02,Data Security,Data Masking,Apply data masking and anonymization techniques for non-production environments containing sensitive or personal data
+KSA-DAT-03,Data Security,Data Residency,Ensure all data is stored in compliant geographic regions in accordance with Saudi data localization requirements and government policy
+KSA-DAT-04,Data Security,Data Retention and Deletion,Define and enforce data retention policies and implement secure deletion procedures per NDMO data lifecycle standards
+KSA-IAM-01,Identity & Access Management,Identity Federation,Implement federated identity with single sign-on capabilities aligned with national identity infrastructure and government directories
+KSA-IAM-02,Identity & Access Management,Privileged Access Management,Implement just-in-time privileged access management for all administrative operations including approval workflows and audit trails
+KSA-IAM-03,Identity & Access Management,Service Account Management,Secure monitor and regularly rotate service account credentials and managed identity configurations
+KSA-IAM-04,Identity & Access Management,Periodic Access Reviews,Conduct periodic access reviews and certifications for all users with access to critical systems and sensitive data
+KSA-NET-01,Network Security,DDoS Protection,Enable DDoS protection for all internet-facing government and critical infrastructure services
+KSA-NET-02,Network Security,Web Application Firewall,Deploy web application firewall with OWASP rule sets for all public-facing web applications and APIs
+KSA-NET-03,Network Security,Private Connectivity,Use private endpoints for all PaaS services to eliminate public internet exposure for cloud-hosted services
+KSA-NET-04,Network Security,Network Monitoring,Implement comprehensive network traffic monitoring flow logging and threat analysis capabilities
+KSA-SEC-01,Security Operations,SIEM Integration,Centralize security logs to a SIEM solution for correlation alerting and incident investigation
+KSA-SEC-02,Security Operations,Threat Intelligence,Integrate threat intelligence feeds and share indicators of compromise with national cybersecurity authorities including NCA
+KSA-SEC-03,Security Operations,Security Automation,Automate security response and remediation workflows for known threat patterns and policy violations
+KSA-SEC-04,Security Operations,Vulnerability Management,Continuously scan for and remediate vulnerabilities within NCA-mandated timeframes and patching schedules
+KSA-COM-01,Compliance & Audit,Regulatory Mapping,Map all controls to applicable Saudi regulatory frameworks including NCA CSCC NDMO and PDPL requirements
+KSA-COM-02,Compliance & Audit,Audit Logging,Enable comprehensive audit logging for all administrative actions data access events and configuration changes
+KSA-COM-03,Compliance & Audit,Compliance Reporting,Generate and maintain compliance reports and evidence packages for submission to regulatory authorities
+KSA-COM-04,Compliance & Audit,Third-Party Attestation,Obtain and maintain third-party security certifications and attestations as required by NCA for critical systems
+KSA-DR-01,Disaster Recovery,Backup and Recovery Strategy,Implement automated and tested backup and recovery procedures for all critical systems and data
+KSA-NDM-01,Data Management,Data Governance,Establish data governance authority define data management roles (CDO Data Stewards) and implement oversight policies per NDMO framework
+KSA-NDM-02,Data Management,Data Catalog and Metadata,Maintain a comprehensive enterprise data catalog with metadata management lineage tracking and data discovery capabilities
+KSA-NDM-03,Data Management,Data Quality,Define and enforce data quality standards for accuracy completeness consistency and timeliness of government data
+KSA-NDM-04,Data Management,Data Architecture,Define enterprise data architecture standards aligned with Saudi e-Government technical standards and interoperability requirements
+KSA-NDM-05,Data Management,Data Interoperability,Enable standardized data interoperability between government entities using NDMO-approved data exchange standards
+KSA-NDP-01,Data Privacy,Personal Data Protection,Protect personal data in compliance with Saudi Arabia's Personal Data Protection Law (PDPL) and NDMO privacy standards
+KSA-NDP-02,Data Privacy,Consent and Processing Basis,Obtain valid legal basis for all personal data processing activities including robust consent management mechanisms
+KSA-NDP-03,Data Privacy,Data Subject Rights,Implement mechanisms for data subjects to exercise rights including access correction portability and deletion of personal data
+KSA-NDS-01,Data Sharing,Authorized Data Sharing,Enable secure and authorized data sharing between government entities per NDMO data sharing framework and approved agreements
+KSA-NDS-02,Data Sharing,Data Sharing Agreements,Establish formal data sharing agreements defining responsibilities security requirements usage restrictions and audit obligations

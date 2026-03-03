@@ -1,0 +1,12 @@
+[
+  { "name": "OMN_NET", "displayName": "Network Security", "description": "CDC: firewalls, DDoS protection, OS hardening, and network configuration security." },
+  { "name": "OMN_IAM", "displayName": "Identity & Access Control", "description": "CDC: centralized IAM (RBAC/IBAC/ABAC), MFA, geographic access restrictions, and least privilege." },
+  { "name": "OMN_MON", "displayName": "Logging & Monitoring", "description": "CDC: SIEM integration, log aggregation, and activity log retention." },
+  { "name": "OMN_RSK", "displayName": "Risk Management & Compliance", "description": "CDC: penetration testing, risk assessment, and vulnerability scanning." },
+  { "name": "OMN_DAT", "displayName": "Data Protection & Privacy", "description": "CDC: data classification, encryption in transit and at rest, BYOK/CMK, and cloud DLP." },
+  { "name": "OMN_END", "displayName": "Endpoint Protection", "description": "CDC: antivirus and antimalware for all servers and user devices." },
+  { "name": "OMN_VUL", "displayName": "Vulnerability Management", "description": "CDC: systematic patch management and vulnerability remediation." },
+  { "name": "OMN_BCM", "displayName": "Business Continuity & DR", "description": "CDC: automated backup and recovery for critical cloud-hosted data and services." },
+  { "name": "OMN_INC", "displayName": "Incident Response", "description": "CDC: documented cyber incident response plan for cloud environments." },
+  { "name": "OMN_GOV", "displayName": "Cybersecurity Governance", "description": "CDC policy: data classification prerequisite and overall CDC policy compliance." }
+]

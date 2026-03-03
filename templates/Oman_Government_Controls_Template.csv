@@ -1,0 +1,19 @@
+Control_ID,Control_Domain,Control_Title,Control_Description
+OMN-NET-01,Network Security,Firewalls and DDoS Protection,Implement firewalls and DDoS protection mechanisms at the network level to protect cloud-hosted services from network-based attacks
+OMN-NET-02,Network Security,OS and Network Hardening,Apply secure baseline configurations to operating systems networks servers and user accounts to reduce the attack surface
+OMN-IAM-01,Identity & Access Control,Centralized Identity and Access Management,Manage permissions and identity centrally using RBAC IBAC and ABAC mechanisms and implement tokenization for sensitive cloud resources
+OMN-MON-01,Logging & Monitoring,SIEM Integration and Log Aggregation,Audit all user activities and data movements using SIEM systems integrated with comprehensive log aggregation sources
+OMN-IAM-02,Identity & Access Control,Multi-Factor Authentication,Enable two-factor or multi-factor authentication for all users accessing cloud services in accordance with CDC requirements
+OMN-IAM-03,Identity & Access Control,Geographic Access Restrictions,Enable conditional access based on geographic location (Geo-Blocking) to restrict access from unauthorized regions
+OMN-RSK-01,Risk Management & Compliance,Penetration Testing and Risk Assessment,Conduct technical security assessments including penetration testing and risk analysis for all cloud environments
+OMN-DAT-01,Data Protection & Privacy,Data Classification,Classify all data according to sensitivity levels per applicable Omani laws regulations and CDC classification guidelines
+OMN-DAT-02,Data Protection & Privacy,Data Encryption in Transit and at Rest,Protect all data using encryption mechanisms during transfer processing and storage in cloud environments
+OMN-DAT-03,Data Protection & Privacy,Customer-Managed Keys (BYOK),Apply encryption using single double or customer-managed keys (BYOK) based on data sensitivity and CDC requirements
+OMN-IAM-04,Identity & Access Control,Least Privilege Access,Implement the principle of least privilege for all access to data and cloud resources
+OMN-DLP-01,Data Protection & Privacy,Cloud Data Loss Prevention,Enable data loss prevention capabilities across all cloud applications to prevent unauthorized data exfiltration
+OMN-END-01,Endpoint Protection,Antivirus and Antimalware,Configure and maintain antivirus and antimalware protection for all servers and user devices in cloud environments
+OMN-VUL-01,Vulnerability Management,Patch Management,Implement systematic patch management to maintain current security patches for operating systems and applications
+OMN-BCM-01,Business Continuity & DR,Backup and Recovery,Implement automated backup and recovery capabilities for all critical cloud-hosted data and services
+OMN-INC-01,Incident Response,Cyber Incident Response Plan,Establish and maintain a documented cyber incident response plan for cloud environments with defined roles and procedures
+OMN-GOV-01,Cybersecurity Governance,Data Classification Prerequisite,Establish data classification as a foundational prerequisite before deploying services to the cloud
+OMN-GOV-02,Cybersecurity Governance,CDC Policy Compliance,Maintain overall compliance with Oman Cyber Defense Centre cloud security policies and requirements

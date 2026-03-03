@@ -1,0 +1,237 @@
+{
+  "properties": {
+    "displayName": "Oman Government Cloud Security Controls",
+    "policyType": "Custom",
+    "description": "Oman Government cloud security compliance framework based on the Cyber Defense Centre (CDC) cloud security controls. Covers technical requirements for external cloud usage including network security, identity and access management, encryption, logging and monitoring, vulnerability management, backup and recovery, incident response, and cybersecurity governance. Applicable to all Omani government entities and entities required to comply with CDC directives.",
+    "metadata": {
+      "category": "Regulatory Compliance",
+      "version": "1.0.0",
+      "country": "Oman",
+      "authority": "Cyber Defense Centre (CDC), Information Technology Authority (ITA)",
+      "source": "https://cdc.om/"
+    },
+    "parameters": {},
+    "policyDefinitionGroups": [
+      {
+        "name": "OMN_NET",
+        "displayName": "Network Security",
+        "description": "CDC requirements for firewalls, DDoS protection, OS hardening, and network configuration security."
+      },
+      {
+        "name": "OMN_IAM",
+        "displayName": "Identity & Access Control",
+        "description": "CDC requirements for centralized IAM using RBAC/IBAC/ABAC, MFA enforcement, geographic access restrictions, and least privilege access."
+      },
+      {
+        "name": "OMN_MON",
+        "displayName": "Logging & Monitoring",
+        "description": "CDC requirements for SIEM integration, comprehensive log aggregation, and activity log retention."
+      },
+      {
+        "name": "OMN_RSK",
+        "displayName": "Risk Management & Compliance",
+        "description": "CDC requirements for penetration testing, risk assessment, and overall security posture management."
+      },
+      {
+        "name": "OMN_DAT",
+        "displayName": "Data Protection & Privacy",
+        "description": "CDC requirements for data classification, encryption in transit and at rest, customer-managed keys (BYOK), and cloud data loss prevention."
+      },
+      {
+        "name": "OMN_END",
+        "displayName": "Endpoint Protection",
+        "description": "CDC requirements for antivirus and antimalware configuration on all servers and user devices in cloud environments."
+      },
+      {
+        "name": "OMN_VUL",
+        "displayName": "Vulnerability Management",
+        "description": "CDC requirements for systematic patch management and vulnerability remediation."
+      },
+      {
+        "name": "OMN_BCM",
+        "displayName": "Business Continuity & DR",
+        "description": "CDC requirements for automated backup and recovery capabilities for critical cloud-hosted data and services."
+      },
+      {
+        "name": "OMN_INC",
+        "displayName": "Incident Response",
+        "description": "CDC requirements for a documented cyber incident response plan for cloud environments."
+      },
+      {
+        "name": "OMN_GOV",
+        "displayName": "Cybersecurity Governance",
+        "description": "CDC policy requirements for data classification as a prerequisite to cloud deployment and overall CDC policy compliance."
+      }
+    ],
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "OMN_NET_01_DDoS",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/055f3b15-58a8-4d91-a4f6-8437a6c8f7e8",
+        "parameters": {},
+        "groupNames": ["OMN_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_NET_01_Firewall",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/fc5e4038-4584-4632-8c85-c0448d374b2c",
+        "parameters": {},
+        "groupNames": ["OMN_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_NET_01_NSG",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+        "parameters": {},
+        "groupNames": ["OMN_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_NET_02_SystemUpdates",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "parameters": {},
+        "groupNames": ["OMN_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_IAM_01_RBAC",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/34c877ad-507e-4c82-993e-3452a6e0ad3c",
+        "parameters": {},
+        "groupNames": ["OMN_IAM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_IAM_01_JIT",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/1f314764-cb73-4fc9-b863-8eca98ac36e9",
+        "parameters": {},
+        "groupNames": ["OMN_IAM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_IAM_01_MgmtPorts",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b15565f-aa9e-48ba-8619-45960f2c314d",
+        "parameters": {},
+        "groupNames": ["OMN_IAM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_MON_01_LogAnalytics",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/818719e5-1338-4776-9a9d-3c31e4df5986",
+        "parameters": {},
+        "groupNames": ["OMN_MON"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_MON_01_DiagSettings",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
+        "parameters": {},
+        "groupNames": ["OMN_MON"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_MON_01_ActivityLog",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/b79fa14e-238a-4c2d-b376-442ce508fc84",
+        "parameters": {},
+        "groupNames": ["OMN_MON"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_IAM_02_MFA",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+        "parameters": {},
+        "groupNames": ["OMN_IAM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_RSK_01_VulnAssess",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
+        "parameters": {},
+        "groupNames": ["OMN_RSK"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_01_SQLClassify",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_02_TDE",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/7595c971-233d-4bcf-bd18-596129188c49",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_02_SecureTransfer",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/404c3081-a854-4457-ae30-26a93ef643f9",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_02_TLSVersion",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4733ea7b-a883-42fe-8cac-97454c2a9e4a",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_03_CMKDisk",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_03_CMKPostgres",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/18adea5e-f416-4d0f-8aa8-d24321e3e274",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_03_CMKMySQL",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0a370ff3-6cab-4e85-8995-295fd854c5b8",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_DLP_AppConfig",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_DAT_DLP_CogSvc",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/55d1f543-d1b0-4811-9663-d6d0dbc6326d",
+        "parameters": {},
+        "groupNames": ["OMN_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_END_01_Antimalware",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/013e242c-8828-4970-87b3-ab247555486d",
+        "parameters": {},
+        "groupNames": ["OMN_END"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_END_01_EPProtection",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ac076320-ddcf-4066-b451-6154267e8ad2",
+        "parameters": {},
+        "groupNames": ["OMN_END"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_VUL_01_SystemUpdates",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "parameters": {},
+        "groupNames": ["OMN_VUL"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_VUL_01_UpdateManager",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
+        "parameters": {},
+        "groupNames": ["OMN_VUL"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_BCM_01_Backup",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+        "parameters": {},
+        "groupNames": ["OMN_BCM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_BCM_01_GeoBackupSQL",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/22bee202-a82f-4305-9a2a-6d7f44d4dedb",
+        "parameters": {},
+        "groupNames": ["OMN_BCM"]
+      },
+      {
+        "policyDefinitionReferenceId": "OMN_GOV_01_SQLClassify",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+        "parameters": {},
+        "groupNames": ["OMN_GOV"]
+      }
+    ]
+  }
+}

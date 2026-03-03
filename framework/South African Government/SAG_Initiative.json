@@ -1,0 +1,100 @@
+{
+  "properties": {
+    "displayName": "South African Government Cloud Security Controls",
+    "policyType": "Custom",
+    "description": "South African Government consolidated cloud security compliance framework covering digital governance (eGovernment framework), personal data protection (POPIA), sovereign cloud architecture (SITA), intergovernmental relations (IGR Framework Act 13 of 2005), and public service requirements. Applicable to all South African national, provincial, and local government entities deploying cloud services.",
+    "metadata": {
+      "category": "Regulatory Compliance",
+      "version": "1.0.0",
+      "country": "South Africa",
+      "authority": "SITA, Department of Public Service and Administration, Information Regulator",
+      "source": "https://www.sita.co.za"
+    },
+    "parameters": {},
+    "policyDefinitionGroups": [
+      {
+        "name": "SAG_DGV",
+        "displayName": "Digital Strategy & Governance",
+        "description": "Requirements for national digital strategy alignment, eGovernment framework compliance, cloud-first policy, intergovernmental coordination, and open standards."
+      },
+      {
+        "name": "SAG_PDP",
+        "displayName": "Personal Data Protection (POPIA)",
+        "description": "Requirements under the Protection of Personal Information Act (POPIA) including lawful processing, data subject rights, consent management, breach notification, and data retention."
+      },
+      {
+        "name": "SAG_CLD",
+        "displayName": "Cloud Architecture & Sovereignty",
+        "description": "SITA sovereign cloud architecture requirements including data residency within South Africa, local key management, government network connectivity, background-checked personnel, and cloud exit strategy."
+      },
+      {
+        "name": "SAG_NET",
+        "displayName": "Network Security",
+        "description": "Government network segmentation, secure internet gateway, private connectivity to PaaS services, and network traffic inspection requirements."
+      },
+      {
+        "name": "SAG_IAM",
+        "displayName": "Identity & Access Management",
+        "description": "Government identity federation, multi-factor authentication enforcement, privileged access management, and security clearance integration requirements."
+      },
+      {
+        "name": "SAG_DAT",
+        "displayName": "Data Security",
+        "description": "Government data classification per official schema, encryption with customer-managed keys, secure data sanitization, and government records management requirements."
+      },
+      {
+        "name": "SAG_SEC",
+        "displayName": "Security Operations",
+        "description": "Government SOC integration, threat intelligence sharing with national CSIRT, security event correlation, and vulnerability management requirements."
+      },
+      {
+        "name": "SAG_GOV",
+        "displayName": "Compliance & Governance",
+        "description": "Adoption of government-mandated compliance frameworks (POPIA, SITA Act, PFMA, Public Service Regulations), ongoing POPIA assurance, government audit requirements, and change management."
+      },
+      {
+        "name": "SAG_BCM",
+        "displayName": "Business Continuity",
+        "description": "Critical service availability, government disaster recovery requirements with defined RTOs and RPOs, national emergency preparedness, and service restoration priority."
+      }
+    ],
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "SAG_NET_01_NSG",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e71308d3-144b-4262-b144-efdc3cc90517",
+        "parameters": {},
+        "groupNames": ["SAG_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "SAG_NET_03_PrivateLink",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "parameters": {},
+        "groupNames": ["SAG_NET"]
+      },
+      {
+        "policyDefinitionReferenceId": "SAG_IAM_02_MFA",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+        "parameters": {},
+        "groupNames": ["SAG_IAM"]
+      },
+      {
+        "policyDefinitionReferenceId": "SAG_DAT_02_CMKDisk",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "parameters": {},
+        "groupNames": ["SAG_DAT"]
+      },
+      {
+        "policyDefinitionReferenceId": "SAG_SEC_04_SystemUpdates",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+        "parameters": {},
+        "groupNames": ["SAG_SEC"]
+      },
+      {
+        "policyDefinitionReferenceId": "SAG_INF_01_UpdateCheck",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+        "parameters": {},
+        "groupNames": ["SAG_CLD"]
+      }
+    ]
+  }
+}

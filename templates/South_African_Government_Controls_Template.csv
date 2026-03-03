@@ -1,0 +1,64 @@
+Control_ID,Control_Domain,Control_Title,Control_Description
+SAG-DGV-01,Digital Strategy & Governance,National Digital Strategy Alignment,Align government IT operations with the national digital transformation strategy and policy directives issued under eGovernment frameworks
+SAG-DGV-02,Digital Strategy & Governance,Online Service Delivery,Deliver government services through secure digital channels in compliance with the eGovernment framework and public service regulations
+SAG-DGV-03,Digital Strategy & Governance,Interoperability Standards,Ensure government systems adhere to national interoperability standards to enable seamless integration across government entities
+SAG-DGV-04,Digital Strategy & Governance,Government Information Sharing,Enable secure and structured sharing of information between national, provincial, and local government spheres
+SAG-DGV-05,Digital Strategy & Governance,Intergovernmental Coordination,Establish and maintain coordination mechanisms between government spheres as required by the Intergovernmental Relations Framework Act 13 of 2005
+SAG-DGV-06,Digital Strategy & Governance,Dispute Resolution,Maintain documented procedures for resolving intergovernmental disputes in compliance with IGR Framework Act 13 of 2005
+SAG-DGV-07,Digital Strategy & Governance,Collaborative Planning,Enable joint planning and decision-making across national, provincial, and local government spheres
+SAG-DGV-08,Digital Strategy & Governance,Cloud-First Policy,Adopt a cloud-first approach for government IT infrastructure and service delivery
+SAG-DGV-09,Digital Strategy & Governance,Open Standards Compliance,Use open and interoperable technology standards and avoid proprietary vendor lock-in
+SAG-DGV-10,Digital Strategy & Governance,Digital Identity Services,Implement and maintain secure national digital identity infrastructure for citizens and government users
+SAG-PDP-01,Personal Data Protection,Accountability,Designate an Information Officer and ensure institutional accountability for compliance with the Protection of Personal Information Act (POPIA)
+SAG-PDP-02,Personal Data Protection,Processing Limitation,Process personal information lawfully, minimally, and transparently in accordance with POPIA conditions for lawful processing
+SAG-PDP-03,Personal Data Protection,Purpose Specification,Collect personal information only for specific, explicitly stated, and lawful purposes
+SAG-PDP-04,Personal Data Protection,Further Processing Limitation,Ensure any further processing of personal information is compatible with the original collection purpose
+SAG-PDP-05,Personal Data Protection,Information Quality,Maintain personal information that is accurate, complete, not misleading, and kept up to date
+SAG-PDP-06,Personal Data Protection,Openness,Notify data subjects of collection activities and maintain transparency in all personal information processing
+SAG-PDP-07,Personal Data Protection,Security Safeguards,Implement technical and organizational security measures to protect personal information from loss, damage, unauthorized access, or unlawful processing
+SAG-PDP-08,Personal Data Protection,Data Subject Participation,Provide data subjects with access to their personal information and mechanisms to request corrections or deletions
+SAG-PDP-09,Personal Data Protection,Consent Management,Obtain and document valid, informed, specific consent from data subjects before processing their personal information
+SAG-PDP-10,Personal Data Protection,Cross-Border Transfer,Ensure personal information transferred outside South African borders receives equivalent protection to POPIA requirements
+SAG-PDP-11,Personal Data Protection,Direct Marketing Rules,Comply with POPIA restrictions on direct electronic marketing and implement opt-out mechanisms
+SAG-PDP-12,Personal Data Protection,Data Breach Notification,Notify the Information Regulator and affected data subjects promptly upon discovering a personal information security compromise
+SAG-PDP-13,Personal Data Protection,Record Keeping,Maintain comprehensive records of all personal information processing operations and activities
+SAG-PDP-14,Personal Data Protection,Privacy Impact Assessment,Conduct formal privacy impact assessments prior to initiating high-risk personal information processing activities
+SAG-PDP-15,Personal Data Protection,Retention and Destruction,Retain personal information only as long as necessary for the stated purpose and securely destroy it upon completion
+SAG-CLD-01,Cloud Architecture & Sovereignty,Data Residency,Ensure all government data resides within South African borders in compliance with POPIA and SITA government cloud policy
+SAG-CLD-02,Cloud Architecture & Sovereignty,Sovereign Identity,Implement identity and access management services within South African sovereign boundaries
+SAG-CLD-03,Cloud Architecture & Sovereignty,Local Key Management,Manage encryption keys within South African jurisdiction using government-approved key management services
+SAG-CLD-04,Cloud Architecture & Sovereignty,Government Network Connectivity,Implement secure connectivity to government networks (GovNet) using approved VPN or ExpressRoute configurations
+SAG-CLD-05,Cloud Architecture & Sovereignty,Sovereign Compute,Deploy compute resources exclusively within South African cloud regions
+SAG-CLD-06,Cloud Architecture & Sovereignty,Compliance with SA Laws,Ensure all cloud deployments comply with South African data protection and government IT legislation including POPIA and SITA Act
+SAG-CLD-07,Cloud Architecture & Sovereignty,Local Support and Operations,Ensure cloud support and operations are provided from within South Africa as required by government cloud policy
+SAG-CLD-08,Cloud Architecture & Sovereignty,Background-Checked Personnel,Require security vetting and background checks for all personnel accessing government classified data and systems
+SAG-CLD-09,Cloud Architecture & Sovereignty,Incident Response Sovereignty,Implement incident response procedures using resources and personnel within South African boundaries
+SAG-CLD-10,Cloud Architecture & Sovereignty,Sovereign Audit Logging,Provide comprehensive audit trails for government compliance monitoring within sovereign boundaries
+SAG-CLD-11,Cloud Architecture & Sovereignty,Data Transfer Controls,Monitor and control all data transfers outside South African borders including alerts on cross-border flows
+SAG-CLD-12,Cloud Architecture & Sovereignty,Sovereign Backup and DR,Implement backup and disaster recovery capabilities within South African cloud regions
+SAG-CLD-13,Cloud Architecture & Sovereignty,Technology Sovereignty,Assess and procure technology solutions that support South African sovereign cloud operations
+SAG-CLD-14,Cloud Architecture & Sovereignty,Cloud Exit Strategy,Implement cloud exit and data portability procedures to ensure government data can be migrated without disruption
+SAG-NET-01,Network Security,Government Network Segmentation,Segment networks according to government security classification levels using network security groups and firewall rules
+SAG-NET-02,Network Security,Secure Internet Gateway,Implement a secure internet gateway for all government network traffic with firewall and intrusion detection
+SAG-NET-03,Network Security,Private Connectivity to Services,Use private endpoints for all government PaaS services to eliminate public internet exposure
+SAG-NET-04,Network Security,Network Traffic Inspection,Inspect all network traffic for threats and policy violations using IDS/IPS and network monitoring tools
+SAG-IAM-01,Identity & Access Management,Government Identity Federation,Federate government identity services with national digital identity infrastructure
+SAG-IAM-02,Identity & Access Management,Multi-Factor Authentication,Enforce MFA for all government user access to cloud resources and administrative systems
+SAG-IAM-03,Identity & Access Management,Privileged Access Management,Implement privileged identity management including just-in-time access for government administrators
+SAG-IAM-04,Identity & Access Management,Security Clearance Integration,Integrate government security clearance levels with role-based access controls for classified systems
+SAG-DAT-01,Data Security,Government Data Classification,Classify government data according to the official classification schema (Unclassified, Restricted, Confidential, Secret)
+SAG-DAT-02,Data Security,Data Encryption,Encrypt government data at rest using customer-managed keys with government-approved encryption algorithms
+SAG-DAT-03,Data Security,Data Sanitization,Implement secure data sanitization procedures for all decommissioned or repurposed storage and computing resources
+SAG-DAT-04,Data Security,Government Records Management,Manage government records in compliance with national archives and records management requirements
+SAG-SEC-01,Security Operations,Government SOC,Establish or integrate with the Government Security Operations Centre (GSOC) for centralized threat detection and response
+SAG-SEC-02,Security Operations,Threat Intelligence Sharing,Share cyber threat intelligence with government agencies and the national Computer Security Incident Response Team (CSIRT)
+SAG-SEC-03,Security Operations,Security Event Correlation,Correlate security events across government systems using a unified SIEM solution
+SAG-SEC-04,Security Operations,Vulnerability Management,Implement systematic vulnerability management in alignment with government-mandated patching schedules
+SAG-GOV-01,Compliance & Governance,Government Compliance Framework,Adopt government-mandated compliance frameworks including POPIA, SITA Act, Public Finance Management Act (PFMA), and Public Service Regulations
+SAG-GOV-02,Compliance & Governance,POPIA Compliance Assurance,Ensure ongoing compliance with the Protection of Personal Information Act including designation of a Data Protection Officer
+SAG-GOV-03,Compliance & Governance,Government Audit Requirements,Meet government audit and accountability requirements under the Public Audit Act and National Treasury regulations
+SAG-GOV-04,Compliance & Governance,Change Management,Implement change management procedures aligned with government processes and Public Service Regulation requirements
+SAG-BCM-01,Business Continuity,Critical Service Availability,Ensure high availability of critical government services within government-mandated SLA and uptime requirements
+SAG-BCM-02,Business Continuity,Government DR Requirements,Meet government disaster recovery requirements including defined Recovery Time Objectives (RTOs) and Recovery Point Objectives (RPOs)
+SAG-BCM-03,Business Continuity,National Emergency Preparedness,Prepare for national emergency scenarios affecting government digital infrastructure and cloud services
+SAG-BCM-04,Business Continuity,Service Restoration Priority,Define and implement priority-based restoration procedures for critical government services during disasters
