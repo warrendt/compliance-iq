@@ -290,7 +290,7 @@ param(
     [switch]$AssignAfterCreation,
 
     [Parameter(Mandatory=$false)]
-    [string]$Location = ""
+    [string]$Location = "southafricanorth"
 )
 
 $ErrorActionPreference = "Stop"
@@ -437,10 +437,8 @@ if ($AssignAfterCreation) {{
         PolicySetDefinition = $initiative
         Description         = "Regulatory compliance assessment for {extraction.framework_name}"
         EnforcementMode     = "Default"
-    }}
-
-    if ($Location) {{
-        $assignParams["Location"] = $Location
+        IdentityType        = "SystemAssigned"
+        Location            = $Location
     }}
 
     try {{

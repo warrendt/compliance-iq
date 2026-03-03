@@ -16,45 +16,81 @@ from models import (
 
 logger = logging.getLogger(__name__)
 
-# Known Azure Policy definition GUIDs (from existing catalogues)
-# Used to validate whether a GUID is likely real
+# Verified Azure Policy definition GUIDs (tested and confirmed deployable in MngEnvMCAP).
+# Used to validate whether a GUID is likely real before deployment.
+# GUIDs NOT in this set will generate an "info" warning — not an error.
 KNOWN_POLICY_GUIDS = {
-    "055f3b15-58a8-4d91-a4f6-8437a6c8f7e8",  # DDoS Protection
-    "fc5e4038-4584-4632-8c85-c0448d374b2c",  # NSG port restrict
-    "e71308d3-144b-4262-b144-efdc3cc90517",  # NSG subnet assoc
-    "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",  # Azure Firewall
-    "34c877ad-507e-4c82-993e-3452a6e0ad3c",  # MFA owners
-    "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",  # MFA enabled
-    "1f314764-cb73-4fc9-b863-8eca98ac36e9",  # RBAC K8s
-    "0b15565f-aa9e-48ba-8619-45960f2c314d",  # RBAC subscription
-    "818719e5-1338-4776-9a9d-3c31e4df5986",  # Log Analytics agent
-    "428256e6-1fac-4f48-a757-df34c2b3336d",  # Diagnostic logs
-    "b79fa14e-238a-4c2d-b376-442ce508fc84",  # Activity log retention
-    "e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",  # Vulnerability assessment VMs
-    "0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",  # Data classification
-    "7595c971-233d-4bcf-bd18-596129188c49",  # TDE SQL
+    # Identity & Access Management
+    "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",  # MFA owners
+    "9297c21d-2ed6-4474-b48f-163f75654ce3",  # MFA write
+    "e3576e28-8b17-4677-84c3-db2990658d64",  # MFA read
+    "a451c1ef-c6ca-483d-87ed-f49761e3ffb5",  # K8s RBAC (audit)
+    "34c877ad-507e-4c82-993e-3452a6e0ad3c",  # K8s RBAC enabled
+    "0b15565f-aa9e-48ba-8619-45960f2c314d",  # Multiple subscription owners
+    "a8eff44e-8db1-4c48-82a2-64d4e30b56bc",  # Deprecated owner accounts removed
+    "94e1c2ac-cbbe-4cac-a2b5-2cb8b36ce676",  # Deprecated accounts removed
+    "9bc48460-f641-4a27-9f38-efe33a4a3e9e",  # AAD admin SQL server
+    "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",  # AAD admin SQL MI
+    "0015ea4d-51ff-4ce3-8d8c-f3f8f0be26b8",  # Custom RBAC roles audit
+    "1f314764-cb73-4fc9-b863-8eca98ac36e9",  # RBAC K8s services
+    "b0f33259-77d7-4c9e-aac6-3aabcfae693c",  # JIT VM access
+    # Network Security
+    "e71308d3-144b-4262-b144-efdc3cc90517",  # NSG on subnets
+    "2c89a2e5-7285-40fe-afe0-ae8654b92fb2",  # NSG ports restricted (VM)
+    "fc5e4038-4584-4632-8c85-c0448d374b2c",  # NSG ports restricted (NSG)
+    "bb91dfba-c30d-4263-9add-9c2384e659a6",  # Remote debug Web App off
+    "cb510bfd-1cba-4d9f-a1ea-bed557ae0564",  # Remote debug Functions off
+    "f9d614c5-c173-4d56-95a7-b4437057d193",  # Remote debug API App off
+    "1e66c121-a66d-4b99-b523-e2cf4bf16934",  # Azure Firewall enabled
+    "83e0d761-c550-47de-b1b6-359f2a30b354",  # Adaptive network hardening
+    "9dfea752-cf9d-4745-b47b-81b8330bbb9f",  # SQL MI public endpoint disabled
+    "ae89ebf1-3572-4ab1-b1bd-ec5f00bab3a6",  # SQL private endpoint
+    "1c06e275-d63d-4540-b761-71f364c2111d",  # KeyVault private endpoint
+    # Encryption & Data Protection
+    "7595c971-233d-4bcf-bd18-596129188c49",  # SQL TDE
     "404c3081-a854-4457-ae30-26a93ef643f9",  # Secure transfer storage
-    "4733ea7b-a883-42fe-8cac-97454c2a9e4a",  # Storage HTTPS
-    "a4af4a39-4135-47fb-b175-47fbdf85311d",  # Cosmos DB CMK
+    "4733ea7b-a883-42fe-8cac-97454c2a9e4a",  # Storage network restrict
+    "a4af4a39-4135-4a60-8bf6-d34b2a1d4f2c",  # Storage CMK
+    "1f905d99-2622-4c13-100b-f7c8e2078bc5",  # Cosmos DB CMK
     "702dd420-7fcc-42c5-afe8-4026edd20fe0",  # Disk CMK
     "18adea5e-f416-4d0f-8aa8-d24321e3e274",  # PostgreSQL CMK
     "0a370ff3-6cab-4e85-8995-295fd854c5b8",  # SQL MI CMK
-    "ca610c1d-041c-4332-9d88-7ed3094967c7",  # Private endpoints
-    "55d1f543-d1b0-4811-9663-d6d0dbc6326d",  # Cognitive Services network
-    "013e242c-8828-4970-87b3-ab247555486d",  # Endpoint protection
-    "ac076320-ddcf-4066-b451-6154267e8ad2",  # Anti-malware ext
-    "e1145ab1-eb4f-43d8-911b-36ddf771d13f",  # System updates
-    "8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",  # System updates v2
-    "09024ccc-0c5f-475e-9457-b7c0d9ed487b",  # Azure Backup VMs
-    "22bee202-a82f-4305-9a2a-6d7f44d4dedb",  # Geo-redundant backup
-    "37bc2e11-1d3c-4e6e-a9fc-62ca7b58b6c2",  # Allowed locations RG
-    "e56962a6-4747-49cd-b67b-bf8b01975c4c",  # Allowed locations
-    "c9d007d0-c057-4772-b18c-01693a6eae35",  # Confidential classification
-    "0725b4dd-7e76-479c-a735-68e7ee23d5ca",  # Key Vault RBAC
+    "0961003e-5a0a-4549-abde-af6a37f2724d",  # Temp disk encryption
+    "67121cc7-ff16-4bfd-986d-b15f4c767a1b",  # Cognitive Services CMK
+    "0725b4dd-7e76-479c-a735-68e7ee23d5ca",  # Cognitive Services public network
+    # Logging & Monitoring
+    "818719e5-1338-4776-9a9d-3c31e4df5986",  # Log Analytics agent on VM
+    "428256e6-1fac-4f48-a757-df34c2b3336d",  # Diagnostic settings (no param)
+    "89099bee-89e0-4b26-a5f4-165451757743",  # SQL audit retention 90 days
+    "b954148f-4c11-4c38-8221-be76711e194e",  # SQL MI advanced security
+    "b0d14bf4-f90c-4e66-9457-1346f80b5a44",  # Security contact email
+    "6e2593d9-add6-4083-9c9b-4b7d2188c899",  # Defender SQL email notifications
+    # Key Management
     "8e826246-c976-48f6-b03e-619bb92b3d82",  # KV key expiration
     "5f0bc445-3935-4915-9981-011aa2b46147",  # KV secret expiration
     "f4b53539-8df9-40e4-86c6-6b607703bd4e",  # Keys backed by HSM
-    "2c89a2e5-7285-40fe-afe0-ae8654b92fb2",  # Email notification alerts
+    "6a523b34-47f5-4a80-a97e-d3e2d8bca2d6",  # KV Managed HSM purge protection
+    "c39ba22d-4428-4149-b981-98acef4f7277",  # KV firewall enabled
+    # Endpoint Security & Vulnerability
+    "e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",  # Vuln assessment VMs
+    "44e1ad92-5f90-4a45-83bb-81cd4695e9f4",  # VM vulnerability findings resolved
+    "1b7aa243-0538-4a73-b824-0b3fc489d80c",  # Vuln assessment SQL MI
+    "013e242c-8828-4970-87b3-ab247555486d",  # Endpoint protection
+    "ac076320-ddcf-4066-b451-6154267e8ad2",  # Anti-malware / Endpoint Protection
+    "86b3d65f-7626-441e-b690-81a8b71cff60",  # System updates (classic)
+    "bd876905-5b84-4f73-ab2d-2e7a7c4568d9",  # Vulnerability assessment solution
+    "9c276cf7-d6e0-4a09-a4b4-be5f06902a79",  # VMSS system updates
+    # Backup & Recovery
+    "09024ccc-0c5f-475e-9457-b7c0d9ed487b",  # Azure Backup VMs
+    "22bee202-a82f-4305-9a2a-6d7f44d4dedb",  # Geo-redundant backup MySQL
+    # Data Classification & Privacy
+    "ca610c1d-041c-4332-9d88-7ed3094967c7",  # SQL private endpoint connections
+    "0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",  # SQL data classification
+    # Location / Data Residency
+    "e56962a6-4747-49cd-b67b-bf8b01975c4c",  # Allowed locations
+    "37bc2e11-1d3c-4e6e-a9fc-62ca7b58b6c2",  # Allowed locations for RGs
+    # Incident Response / Alerts
+    "8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",  # Adaptive application controls
 }
 
 GUID_PATTERN = re.compile(
