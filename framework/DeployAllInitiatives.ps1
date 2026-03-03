@@ -113,17 +113,27 @@ foreach ($fw in $frameworks) {
 
     $existingAssignment = Get-AzPolicyAssignment -Scope $subScope | Where-Object { $_.Name -eq $assignmentName }
     if ($existingAssignment) {
-        Write-Host "  Assignment already exists for $($fw.Name) — skipping" -ForegroundColor Yellow
-        continue
+        if ($existingAssignment.IdentityType -eq 'SystemAssigned') {
+            Write-Host "  Assignment already exists for $($fw.Name) — skipping" -ForegroundColor Yellow
+            continue
+        }
+        Write-Host "  Existing assignment lacks managed identity — recreating..." -ForegroundColor Yellow
+        Remove-AzPolicyAssignment -Name $assignmentName -Scope $subScope -ErrorAction SilentlyContinue
     }
 
-    New-AzPolicyAssignment `
-        -Name               $assignmentName `
-        -DisplayName        $fw.DisplayName `
-        -PolicySetDefinition $def `
-        -Scope              $subScope
-
-    Write-Host "  ✅ Assigned: $($fw.DisplayName)" -ForegroundColor Green
+    try {
+        New-AzPolicyAssignment `
+            -Name               $assignmentName `
+            -DisplayName        $fw.DisplayName `
+            -PolicySetDefinition $def `
+            -Scope              $subScope `
+            -IdentityType       'SystemAssigned' `
+            -Location           'southafricanorth' `
+            -ErrorAction        Stop
+        Write-Host "  ✅ Assigned: $($fw.DisplayName)" -ForegroundColor Green
+    } catch {
+        Write-Host "  ❌ Assignment failed: $_" -ForegroundColor Red
+    }
 }
 
 # ── Step 3: Trigger on-demand compliance scan ───────────────────────────────

@@ -58,7 +58,7 @@
   {
     "policyDefinitionReferenceId": "OMN_MON_01_DiagSettings",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/428256e6-1fac-4f48-a757-df34c2b3336d",
-    "parameters": { "logAnalytics": { "value": "[parameters('logAnalytics')]" } },
+    "parameters": {},
     "groupNames": [
       "OMN_MON"
     ]
