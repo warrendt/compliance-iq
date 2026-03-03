@@ -23,24 +23,26 @@ This document provides step-by-step instructions for replicating the process of 
 
 ### What This Process Creates
 This process generates a comprehensive Cloud Compliance Toolkit containing:
-- **Compliance control catalogs** for multiple frameworks (SAMA, CCC, ADHICS, SITA)
+- **Compliance control catalogs** for multiple frameworks (SAMA, ADHICS, Saudi Arabia Government, South African Government, Oman Government)
 - **Azure Policy mappings** with specific policy names and definition IDs
 - **Microsoft Defender for Cloud** control and recommendation mappings
 - **Standard control templates** in simplified CSV format
 - **Comprehensive documentation** for implementation and usage
 
 ### Frameworks Covered
-1. **SAMA** - Saudi Arabian Monetary Authority Cybersecurity Framework (Financial Sector)
-2. **CCC** - Cloud Computing Controls Framework (Multi-cloud Governance)
-3. **ADHICS** - Abu Dhabi Health Information and Cyber Security Standard (Healthcare)
-4. **SITA** - Microsoft-SITA Reference Architecture (Government/Sovereign Cloud)
+1. **SAMA** — Saudi Arabian Monetary Authority Cybersecurity Framework (Financial Sector) — 48 policies
+2. **ADHICS** — Abu Dhabi Healthcare Information and Cyber Security Standard (Healthcare) — 50 policies
+3. **Saudi Arabia Government** — NCA/NDMO aligned controls (Saudi Government Sector) — 58 policies
+4. **South African Government** — DPPI/POPIA/SITA aligned controls (South African Government) — 56 policies
+5. **Oman Government** — OIA/ISR aligned controls (Oman Government Sector) — 53 policies
 
 ### Time Estimate
 - **Initial Setup:** 1-2 hours
 - **Research Phase:** 3-4 hours per framework
 - **Catalog Creation:** 2-3 hours per framework
+- **GUID Validation & Fixing:** 1-2 hours (automated with `validate_guids.py`)
 - **Documentation:** 2-3 hours
-- **Total:** Approximately 20-30 hours for all four frameworks
+- **Total:** Approximately 25-35 hours for all five frameworks
 
 ---
 
@@ -54,7 +56,7 @@ This process generates a comprehensive Cloud Compliance Toolkit containing:
 
 ### 2. Reference Documents
 Collect and organize the following documents in a `reference_documents/` folder:
-- ✅ Framework-specific PDF documents (SAMA, ADHICS, CCC, SITA)
+- ✅ Framework-specific PDF documents (SAMA, ADHICS, Saudi Arabia, South Africa, Oman)
 - ✅ Existing control templates or standards (ISO 27001, NIST 800-53)
 - ✅ Azure Policy built-in definitions reference
 - ✅ Microsoft Cloud Security Benchmark documentation
@@ -892,7 +894,29 @@ az policy definition show --name "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"
 
 # Search policies
 az policy definition list --query "[?contains(displayName, 'MFA')]"
+
+# Trigger a compliance rescan (after deploying/updating initiatives)
+az policy state trigger-scan
 ```
+
+**GUID Validation Tooling** (use instead of manual lookups):
+```bash
+# Validate all GUIDs in all 5 frameworks against real Azure data
+cd framework/
+python3 validate_guids.py
+
+# Force-refresh the Azure policy cache (bypasses 24h TTL)
+python3 validate_guids.py --refresh-cache
+
+# Search for a policy by keyword
+python3 validate_guids.py --search "remote debugging"
+
+# Apply the verified replacement map to fix invalid GUIDs
+python3 fix_guids.py --dry-run    # preview changes
+python3 fix_guids.py              # apply changes
+```
+
+> **Important:** Never manually guess or construct policy GUIDs. The `validate_guids.py` tool caches all 2,748 Azure built-in policies locally and validates every GUID against the real Azure list. Running `DeployAllInitiatives.ps1` automatically runs this check as a pre-flight step.
 
 ### C. Templates
 
@@ -940,14 +964,15 @@ az policy definition list --query "[?contains(displayName, 'MFA')]"
 ## Document Information
 
 **Created:** November 28, 2025
-**Version:** 1.0
+**Version:** 2.0
 **Author:** Warren du Toit, Cloud Solution Architect @ Microsoft
-**Last Updated:** November 28, 2025
+**Last Updated:** March 3, 2026
 
 **Change History:**
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
 | 2025-11-28 | 1.0 | Warren du Toit | Initial creation |
+| 2026-03-03 | 2.0 | Warren du Toit | Updated framework list to 5 live frameworks; removed CCC/SITA; added GUID validation tooling (`validate_guids.py`, `fix_guids.py`); updated policy counts (48/50/58/56/53); added compliance rescan command |
 
 **Review Schedule:** Quarterly (March, June, September, December)
 
