@@ -248,10 +248,12 @@ def _build_initiative(
 def _build_powershell_script(
     extraction: ControlExtractionResult,
     fw_safe: str,
+    enforce_mode: bool = False,
 ) -> str:
     """Generate PowerShell deployment script for Defender for Cloud."""
     initiative_file = f"{fw_safe}_Initiative.json"
     name_slug = fw_safe.replace("_", "-")
+    enforcement_mode = "Default" if enforce_mode else "DoNotEnforce"
 
     return f'''# ============================================================================
 # {extraction.framework_name} — Azure Policy Initiative Deployment
@@ -265,6 +267,9 @@ param(
 
     [Parameter(Mandatory=$false)]
     [string]$ManagementGroupId = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$AuditOnly,
 
     [Parameter(Mandatory=$false)]
     [switch]$AssignAfterCreation,
@@ -376,27 +381,41 @@ try {{
     exit 1
 }}
 
+$enforcementMode = if ($AuditOnly) {{ 'DoNotEnforce' }} else {{ '{enforcement_mode}' }}
+
 if ($AssignAfterCreation) {{
-    Write-Host "Assigning initiative to scope..." -ForegroundColor Green
+    Write-Host "Assigning initiative to scope (enforcement: $enforcementMode)..." -ForegroundColor Green
     $assignmentName = "{name_slug}-$(Get-Date -Format 'yyyyMMdd')"
-    $assignParams = @{{
-        Name                = $assignmentName
-        DisplayName         = "$displayName - Assessment"
-        Scope               = $TargetScope
-        PolicySetDefinition = $initiative
-        Description         = "Regulatory compliance assessment for {extraction.framework_name}"
-        EnforcementMode     = "Default"
-    }}
-    if ($Location) {{
-        $assignParams["Location"] = $Location
-    }}
-    try {{
-        $assignment = New-AzPolicyAssignment @assignParams
-        Write-Host "  Assignment: $($assignment.Name)" -ForegroundColor White
-        Write-Host "[OK] Initiative assigned successfully" -ForegroundColor Green
-    }} catch {{
-        Write-Host "WARNING: Assignment failed" -ForegroundColor Yellow
-        Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
+    $existingAssignment = Get-AzPolicyAssignment -Scope $TargetScope |
+        Where-Object {{ $_.Name -eq $assignmentName }}
+    if ($existingAssignment) {{
+        if ($existingAssignment.Properties.EnforcementMode -ne $enforcementMode) {{
+            Write-Host "  Updating enforcement mode to: $enforcementMode" -ForegroundColor Yellow
+            Set-AzPolicyAssignment -Name $assignmentName -Scope $TargetScope -EnforcementMode $enforcementMode
+            Write-Host "[OK] Assignment enforcement mode updated" -ForegroundColor Green
+        }} else {{
+            Write-Host "[OK] Assignment already up to date (enforcement: $enforcementMode)" -ForegroundColor Green
+        }}
+    }} else {{
+        $assignParams = @{{
+            Name                = $assignmentName
+            DisplayName         = "$displayName - Assessment"
+            Scope               = $TargetScope
+            PolicySetDefinition = $initiative
+            Description         = "Regulatory compliance assessment for {extraction.framework_name}"
+            EnforcementMode     = $enforcementMode
+        }}
+        if ($Location) {{
+            $assignParams["Location"] = $Location
+        }}
+        try {{
+            $assignment = New-AzPolicyAssignment @assignParams
+            Write-Host "  Assignment: $($assignment.Name)" -ForegroundColor White
+            Write-Host "[OK] Initiative assigned successfully (enforcement: $enforcementMode)" -ForegroundColor Green
+        }} catch {{
+            Write-Host "WARNING: Assignment failed" -ForegroundColor Yellow
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
+        }}
     }}
 }}
 

@@ -332,7 +332,8 @@ output initiativeName string = policyInitiative.name
         self,
         initiative: PolicyInitiative,
         initiative_name: str,
-        scope_type: str = "subscription"
+        scope_type: str = "subscription",
+        enforce_mode: bool = False,
     ) -> Dict[str, str]:
         """
         Generate deployment scripts for Azure CLI and PowerShell.
@@ -341,10 +342,13 @@ output initiativeName string = policyInitiative.name
             initiative: Policy initiative
             initiative_name: Name for the initiative
             scope_type: Deployment scope (subscription, management_group)
+            enforce_mode: When False (default), assignments use DoNotEnforce (audit-only).
+                          When True, assignments use Default (enforcement enabled).
 
         Returns:
             Dictionary with 'cli' and 'powershell' script strings
         """
+        enforcement_mode_ps = "Default" if enforce_mode else "DoNotEnforce"
         # Export as JSON
         json_content = self.export_as_json(initiative, pretty=False)
 
@@ -370,6 +374,21 @@ echo "Initiative created successfully"
 
         # PowerShell script
         ps_script = f"""# Deploy {initiative.properties.display_name}
+# Enforcement Mode: {enforcement_mode_ps}
+
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$Scope = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$AuditOnly,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$AssignAfterCreation
+)
+
+# Enforcement mode: generated from mapping agent setting, overridable via -AuditOnly switch
+$EnforcementMode = if ($AuditOnly) {{ 'DoNotEnforce' }} else {{ '{enforcement_mode_ps}' }}
 
 # Save initiative definition to file
 $initiativeJson = @'
@@ -387,6 +406,37 @@ New-AzPolicySetDefinition `
   -Metadata @{{category="{initiative.properties.metadata.category}"}}
 
 Write-Host "Initiative created successfully"
+
+if ($AssignAfterCreation) {{
+    Write-Host "Assigning initiative (enforcement mode: $EnforcementMode)..." -ForegroundColor Yellow
+    $context = Get-AzContext
+    if (-not $context) {{ Write-Error "Not authenticated. Run Connect-AzAccount first."; exit 1 }}
+    $TargetScope = if ($Scope) {{ $Scope }} else {{ "/subscriptions/$($context.Subscription.Id)" }}
+    $assignmentName = "{initiative_name}-$(Get-Date -Format 'yyyyMMdd')"
+    $policySetDef = Get-AzPolicySetDefinition -Name "{initiative_name}" -ErrorAction SilentlyContinue
+    if ($policySetDef) {{
+        $existingAssignment = Get-AzPolicyAssignment -Scope $TargetScope |
+            Where-Object {{ $_.Name -eq $assignmentName }}
+        if ($existingAssignment) {{
+            if ($existingAssignment.Properties.EnforcementMode -ne $EnforcementMode) {{
+                Set-AzPolicyAssignment -Name $assignmentName -Scope $TargetScope -EnforcementMode $EnforcementMode
+                Write-Host "Updated assignment enforcement mode to: $EnforcementMode" -ForegroundColor Green
+            }} else {{
+                Write-Host "Assignment already up to date (enforcement: $EnforcementMode)" -ForegroundColor Green
+            }}
+        }} else {{
+            New-AzPolicyAssignment `
+                -Name $assignmentName `
+                -DisplayName "{initiative.properties.display_name} - Assessment" `
+                -Scope $TargetScope `
+                -PolicySetDefinition $policySetDef `
+                -EnforcementMode $EnforcementMode
+            Write-Host "Initiative assigned (enforcement: $EnforcementMode)" -ForegroundColor Green
+        }}
+    }} else {{
+        Write-Warning "Could not find initiative '{initiative_name}'. Assignment skipped."
+    }}
+}}
 """
 
         return {
@@ -627,7 +677,7 @@ resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01'
     displayName: '${{displayName}} - Assignment'
     description: 'Auto-assigned by ComplianceIQ for archetype {archetype_name}'
     policyDefinitionId: policyInitiative.id
-    enforcementMode: 'Default'
+    enforcementMode: 'DoNotEnforce'
   }}
 }}
 
@@ -643,6 +693,7 @@ output assignmentId string = policyAssignment.id
         description: str,
         archetype_name: str,
         initiative_json: Dict,
+        enforce_mode: bool = False,
     ) -> Dict[str, str]:
         """Generate deployment scripts targeting management group archetypes."""
 
@@ -689,7 +740,7 @@ az policy assignment create \\
   --display-name "{display_name} - Assignment" \\
   --policy-set-definition "$INITIATIVE_NAME" \\
   --scope "/providers/Microsoft.Management/managementGroups/$MANAGEMENT_GROUP_ID" \\
-  --enforcement-mode Default
+  --enforcement-mode DoNotEnforce
 
 echo ""
 echo "✅ SLZ initiative deployed and assigned to management group: $MANAGEMENT_GROUP_ID"
@@ -744,7 +795,7 @@ New-AzPolicyAssignment `
     -DisplayName "{display_name} - Assignment" `
     -PolicySetDefinition $PolicySetDef `
     -Scope "/providers/Microsoft.Management/managementGroups/$ManagementGroupId" `
-    -EnforcementMode Default
+    -EnforcementMode DoNotEnforce
 
 Write-Host ""
 Write-Host "✅ SLZ initiative deployed and assigned to management group: $ManagementGroupId" -ForegroundColor Green

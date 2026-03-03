@@ -170,6 +170,27 @@ if len(filtered_mappings) == 0:
 
 st.markdown("---")
 
+col_enforce1, col_enforce2 = st.columns([1, 2])
+with col_enforce1:
+    enforce_mode = st.toggle(
+        "🔒 Enable Enforcement Mode",
+        value=False,
+        key="enforce_mode_toggle",
+        help=(
+            "**OFF (default — Audit Only):** Policies assess resources and report compliance "
+            "state but do NOT block deployments or trigger auto-remediation. Safe for production.\n\n"
+            "**ON (Enforce):** Policies actively enforce. `Deny` effects block non-compliant "
+            "deployments; `DeployIfNotExists` triggers auto-remediation. Use with caution."
+        ),
+    )
+with col_enforce2:
+    if enforce_mode:
+        st.warning("⚠️ **Enforcement enabled** — generated scripts will actively block/remediate resources.")
+    else:
+        st.info("ℹ️ **Audit-only mode** — generated scripts report compliance without taking action.")
+
+st.markdown("---")
+
 # Generate policy button
 if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_container_width=True):
     with st.spinner("Generating Azure Policy Initiative..."):
@@ -180,6 +201,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 framework_name=st.session_state.framework_name,
                 min_confidence=min_confidence,
                 session_id=st.session_state.session_uuid,
+                enforce_mode=enforce_mode,
             )
             
             st.session_state.generated_policy = result
@@ -212,6 +234,9 @@ if st.session_state.generated_policy:
     with col_sum3:
         policy_defs = policy.get('initiative_json', {}).get('properties', {}).get('policyDefinitions', [])
         st.metric("Policy Definitions", len(policy_defs))
+
+    enforce_label = "🔒 Enforcement" if policy.get('enforce_mode') else "🔍 Audit Only"
+    st.info(f"**Enforcement Mode:** {enforce_label}")
     
     st.markdown("---")
     

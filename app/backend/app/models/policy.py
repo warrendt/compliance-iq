@@ -149,6 +149,11 @@ class PolicyGenerationRequest(BaseModel):
         le=1.0,
         description="Minimum confidence score to include a mapping"
     )
+    enforce_mode: bool = Field(
+        False,
+        description="When False (default), assignments use DoNotEnforce (audit-only). "
+                    "When True, assignments use Default (enforcement enabled)."
+    )
 
     class Config:
         json_schema_extra = {
@@ -157,7 +162,8 @@ class PolicyGenerationRequest(BaseModel):
                 "framework_version": "v1.0",
                 "mappings": [],
                 "include_all_policies": True,
-                "min_confidence_threshold": 0.7
+                "min_confidence_threshold": 0.7,
+                "enforce_mode": False
             }
         }
 

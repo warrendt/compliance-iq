@@ -67,7 +67,7 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
             response.initiative, initiative_name
         )
         scripts = policy_service.generate_deployment_script(
-            response.initiative, initiative_name
+            response.initiative, initiative_name, enforce_mode=request.enforce_mode
         )
 
         result = response.model_dump()
@@ -90,6 +90,7 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
             "bicep_template": bicep_template,
             "powershell_script": scripts["powershell"],
             "cli_script": scripts.get("cli", ""),
+            "enforce_mode": request.enforce_mode,
             "mappings_count": len(request.mappings),
             "included_policies": response.included_policies,
             "excluded_policies": response.excluded_policies,
@@ -194,7 +195,8 @@ async def generate_deployment_scripts(request: PolicyGenerationRequest):
         initiative_name = request.framework_name.lower().replace(' ', '_')
         scripts = policy_service.generate_deployment_script(
             response.initiative,
-            initiative_name
+            initiative_name,
+            enforce_mode=request.enforce_mode,
         )
 
         return {

@@ -259,6 +259,7 @@ class APIClient:
         framework_name: str,
         min_confidence: float = 0.7,
         session_id: Optional[str] = None,
+        enforce_mode: bool = False,
     ) -> Dict[str, Any]:
         """Generate an Azure Policy initiative.
         
@@ -267,6 +268,8 @@ class APIClient:
             framework_name: Name of the framework
             min_confidence: Minimum confidence threshold
             session_id: Session identifier for artifact persistence
+            enforce_mode: When False (default), assignments use DoNotEnforce (audit-only).
+                          When True, assignments use Default (enforcement enabled).
             
         Returns:
             Policy initiative JSON
@@ -274,7 +277,8 @@ class APIClient:
         payload = {
             "mappings": mappings,
             "framework_name": framework_name,
-            "min_confidence_threshold": min_confidence
+            "min_confidence_threshold": min_confidence,
+            "enforce_mode": enforce_mode,
         }
         headers = {}
         if session_id:
