@@ -250,7 +250,7 @@ For each control in the catalog:
 ```powershell
 # Example: Assign MFA policy
 $policyDefinition = Get-AzPolicyDefinition -Id "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"
-New-AzPolicyAssignment -Name "Require-MFA" -PolicyDefinition $policyDefinition -Scope "/subscriptions/SUBSCRIPTION_ID_REDACTED"
+New-AzPolicyAssignment -Name "Require-MFA" -PolicyDefinition $policyDefinition -Scope "/subscriptions/<your-subscription-id>"
 ```
 
 ### 3. Enabling Defender for Cloud Recommendations

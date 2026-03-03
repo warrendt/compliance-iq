@@ -38,3 +38,9 @@ Microsoft_SITA Reference Architecture Document.pdf
 
 # Legacy
 .github/
+
+# Local secrets - never commit these
+.env.ps1
+framework/.env.ps1
+.env
+*.env.local

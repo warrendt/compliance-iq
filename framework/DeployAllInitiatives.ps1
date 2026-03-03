@@ -1,9 +1,23 @@
 # ComplianceIQ - Deploy All Policy Initiatives
-# Tenant:       TENANT_ID_REDACTED
-# Subscription: SUBSCRIPTION_ID_REDACTED
+# Usage: ./DeployAllInitiatives.ps1 -TenantId <guid> -SubscriptionId <guid>
+# Or:    set $tenantId and $subscriptionId in a local .env.ps1 file (git-ignored)
 
-$tenantId      = "TENANT_ID_REDACTED"
-$subscriptionId = "SUBSCRIPTION_ID_REDACTED"
+param(
+    [string]$TenantId,
+    [string]$SubscriptionId
+)
+
+# Load from local config file if present (git-ignored)
+$localConfig = Join-Path $PSScriptRoot ".env.ps1"
+if (Test-Path $localConfig) { . $localConfig }
+
+# Override with params if supplied
+if ($TenantId)       { $tenantId       = $TenantId }
+if ($SubscriptionId) { $subscriptionId = $SubscriptionId }
+
+# Prompt if still unset
+if (-not $tenantId)       { $tenantId       = Read-Host "Enter Tenant ID" }
+if (-not $subscriptionId) { $subscriptionId = Read-Host "Enter Subscription ID" }
 $subScope      = "/subscriptions/$subscriptionId"
 $base          = Split-Path -Parent $MyInvocation.MyCommand.Path
 
