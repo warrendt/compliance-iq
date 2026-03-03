@@ -6,7 +6,7 @@ param containerAppsEnvironmentId string
 param containerImage string
 param containerPort int
 param isExternalIngress bool = false
-param minReplicas int = 0
+param minReplicas int = 1
 param maxReplicas int = 10
 param environmentVariables array = []
 param cpu string = '0.5'

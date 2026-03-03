@@ -182,7 +182,7 @@ module backendApp './core/container-app.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder, replaced by azd
     containerPort: 8000
     isExternalIngress: false
-    minReplicas: 0
+    minReplicas: 1
     maxReplicas: 10
     cpu: '0.5'
     memory: '1Gi'
@@ -252,7 +252,7 @@ module frontendApp './core/container-app.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder, replaced by azd
     containerPort: 8501
     isExternalIngress: true
-    minReplicas: 0
+    minReplicas: 1
     maxReplicas: 5
     cpu: '0.25'
     memory: '0.5Gi'
