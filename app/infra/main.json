@@ -622,7 +622,7 @@
               "name": "[format('{0}/{1}', parameters('name'), parameters('modelName'))]",
               "sku": {
                 "name": "Standard",
-                "capacity": 10
+                "capacity": 400
               },
               "properties": {
                 "model": {
@@ -644,7 +644,7 @@
               "name": "[format('{0}/{1}', parameters('name'), format('{0}-fallback', parameters('fallbackModel')))]",
               "sku": {
                 "name": "Standard",
-                "capacity": 10
+                "capacity": 400
               },
               "properties": {
                 "model": {
