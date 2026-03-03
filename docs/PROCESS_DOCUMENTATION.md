@@ -33,8 +33,17 @@ This process generates a comprehensive Cloud Compliance Toolkit containing:
 1. **SAMA** — Saudi Arabian Monetary Authority Cybersecurity Framework (Financial Sector) — 48 policies
 2. **ADHICS** — Abu Dhabi Healthcare Information and Cyber Security Standard (Healthcare) — 50 policies
 3. **Saudi Arabia Government** — NCA/NDMO aligned controls (Saudi Government Sector) — 58 policies
-4. **South African Government** — DPPI/POPIA/SITA aligned controls (South African Government) — 56 policies
-5. **Oman Government** — OIA/ISR aligned controls (Oman Government Sector) — 53 policies
+4. **NDMO** — National Data Management Office Data Management Framework & PDPL (Saudi Arabia) — 38 policies
+5. **NCA CSCC** — National Cybersecurity Authority Cloud Security Controls v1.5 (Saudi Arabia) — 49 policies
+6. **South African Government** — DPPI/POPIA/SITA aligned controls (South African Government) — 56 policies
+7. **Oman Government** — OIA/ISR aligned controls (Oman Government Sector) — 53 policies
+
+### Enforcement Mode
+All Azure Policy initiatives are deployed in **`DoNotEnforce` (audit-only) mode**. This means:
+- Policies assess resources and report compliance state in the Azure Policy dashboard
+- No resources are blocked, modified, or auto-remediated
+- Safe for production subscriptions — informational only
+- Enforcement mode can be changed to `Default` per-assignment when you are ready to enforce
 
 ### Time Estimate
 - **Initial Setup:** 1-2 hours
