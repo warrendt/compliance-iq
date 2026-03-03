@@ -27,14 +27,10 @@ def _on_response(response: httpx.Response) -> None:
     """httpx event hook — called after every response."""
     try:
         elapsed_ms = response.elapsed.total_seconds() * 1000
-    except RuntimeError:
-        # .elapsed is not available until the response body has been fully read
-        # (e.g. streaming responses).  Read it now so subsequent access works.
-        response.read()
-        try:
-            elapsed_ms = response.elapsed.total_seconds() * 1000
-        except Exception:
-            elapsed_ms = 0
+    except Exception:
+        # .elapsed is unavailable on streaming responses until the body is read.
+        # Swallow silently — elapsed timing is non-critical for the log viewer.
+        elapsed_ms = 0
     req = response.request
 
     # Truncate bodies for display
