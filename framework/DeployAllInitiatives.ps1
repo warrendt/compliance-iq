@@ -21,6 +21,24 @@ if (-not $subscriptionId) { $subscriptionId = Read-Host "Enter Subscription ID" 
 $subScope      = "/subscriptions/$subscriptionId"
 $base          = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# ── Pre-flight: GUID validation ─────────────────────────────────────────────
+Write-Host "`n▶ Pre-flight: Validating policy GUIDs against Azure..." -ForegroundColor Cyan
+$validateScript = Join-Path $base "validate_guids.py"
+if (Test-Path $validateScript) {
+    $validationOutput = python3 $validateScript 2>&1
+    $exitCode = $LASTEXITCODE
+    # Detect any invalid GUIDs in the output
+    if (($validationOutput | Select-String -Pattern "Invalid:\s+[^0]") -or $exitCode -ne 0) {
+        Write-Host "`n  ❌ GUID validation FAILED — invalid policy GUIDs detected:" -ForegroundColor Red
+        Write-Host ($validationOutput | Out-String)
+        Write-Host "  Fix GUIDs before deploying (run: python3 fix_guids.py)" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "  ✅ All policy GUIDs are valid" -ForegroundColor Green
+} else {
+    Write-Host "  ⚠️  validate_guids.py not found — skipping GUID check" -ForegroundColor Yellow
+}
+
 # Connect
 Connect-AzAccount -Tenant $tenantId
 Set-AzContext -SubscriptionId $subscriptionId
