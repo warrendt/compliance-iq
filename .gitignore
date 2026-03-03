@@ -44,3 +44,4 @@ Microsoft_SITA Reference Architecture Document.pdf
 framework/.env.ps1
 .env
 *.env.local
+framework/.policy-guid-cache.json
