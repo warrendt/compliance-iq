@@ -1,34 +1,42 @@
 [
   {
-    "Name": "SAMA-AC-01",
-    "AdditionalMetadataId": null
+    "name": "SAMA-AC-01",
+    "displayName": "Access Control",
+    "description": "Identity and access management controls"
   },
   {
-    "Name": "SAMA-AC-03",
-    "AdditionalMetadataId": null
+    "name": "SAMA-AC-03",
+    "displayName": "Identity & Authentication",
+    "description": "Authentication and identity management controls"
   },
   {
-    "Name": "SAMA-NS-01",
-    "AdditionalMetadataId": null
+    "name": "SAMA-NS-01",
+    "displayName": "Network Security",
+    "description": "Network segmentation and protection controls"
   },
   {
-    "Name": "SAMA-NS-02",
-    "AdditionalMetadataId": null
+    "name": "SAMA-NS-02",
+    "displayName": "Network Infrastructure",
+    "description": "Network infrastructure security controls"
   },
   {
-    "Name": "SAMA-DP-02",
-    "AdditionalMetadataId": null
+    "name": "SAMA-DP-02",
+    "displayName": "Data Protection",
+    "description": "Data encryption and protection controls"
   },
   {
-    "Name": "SAMA-LM-01",
-    "AdditionalMetadataId": null
+    "name": "SAMA-LM-01",
+    "displayName": "Logging & Monitoring",
+    "description": "Audit logging and monitoring controls"
   },
   {
-    "Name": "SAMA-VM-01",
-    "AdditionalMetadataId": null
+    "name": "SAMA-VM-01",
+    "displayName": "Vulnerability Management",
+    "description": "Patch and vulnerability management controls"
   },
   {
-    "Name": "SAMA-AI-03",
-    "AdditionalMetadataId": null
+    "name": "SAMA-AI-03",
+    "displayName": "Cognitive Services Security",
+    "description": "AI and cognitive services security controls"
   }
 ]

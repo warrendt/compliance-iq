@@ -25,7 +25,7 @@
   },
   {
     "policyDefinitionReferenceId": "SAG_SEC_04_SystemUpdates",
-    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
     "parameters": {},
     "groupNames": ["SAG_SEC"]
   },

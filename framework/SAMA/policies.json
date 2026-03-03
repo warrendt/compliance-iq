@@ -48,8 +48,8 @@
     ]
   },
   {
-    "PolicyDefinitionReferenceId": "e1145ab1-eb4f-43d8-911b-36ddf771d13f",
-    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e1145ab1-eb4f-43d8-911b-36ddf771d13f",
+    "PolicyDefinitionReferenceId": "86b3d65f-7626-441e-b690-81a8b71cff60",
+    "PolicyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/86b3d65f-7626-441e-b690-81a8b71cff60",
     "Parameters": {},
     "GroupNames": [
       "SAMA-VM-01"

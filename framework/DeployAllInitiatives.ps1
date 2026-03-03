@@ -70,27 +70,33 @@ foreach ($fw in $frameworks) {
     Write-Host "`n▶ Creating initiative: $($fw.DisplayName)" -ForegroundColor Cyan
 
     $existing = Get-AzPolicySetDefinition -Custom | Where-Object { $_.Name -eq $fw.Name }
-    if ($existing) {
-        Write-Host "  Initiative already exists — updating..." -ForegroundColor Yellow
-        Set-AzPolicySetDefinition `
-            -Name        $fw.Name `
-            -DisplayName $fw.DisplayName `
-            -Description $fw.Description `
-            -Metadata    "{`"version`":`"$($fw.Version)`",`"category`":`"Regulatory Compliance`"}" `
-            -GroupDefinition (Join-Path $dir "groups.json") `
-            -PolicyDefinition (Join-Path $dir "policies.json") `
-            -Parameter   (Join-Path $dir "params.json")
-    } else {
-        New-AzPolicySetDefinition `
-            -Name        $fw.Name `
-            -DisplayName $fw.DisplayName `
-            -Description $fw.Description `
-            -Metadata    "{`"version`":`"$($fw.Version)`",`"category`":`"Regulatory Compliance`"}" `
-            -GroupDefinition (Join-Path $dir "groups.json") `
-            -PolicyDefinition (Join-Path $dir "policies.json") `
-            -Parameter   (Join-Path $dir "params.json")
+    try {
+        if ($existing) {
+            Write-Host "  Initiative already exists — updating..." -ForegroundColor Yellow
+            Set-AzPolicySetDefinition `
+                -Name        $fw.Name `
+                -DisplayName $fw.DisplayName `
+                -Description $fw.Description `
+                -Metadata    "{`"version`":`"$($fw.Version)`",`"category`":`"Regulatory Compliance`"}" `
+                -GroupDefinition (Join-Path $dir "groups.json") `
+                -PolicyDefinition (Join-Path $dir "policies.json") `
+                -Parameter   (Join-Path $dir "params.json") `
+                -ErrorAction Stop
+        } else {
+            New-AzPolicySetDefinition `
+                -Name        $fw.Name `
+                -DisplayName $fw.DisplayName `
+                -Description $fw.Description `
+                -Metadata    "{`"version`":`"$($fw.Version)`",`"category`":`"Regulatory Compliance`"}" `
+                -GroupDefinition (Join-Path $dir "groups.json") `
+                -PolicyDefinition (Join-Path $dir "policies.json") `
+                -Parameter   (Join-Path $dir "params.json") `
+                -ErrorAction Stop
+        }
+        Write-Host "  ✅ Done" -ForegroundColor Green
+    } catch {
+        Write-Host "  ❌ Failed: $_" -ForegroundColor Red
     }
-    Write-Host "  ✅ Done" -ForegroundColor Green
 }
 
 # ── Step 2: Assign each initiative to the subscription ──────────────────────
@@ -99,6 +105,11 @@ Write-Host "`n▶ Assigning initiatives to subscription $subscriptionId" -Foregr
 foreach ($fw in $frameworks) {
     $assignmentName = "$($fw.Name)-assign"
     $def = Get-AzPolicySetDefinition -Custom | Where-Object { $_.Name -eq $fw.Name }
+
+    if (-not $def) {
+        Write-Host "  ⚠️ Skipping assignment — initiative not found (creation may have failed)" -ForegroundColor Red
+        continue
+    }
 
     $existingAssignment = Get-AzPolicyAssignment -Scope $subScope | Where-Object { $_.Name -eq $assignmentName }
     if ($existingAssignment) {
@@ -119,7 +130,7 @@ foreach ($fw in $frameworks) {
 
 # ── Step 3: Trigger on-demand compliance scan ───────────────────────────────
 Write-Host "`n▶ Triggering on-demand policy compliance scan..." -ForegroundColor Cyan
-Start-AzPolicyComplianceScan -SubscriptionId $subscriptionId -AsJob
+Start-AzPolicyComplianceScan -AsJob
 Write-Host "  ✅ Scan started (runs in background, allow up to 24h for full results)`n" -ForegroundColor Green
 
 Write-Host "═══ Deployment complete ═══" -ForegroundColor Cyan
