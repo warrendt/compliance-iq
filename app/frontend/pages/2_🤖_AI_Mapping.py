@@ -34,7 +34,7 @@ if 'mapping_error' not in st.session_state:
 
 # Header
 st.title("🤖 AI Control Mapping")
-st.markdown("Use GPT-4o to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies")
+st.markdown("Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies")
 
 st.markdown("---")
 

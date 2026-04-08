@@ -7,7 +7,7 @@ Complete guide for deploying the ComplianceIQ AI Mapping Agent to Azure using Az
 This deployment uses:
 - **Azure Container Apps** (Consumption plan) - Serverless containers that scale to zero
 - **Azure Cosmos DB** (Serverless) - NoSQL database for mapping results and audit logs  
-- **Azure OpenAI** (GPT-4.1 with GPT-4o fallback) - AI model for control mapping
+- **Azure OpenAI** (configurable model) - AI model for control mapping
 - **Application Insights** - Monitoring, logging, and telemetry
 - **Managed Identity** - Secure, keyless authentication
 
@@ -109,7 +109,7 @@ azd up
 ```
 
 Uses defaults:
-- Model: gpt-4.1 (falls back to gpt-4o if unavailable)
+- Model: configurable (you will be prompted to choose during `azd up`)
 - Region: Sweden Central
 - Authentication: Disabled
 
@@ -119,8 +119,8 @@ Uses defaults:
 # Set custom region
 azd env set AZURE_LOCATION eastus
 
-# Use specific model
-azd env set AZURE_OPENAI_MODEL_NAME gpt-4o
+# Override model selection (skips the interactive prompt)
+azd env set AZURE_OPENAI_MODEL_NAME <model-name>
 
 # View all environment variables
 azd env get-values
@@ -216,8 +216,8 @@ azd deploy
 - `AZURE_SUBSCRIPTION_ID` - Azure subscription ID
 
 ### Optional
-- `AZURE_OPENAI_MODEL_NAME` - Model to deploy (default: gpt-4.1)
-- `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model (default: gpt-4o)
+- `AZURE_OPENAI_MODEL_NAME` - Model to deploy (prompted during `azd up` if not set)
+- `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model if primary is unavailable
 - `ENABLE_AUTH` - Enable Azure AD auth (default: false)
 - `AZURE_AD_TENANT_ID` - Azure AD tenant ID
 - `AZURE_AD_CLIENT_ID` - Backend API client ID
@@ -426,7 +426,7 @@ docker build -t compliance-iq-frontend ./frontend
 |---------|--------------|-----------|
 | Container Apps (2) | Consumption, scale-to-zero | $0-5 |
 | Cosmos DB | Serverless, 1GB storage | $1-5 |
-| OpenAI GPT-4.1 | Pay-per-token | Variable* |
+| Azure OpenAI | Pay-per-token | Variable* |
 | Container Registry | Basic | $5 |
 | Log Analytics | First 5GB free | $0-2 |
 | Application Insights | Included with Log Analytics | $0 |

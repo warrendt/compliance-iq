@@ -243,7 +243,7 @@ elif not file_bytes:
     with st.expander("ℹ️ How it works"):
         st.markdown("""
         1. **Upload** — Your PDF is sent to the backend
-        2. **Extract** — pypdf extracts the text, then Azure OpenAI (GPT-4.1) identifies every control
+        2. **Extract** — pypdf extracts the text, then Azure OpenAI identifies every control
         3. **Review** — You see all extracted controls in an editable table
         4. **Load** — Click to load controls into the mapping flow
         5. **Map → Review → Export** — Continue through Pages 2, 3, and 4 as normal

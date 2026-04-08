@@ -45,6 +45,42 @@ hooks:
           exit 1
         fi
         echo "✓ Azure authentication verified"
+
+        # Prompt for Azure OpenAI model if not already set
+        if [ -z "$AZURE_OPENAI_MODEL_NAME" ]; then
+          echo ""
+          echo "Select the Azure OpenAI model to deploy:"
+          echo "  1) gpt-4.1          (latest, recommended — version 2025-04-14)"
+          echo "  2) gpt-4o           (broadly available    — version 2024-11-20)"
+          echo "  3) gpt-4o-mini      (lower cost option    — version 2024-07-18)"
+          echo "  4) gpt-4            (legacy               — version turbo-2024-04-09)"
+          printf "Enter choice [1-4, default: 1]: "
+          read -r MODEL_CHOICE
+          case "$MODEL_CHOICE" in
+            2)
+              MODEL_NAME="gpt-4o"
+              MODEL_VERSION="2024-11-20"
+              ;;
+            3)
+              MODEL_NAME="gpt-4o-mini"
+              MODEL_VERSION="2024-07-18"
+              ;;
+            4)
+              MODEL_NAME="gpt-4"
+              MODEL_VERSION="turbo-2024-04-09"
+              ;;
+            *)
+              MODEL_NAME="gpt-4.1"
+              MODEL_VERSION="2025-04-14"
+              ;;
+          esac
+          azd env set AZURE_OPENAI_MODEL_NAME "$MODEL_NAME"
+          azd env set AZURE_OPENAI_MODEL_VERSION "$MODEL_VERSION"
+          echo "✓ Model set to: $MODEL_NAME (version: $MODEL_VERSION)"
+          echo "  (Override at any time: azd env set AZURE_OPENAI_MODEL_NAME <name>)"
+        else
+          echo "✓ Using model: $AZURE_OPENAI_MODEL_NAME (already set)"
+        fi
       continueOnError: false
   
   postprovision:

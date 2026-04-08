@@ -20,7 +20,7 @@
 
 ### Key Capabilities
 
-- **AI-Powered Mapping** — Upload a compliance PDF, and GPT-4.1 maps controls to Azure policies and Defender for Cloud recommendations
+- **AI-Powered Mapping** — Upload a compliance PDF, and Azure OpenAI maps controls to Azure policies and Defender for Cloud recommendations
 - **7 Pre-Built Frameworks** — Ready-to-use mappings for SAMA, ADHICS, Saudi Arabia Government (NDMO), Saudi Arabia Government (NCA CSCC), South African Government, and Oman Government
 - **Azure Policy Generation** — Export compliant Azure Policy initiative JSON, including Sovereign Landing Zone (SLZ) archetypes
 - **Interactive Review UI** — Streamlit-based web interface for reviewing, editing, and approving AI-generated mappings
@@ -131,7 +131,7 @@ azd init
 azd up
 ```
 
-This provisions: Azure Container Apps, Azure OpenAI (GPT-4.1), Azure Cosmos DB, Container Registry, and VNet with private endpoints.
+This provisions: Azure Container Apps, Azure OpenAI, Azure Cosmos DB, Container Registry, and VNet with private endpoints.
 
 See [app/DEPLOYMENT.md](app/DEPLOYMENT.md) for detailed deployment guide.
 
@@ -154,15 +154,14 @@ See [app/DEPLOYMENT.md](app/DEPLOYMENT.md) for detailed deployment guide.
 └────────┬──────────────────────────┬─────────────────────┘
          │                          │
 ┌────────▼────────┐     ┌──────────▼──────────────────────┐
-│  Azure OpenAI   │     │  Azure Cosmos DB                │
-│  GPT-4.1        │     │  Mapping history & persistence  │
+│  Azure OpenAI   │     │  Mapping history & persistence  │
 │  Structured Out │     │                                 │
 └─────────────────┘     └─────────────────────────────────┘
 ```
 
 **Azure Infrastructure** (deployed via Bicep):
 - Azure Container Apps (frontend + backend)
-- Azure OpenAI (GPT-4.1 with structured outputs)
+- Azure OpenAI (with structured outputs)
 - Azure Cosmos DB (NoSQL — session & mapping storage)
 - Azure Container Registry
 - VNet with private endpoints

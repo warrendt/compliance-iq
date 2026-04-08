@@ -56,26 +56,23 @@ azd auth login --check-status
 
 ### 2. OpenAI Deployment Issues
 
-#### "GPT-4.1 model not available in region"
+#### "Model not available in region"
 
 **Symptom:** OpenAI deployment fails during provisioning
 
 **Solution:**
 ```bash
-# Check available models in region
+# Check available models in your chosen region
 az cognitiveservices model list \
   --location swedencentral \
-  --query "[?name=='gpt-4.1']"
+  --query "[].name" -o tsv
 
-# Use fallback model
-azd env set AZURE_OPENAI_MODEL_NAME gpt-4o
+# Set a different model and re-provision
+azd env set AZURE_OPENAI_MODEL_NAME <model-name>
 azd provision
 ```
 
-**Regions with GPT-4.1 availability (as of Feb 2026):**
-- East US
-- West Europe
-- Sweden Central (check availability)
+**Tip:** Run `azd up` without pre-setting `AZURE_OPENAI_MODEL_NAME` to be prompted with a list of supported choices.
 
 #### "Quota exceeded for model deployment"
 
