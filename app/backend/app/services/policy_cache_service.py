@@ -6,7 +6,7 @@ Caches Azure Policy detail lookups in Cosmos DB with Microsoft Learn fallback.
 import logging
 import re
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db import cosmos_client
 from app.services.microsoft_learn_client import get_microsoft_learn_client
@@ -95,7 +95,7 @@ class PolicyCacheService:
                         "display_name": p.get("policy_name", ""),
                         "description": p.get("description", ""),
                         "learn_url": p.get("learn_url", ""),
-                        "cached_at": datetime.utcnow().isoformat(),
+                        "cached_at": datetime.now(timezone.utc).isoformat(),
                     }
             # No exact match — store a stub so we don't keep searching
             return {
@@ -103,7 +103,7 @@ class PolicyCacheService:
                 "display_name": f"Policy {policy_id}",
                 "description": "",
                 "learn_url": f"https://learn.microsoft.com/en-us/azure/governance/policy/",
-                "cached_at": datetime.utcnow().isoformat(),
+                "cached_at": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
             logger.warning(f"Learn lookup failed for {policy_id}: {e}")

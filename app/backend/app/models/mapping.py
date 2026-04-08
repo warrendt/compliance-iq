@@ -2,9 +2,9 @@
 Pydantic models for control mappings.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Literal, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.sovereignty import SovereigntyMapping
 from app.models.control import ExternalControl
 
@@ -49,21 +49,20 @@ class ControlMapping(BaseModel):
         description="Sovereign Landing Zone mapping with recommended level, objectives, and policies"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "external_control_id": "SAMA-AC-01",
-                "external_control_name": "Strong Authentication",
-                "mcsb_control_id": "IM-6",
-                "mcsb_control_name": "Use strong authentication controls",
-                "mcsb_domain": "Identity Management",
-                "confidence_score": 0.92,
-                "reasoning": "Both controls focus on enforcing MFA and strong authentication mechanisms",
-                "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],
-                "mapping_type": "exact",
-                "defender_recommendations": ["Enable MFA for all users"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "external_control_id": "SAMA-AC-01",
+            "external_control_name": "Strong Authentication",
+            "mcsb_control_id": "IM-6",
+            "mcsb_control_name": "Use strong authentication controls",
+            "mcsb_domain": "Identity Management",
+            "confidence_score": 0.92,
+            "reasoning": "Both controls focus on enforcing MFA and strong authentication mechanisms",
+            "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],
+            "mapping_type": "exact",
+            "defender_recommendations": ["Enable MFA for all users"]
         }
+    })
 
 
 class MappingBatch(BaseModel):
@@ -79,17 +78,16 @@ class MappingBatch(BaseModel):
     mapped_count: int = Field(..., description="Number of successfully mapped controls")
     avg_confidence: float = Field(..., description="Average confidence score")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "mappings": [],
-                "unmapped_controls": [],
-                "summary": "Successfully mapped 36 out of 36 controls with average confidence 0.87",
-                "total_controls": 36,
-                "mapped_count": 36,
-                "avg_confidence": 0.87
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "mappings": [],
+            "unmapped_controls": [],
+            "summary": "Successfully mapped 36 out of 36 controls with average confidence 0.87",
+            "total_controls": 36,
+            "mapped_count": 36,
+            "avg_confidence": 0.87
         }
+    })
 
 
 class MappingJob(BaseModel):
@@ -104,23 +102,22 @@ class MappingJob(BaseModel):
     progress: int = Field(0, ge=0, le=100, description="Progress percentage")
     total_controls: int = Field(..., description="Total controls to map")
     mapped_controls: int = Field(0, description="Controls mapped so far")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     result: Optional[MappingBatch] = None
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "job_id": "550e8400-e29b-41d4-a716-446655440000",
-                "framework_name": "SAMA Cybersecurity",
-                "status": "in_progress",
-                "progress": 45,
-                "total_controls": 36,
-                "mapped_controls": 16,
-                "created_at": "2026-01-20T10:00:00Z"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "job_id": "550e8400-e29b-41d4-a716-446655440000",
+            "framework_name": "SAMA Cybersecurity",
+            "status": "in_progress",
+            "progress": 45,
+            "total_controls": 36,
+            "mapped_controls": 16,
+            "created_at": "2026-01-20T10:00:00Z"
         }
+    })
 
 
 class MappingRequest(BaseModel):
@@ -130,11 +127,10 @@ class MappingRequest(BaseModel):
     controls: List[ExternalControl] = Field(..., description="Controls to map")
     batch_mode: bool = Field(True, description="Process in batch mode")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity",
-                "controls": [],
-                "batch_mode": True
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity",
+            "controls": [],
+            "batch_mode": True
         }
+    })

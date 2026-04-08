@@ -3,7 +3,7 @@ Pydantic models for Sovereign Landing Zone (SLZ) policy integration.
 """
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
 
 
@@ -33,17 +33,16 @@ class SovereigntyControlObjective(BaseModel):
         description="True if no Azure Policy exists (e.g., SO-2 Customer Lockbox)"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "SO-1",
-                "name": "Data Residency",
-                "description": "Ensure data stays within approved geographic regions.",
-                "applicable_levels": ["L1", "L2", "L3"],
-                "keywords": ["location", "allowed locations"],
-                "procedural_only": False,
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": "SO-1",
+            "name": "Data Residency",
+            "description": "Ensure data stays within approved geographic regions.",
+            "applicable_levels": ["L1", "L2", "L3"],
+            "keywords": ["location", "allowed locations"],
+            "procedural_only": False,
         }
+    })
 
 
 class SLZPolicyDefinition(BaseModel):
@@ -65,18 +64,17 @@ class SLZPolicyDefinition(BaseModel):
     parameter_names: List[str] = Field(default_factory=list)
     source_file: str = Field(default="", description="Source file in Azure-Landing-Zones-Library")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "cmk-storage-account",
-                "display_name": "Storage accounts should use customer-managed key for encryption",
-                "description": "Secure your blob and file storage with customer-managed keys.",
-                "effect": "Audit",
-                "sovereignty_level": "L2",
-                "sovereignty_objectives": ["SO-3"],
-                "service_category": "Storage",
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "cmk-storage-account",
+            "display_name": "Storage accounts should use customer-managed key for encryption",
+            "description": "Secure your blob and file storage with customer-managed keys.",
+            "effect": "Audit",
+            "sovereignty_level": "L2",
+            "sovereignty_objectives": ["SO-3"],
+            "service_category": "Storage",
         }
+    })
 
 
 class SLZInitiative(BaseModel):
@@ -108,17 +106,16 @@ class SLZArchetype(BaseModel):
     policy_definitions: List[str] = Field(default_factory=list)
     policy_set_definitions: List[str] = Field(default_factory=list)
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "confidential_corp",
-                "display_name": "Confidential Corp",
-                "description": "Connected workloads requiring confidential computing.",
-                "parent": "sovereign_root",
-                "sovereignty_level": "L3",
-                "key_assignments": ["Enforce-Sovereign-Conf"],
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "confidential_corp",
+            "display_name": "Confidential Corp",
+            "description": "Connected workloads requiring confidential computing.",
+            "parent": "sovereign_root",
+            "sovereignty_level": "L3",
+            "key_assignments": ["Enforce-Sovereign-Conf"],
         }
+    })
 
 
 class SovereigntyMapping(BaseModel):
@@ -145,16 +142,15 @@ class SovereigntyMapping(BaseModel):
         description="Explanation of sovereignty level recommendation"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "sovereignty_level": "L2",
-                "sovereignty_objectives": ["SO-3"],
-                "slz_policy_names": ["cmk-storage-account", "cmk-sql-server"],
-                "target_archetype": "sovereign_root",
-                "reasoning": "This control requires encryption at rest with CMK, aligning with SO-3.",
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "sovereignty_level": "L2",
+            "sovereignty_objectives": ["SO-3"],
+            "slz_policy_names": ["cmk-storage-account", "cmk-sql-server"],
+            "target_archetype": "sovereign_root",
+            "reasoning": "This control requires encryption at rest with CMK, aligning with SO-3.",
         }
+    })
 
 
 class SLZPolicyAssignment(BaseModel):

@@ -7,7 +7,7 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
 from azure.identity.aio import DefaultAzureCredential
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class CosmosDBClient:
             
             # Add timestamp if not present
             if '_ts' not in document:
-                document['timestamp'] = datetime.utcnow().isoformat()
+                document['timestamp'] = datetime.now(timezone.utc).isoformat()
             
             result = await container.create_item(body=document)
             
@@ -127,7 +127,7 @@ class CosmosDBClient:
             container = self.database.get_container_client(container_name)
 
             if '_ts' not in document:
-                document['timestamp'] = datetime.utcnow().isoformat()
+                document['timestamp'] = datetime.now(timezone.utc).isoformat()
 
             result = await container.upsert_item(body=document)
 

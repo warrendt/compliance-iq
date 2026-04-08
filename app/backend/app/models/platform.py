@@ -5,7 +5,7 @@ at the start of the compliance mapping workflow.
 """
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 
 
@@ -25,16 +25,15 @@ class PlatformCapability(BaseModel):
     api_endpoint: str = Field(default="", description="Microsoft Graph API endpoint")
     requires_license: Optional[str] = Field(None, description="Required Microsoft license tier")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "dlp",
-                "name": "Data Loss Prevention",
-                "description": "Create and manage DLP policies across M365 services",
-                "api_endpoint": "/security/dataLossPreventionPolicies",
-                "requires_license": "Microsoft 365 E5 Compliance"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": "dlp",
+            "name": "Data Loss Prevention",
+            "description": "Create and manage DLP policies across M365 services",
+            "api_endpoint": "/security/dataLossPreventionPolicies",
+            "requires_license": "Microsoft 365 E5 Compliance"
         }
+    })
 
 
 class PlatformInfo(BaseModel):
@@ -51,18 +50,17 @@ class PlatformInfo(BaseModel):
     api_base: str = Field(default="", description="Base API URL")
     documentation_url: str = Field(default="", description="Microsoft Learn documentation URL")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "platform": "microsoft_365",
-                "display_name": "Microsoft 365",
-                "description": "Compliance policies for Microsoft 365 workloads",
-                "icon": "📧",
-                "capabilities": [],
-                "api_base": "https://graph.microsoft.com/v1.0",
-                "documentation_url": "https://learn.microsoft.com/en-us/microsoft-365/compliance/"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "platform": "microsoft_365",
+            "display_name": "Microsoft 365",
+            "description": "Compliance policies for Microsoft 365 workloads",
+            "icon": "📧",
+            "capabilities": [],
+            "api_base": "https://graph.microsoft.com/v1.0",
+            "documentation_url": "https://learn.microsoft.com/en-us/microsoft-365/compliance/"
         }
+    })
 
 
 class PlatformSelectionRequest(BaseModel):
@@ -77,13 +75,12 @@ class PlatformSelectionRequest(BaseModel):
         description="Selected capability IDs (empty = all capabilities)"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "platform": "microsoft_365",
-                "capabilities": ["dlp", "conditional_access"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "platform": "microsoft_365",
+            "capabilities": ["dlp", "conditional_access"]
         }
+    })
 
 
 class PlatformSelectionResponse(BaseModel):

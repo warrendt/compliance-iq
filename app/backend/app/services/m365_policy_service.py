@@ -7,7 +7,7 @@ Device Compliance, Information Protection) and generates deployable configuratio
 import logging
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.control import ExternalControl
 from app.models.m365_policy import (
@@ -294,7 +294,7 @@ class M365PolicyService:
             total_controls=len(controls),
             mapped_controls=mapped_count,
             deployment_script=deployment_script,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(timezone.utc),
         )
 
         logger.info(

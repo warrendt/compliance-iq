@@ -5,9 +5,9 @@ and Information Protection policies managed via Microsoft Graph API.
 """
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class M365PolicyType(str, Enum):
@@ -47,25 +47,24 @@ class M365PolicyRule(BaseModel):
     priority: int = Field(default=0, description="Rule priority (lower = higher priority)")
     enabled: bool = Field(default=True, description="Whether the rule is active")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "Block external sharing of PII",
-                "description": "Prevent sharing of personal data outside the organization",
-                "conditions": {
-                    "sensitiveInformationTypes": [
-                        {"id": "a44669fe-0d48-453d-a9b1-2cc83f2cba77", "name": "Credit Card Number"}
-                    ]
-                },
-                "actions": {
-                    "blockAccess": True,
-                    "notifyUser": True,
-                    "notifyAdmin": True
-                },
-                "priority": 0,
-                "enabled": True
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "Block external sharing of PII",
+            "description": "Prevent sharing of personal data outside the organization",
+            "conditions": {
+                "sensitiveInformationTypes": [
+                    {"id": "a44669fe-0d48-453d-a9b1-2cc83f2cba77", "name": "Credit Card Number"}
+                ]
+            },
+            "actions": {
+                "blockAccess": True,
+                "notifyUser": True,
+                "notifyAdmin": True
+            },
+            "priority": 0,
+            "enabled": True
         }
+    })
 
 
 class M365PolicyDefinition(BaseModel):
@@ -89,18 +88,17 @@ class M365PolicyDefinition(BaseModel):
     )
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "dlp-pii-protection",
-                "display_name": "PII Data Loss Prevention",
-                "description": "Prevents sharing of personally identifiable information",
-                "policy_type": "dlp",
-                "service_scopes": ["exchange", "sharepoint", "teams"],
-                "rules": [],
-                "mode": "TestWithNotifications"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "dlp-pii-protection",
+            "display_name": "PII Data Loss Prevention",
+            "description": "Prevents sharing of personally identifiable information",
+            "policy_type": "dlp",
+            "service_scopes": ["exchange", "sharepoint", "teams"],
+            "rules": [],
+            "mode": "TestWithNotifications"
         }
+    })
 
 
 class M365ControlMapping(BaseModel):
@@ -129,18 +127,17 @@ class M365ControlMapping(BaseModel):
         description="Step-by-step implementation guidance"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "external_control_id": "SAMA-DP-01",
-                "external_control_name": "Data Classification",
-                "m365_policy_type": "dlp",
-                "m365_policies": ["PII Protection", "Financial Data Protection"],
-                "graph_api_endpoint": "/security/dataLossPreventionPolicies",
-                "confidence_score": 0.88,
-                "reasoning": "Data classification control maps to DLP policy enforcement"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "external_control_id": "SAMA-DP-01",
+            "external_control_name": "Data Classification",
+            "m365_policy_type": "dlp",
+            "m365_policies": ["PII Protection", "Financial Data Protection"],
+            "graph_api_endpoint": "/security/dataLossPreventionPolicies",
+            "confidence_score": 0.88,
+            "reasoning": "Data classification control maps to DLP policy enforcement"
         }
+    })
 
 
 class M365PolicyPackage(BaseModel):
@@ -162,18 +159,17 @@ class M365PolicyPackage(BaseModel):
         default="",
         description="PowerShell script for deploying policies via Microsoft Graph"
     )
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity Framework",
-                "policies": [],
-                "mappings": [],
-                "total_controls": 36,
-                "mapped_controls": 28
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity Framework",
+            "policies": [],
+            "mappings": [],
+            "total_controls": 36,
+            "mapped_controls": 28
         }
+    })
 
 
 class M365GenerationRequest(BaseModel):
@@ -194,12 +190,11 @@ class M365GenerationRequest(BaseModel):
         description="Default enforcement mode for generated policies"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity",
-                "policy_types": ["dlp", "conditional_access"],
-                "service_scopes": ["exchange", "sharepoint", "teams"],
-                "enforcement_mode": "TestWithNotifications"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity",
+            "policy_types": ["dlp", "conditional_access"],
+            "service_scopes": ["exchange", "sharepoint", "teams"],
+            "enforcement_mode": "TestWithNotifications"
         }
+    })

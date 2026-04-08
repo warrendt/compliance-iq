@@ -3,7 +3,7 @@ Configuration module for AI Control Mapping Agent.
 Loads environment variables and provides application configuration.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from functools import lru_cache
 from typing import Optional, Union
@@ -76,10 +76,11 @@ class Settings(BaseSettings):
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
 
 @lru_cache

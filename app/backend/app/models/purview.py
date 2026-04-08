@@ -5,9 +5,9 @@ and Data Map configurations managed via Microsoft Graph and Purview APIs.
 """
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class PurviewConfigType(str, Enum):
@@ -38,19 +38,18 @@ class SensitivityLabelAction(BaseModel):
         description="Action-specific settings"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "action_type": "encryption",
-                "settings": {
-                    "encryptionEnabled": True,
-                    "protectionType": "template",
-                    "rightsDefinitions": [
-                        {"userRights": "VIEW,EDIT", "users": "all-authenticated"}
-                    ]
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "action_type": "encryption",
+            "settings": {
+                "encryptionEnabled": True,
+                "protectionType": "template",
+                "rightsDefinitions": [
+                    {"userRights": "VIEW,EDIT", "users": "all-authenticated"}
+                ]
             }
         }
+    })
 
 
 class SensitivityLabel(BaseModel):
@@ -79,20 +78,19 @@ class SensitivityLabel(BaseModel):
         description="Parent label name for sub-labels"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "confidential-financial",
-                "display_name": "Confidential - Financial",
-                "description": "Financial data requiring encryption",
-                "color": "#FF0000",
-                "priority": 3,
-                "scope": ["files_emails"],
-                "actions": [
-                    {"action_type": "encryption", "settings": {"encryptionEnabled": True}}
-                ]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "confidential-financial",
+            "display_name": "Confidential - Financial",
+            "description": "Financial data requiring encryption",
+            "color": "#FF0000",
+            "priority": 3,
+            "scope": ["files_emails"],
+            "actions": [
+                {"action_type": "encryption", "settings": {"encryptionEnabled": True}}
+            ]
         }
+    })
 
 
 class RetentionLabel(BaseModel):
@@ -118,17 +116,16 @@ class RetentionLabel(BaseModel):
         description="Whether content is a regulatory record (cannot be relabeled)"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "financial-records-7y",
-                "display_name": "Financial Records - 7 Years",
-                "description": "Retain financial records for 7 years per regulatory requirements",
-                "retention_days": 2555,
-                "retention_action": "keepAndDelete",
-                "is_record": True
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "financial-records-7y",
+            "display_name": "Financial Records - 7 Years",
+            "description": "Retain financial records for 7 years per regulatory requirements",
+            "retention_days": 2555,
+            "retention_action": "keepAndDelete",
+            "is_record": True
         }
+    })
 
 
 class PurviewDLPPolicy(BaseModel):
@@ -154,18 +151,17 @@ class PurviewDLPPolicy(BaseModel):
         description="Enforcement mode"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "purview-dlp-pii",
-                "display_name": "Purview PII Protection",
-                "locations": ["Exchange", "SharePoint", "OneDrive"],
-                "sensitive_info_types": [
-                    {"name": "Credit Card Number", "id": "50842eb7-edc8-4019-85dd-5a5c1f2bb085"}
-                ],
-                "mode": "TestWithNotifications"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "purview-dlp-pii",
+            "display_name": "Purview PII Protection",
+            "locations": ["Exchange", "SharePoint", "OneDrive"],
+            "sensitive_info_types": [
+                {"name": "Credit Card Number", "id": "50842eb7-edc8-4019-85dd-5a5c1f2bb085"}
+            ],
+            "mode": "TestWithNotifications"
         }
+    })
 
 
 class PurviewControlMapping(BaseModel):
@@ -205,17 +201,16 @@ class PurviewControlMapping(BaseModel):
         description="Step-by-step implementation guidance"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "external_control_id": "SAMA-DP-02",
-                "external_control_name": "Data Retention",
-                "purview_config_type": "retention_label",
-                "retention_labels": ["Financial Records - 7 Years"],
-                "confidence_score": 0.90,
-                "reasoning": "Data retention control maps to Purview retention label policies"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "external_control_id": "SAMA-DP-02",
+            "external_control_name": "Data Retention",
+            "purview_config_type": "retention_label",
+            "retention_labels": ["Financial Records - 7 Years"],
+            "confidence_score": 0.90,
+            "reasoning": "Data retention control maps to Purview retention label policies"
         }
+    })
 
 
 class PurviewConfigPackage(BaseModel):
@@ -245,20 +240,19 @@ class PurviewConfigPackage(BaseModel):
         default="",
         description="PowerShell script for deploying via Microsoft Graph"
     )
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity Framework",
-                "sensitivity_labels": [],
-                "retention_labels": [],
-                "dlp_policies": [],
-                "mappings": [],
-                "total_controls": 36,
-                "mapped_controls": 22
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity Framework",
+            "sensitivity_labels": [],
+            "retention_labels": [],
+            "dlp_policies": [],
+            "mappings": [],
+            "total_controls": 36,
+            "mapped_controls": 22
         }
+    })
 
 
 class PurviewGenerationRequest(BaseModel):
@@ -279,11 +273,10 @@ class PurviewGenerationRequest(BaseModel):
         description="Default enforcement mode for generated policies"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity",
-                "config_types": ["sensitivity_label", "dlp_policy", "retention_label"],
-                "enforcement_mode": "TestWithNotifications"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity",
+            "config_types": ["sensitivity_label", "dlp_policy", "retention_label"],
+            "enforcement_mode": "TestWithNotifications"
         }
+    })

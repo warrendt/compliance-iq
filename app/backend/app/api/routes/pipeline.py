@@ -14,7 +14,7 @@ import tempfile
 import time
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
@@ -504,7 +504,7 @@ async def _run_pipeline_job(job_id: str):
         job["status"] = "completed"
         job["stage"] = "Complete"
         job["progress"] = 100
-        job["completed_at"] = datetime.utcnow().isoformat()
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
         _log_debug(job_id, "Pipeline completed")
 
         # Persist job and artifacts to Cosmos if enabled
@@ -526,7 +526,7 @@ async def _run_pipeline_job(job_id: str):
         logger.error(f"Pipeline job {job_id} failed: {e}", exc_info=True)
         job["status"] = "failed"
         job["error"] = str(e)
-        job["completed_at"] = datetime.utcnow().isoformat()
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
         _cosmos_upsert_job(job)
         _log_debug(job_id, f"Pipeline failed: {e}")
 
@@ -557,7 +557,7 @@ def _create_job(
         "controls_mapped": 0,
         "error": None,
         "output_dir": None,
-        "started_at": datetime.utcnow().isoformat(),
+        "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
         "pdf_filename": filename,
         "pdf_content": content,
@@ -667,7 +667,7 @@ def _log_debug(job_id: str, message: str):
         _job_logs[job_id] = []
 
     entry = {
-        "ts": datetime.utcnow().isoformat() + "Z",
+        "ts": datetime.now(timezone.utc).isoformat() + "Z",
         "message": message,
     }
     buf = _job_logs[job_id]
