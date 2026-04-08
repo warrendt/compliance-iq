@@ -637,7 +637,6 @@ async def _run_m365_job(job_id: str):
         get_pdf_metadata,
         extract_controls_from_text,
     )
-    from app.models.control import ExternalControl
     from app.models.m365_policy import M365PolicyType, M365ServiceScope, M365GenerationRequest
     from app.services.m365_policy_service import get_m365_policy_service
 
@@ -685,18 +684,7 @@ async def _run_m365_job(job_id: str):
         job["progress"] = 55
         _log_debug(job_id, "Generating M365 policy package")
 
-        # Convert ExtractedControl → ExternalControl (field names are identical)
-        controls = [
-            ExternalControl(
-                control_id=c.control_id,
-                control_name=c.control_title,
-                description=c.control_description,
-                domain=c.domain,
-                control_type=c.control_type,
-                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
-            )
-            for c in extraction.controls
-        ]
+        controls = [_to_external_control(c) for c in extraction.controls]
 
         service = get_m365_policy_service()
         gen_request = M365GenerationRequest(
@@ -751,7 +739,6 @@ async def _run_purview_job(job_id: str):
         get_pdf_metadata,
         extract_controls_from_text,
     )
-    from app.models.control import ExternalControl
     from app.models.purview import PurviewConfigType, PurviewGenerationRequest
     from app.services.purview_service import get_purview_config_service
 
@@ -799,18 +786,7 @@ async def _run_purview_job(job_id: str):
         job["progress"] = 55
         _log_debug(job_id, "Generating Purview configuration package")
 
-        # Convert ExtractedControl → ExternalControl (field names are identical)
-        controls = [
-            ExternalControl(
-                control_id=c.control_id,
-                control_name=c.control_title,
-                description=c.control_description,
-                domain=c.domain,
-                control_type=c.control_type,
-                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
-            )
-            for c in extraction.controls
-        ]
+        controls = [_to_external_control(c) for c in extraction.controls]
 
         service = get_purview_config_service()
         gen_request = PurviewGenerationRequest(
@@ -922,6 +898,19 @@ def _zip_dir(out: Path) -> bytes:
                 zf.write(file_path, file_path.name)
     buf.seek(0)
     return buf.getvalue()
+
+
+def _to_external_control(c):
+    """Convert a pipeline ExtractedControl to an ExternalControl accepted by M365/Purview services."""
+    from app.models.control import ExternalControl
+    return ExternalControl(
+        control_id=c.control_id,
+        control_name=c.control_title,
+        description=c.control_description,
+        domain=c.domain,
+        control_type=c.control_type,
+        requirements="; ".join(c.sub_controls) if c.sub_controls else None,
+    )
 
 
 def _ensure_output_dir(job_id: str, job: dict):
