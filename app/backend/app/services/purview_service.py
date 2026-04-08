@@ -206,6 +206,7 @@ class PurviewConfigService:
         dlp_policies: List[str] = []
 
         if PurviewConfigType.SENSITIVITY_LABEL in matched_types:
+            # Only recommend Confidential and above (skip Public and General)
             sensitivity_labels = [l["display_name"] for l in DEFAULT_SENSITIVITY_LABELS[2:]]
 
         if PurviewConfigType.RETENTION_LABEL in matched_types or PurviewConfigType.RETENTION_POLICY in matched_types:
