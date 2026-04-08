@@ -27,10 +27,14 @@ if 'framework_name' not in st.session_state:
     st.session_state.framework_name = ""
 if 'job_id' not in st.session_state:
     st.session_state.job_id = None
+if 'selected_platform' not in st.session_state:
+    st.session_state.selected_platform = "azure_defender"
+if 'platform_display_name' not in st.session_state:
+    st.session_state.platform_display_name = "Microsoft Defender for Cloud"
 
 # Main content
 st.markdown('<div class="main-header">🛡️ ComplianceIQ</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">AI-Powered Compliance Framework Mapping to Microsoft Cloud Security Benchmark &amp; Sovereign Landing Zone Policies</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">AI-Powered Compliance Framework Mapping to Microsoft Defender for Cloud, Microsoft 365 &amp; Microsoft Purview</div>', unsafe_allow_html=True)
 
 # Sidebar — shared branding + backend status
 render_sidebar()
@@ -66,11 +70,38 @@ with st.sidebar:
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
 
+# Show selected platform
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("#### 🎯 Target Platform")
+    platform_name = st.session_state.get('platform_display_name', 'Microsoft Defender for Cloud')
+    platform_icons = {
+        "Microsoft Defender for Cloud": "🛡️",
+        "Microsoft 365 Compliance": "📧",
+        "Microsoft Purview": "🔍",
+    }
+    st.info(f"{platform_icons.get(platform_name, '🎯')} {platform_name}")
+    if st.button("Change Platform", key="change_platform", use_container_width=True):
+        st.switch_page("pages/0_🎯_Platform_Selection.py")
+
 # Main page content
 st.markdown("---")
 
 # Welcome message and instructions
-col1, col2, col3 = st.columns(3)
+col0, col1, col2, col3 = st.columns(4)
+
+with col0:
+    st.markdown("### 🎯 Step 0: Platform")
+    st.markdown("""
+    Choose your target compliance platform.
+    
+    **Options:**
+    - Defender for Cloud
+    - Microsoft 365
+    - Microsoft Purview
+    """)
+    if st.button("Select Platform →", key="nav_platform", use_container_width=True):
+        st.switch_page("pages/0_🎯_Platform_Selection.py")
 
 with col1:
     st.markdown("### 📁 Step 1: Upload")
@@ -120,6 +151,10 @@ with st.expander("📖 Quick Start Guide", expanded=False):
     st.markdown("""
     ### How to Use This Tool
     
+    0. **Select Your Platform**
+       - Choose your target: Azure Defender, Microsoft 365, or Microsoft Purview
+       - Each platform generates different policy types and deployment scripts
+    
     1. **Prepare Your Framework**
        - Export your compliance framework controls to CSV or Excel
        - Ensure you have Control ID, Name, and Description columns
@@ -131,7 +166,7 @@ with st.expander("📖 Quick Start Guide", expanded=False):
     
     3. **Run AI Mapping**
        - The AI will analyze each control
-       - Match it to the most relevant MCSB controls
+       - Match it to the most relevant controls for your selected platform
        - Provide confidence scores and reasoning
     
     4. **Review & Adjust**
@@ -139,15 +174,23 @@ with st.expander("📖 Quick Start Guide", expanded=False):
        - Edit any mappings that need adjustment
        - Filter by confidence threshold
     
-    5. **Generate Policy Initiative**
-       - Set your confidence threshold
-       - Generate the Azure Policy initiative
-       - Download as JSON, Bicep, or deployment scripts
+    5. **Generate Policies**
+       - **Azure Defender:** Azure Policy initiatives (JSON, Bicep, scripts)
+       - **Microsoft 365:** DLP, Conditional Access, Device Compliance policies
+       - **Microsoft Purview:** Sensitivity labels, retention labels, DLP policies
     
-    6. **Deploy to Azure**
-       - Use Azure Portal or Azure CLI
-       - Apply the initiative to your subscriptions
-       - Start monitoring compliance
+    6. **Deploy**
+       - **Azure Defender:** Azure CLI / PowerShell / Portal
+       - **Microsoft 365:** Microsoft Graph API / PowerShell
+       - **Microsoft Purview:** Microsoft Graph API / PowerShell
+    
+    ### Supported Platforms
+    
+    | Platform | Policy Types | Deployment |
+    |----------|-------------|------------|
+    | **Defender for Cloud** | Azure Policy, MCSB, SLZ | Azure CLI / PS |
+    | **Microsoft 365** | DLP, CA, Device, Info Protection | Graph API / PS |
+    | **Microsoft Purview** | Labels, DLP, Retention, eDiscovery | Graph API / PS |
     
     ### Supported Frameworks
     

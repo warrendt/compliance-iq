@@ -26,6 +26,33 @@ from app.models.sovereignty import (
     SLZArchetype,
     SLZPolicyAssignment,
 )
+from app.models.platform import (
+    CompliancePlatform,
+    PlatformCapability,
+    PlatformInfo,
+    PlatformSelectionRequest,
+    PlatformSelectionResponse,
+)
+from app.models.m365_policy import (
+    M365PolicyType,
+    M365ServiceScope,
+    M365PolicyRule,
+    M365PolicyDefinition,
+    M365ControlMapping,
+    M365PolicyPackage,
+    M365GenerationRequest,
+)
+from app.models.purview import (
+    PurviewConfigType,
+    SensitivityLabelScope,
+    SensitivityLabel,
+    SensitivityLabelAction,
+    RetentionLabel,
+    PurviewDLPPolicy,
+    PurviewControlMapping,
+    PurviewConfigPackage,
+    PurviewGenerationRequest,
+)
 
 __all__ = [
     # Control models
@@ -52,6 +79,30 @@ __all__ = [
     "SLZInitiative",
     "SLZArchetype",
     "SLZPolicyAssignment",
+    # Platform selection models
+    "CompliancePlatform",
+    "PlatformCapability",
+    "PlatformInfo",
+    "PlatformSelectionRequest",
+    "PlatformSelectionResponse",
+    # Microsoft 365 policy models
+    "M365PolicyType",
+    "M365ServiceScope",
+    "M365PolicyRule",
+    "M365PolicyDefinition",
+    "M365ControlMapping",
+    "M365PolicyPackage",
+    "M365GenerationRequest",
+    # Microsoft Purview models
+    "PurviewConfigType",
+    "SensitivityLabelScope",
+    "SensitivityLabel",
+    "SensitivityLabelAction",
+    "RetentionLabel",
+    "PurviewDLPPolicy",
+    "PurviewControlMapping",
+    "PurviewConfigPackage",
+    "PurviewGenerationRequest",
 ]
 
 # Resolve forward reference "ControlMapping" inside PolicyGenerationRequest
