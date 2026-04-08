@@ -2,10 +2,10 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param modelName string = 'gpt-4.1'
-param modelVersion string = '2025-04-14'
-param fallbackModel string = 'gpt-4o'
-param fallbackVersion string = '2024-11-20'
+param modelName string = 'gpt-5.2'
+param modelVersion string = '2026-02-01'
+param fallbackModel string = 'gpt-5.4-mini'
+param fallbackVersion string = '2026-04-01'
 param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
 param privateEndpointSubnetId string
@@ -14,7 +14,6 @@ param existingAccount bool = false
 @description('Developer public IP address for firewall rule (empty to keep fully private)')
 param devPublicIpAddress string = ''
 
-// Note: gpt-4.1 may not be available in all regions
 // This template deploys both primary and fallback models
 resource openai 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (!existingAccount) {
   name: name
@@ -46,7 +45,7 @@ resource existingOpenai 'Microsoft.CognitiveServices/accounts@2023-05-01' existi
 var openaiId = existingAccount ? existingOpenai.id : openai.id
 var openaiEndpoint = existingAccount ? existingOpenai.properties.endpoint : openai.properties.endpoint
 
-// Deploy requested model (gpt-4.1 or configured model)
+// Deploy requested model
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount) {
   parent: openai
   name: modelName
@@ -65,7 +64,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   }
 }
 
-// Fallback deployment (gpt-4o) for reliability
+// Fallback deployment for reliability
 resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount && modelName != fallbackModel) {
   parent: openai
   name: '${fallbackModel}-fallback'

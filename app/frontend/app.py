@@ -54,7 +54,6 @@ with st.sidebar:
 
             if health.get("azure_openai", {}).get("status") == "configured":
                 st.success("✅ Azure OpenAI Ready")
-                st.caption(f"Model: {health.get('azure_openai', {}).get('deployment', 'N/A')}")
             else:
                 st.warning("⚠️ Azure OpenAI not configured")
         else:
@@ -92,7 +91,7 @@ with col2:
     Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark.
     
     **Features:**
-    - GPT-4o powered analysis
+    - AI-powered analysis
     - Confidence scoring
     - Sovereignty level assignment
     - Detailed reasoning

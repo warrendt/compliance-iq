@@ -46,7 +46,7 @@ Edit `.env` and set your Azure OpenAI details:
 
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_DEPLOYMENT_NAME=<your-deployment-name>
 ```
 
 **4. Authenticate with Azure**
@@ -200,7 +200,7 @@ az role assignment create \
 ## 🎯 Core Features
 
 ### AI Mapping Service
-- Azure OpenAI GPT-4o with structured outputs
+- Azure OpenAI with structured outputs
 - Confidence scoring (0.0 to 1.0)
 - Detailed reasoning for each mapping
 - Batch processing with progress tracking
