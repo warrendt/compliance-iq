@@ -27,6 +27,10 @@ if 'framework_name' not in st.session_state:
     st.session_state.framework_name = ""
 if 'mapping_in_progress' not in st.session_state:
     st.session_state.mapping_in_progress = False
+if 'mapping_job_id' not in st.session_state:
+    st.session_state.mapping_job_id = None
+if 'mapping_error' not in st.session_state:
+    st.session_state.mapping_error = None
 
 # Header
 st.title("🤖 AI Control Mapping")
@@ -163,71 +167,42 @@ if mapping_mode == "Single Control Test":
 # Batch mapping mode
 else:
     st.markdown("### 🚀 Batch Mapping")
-    
-    st.info(f"📋 Ready to map **{len(st.session_state.controls)}** controls from **{st.session_state.framework_name}**")
-    
-    # Estimated time with concurrency
+
     num_controls = len(st.session_state.controls)
     est_per_control = 45  # ~45 seconds per AI mapping call
     est_total = (num_controls / concurrency) * est_per_control
-    st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
-    
-    # Start mapping button
-    col_start, col_cancel = st.columns([1, 1])
-    
-    with col_start:
-        if st.button("▶️ Start Batch Mapping", type="primary", use_container_width=True, disabled=st.session_state.mapping_in_progress):
-            st.session_state.mapping_in_progress = True
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            log_box = st.empty()
-            log_lines: list[str] = []
 
-            try:
-                controls_payload = [
-                    {
-                        "control_id": c['control_id'],
-                        "control_name": c['control_name'],
-                        "description": c['description'],
-                        "domain": c.get('domain')
-                    }
-                    for c in st.session_state.controls
-                ]
+    # ── Show any stored error from a previous failed run ─────────────────
+    if st.session_state.mapping_error:
+        st.error(f"❌ Mapping job failed: {st.session_state.mapping_error}")
+        if st.button("🔄 Try Again", type="primary"):
+            st.session_state.mapping_error = None
+            st.session_state.mapping_in_progress = False
+            st.session_state.mapping_job_id = None
+            st.rerun()
 
-                job_id = api_client.start_batch_mapping(
-                    controls=controls_payload,
-                    framework_name=st.session_state.framework_name,
-                )
+    # ── Active job: poll status (handles both in-session and resumed jobs) ─
+    elif st.session_state.mapping_in_progress and st.session_state.mapping_job_id:
+        job_id = st.session_state.mapping_job_id
+        st.info(f"⏳ Mapping job in progress (job ID: `{job_id}`)")
 
-                status_text.text(f"🚀 Mapping {num_controls} controls...")
+        try:
+            status = api_client.get_job_status(job_id)
+            mapped_controls = status.get("mapped_controls", 0)
+            total_controls = status.get("total_controls", num_controls)
+            progress = status.get("progress") or int((mapped_controls / max(total_controls, 1)) * 100)
 
-                last_mapped = -1
-                while True:
-                    status = api_client.get_job_status(job_id)
-                    mapped_controls = status.get("mapped_controls", 0)
-                    total_controls = status.get("total_controls", num_controls)
-                    progress = status.get("progress") or int((mapped_controls / max(total_controls, 1)) * 100)
+            st.progress(progress / 100)
+            st.text(f"Status: {status.get('status')} — {mapped_controls}/{total_controls} mapped ({progress}%)")
 
-                    progress_bar.progress(progress / 100)
-                    status_line = f"Status: {status.get('status')} — {mapped_controls}/{total_controls} mapped ({progress}%)"
-                    status_text.text(status_line)
-
-                    if mapped_controls != last_mapped:
-                        log_lines.append(status_line)
-                        last_mapped = mapped_controls
-                        log_box.text("\n".join(log_lines[-15:]))
-
-                    if status.get("status") in ["completed", "failed"]:
-                        break
-
-                    time.sleep(2)
-
-                if status.get("status") == "failed":
-                    err = status.get("error_message", "Unknown error")
-                    st.error(f"❌ Mapping job failed: {err}")
-                    st.session_state.mapping_in_progress = False
-                    st.stop()
-
+            job_status = status.get("status")
+            if job_status == "failed":
+                err = status.get("error_message", "Unknown error")
+                st.session_state.mapping_error = err
+                st.session_state.mapping_in_progress = False
+                st.session_state.mapping_job_id = None
+                st.rerun()
+            elif job_status == "completed":
                 result = status.get("result", {}) or {}
                 raw_mappings = result.get("mappings", [])
                 mappings = []
@@ -250,6 +225,7 @@ else:
 
                 st.session_state.mappings = mappings
                 st.session_state.mapping_in_progress = False
+                st.session_state.mapping_job_id = None
 
                 mapped_count = result.get('mapped_count') or len(mappings)
                 failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
@@ -262,34 +238,77 @@ else:
 
                 st.markdown("### 📊 Mapping Summary")
                 col_sum1, col_sum2, col_sum3 = st.columns(3)
-
                 with col_sum1:
                     avg_confidence = sum(m.get('confidence_score', 0) for m in mappings) / len(mappings) if mappings else 0
                     st.metric("Average Confidence", f"{avg_confidence:.0%}")
-
                 with col_sum2:
                     high_confidence = sum(1 for m in mappings if m.get('confidence_score', 0) >= 0.8)
                     st.metric("High Confidence (≥80%)", high_confidence)
-
                 with col_sum3:
                     unique_mcsb = len(set(m.get('mcsb_control_id', '') for m in mappings))
                     st.metric("Unique MCSB Controls", unique_mcsb)
 
                 st.info("👉 Go to **Review & Edit** to validate the mappings")
-
                 st.page_link("pages/3_✏️_Review_Edit.py", label="Continue to Review →", icon="➡️")
+            else:
+                # Still running — poll again after a short delay
+                col_cancel_active, _ = st.columns([1, 3])
+                with col_cancel_active:
+                    if st.button("⏹️ Cancel", use_container_width=True):
+                        st.session_state.mapping_in_progress = False
+                        st.session_state.mapping_job_id = None
+                        st.rerun()
+                time.sleep(2)
+                st.rerun()
 
-            except httpx.ConnectError:
-                st.error("❌ Cannot connect to backend. Make sure it's running.")
-                st.session_state.mapping_in_progress = False
-            except Exception as e:
-                st.error(f"❌ Error during batch mapping: {str(e)}")
-                st.session_state.mapping_in_progress = False
-    
-    with col_cancel:
-        if st.button("⏹️ Cancel", use_container_width=True):
+        except httpx.ConnectError:
+            st.error("❌ Cannot connect to backend. Make sure it's running.")
             st.session_state.mapping_in_progress = False
-            st.rerun()
+            st.session_state.mapping_job_id = None
+        except Exception as e:
+            st.error(f"❌ Error checking job status: {str(e)}")
+            st.session_state.mapping_in_progress = False
+            st.session_state.mapping_job_id = None
+
+    # ── Idle: show start button ────────────────────────────────────────────
+    else:
+        st.info(f"📋 Ready to map **{num_controls}** controls from **{st.session_state.framework_name}**")
+        st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
+
+        col_start, col_cancel = st.columns([1, 1])
+
+        with col_start:
+            if st.button("▶️ Start Batch Mapping", type="primary", use_container_width=True):
+                try:
+                    controls_payload = [
+                        {
+                            "control_id": c['control_id'],
+                            "control_name": c['control_name'],
+                            "description": c['description'],
+                            "domain": c.get('domain')
+                        }
+                        for c in st.session_state.controls
+                    ]
+
+                    job_id = api_client.start_batch_mapping(
+                        controls=controls_payload,
+                        framework_name=st.session_state.framework_name,
+                    )
+                    st.session_state.mapping_job_id = job_id
+                    st.session_state.mapping_in_progress = True
+                    st.session_state.mapping_error = None
+                    st.rerun()
+
+                except httpx.ConnectError:
+                    st.error("❌ Cannot connect to backend. Make sure it's running.")
+                except Exception as e:
+                    st.error(f"❌ Error starting batch mapping: {str(e)}")
+
+        with col_cancel:
+            if st.button("⏹️ Cancel", use_container_width=True):
+                st.session_state.mapping_in_progress = False
+                st.session_state.mapping_job_id = None
+                st.rerun()
 
 # Show existing mappings if any
 if st.session_state.mappings:

@@ -28,6 +28,12 @@ if "controls_loaded" not in st.session_state:
     st.session_state.controls_loaded = False
 if "pdf_extraction" not in st.session_state:
     st.session_state.pdf_extraction = None
+if "pdf_extracting" not in st.session_state:
+    st.session_state.pdf_extracting = False
+if "pdf_file_bytes" not in st.session_state:
+    st.session_state.pdf_file_bytes = None
+if "pdf_file_name" not in st.session_state:
+    st.session_state.pdf_file_name = None
 
 # ── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -65,11 +71,28 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file:
-    file_size = len(uploaded_file.getvalue())
-    st.success(f"✅ **{uploaded_file.name}** ({file_size:,} bytes)")
+    # Persist file bytes in session state so they survive page navigation
+    st.session_state.pdf_file_bytes = uploaded_file.getvalue()
+    st.session_state.pdf_file_name = uploaded_file.name
+
+# Determine which file we're working with (freshly uploaded or persisted)
+file_bytes = st.session_state.pdf_file_bytes
+file_name = st.session_state.pdf_file_name
+
+if file_bytes:
+    file_size = len(file_bytes)
+    st.success(f"✅ **{file_name}** ({file_size:,} bytes)")
 
     # ── Step 2: Extract controls ──────────────────────────────────────
     st.markdown("### 2️⃣ Extract Controls")
+
+    # Show interrupted-extraction warning
+    if st.session_state.pdf_extracting and not st.session_state.pdf_extraction:
+        st.warning(
+            "⚠️ A previous extraction was interrupted (e.g., you navigated away). "
+            "Click **Extract Controls** to try again."
+        )
+        st.session_state.pdf_extracting = False
 
     extract_button = st.button(
         "🔍 Extract Controls from PDF",
@@ -80,113 +103,127 @@ if uploaded_file:
 
     if extract_button:
         client = APIClient(base_url=api_url)
+        st.session_state.pdf_extracting = True
 
         with st.spinner("🤖 AI is reading the PDF and extracting controls... This may take a minute."):
             try:
                 result = client.extract_controls_from_pdf(
-                    pdf_bytes=uploaded_file.getvalue(),
-                    filename=uploaded_file.name,
+                    pdf_bytes=file_bytes,
+                    filename=file_name,
                 )
                 st.session_state.pdf_extraction = result
+                st.session_state.pdf_extracting = False
                 st.rerun()
             except Exception as e:
+                st.session_state.pdf_extracting = False
                 st.error(f"❌ Extraction failed: {e}")
 
-    # ── Step 3: Preview & edit extracted controls ─────────────────────
-    extraction = st.session_state.pdf_extraction
-    if extraction:
-        st.markdown("### 3️⃣ Review Extracted Controls")
+# ── Step 3: Preview & edit extracted controls ─────────────────────────────
+# Shown regardless of whether a file is currently in the uploader —
+# this ensures results survive page navigation.
+extraction = st.session_state.pdf_extraction
+if extraction:
+    st.markdown("### 3️⃣ Review Extracted Controls")
 
-        # Framework metadata
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Framework", extraction.get("framework_name", "Unknown"))
-        with col2:
-            st.metric("Controls Found", extraction.get("total_controls", 0))
-        with col3:
-            st.metric("Version", extraction.get("framework_version") or "—")
-        with col4:
-            st.metric("Region", extraction.get("country_or_region") or "—")
+    # Framework metadata
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Framework", extraction.get("framework_name", "Unknown"))
+    with col2:
+        st.metric("Controls Found", extraction.get("total_controls", 0))
+    with col3:
+        st.metric("Version", extraction.get("framework_version") or "—")
+    with col4:
+        st.metric("Region", extraction.get("country_or_region") or "—")
 
-        controls = extraction.get("controls", [])
-        if controls:
-            # Convert to DataFrame for editing
-            df = pd.DataFrame(controls)
+    controls = extraction.get("controls", [])
+    if controls:
+        # Convert to DataFrame for editing
+        df = pd.DataFrame(controls)
 
-            # Show editable table
-            edited_df = st.data_editor(
-                df,
-                num_rows="dynamic",
-                use_container_width=True,
-                key="pdf_controls_editor",
-                column_config={
-                    "control_id": st.column_config.TextColumn("Control ID", width="small"),
-                    "control_name": st.column_config.TextColumn("Control Name", width="medium"),
-                    "description": st.column_config.TextColumn("Description", width="large"),
-                    "domain": st.column_config.TextColumn("Domain", width="medium"),
-                    "control_type": st.column_config.TextColumn("Type", width="small"),
-                    "requirements": st.column_config.TextColumn("Requirements", width="medium"),
-                },
-            )
+        # Show editable table
+        edited_df = st.data_editor(
+            df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="pdf_controls_editor",
+            column_config={
+                "control_id": st.column_config.TextColumn("Control ID", width="small"),
+                "control_name": st.column_config.TextColumn("Control Name", width="medium"),
+                "description": st.column_config.TextColumn("Description", width="large"),
+                "domain": st.column_config.TextColumn("Domain", width="medium"),
+                "control_type": st.column_config.TextColumn("Type", width="small"),
+                "requirements": st.column_config.TextColumn("Requirements", width="medium"),
+            },
+        )
 
-            st.caption(f"📝 {len(edited_df)} controls — edit, add, or remove rows as needed")
+        st.caption(f"📝 {len(edited_df)} controls — edit, add, or remove rows as needed")
 
-            # ── Step 4: Framework name & load ─────────────────────────
-            st.markdown("### 4️⃣ Confirm & Load Controls")
+        # ── Step 4: Framework name & load ─────────────────────────
+        st.markdown("### 4️⃣ Confirm & Load Controls")
 
-            framework_name = st.text_input(
-                "Framework Name *",
-                value=extraction.get("framework_name", ""),
-                placeholder="e.g., SAMA Cybersecurity Framework",
-                help="Confirm or edit the framework name",
-            )
+        framework_name = st.text_input(
+            "Framework Name *",
+            value=extraction.get("framework_name", ""),
+            placeholder="e.g., SAMA Cybersecurity Framework",
+            help="Confirm or edit the framework name",
+        )
 
-            col_load, col_clear = st.columns([1, 1])
+        col_load, col_clear = st.columns([1, 1])
 
-            with col_load:
-                if st.button("✅ Load Controls into Mapping Flow", type="primary", use_container_width=True):
-                    if not framework_name:
-                        st.error("❌ Please enter a framework name")
-                    elif len(edited_df) == 0:
-                        st.error("❌ No controls to load")
-                    else:
-                        # Convert edited DataFrame to list of dicts
-                        loaded_controls = []
-                        for _, row in edited_df.iterrows():
-                            control = {
-                                "control_id": str(row.get("control_id", "")),
-                                "control_name": str(row.get("control_name", "")),
-                                "description": str(row.get("description", "")),
-                                "domain": str(row.get("domain", "")) if pd.notna(row.get("domain")) else None,
-                                "control_type": str(row.get("control_type", "")) if pd.notna(row.get("control_type")) else None,
-                            }
-                            loaded_controls.append(control)
+        with col_load:
+            if st.button("✅ Load Controls into Mapping Flow", type="primary", use_container_width=True):
+                if not framework_name:
+                    st.error("❌ Please enter a framework name")
+                elif len(edited_df) == 0:
+                    st.error("❌ No controls to load")
+                else:
+                    # Convert edited DataFrame to list of dicts
+                    loaded_controls = []
+                    for _, row in edited_df.iterrows():
+                        control = {
+                            "control_id": str(row.get("control_id", "")),
+                            "control_name": str(row.get("control_name", "")),
+                            "description": str(row.get("description", "")),
+                            "domain": str(row.get("domain", "")) if pd.notna(row.get("domain")) else None,
+                            "control_type": str(row.get("control_type", "")) if pd.notna(row.get("control_type")) else None,
+                        }
+                        loaded_controls.append(control)
 
-                        # Save to session state — same format as CSV upload (Page 1)
-                        st.session_state.controls = loaded_controls
-                        st.session_state.framework_name = framework_name
-                        st.session_state.mappings = []  # Reset any previous mappings
-                        st.session_state.controls_loaded = True
-                        st.session_state.upload_source = "pdf"
+                    # Save to session state — same format as CSV upload (Page 1)
+                    st.session_state.controls = loaded_controls
+                    st.session_state.framework_name = framework_name
+                    st.session_state.mappings = []  # Reset any previous mappings
+                    st.session_state.controls_loaded = True
+                    st.session_state.upload_source = "pdf"
 
-                        st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
-                        st.balloons()
+                    st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
+                    st.balloons()
 
-                        st.markdown("---")
-                        st.markdown("### ➡️ Next Steps")
-                        st.info(
-                            "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
-                            "to map them to Azure policies, then **Review** and **Export**."
-                        )
+                    st.markdown("---")
+                    st.markdown("### ➡️ Next Steps")
+                    st.info(
+                        "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
+                        "to map them to Azure policies, then **Review** and **Export**."
+                    )
 
-            with col_clear:
-                if st.button("🗑️ Clear & Start Over", use_container_width=True):
-                    st.session_state.pdf_extraction = None
-                    st.rerun()
-        else:
-            st.warning("No controls were extracted from the PDF. The document may not contain structured controls.")
+        with col_clear:
+            if st.button("🗑️ Clear & Start Over", use_container_width=True):
+                st.session_state.pdf_extraction = None
+                st.session_state.pdf_extracting = False
+                st.session_state.pdf_file_bytes = None
+                st.session_state.pdf_file_name = None
+                st.rerun()
+    else:
+        st.warning("No controls were extracted from the PDF. The document may not contain structured controls.")
+        if st.button("🗑️ Clear & Try Again", use_container_width=True):
+            st.session_state.pdf_extraction = None
+            st.session_state.pdf_extracting = False
+            st.session_state.pdf_file_bytes = None
+            st.session_state.pdf_file_name = None
+            st.rerun()
 
-else:
+elif not file_bytes:
     # ── Instructions when no file is uploaded ─────────────────────────
     st.info("👆 Upload a compliance control PDF to get started")
 
