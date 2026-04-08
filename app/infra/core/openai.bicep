@@ -2,8 +2,8 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param modelName string = 'gpt-5.4-pro'
-param modelVersion string = '2026-04-01'
+param modelName string = 'gpt-5.2'
+param modelVersion string = '2026-02-01'
 param fallbackModel string = 'gpt-5.4-mini'
 param fallbackVersion string = '2026-04-01'
 param apiVersion string = '2024-12-01-preview'

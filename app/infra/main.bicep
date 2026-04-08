@@ -10,10 +10,10 @@ param environmentName string
 param location string
 
 @description('Azure OpenAI model name to deploy')
-param openAiModelName string = 'gpt-5.4-pro'
+param openAiModelName string = 'gpt-5.2'
 
 @description('Azure OpenAI model version')
-param openAiModelVersion string = '2026-04-01'
+param openAiModelVersion string = '2026-02-01'
 
 @description('Fallback Azure OpenAI model if primary is not available')
 param openAiFallbackModel string = 'gpt-5.4-mini'
