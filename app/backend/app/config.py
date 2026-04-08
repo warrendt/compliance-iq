@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     azure_client_id: Optional[str] = None
     azure_tenant_id: Optional[str] = None
 
+    # Microsoft Graph API Settings (for M365 and Purview)
+    graph_api_base_url: str = "https://graph.microsoft.com/v1.0"
+    graph_api_beta_url: str = "https://graph.microsoft.com/beta"
+    graph_client_id: Optional[str] = None  # App registration for Graph API access
+    graph_client_secret: Optional[str] = None  # Client secret (use managed identity in production)
+
     # Cosmos DB Settings
     cosmos_db_endpoint: Optional[str] = None
     cosmos_db_database_name: str = "compliance-iq-db"
