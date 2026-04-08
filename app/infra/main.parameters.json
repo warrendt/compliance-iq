@@ -9,16 +9,16 @@
       "value": "${AZURE_LOCATION=swedencentral}"
     },
     "openAiModelName": {
-      "value": "${AZURE_OPENAI_MODEL_NAME=gpt-4.1}"
+      "value": "${AZURE_OPENAI_MODEL_NAME=gpt-5.4-pro}"
     },
     "openAiModelVersion": {
-      "value": "${AZURE_OPENAI_MODEL_VERSION=2025-04-14}"
+      "value": "${AZURE_OPENAI_MODEL_VERSION=2026-04-01}"
     },
     "openAiFallbackModel": {
-      "value": "${AZURE_OPENAI_FALLBACK_MODEL=gpt-4o}"
+      "value": "${AZURE_OPENAI_FALLBACK_MODEL=gpt-5.4-mini}"
     },
     "openAiFallbackVersion": {
-      "value": "${AZURE_OPENAI_FALLBACK_VERSION=2024-11-20}"
+      "value": "${AZURE_OPENAI_FALLBACK_VERSION=2026-04-01}"
     },
     "devPublicIpAddress": {
       "value": "${DEV_PUBLIC_IP=}"

@@ -50,28 +50,38 @@ hooks:
         if [ -z "$AZURE_OPENAI_MODEL_NAME" ]; then
           echo ""
           echo "Select the Azure OpenAI model to deploy:"
-          echo "  1) gpt-4.1          (latest, recommended — version 2025-04-14)"
-          echo "  2) gpt-4o           (broadly available    — version 2024-11-20)"
-          echo "  3) gpt-4o-mini      (lower cost option    — version 2024-07-18)"
-          echo "  4) gpt-4            (legacy               — version turbo-2024-04-09)"
-          printf "Enter choice [1-4, default: 1]: "
+          echo "  1) gpt-5.4-pro   — most capable, complex professional work         [recommended]"
+          echo "  2) gpt-5.4-mini  — cost-efficient, reliable everyday AI workloads"
+          echo "  3) gpt-5.4-nano  — ultra-efficient, low-latency, cost-effective at scale"
+          echo "  4) gpt-5.2       — enterprise agent: structured, auditable outputs"
+          echo "  5) gpt-5.1       — logic-heavy and multi-step reasoning tasks"
+          echo "  6) gpt-4.1       — proven, broadly available (stable fallback)"
+          printf "Enter choice [1-6, default: 1]: "
           read -r MODEL_CHOICE
           case "$MODEL_CHOICE" in
             2)
-              MODEL_NAME="gpt-4o"
-              MODEL_VERSION="2024-11-20"
+              MODEL_NAME="gpt-5.4-mini"
+              MODEL_VERSION="2026-04-01"
               ;;
             3)
-              MODEL_NAME="gpt-4o-mini"
-              MODEL_VERSION="2024-07-18"
+              MODEL_NAME="gpt-5.4-nano"
+              MODEL_VERSION="2026-04-01"
               ;;
             4)
-              MODEL_NAME="gpt-4"
-              MODEL_VERSION="turbo-2024-04-09"
+              MODEL_NAME="gpt-5.2"
+              MODEL_VERSION="2026-02-01"
               ;;
-            *)
+            5)
+              MODEL_NAME="gpt-5.1"
+              MODEL_VERSION="2026-01-01"
+              ;;
+            6)
               MODEL_NAME="gpt-4.1"
               MODEL_VERSION="2025-04-14"
+              ;;
+            *)
+              MODEL_NAME="gpt-5.4-pro"
+              MODEL_VERSION="2026-04-01"
               ;;
           esac
           azd env set AZURE_OPENAI_MODEL_NAME "$MODEL_NAME"
