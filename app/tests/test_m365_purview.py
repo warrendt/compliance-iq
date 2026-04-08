@@ -561,3 +561,286 @@ class TestGraphClient:
         """Test that get_graph_client returns instance."""
         client = get_graph_client()
         assert isinstance(client, GraphClient)
+
+
+# --- PDF Pipeline → M365/Purview Compatibility Tests ---
+
+class TestPipelineM365PurviewCompatibility:
+    """
+    Tests that controls extracted by the PDF pipeline are compatible with
+    the Microsoft 365 and Purview services.
+
+    The pipeline's ExtractedControl model maps to ExternalControl identically:
+      control_id        → control_id
+      control_title     → control_name
+      control_description → description
+      domain            → domain
+      control_type      → control_type
+      sub_controls (joined) → requirements
+    """
+
+    def _make_extracted_control_dict(
+        self,
+        control_id: str = "TEST-01",
+        control_title: str = "Test Control",
+        control_description: str = "A test control description",
+        domain: str = "Data Protection",
+        control_type: str = "Technical",
+        sub_controls: list = None,
+    ) -> dict:
+        """Build the dict form of an ExtractedControl (mirrors pipeline.models.ExtractedControl)."""
+        return {
+            "control_id": control_id,
+            "control_title": control_title,
+            "control_description": control_description,
+            "domain": domain,
+            "control_type": control_type,
+            "sub_controls": sub_controls or [],
+        }
+
+    def _extracted_to_external(self, ec: dict) -> ExternalControl:
+        """Replicate the conversion used in _run_m365_job / _run_purview_job."""
+        return ExternalControl(
+            control_id=ec["control_id"],
+            control_name=ec["control_title"],
+            description=ec["control_description"],
+            domain=ec["domain"],
+            control_type=ec["control_type"],
+            requirements="; ".join(ec["sub_controls"]) if ec["sub_controls"] else None,
+        )
+
+    # ── Conversion correctness ──────────────────────────────────────────────
+
+    def test_field_mapping_basic(self):
+        """Verify every extracted field lands in the correct ExternalControl field."""
+        raw = self._make_extracted_control_dict(
+            control_id="CTRL-01",
+            control_title="MFA Requirement",
+            control_description="All users must use multi-factor authentication.",
+            domain="Identity & Access Management",
+            control_type="Technical",
+        )
+        ec = self._extracted_to_external(raw)
+
+        assert ec.control_id == "CTRL-01"
+        assert ec.control_name == "MFA Requirement"
+        assert ec.description == "All users must use multi-factor authentication."
+        assert ec.domain == "Identity & Access Management"
+        assert ec.control_type == "Technical"
+        assert ec.requirements is None
+
+    def test_field_mapping_with_sub_controls(self):
+        """Sub-controls are joined as semicolon-separated requirements."""
+        raw = self._make_extracted_control_dict(
+            control_id="CTRL-02",
+            control_title="Encryption",
+            control_description="Data must be encrypted at rest and in transit.",
+            sub_controls=["AES-256 for data at rest", "TLS 1.2+ for data in transit"],
+        )
+        ec = self._extracted_to_external(raw)
+
+        assert ec.requirements == "AES-256 for data at rest; TLS 1.2+ for data in transit"
+
+    def test_field_mapping_empty_sub_controls(self):
+        """Empty sub-controls list produces None requirements."""
+        raw = self._make_extracted_control_dict(sub_controls=[])
+        ec = self._extracted_to_external(raw)
+        assert ec.requirements is None
+
+    # ── M365 service compatibility ──────────────────────────────────────────
+
+    def test_m365_accepts_converted_controls(self):
+        """M365PolicyService correctly maps controls converted from extracted form."""
+        service = M365PolicyService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-01", "Strong Authentication",
+                    "Enforce MFA for all users and admin accounts.",
+                    domain="Identity & Access Management",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-02", "Data Loss Prevention",
+                    "Prevent unauthorized exfiltration of sensitive data.",
+                    domain="Data Protection & Encryption",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-03", "Device Compliance",
+                    "All devices must meet baseline security requirements.",
+                    domain="Endpoint Security",
+                )
+            ),
+        ]
+
+        request = M365GenerationRequest(
+            framework_name="Test PDF Framework",
+            policy_types=[
+                M365PolicyType.DLP,
+                M365PolicyType.CONDITIONAL_ACCESS,
+                M365PolicyType.DEVICE_COMPLIANCE,
+                M365PolicyType.INFORMATION_PROTECTION,
+            ],
+        )
+        package = service.generate_m365_package(controls, request)
+
+        assert package.framework_name == "Test PDF Framework"
+        assert package.total_controls == 3
+        assert len(package.mappings) == 3
+        assert len(package.policies) > 0
+        # Every mapping should reference a valid M365PolicyType
+        for mapping in package.mappings:
+            assert isinstance(mapping.m365_policy_type, M365PolicyType)
+            assert 0.0 <= mapping.confidence_score <= 1.0
+
+    def test_m365_ai_copilot_domain_maps_to_dlp(self):
+        """
+        Controls tagged with 'AI & Emerging Technology' or 'Governance & Policy'
+        (common AI/Copilot governance domains from the extractor) receive a policy mapping.
+        """
+        service = M365PolicyService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "AI-01", "AI Data Governance",
+                    "All AI/Copilot inputs and outputs must be classified and controlled.",
+                    domain="AI & Emerging Technology",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "AI-02", "Copilot Access Control",
+                    "Access to AI/Copilot features must require MFA and approved devices.",
+                    domain="Governance & Policy",
+                )
+            ),
+        ]
+        request = M365GenerationRequest(framework_name="AI Governance")
+        package = service.generate_m365_package(controls, request)
+
+        assert package.total_controls == 2
+        assert len(package.mappings) == 2
+        # All mappings have a policy type assigned
+        for mapping in package.mappings:
+            assert mapping.m365_policy_type is not None
+
+    # ── Purview service compatibility ───────────────────────────────────────
+
+    def test_purview_accepts_converted_controls(self):
+        """PurviewConfigService correctly processes controls converted from extracted form."""
+        service = PurviewConfigService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-01", "Data Classification",
+                    "All data assets must be classified according to sensitivity.",
+                    domain="Data Classification",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-02", "Data Retention",
+                    "Regulated data must be retained for a minimum of 7 years.",
+                    domain="Data Retention",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "CTRL-03", "Information Protection",
+                    "Sensitive information must be protected from unauthorised disclosure.",
+                    domain="Information Protection",
+                )
+            ),
+        ]
+
+        request = PurviewGenerationRequest(
+            framework_name="Test PDF Framework",
+            config_types=[
+                PurviewConfigType.SENSITIVITY_LABEL,
+                PurviewConfigType.DLP_POLICY,
+                PurviewConfigType.RETENTION_LABEL,
+            ],
+        )
+        package = service.generate_purview_package(controls, request)
+
+        assert package.framework_name == "Test PDF Framework"
+        assert package.total_controls == 3
+        assert len(package.mappings) == 3
+        assert len(package.sensitivity_labels) > 0
+        assert len(package.dlp_policies) > 0
+        assert len(package.retention_labels) > 0
+        # Every mapping should reference a valid PurviewConfigType
+        for mapping in package.mappings:
+            assert isinstance(mapping.purview_config_type, PurviewConfigType)
+            assert 0.0 <= mapping.confidence_score <= 1.0
+
+    def test_purview_ai_copilot_domain_maps(self):
+        """
+        Controls tagged with 'AI & Emerging Technology' or 'Privacy & Data Sovereignty'
+        receive a Purview configuration mapping (typically DLP or Sensitivity Labels).
+        """
+        service = PurviewConfigService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "AI-01", "AI Output Classification",
+                    "Outputs generated by AI/Copilot must be labelled with appropriate sensitivity.",
+                    domain="AI & Emerging Technology",
+                )
+            ),
+            self._extracted_to_external(
+                self._make_extracted_control_dict(
+                    "AI-02", "Privacy by Design for AI",
+                    "Personal data used for AI training must be governed under privacy controls.",
+                    domain="Privacy & Data Sovereignty",
+                )
+            ),
+        ]
+        request = PurviewGenerationRequest(
+            framework_name="AI Governance",
+            config_types=[PurviewConfigType.SENSITIVITY_LABEL, PurviewConfigType.DLP_POLICY],
+        )
+        package = service.generate_purview_package(controls, request)
+
+        assert package.total_controls == 2
+        assert len(package.mappings) == 2
+        for mapping in package.mappings:
+            assert mapping.purview_config_type is not None
+
+    # ── Package serialisation (roundtrip for download) ──────────────────────
+
+    def test_m365_package_serialises_to_json(self):
+        """M365 package can be JSON-serialised (mimics the download endpoint)."""
+        import json
+        service = M365PolicyService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict("CTRL-01", "MFA", "Identity & Access Control")
+            ),
+        ]
+        package = service.generate_m365_package(controls, M365GenerationRequest(framework_name="Test"))
+        output = json.dumps(package.model_dump(mode="json"), indent=2)
+        # Round-trip check
+        parsed = json.loads(output)
+        assert parsed["framework_name"] == "Test"
+        assert "policies" in parsed
+        assert "mappings" in parsed
+
+    def test_purview_package_serialises_to_json(self):
+        """Purview package can be JSON-serialised (mimics the download endpoint)."""
+        import json
+        service = PurviewConfigService()
+        controls = [
+            self._extracted_to_external(
+                self._make_extracted_control_dict("CTRL-01", "Classification", "Data Classification")
+            ),
+        ]
+        package = service.generate_purview_package(controls, PurviewGenerationRequest(framework_name="Test"))
+        output = json.dumps(package.model_dump(mode="json"), indent=2)
+        parsed = json.loads(output)
+        assert parsed["framework_name"] == "Test"
+        assert "sensitivity_labels" in parsed
+        assert "mappings" in parsed

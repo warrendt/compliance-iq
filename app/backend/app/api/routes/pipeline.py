@@ -1,6 +1,7 @@
 """
-API routes for the compliance pipeline — PDF to Defender for Cloud Initiative.
-Provides a POST endpoint that accepts a PDF upload and runs the full pipeline.
+API routes for the compliance pipeline — PDF to compliance initiative artifacts.
+Provides POST endpoints that accept a PDF upload and run the full pipeline,
+targeting Azure Defender for Cloud, Microsoft 365, or Microsoft Purview.
 Also provides an extract-only endpoint that returns controls in CSV-flow format.
 """
 
@@ -23,7 +24,7 @@ import httpx
 from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -46,9 +47,10 @@ _cosmos_container = None
 class PipelineJobStatus(BaseModel):
     """Status of a pipeline job."""
     job_id: str
-    status: str  # pending, extracting_text, extracting_controls, mapping_policies, validating, generating, completed, failed
+    status: str  # pending, extracting_text, extracting_controls, mapping_policies, validating, generating, generating_m365, generating_purview, completed, failed
     progress: int = 0  # 0-100
     stage: str = ""
+    target_platform: str = "defender"  # defender, m365, purview
     framework_name: Optional[str] = None
     controls_extracted: int = 0
     controls_mapped: int = 0
@@ -236,6 +238,82 @@ async def run_pipeline_selftest(
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
 
+@router.post("/run/m365", response_model=PipelineJobStatus)
+async def run_m365_pipeline_endpoint(
+    background_tasks: BackgroundTasks,
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+    min_confidence: float = Form(0.5, ge=0.0, le=1.0),
+    enforcement_mode: str = Form("TestWithNotifications", description="M365 policy enforcement mode"),
+):
+    """
+    Submit a compliance PDF for Microsoft 365 policy generation.
+
+    The pipeline will:
+    1. Extract text from the PDF
+    2. Use AI to extract all compliance controls
+    3. Map each control to Microsoft 365 policies (DLP, Conditional Access,
+       Device Compliance, Information Protection)
+    4. Generate a downloadable M365 policy package (JSON)
+
+    Returns a job ID that can be polled for status and downloaded on completion.
+    """
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    content = await pdf_file.read()
+    job_id, job = _create_job(
+        filename=pdf_file.filename,
+        content=content,
+        min_confidence=min_confidence,
+        allowed_locations=None,
+        target_platform="m365",
+        enforcement_mode=enforcement_mode,
+    )
+
+    background_tasks.add_task(_run_m365_job, job_id)
+    logger.info(f"M365 pipeline job created: {job_id} for {pdf_file.filename}")
+
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
+@router.post("/run/purview", response_model=PipelineJobStatus)
+async def run_purview_pipeline_endpoint(
+    background_tasks: BackgroundTasks,
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+    min_confidence: float = Form(0.5, ge=0.0, le=1.0),
+    enforcement_mode: str = Form("TestWithNotifications", description="Purview policy enforcement mode"),
+):
+    """
+    Submit a compliance PDF for Microsoft Purview configuration generation.
+
+    The pipeline will:
+    1. Extract text from the PDF
+    2. Use AI to extract all compliance controls
+    3. Map each control to Microsoft Purview configurations (Sensitivity Labels,
+       DLP Policies, Retention Labels, Information Barriers)
+    4. Generate a downloadable Purview configuration package (JSON)
+
+    Returns a job ID that can be polled for status and downloaded on completion.
+    """
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    content = await pdf_file.read()
+    job_id, job = _create_job(
+        filename=pdf_file.filename,
+        content=content,
+        min_confidence=min_confidence,
+        allowed_locations=None,
+        target_platform="purview",
+        enforcement_mode=enforcement_mode,
+    )
+
+    background_tasks.add_task(_run_purview_job, job_id)
+    logger.info(f"Purview pipeline job created: {job_id} for {pdf_file.filename}")
+
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+
+
 @router.get("/status/{job_id}", response_model=PipelineJobStatus)
 async def get_pipeline_status(job_id: str):
     """Get the current status of a pipeline job."""
@@ -264,7 +342,13 @@ async def get_pipeline_logs(job_id: str, since: int = 0):
 
 @router.get("/download/{job_id}")
 async def download_pipeline_output(job_id: str):
-    """Download the generated initiative artifacts as a ZIP file."""
+    """
+    Download the generated compliance artifacts.
+
+    - **Azure Defender** jobs: returns a ZIP containing initiative JSON, deployment scripts, and mappings CSV.
+    - **M365** jobs: returns a JSON file containing the Microsoft 365 policy package.
+    - **Purview** jobs: returns a JSON file containing the Microsoft Purview configuration package.
+    """
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
 
@@ -273,6 +357,23 @@ async def download_pipeline_output(job_id: str):
     if job["status"] != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job['status']})")
 
+    target_platform = job.get("target_platform", "defender")
+    fw_name = job.get("framework_name", "initiative")
+    safe_name = fw_name.replace(" ", "_").replace("/", "_")
+
+    # M365 and Purview jobs store their output as a JSON string in the job dict
+    if target_platform in ("m365", "purview"):
+        output_json = job.get("output_json")
+        if not output_json:
+            raise HTTPException(500, "Output package not found for this job")
+        output_filename = job.get("output_filename", f"{safe_name}_{target_platform}_package.json")
+        return Response(
+            content=output_json,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{output_filename}"'},
+        )
+
+    # Azure Defender jobs: return a ZIP of the output directory
     _ensure_output_dir(job_id, job)
 
     output_dir = job.get("output_dir")
@@ -288,9 +389,6 @@ async def download_pipeline_output(job_id: str):
                 zf.write(file_path, file_path.name)
 
     zip_buffer.seek(0)
-
-    fw_name = job.get("framework_name", "initiative")
-    safe_name = fw_name.replace(" ", "_").replace("/", "_")
 
     return StreamingResponse(
         zip_buffer,
@@ -531,6 +629,240 @@ async def _run_pipeline_job(job_id: str):
         _log_debug(job_id, f"Pipeline failed: {e}")
 
 
+async def _run_m365_job(job_id: str):
+    """Extract controls from PDF and generate a Microsoft 365 policy package."""
+    from app.pipeline import (
+        PipelineConfig,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+        extract_controls_from_text,
+    )
+    from app.models.control import ExternalControl
+    from app.models.m365_policy import M365PolicyType, M365ServiceScope, M365GenerationRequest
+    from app.services.m365_policy_service import get_m365_policy_service
+
+    job = _jobs[job_id]
+
+    try:
+        tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_m365_")
+        pdf_path = Path(tmp_dir) / job["pdf_filename"]
+        pdf_path.write_bytes(job["pdf_content"])
+
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            job["status"] = "failed"
+            job["error"] = f"Config errors: {'; '.join(errors)}"
+            _log_debug(job_id, job["error"])
+            return
+
+        # Stage 1: Extract text
+        job["status"] = "extracting_text"
+        job["stage"] = "Extracting text from PDF"
+        job["progress"] = 5
+        _log_debug(job_id, "Starting text extraction")
+
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        job["progress"] = 15
+        _log_debug(job_id, f"Extracted {len(pdf_text):,} chars from PDF")
+
+        # Stage 2: Extract controls
+        job["status"] = "extracting_controls"
+        job["stage"] = "AI extracting controls from document"
+        job["progress"] = 20
+        _log_debug(job_id, "Extracting controls with Azure OpenAI")
+
+        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        job["framework_name"] = extraction.framework_name
+        job["controls_extracted"] = len(extraction.controls)
+        job["progress"] = 50
+        _log_debug(job_id, f"Extracted {len(extraction.controls)} controls (framework: {extraction.framework_name})")
+
+        # Stage 3: Generate M365 policy package
+        job["status"] = "generating_m365"
+        job["stage"] = "Generating Microsoft 365 policy package"
+        job["progress"] = 55
+        _log_debug(job_id, "Generating M365 policy package")
+
+        # Convert ExtractedControl → ExternalControl (field names are identical)
+        controls = [
+            ExternalControl(
+                control_id=c.control_id,
+                control_name=c.control_title,
+                description=c.control_description,
+                domain=c.domain,
+                control_type=c.control_type,
+                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
+            )
+            for c in extraction.controls
+        ]
+
+        service = get_m365_policy_service()
+        gen_request = M365GenerationRequest(
+            framework_name=extraction.framework_name,
+            framework_version=extraction.framework_version,
+            policy_types=[
+                M365PolicyType.DLP,
+                M365PolicyType.CONDITIONAL_ACCESS,
+                M365PolicyType.DEVICE_COMPLIANCE,
+                M365PolicyType.INFORMATION_PROTECTION,
+            ],
+            service_scopes=[M365ServiceScope.ALL],
+            enforcement_mode=job.get("enforcement_mode", "TestWithNotifications"),
+        )
+
+        package = service.generate_m365_package(controls, gen_request)
+        job["controls_mapped"] = len(package.mappings)
+
+        # Store serialised output in the job dict (no file system needed)
+        fw_safe = extraction.framework_name.replace(" ", "_").replace("/", "_")
+        job["output_json"] = json.dumps(package.model_dump(mode="json"), indent=2)
+        job["output_filename"] = f"{fw_safe}_m365_policies.json"
+
+        job["status"] = "completed"
+        job["stage"] = "Complete"
+        job["progress"] = 100
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(job_id, f"M365 pipeline completed — {len(package.policies)} policies, {len(package.mappings)} mappings")
+
+        logger.info(
+            f"M365 pipeline job {job_id} completed: "
+            f"{len(package.policies)} policies, {len(package.mappings)} mappings"
+        )
+
+        del job["pdf_content"]
+
+    except Exception as e:
+        logger.error(f"M365 pipeline job {job_id} failed: {e}", exc_info=True)
+        job["status"] = "failed"
+        job["error"] = str(e)
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(job_id, f"M365 pipeline failed: {e}")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+async def _run_purview_job(job_id: str):
+    """Extract controls from PDF and generate a Microsoft Purview configuration package."""
+    from app.pipeline import (
+        PipelineConfig,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+        extract_controls_from_text,
+    )
+    from app.models.control import ExternalControl
+    from app.models.purview import PurviewConfigType, PurviewGenerationRequest
+    from app.services.purview_service import get_purview_config_service
+
+    job = _jobs[job_id]
+
+    try:
+        tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_purview_")
+        pdf_path = Path(tmp_dir) / job["pdf_filename"]
+        pdf_path.write_bytes(job["pdf_content"])
+
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            job["status"] = "failed"
+            job["error"] = f"Config errors: {'; '.join(errors)}"
+            _log_debug(job_id, job["error"])
+            return
+
+        # Stage 1: Extract text
+        job["status"] = "extracting_text"
+        job["stage"] = "Extracting text from PDF"
+        job["progress"] = 5
+        _log_debug(job_id, "Starting text extraction")
+
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        job["progress"] = 15
+        _log_debug(job_id, f"Extracted {len(pdf_text):,} chars from PDF")
+
+        # Stage 2: Extract controls
+        job["status"] = "extracting_controls"
+        job["stage"] = "AI extracting controls from document"
+        job["progress"] = 20
+        _log_debug(job_id, "Extracting controls with Azure OpenAI")
+
+        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        job["framework_name"] = extraction.framework_name
+        job["controls_extracted"] = len(extraction.controls)
+        job["progress"] = 50
+        _log_debug(job_id, f"Extracted {len(extraction.controls)} controls (framework: {extraction.framework_name})")
+
+        # Stage 3: Generate Purview configuration package
+        job["status"] = "generating_purview"
+        job["stage"] = "Generating Microsoft Purview configuration package"
+        job["progress"] = 55
+        _log_debug(job_id, "Generating Purview configuration package")
+
+        # Convert ExtractedControl → ExternalControl (field names are identical)
+        controls = [
+            ExternalControl(
+                control_id=c.control_id,
+                control_name=c.control_title,
+                description=c.control_description,
+                domain=c.domain,
+                control_type=c.control_type,
+                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
+            )
+            for c in extraction.controls
+        ]
+
+        service = get_purview_config_service()
+        gen_request = PurviewGenerationRequest(
+            framework_name=extraction.framework_name,
+            framework_version=extraction.framework_version,
+            config_types=[
+                PurviewConfigType.SENSITIVITY_LABEL,
+                PurviewConfigType.DLP_POLICY,
+                PurviewConfigType.RETENTION_LABEL,
+                PurviewConfigType.RETENTION_POLICY,
+                PurviewConfigType.INFORMATION_BARRIER,
+            ],
+            enforcement_mode=job.get("enforcement_mode", "TestWithNotifications"),
+        )
+
+        package = service.generate_purview_package(controls, gen_request)
+        job["controls_mapped"] = len(package.mappings)
+
+        # Store serialised output in the job dict (no file system needed)
+        fw_safe = extraction.framework_name.replace(" ", "_").replace("/", "_")
+        job["output_json"] = json.dumps(package.model_dump(mode="json"), indent=2)
+        job["output_filename"] = f"{fw_safe}_purview_config.json"
+
+        job["status"] = "completed"
+        job["stage"] = "Complete"
+        job["progress"] = 100
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(
+            job_id,
+            f"Purview pipeline completed — {len(package.sensitivity_labels)} sensitivity labels, "
+            f"{len(package.dlp_policies)} DLP policies, {len(package.retention_labels)} retention labels, "
+            f"{len(package.mappings)} mappings",
+        )
+
+        logger.info(
+            f"Purview pipeline job {job_id} completed: "
+            f"{len(package.sensitivity_labels)} sensitivity labels, "
+            f"{len(package.dlp_policies)} DLP policies, {len(package.retention_labels)} retention labels"
+        )
+
+        del job["pdf_content"]
+
+    except Exception as e:
+        logger.error(f"Purview pipeline job {job_id} failed: {e}", exc_info=True)
+        job["status"] = "failed"
+        job["error"] = str(e)
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(job_id, f"Purview pipeline failed: {e}")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
     if not allowed_locations:
         return None
@@ -539,7 +871,13 @@ def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
 
 
 def _create_job(
-    *, filename: str, content: bytes, min_confidence: float, allowed_locations: Optional[list[str]]
+    *,
+    filename: str,
+    content: bytes,
+    min_confidence: float,
+    allowed_locations: Optional[list[str]],
+    target_platform: str = "defender",
+    enforcement_mode: str = "TestWithNotifications",
 ):
     if len(content) == 0:
         raise HTTPException(400, "PDF file is empty")
@@ -552,6 +890,7 @@ def _create_job(
         "status": "pending",
         "progress": 0,
         "stage": "Queued",
+        "target_platform": target_platform,
         "framework_name": None,
         "controls_extracted": 0,
         "controls_mapped": 0,
@@ -563,6 +902,7 @@ def _create_job(
         "pdf_content": content,
         "min_confidence": min_confidence,
         "allowed_locations": allowed_locations,
+        "enforcement_mode": enforcement_mode,
     }
     _jobs[job_id] = job
 
