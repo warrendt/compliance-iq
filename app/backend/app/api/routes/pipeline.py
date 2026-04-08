@@ -900,7 +900,7 @@ def _zip_dir(out: Path) -> bytes:
     return buf.getvalue()
 
 
-def _to_external_control(c):
+def _to_external_control(c: "ExtractedControl") -> "ExternalControl":
     """Convert a pipeline ExtractedControl to an ExternalControl accepted by M365/Purview services."""
     from app.models.control import ExternalControl
     return ExternalControl(
