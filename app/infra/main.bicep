@@ -13,13 +13,13 @@ param location string
 param openAiModelName string = 'gpt-5.2'
 
 @description('Azure OpenAI model version')
-param openAiModelVersion string = '2026-02-01'
+param openAiModelVersion string = '2025-12-11'
 
 @description('Fallback Azure OpenAI model if primary is not available')
 param openAiFallbackModel string = 'gpt-5.4-mini'
 
 @description('Fallback model version')
-param openAiFallbackVersion string = '2026-04-01'
+param openAiFallbackVersion string = '2026-03-17'
 
 @description('Azure OpenAI API version')
 param openAiApiVersion string = '2024-12-01-preview'

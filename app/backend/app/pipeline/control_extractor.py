@@ -103,11 +103,23 @@ def extract_controls_from_text(
             f"  Pages: {pdf_metadata.get('pages', 'Unknown')}\n"
         )
 
-    # Chunk if necessary (gpt-4.1 has ~128k context but we stay conservative)
-    chunks = chunk_text(pdf_text, max_chars=100000)
+    # Chunk conservatively to reduce structured-output truncation on long documents.
+    chunks = chunk_text(pdf_text, max_chars=max(8000, config.extract_chunk_chars))
 
     if len(chunks) == 1:
-        return _extract_single(client, config, chunks[0], metadata_context)
+        try:
+            return _extract_single(client, config, chunks[0], metadata_context)
+        except openai.LengthFinishReasonError:
+            # If a single-call extraction is truncated by output length, retry in multi-chunk mode.
+            fallback_chunk_chars = max(8000, config.extract_chunk_chars // 2)
+            retry_chunks = chunk_text(pdf_text, max_chars=fallback_chunk_chars)
+            if len(retry_chunks) <= 1:
+                raise
+            logger.warning(
+                "Single-chunk extraction hit output length limit. "
+                f"Retrying with {len(retry_chunks)} chunks (max_chars={fallback_chunk_chars})."
+            )
+            return _extract_multi_chunk(client, config, retry_chunks, metadata_context)
     else:
         logger.info(f"Document split into {len(chunks)} chunks for extraction")
         return _extract_multi_chunk(client, config, chunks, metadata_context)

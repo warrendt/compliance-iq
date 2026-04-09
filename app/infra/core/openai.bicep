@@ -3,11 +3,15 @@ param name string
 param location string = resourceGroup().location
 param tags object = {}
 param modelName string = 'gpt-5.2'
-param modelVersion string = '2026-02-01'
+param modelVersion string = '2025-12-11'
 param fallbackModel string = 'gpt-5.4-mini'
-param fallbackVersion string = '2026-04-01'
+param fallbackVersion string = '2026-03-17'
 param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
+@description('SKU used for model deployments (e.g., GlobalStandard for GPT-5 family)')
+param deploymentSku string = 'GlobalStandard'
+@description('Capacity for each model deployment')
+param deploymentCapacity int = 10
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
@@ -50,8 +54,8 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   parent: openai
   name: modelName
   sku: {
-    name: 'Standard'
-    capacity: 150 // TPM (tokens per minute) in thousands
+    name: deploymentSku
+    capacity: deploymentCapacity
   }
   properties: {
     model: {
@@ -69,8 +73,8 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
   parent: openai
   name: '${fallbackModel}-fallback'
   sku: {
-    name: 'Standard'
-    capacity: 150
+    name: deploymentSku
+    capacity: deploymentCapacity
   }
   properties: {
     model: {

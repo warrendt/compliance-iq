@@ -24,6 +24,7 @@ class PipelineConfig:
     # Model settings
     max_tokens: int = 16000
     batch_size: int = 5  # Controls per LLM call for mapping
+    extract_chunk_chars: int = 30000  # Max chars per extraction chunk to avoid length-truncated responses
 
     # Pipeline settings
     min_confidence_threshold: float = 0.5  # Include mappings above this confidence
@@ -49,6 +50,7 @@ class PipelineConfig:
             azure_openai_fallback_model=os.getenv("AZURE_OPENAI_FALLBACK_MODEL", "gpt-4o"),
             max_tokens=int(os.getenv("AI_MAX_TOKENS", "16000")),
             batch_size=int(os.getenv("AI_BATCH_SIZE", "5")),
+            extract_chunk_chars=int(os.getenv("AI_EXTRACT_CHUNK_CHARS", "30000")),
             min_confidence_threshold=float(os.getenv("MIN_CONFIDENCE", "0.5")),
             include_low_confidence=os.getenv("INCLUDE_LOW_CONFIDENCE", "true").lower() == "true",
             max_pdf_pages=int(os.getenv("MAX_PDF_PAGES", "200")),
