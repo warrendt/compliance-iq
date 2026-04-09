@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 from app.config import get_settings
-from app.api.routes import health, mapping, policy, sovereignty, pipeline, deploy
+from app.api.routes import health, mapping, policy, sovereignty, pipeline, deploy, platform, m365, purview
 from app.logging_config import configure_logging, get_logger
 from app.monitoring import app_insights
 from app.db import cosmos_client
@@ -38,7 +38,7 @@ for noisy_logger in [
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI-powered control mapping agent for Azure compliance frameworks",
+    description="AI-powered control mapping agent for Azure, Microsoft 365, and Purview compliance frameworks",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -67,6 +67,9 @@ app.include_router(policy.router, prefix=settings.api_v1_prefix)
 app.include_router(sovereignty.router, prefix=settings.api_v1_prefix)
 app.include_router(pipeline.router, prefix=settings.api_v1_prefix)
 app.include_router(deploy.router, prefix=settings.api_v1_prefix)
+app.include_router(platform.router, prefix=settings.api_v1_prefix)
+app.include_router(m365.router, prefix=settings.api_v1_prefix)
+app.include_router(purview.router, prefix=settings.api_v1_prefix)
 
 
 @app.on_event("startup")

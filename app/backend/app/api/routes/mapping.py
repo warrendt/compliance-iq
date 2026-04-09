@@ -8,7 +8,7 @@ from typing import List, Optional
 import logging
 import uuid
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models import (
     ExternalControl,
@@ -335,7 +335,7 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         job.status = "completed"
         job.progress = 100
         job.result = batch_result
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
 
         await _persist_job(job)
 

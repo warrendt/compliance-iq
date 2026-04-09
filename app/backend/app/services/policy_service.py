@@ -6,7 +6,7 @@ Generates valid Azure Policy initiative definitions from control mappings.
 import logging
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models import (
     ControlMapping,
@@ -61,7 +61,7 @@ class PolicyGenerationService:
         metadata = PolicyInitiativeMetadata(
             framework_name=request.framework_name,
             framework_version=request.framework_version,
-            generated_date=datetime.utcnow()
+            generated_date=datetime.now(timezone.utc)
         )
 
         # Create properties

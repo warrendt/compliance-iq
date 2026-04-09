@@ -3,7 +3,7 @@ Configuration module for AI Control Mapping Agent.
 Loads environment variables and provides application configuration.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from functools import lru_cache
 from typing import Optional, Union
@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     # Optional: For user-assigned managed identity
     azure_client_id: Optional[str] = None
     azure_tenant_id: Optional[str] = None
+
+    # Microsoft Graph API Settings (for M365 and Purview)
+    graph_api_base_url: str = "https://graph.microsoft.com/v1.0"
+    graph_api_beta_url: str = "https://graph.microsoft.com/beta"
+    graph_client_id: Optional[str] = None  # App registration for Graph API access
+    graph_client_secret: Optional[str] = None  # Client secret (use managed identity in production)
 
     # Cosmos DB Settings
     cosmos_db_endpoint: Optional[str] = None
@@ -70,10 +76,11 @@ class Settings(BaseSettings):
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
 
 @lru_cache

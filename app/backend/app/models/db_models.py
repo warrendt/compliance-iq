@@ -1,16 +1,16 @@
 """
 Database models for Cosmos DB documents
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 
 class BaseDocument(BaseModel):
     """Base model for all Cosmos DB documents"""
     id: str = Field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     _etag: Optional[str] = None
     _ts: Optional[int] = None
     ttl: Optional[int] = None  # Time to live in seconds
@@ -29,20 +29,19 @@ class MappingResultDocument(BaseDocument):
     reasoning: str
     policyRecommendations: List[str]
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "userId": "user@example.com",
-                "date": "2026-02-10",
-                "controlId": "SAMA-CC-001",
-                "controlName": "Access Control",
-                "framework": "SAMA",
-                "mcsbMappings": [],
-                "confidence": 0.95,
-                "reasoning": "Strong alignment with MCSB controls",
-                "policyRecommendations": ["CIS-1", "CIS-2"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "date": "2026-02-10",
+            "controlId": "SAMA-CC-001",
+            "controlName": "Access Control",
+            "framework": "SAMA",
+            "mcsbMappings": [],
+            "confidence": 0.95,
+            "reasoning": "Strong alignment with MCSB controls",
+            "policyRecommendations": ["CIS-1", "CIS-2"]
         }
+    })
 
 
 class AuditLogDocument(BaseDocument):
@@ -57,17 +56,16 @@ class AuditLogDocument(BaseDocument):
     success: bool = True
     errorMessage: Optional[str] = None
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "userId": "user@example.com",
-                "action": "mapping.created",
-                "resourceType": "mapping_result",
-                "resourceId": "abc-123",
-                "metadata": {"controlCount": 5},
-                "success": True
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "action": "mapping.created",
+            "resourceType": "mapping_result",
+            "resourceId": "abc-123",
+            "metadata": {"controlCount": 5},
+            "success": True
         }
+    })
 
 
 class UserUploadDocument(BaseDocument):
@@ -81,18 +79,17 @@ class UserUploadDocument(BaseDocument):
     rowCount: int
     columnNames: List[str]
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "userId": "user@example.com",
-                "fileName": "sama_controls.csv",
-                "fileSize": 1024,
-                "fileType": "text/csv",
-                "fileHash": "abc123...",
-                "rowCount": 36,
-                "columnNames": ["Control ID", "Control Name", "Description"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "fileName": "sama_controls.csv",
+            "fileSize": 1024,
+            "fileType": "text/csv",
+            "fileHash": "abc123...",
+            "rowCount": 36,
+            "columnNames": ["Control ID", "Control Name", "Description"]
         }
+    })
 
 
 class GeneratedArtifactDocument(BaseDocument):
@@ -105,15 +102,14 @@ class GeneratedArtifactDocument(BaseDocument):
     fileName: str
     fileSize: int
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "userId": "user@example.com",
-                "artifactType": "bicep",
-                "framework": "SAMA",
-                "controlCount": 36,
-                "content": "// Bicep template content...",
-                "fileName": "sama_policy_initiative.bicep",
-                "fileSize": 2048
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "artifactType": "bicep",
+            "framework": "SAMA",
+            "controlCount": 36,
+            "content": "// Bicep template content...",
+            "fileName": "sama_policy_initiative.bicep",
+            "fileSize": 2048
         }
+    })

@@ -4,9 +4,9 @@ Pydantic models for Azure Policy initiatives.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from app.models.mapping import ControlMapping
@@ -28,14 +28,13 @@ class PolicyDefinitionReference(BaseModel):
         description="Parameter values for this policy"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
-                "policyDefinitionReferenceId": "SAMA-AC-01",
-                "parameters": {}
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
+            "policyDefinitionReferenceId": "SAMA-AC-01",
+            "parameters": {}
         }
+    })
 
 
 class PolicyInitiativeMetadata(BaseModel):
@@ -44,21 +43,20 @@ class PolicyInitiativeMetadata(BaseModel):
     category: str = Field(default="Regulatory Compliance")
     source: str = Field(default="ComplianceIQ AI Mapping Agent")
     version: str = Field(default="1.0.0")
-    generated_date: datetime = Field(default_factory=datetime.utcnow)
+    generated_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     framework_name: Optional[str] = None
     framework_version: Optional[str] = None
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "category": "Regulatory Compliance",
-                "source": "ComplianceIQ AI Mapping Agent",
-                "version": "1.0.0",
-                "generatedDate": "2026-01-20T10:00:00Z",
-                "frameworkName": "SAMA Cybersecurity Framework",
-                "frameworkVersion": "v1.0"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "category": "Regulatory Compliance",
+            "source": "ComplianceIQ AI Mapping Agent",
+            "version": "1.0.0",
+            "generatedDate": "2026-01-20T10:00:00Z",
+            "frameworkName": "SAMA Cybersecurity Framework",
+            "frameworkVersion": "v1.0"
         }
+    })
 
 
 class PolicyInitiativeProperties(BaseModel):
@@ -72,15 +70,14 @@ class PolicyInitiativeProperties(BaseModel):
         description="List of policy definitions in this initiative"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "displayName": "SAMA Cybersecurity Framework Compliance",
-                "description": "AI-generated policy initiative for SAMA framework compliance",
-                "metadata": {},
-                "policyDefinitions": []
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "displayName": "SAMA Cybersecurity Framework Compliance",
+            "description": "AI-generated policy initiative for SAMA framework compliance",
+            "metadata": {},
+            "policyDefinitions": []
         }
+    })
 
 
 class PolicyInitiative(BaseModel):
@@ -88,19 +85,18 @@ class PolicyInitiative(BaseModel):
 
     properties: PolicyInitiativeProperties = Field(..., description="Initiative properties")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "properties": {
-                    "displayName": "SAMA Compliance Initiative",
-                    "description": "AI-generated initiative",
-                    "metadata": {
-                        "category": "Regulatory Compliance"
-                    },
-                    "policyDefinitions": []
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "properties": {
+                "displayName": "SAMA Compliance Initiative",
+                "description": "AI-generated initiative",
+                "metadata": {
+                    "category": "Regulatory Compliance"
+                },
+                "policyDefinitions": []
             }
         }
+    })
 
     def to_azure_json(self) -> Dict[str, Any]:
         """
@@ -155,17 +151,16 @@ class PolicyGenerationRequest(BaseModel):
                     "When True, assignments use Default (enforcement enabled)."
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "framework_name": "SAMA Cybersecurity",
-                "framework_version": "v1.0",
-                "mappings": [],
-                "include_all_policies": True,
-                "min_confidence_threshold": 0.7,
-                "enforce_mode": False
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "framework_name": "SAMA Cybersecurity",
+            "framework_version": "v1.0",
+            "mappings": [],
+            "include_all_policies": True,
+            "min_confidence_threshold": 0.7,
+            "enforce_mode": False
         }
+    })
 
 
 class PolicyGenerationResponse(BaseModel):
@@ -177,13 +172,12 @@ class PolicyGenerationResponse(BaseModel):
     excluded_policies: int = Field(..., description="Number of policies excluded (low confidence)")
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "initiative": {},
-                "total_controls": 36,
-                "included_policies": 34,
-                "excluded_policies": 2,
-                "warnings": ["2 controls excluded due to confidence < 0.7"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "initiative": {},
+            "total_controls": 36,
+            "included_policies": 34,
+            "excluded_policies": 2,
+            "warnings": ["2 controls excluded due to confidence < 0.7"]
         }
+    })
