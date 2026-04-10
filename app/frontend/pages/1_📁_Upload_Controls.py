@@ -7,6 +7,8 @@ import pandas as pd
 import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
+from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
     page_title="Upload Controls | ComplianceIQ",
@@ -16,16 +18,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
-
-# Initialize session state
-if 'controls' not in st.session_state:
-    st.session_state.controls = []
-if 'framework_name' not in st.session_state:
-    st.session_state.framework_name = ""
-if 'uploaded_df' not in st.session_state:
-    st.session_state.uploaded_df = None
-if 'controls_loaded' not in st.session_state:
-    st.session_state.controls_loaded = False
+init_session_state()
+render_task_status_bar()
 for key in ["control_id_col", "control_name_col", "description_col", "domain_col"]:
     if key not in st.session_state:
         st.session_state[key] = ""

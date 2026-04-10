@@ -128,6 +128,16 @@ def render_sidebar():
         st.markdown("---")
         st.checkbox("📡 Show API Logs", key="show_api_logs",
                      help="Show request/response log panel at the bottom of each page")
+        st.checkbox("📋 Show Backend Logs", key="show_backend_logs",
+                     help="Show live application logs from the backend container")
+        if st.session_state.get("show_backend_logs"):
+            st.selectbox(
+                "Poll interval (seconds)",
+                options=[5, 10, 30, 60],
+                index=1,
+                key="backend_log_poll_interval",
+                help="How often to refresh backend logs",
+            )
 
         st.markdown("---")
         st.caption("Made by **Warren DT**")

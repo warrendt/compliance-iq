@@ -7,6 +7,8 @@ starting the control mapping workflow.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
+from components.task_status_bar import render_task_status_bar
 
 # Page configuration
 st.set_page_config(
@@ -17,6 +19,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
+init_session_state()
+render_task_status_bar()
 
 st.markdown("## 🎯 Platform Selection")
 st.markdown(

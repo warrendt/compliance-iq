@@ -6,9 +6,13 @@ The user uploads a PDF, AI extracts the controls, user reviews/edits, then loads
 import os
 import pandas as pd
 import streamlit as st
-from utils.api_client import APIClient
+from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
+from utils.task_manager import register_task, update_task, has_active_task_of_type
 from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
+from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
     page_title="PDF Pipeline | ComplianceIQ",
@@ -18,22 +22,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
-
-# ── Session state init ────────────────────────────────────────────────────
-if "controls" not in st.session_state:
-    st.session_state.controls = []
-if "framework_name" not in st.session_state:
-    st.session_state.framework_name = ""
-if "controls_loaded" not in st.session_state:
-    st.session_state.controls_loaded = False
-if "pdf_extraction" not in st.session_state:
-    st.session_state.pdf_extraction = None
-if "pdf_extracting" not in st.session_state:
-    st.session_state.pdf_extracting = False
-if "pdf_file_bytes" not in st.session_state:
-    st.session_state.pdf_file_bytes = None
-if "pdf_file_name" not in st.session_state:
-    st.session_state.pdf_file_name = None
+init_session_state()
+render_task_status_bar()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -250,3 +240,4 @@ elif not file_bytes:
         """)
 
 render_log_viewer()
+render_backend_log_viewer()
