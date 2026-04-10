@@ -1,7 +1,7 @@
 """
 Shared theme & branding for all Streamlit pages.
 
-Supports multiple configurable colour presets selected via
+Supports multiple configurable color presets selected via
 ``st.session_state["selected_theme"]``.
 """
 
@@ -287,7 +287,7 @@ def render_sidebar():
             options=theme_labels,
             index=current_idx,
             key="_theme_selector",
-            help="Choose a colour preset — takes effect immediately",
+            help="Choose a color preset — takes effect immediately",
         )
         chosen_key = theme_keys[theme_labels.index(chosen_label)]
         if chosen_key != st.session_state.get("selected_theme"):

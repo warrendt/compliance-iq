@@ -199,6 +199,12 @@ st.markdown("---")
 # Phase: CONFIGURE
 # ══════════════════════════════════════════════════════════════════════════
 if phase == "configure":
+    # Sensible defaults — Streamlit widgets always create their values,
+    # but we define them here first so the rest of the code can reference them
+    # even before the expander renders.
+    mapping_mode = "Batch Mapping (All Controls)"
+    concurrency = 5
+
     # Collapsible options panel
     with st.expander("⚙️ Mapping Options", expanded=False):
         col_config1, col_config2 = st.columns(2)
@@ -217,12 +223,6 @@ if phase == "configure":
                 step=1,
                 help="Number of controls to map concurrently (higher = faster but more API quota)",
             )
-
-    # Default values when expander was not opened
-    if "mapping_mode" not in dir():
-        mapping_mode = "Batch Mapping (All Controls)"
-    if "concurrency" not in dir():
-        concurrency = 5
 
     num_controls = len(st.session_state.controls)
     est_per_control = 45
@@ -410,7 +410,8 @@ elif phase == "running":
         # Rich progress card
         st.progress(progress / 100)
         remaining = total_controls - mapped_controls
-        est_remaining = int(remaining * 45 / max(1, 5))  # rough estimate
+        concurrency_est = 5  # default worker count for time estimate
+        est_remaining = int(remaining * 45 / max(1, concurrency_est))
         st.markdown(
             f"**Mapped {mapped_controls} / {total_controls}** controls "
             f"({progress}%) — ≈ {est_remaining // 60}m {est_remaining % 60}s remaining"
