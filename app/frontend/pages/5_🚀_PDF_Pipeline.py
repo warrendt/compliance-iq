@@ -4,6 +4,7 @@ The user uploads a PDF, AI extracts the controls, user reviews/edits, then loads
 """
 
 import os
+import time
 import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
@@ -76,37 +77,68 @@ if file_bytes:
     # ── Step 2: Extract controls ──────────────────────────────────────
     st.markdown("### 2️⃣ Extract Controls")
 
-    # Show interrupted-extraction warning
-    if st.session_state.pdf_extracting and not st.session_state.pdf_extraction:
-        st.warning(
-            "⚠️ A previous extraction was interrupted (e.g., you navigated away). "
-            "Click **Extract Controls** to try again."
-        )
-        st.session_state.pdf_extracting = False
-
-    extract_button = st.button(
-        "🔍 Extract Controls from PDF",
-        type="primary",
-        use_container_width=True,
-        disabled=st.session_state.pdf_extraction is not None,
-    )
-
-    if extract_button:
-        client = APIClient(base_url=api_url)
-        st.session_state.pdf_extracting = True
+    # Continue an in-progress extraction on rerun and keep task status in sync.
+    if (
+        st.session_state.pdf_extracting
+        and not st.session_state.pdf_extraction
+        and st.session_state.pdf_extract_task_id
+    ):
+        task_id = st.session_state.pdf_extract_task_id
+        update_task(task_id, status="running", progress=10, stage="extracting")
 
         with st.spinner("🤖 AI is reading the PDF and extracting controls... This may take a minute."):
             try:
+                client = APIClient(base_url=api_url)
                 result = client.extract_controls_from_pdf(
                     pdf_bytes=file_bytes,
                     filename=file_name,
                 )
                 st.session_state.pdf_extraction = result
                 st.session_state.pdf_extracting = False
+                update_task(
+                    task_id,
+                    status="completed",
+                    progress=100,
+                    stage="completed",
+                    result={
+                        "framework_name": result.get("framework_name"),
+                        "total_controls": result.get("total_controls", 0),
+                    },
+                )
                 st.rerun()
             except Exception as e:
                 st.session_state.pdf_extracting = False
+                update_task(task_id, status="failed", stage="failed", error=str(e))
                 st.error(f"❌ Extraction failed: {e}")
+
+    extraction_in_progress = st.session_state.pdf_extracting and has_active_task_of_type("pdf_extraction")
+    if extraction_in_progress:
+        st.info("⏳ PDF extraction is running in this session. Task status is tracked in the task bar.")
+
+    extract_button = st.button(
+        "🔍 Extract Controls from PDF",
+        type="primary",
+        use_container_width=True,
+        disabled=st.session_state.pdf_extraction is not None or extraction_in_progress,
+    )
+
+    if extract_button:
+        if has_active_task_of_type("pdf_extraction"):
+            st.warning("⚠️ A PDF extraction task is already in progress.")
+            st.stop()
+
+        task_id = f"pdf_extract_{st.session_state['session_uuid']}_{int(time.time())}"
+        st.session_state.pdf_extract_task_id = task_id
+        st.session_state.pdf_extracting = True
+        register_task(
+            task_id,
+            "pdf_extraction",
+            description=f"Extract controls from {file_name}",
+            page_origin="pdf_pipeline",
+            poll_backend=False,
+        )
+        update_task(task_id, status="running", progress=5, stage="queued")
+        st.rerun()
 
 # ── Step 3: Preview & edit extracted controls ─────────────────────────────
 # Shown regardless of whether a file is currently in the uploader —
@@ -201,6 +233,7 @@ if extraction:
             if st.button("🗑️ Clear & Start Over", use_container_width=True):
                 st.session_state.pdf_extraction = None
                 st.session_state.pdf_extracting = False
+                st.session_state.pdf_extract_task_id = None
                 st.session_state.pdf_file_bytes = None
                 st.session_state.pdf_file_name = None
                 st.rerun()
@@ -209,6 +242,7 @@ if extraction:
         if st.button("🗑️ Clear & Try Again", use_container_width=True):
             st.session_state.pdf_extraction = None
             st.session_state.pdf_extracting = False
+            st.session_state.pdf_extract_task_id = None
             st.session_state.pdf_file_bytes = None
             st.session_state.pdf_file_name = None
             st.rerun()

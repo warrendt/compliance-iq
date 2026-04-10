@@ -34,6 +34,7 @@ SESSION_DEFAULTS: Dict[str, Any] = {
     # PDF pipeline
     "pdf_extraction": None,
     "pdf_extracting": False,
+    "pdf_extract_task_id": None,
     "pdf_file_bytes": None,
     "pdf_file_name": None,
 

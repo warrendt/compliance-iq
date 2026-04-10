@@ -64,21 +64,25 @@ uploaded_file = st.file_uploader(
     help="Upload your compliance framework controls file"
 )
 
-if uploaded_file is not None:
+# Support both freshly uploaded files and sample data already in session state.
+if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
     try:
         # Read file based on type
-        if uploaded_file.name.endswith('.csv'):
-            try:
-                df = pd.read_csv(uploaded_file)
-            except pd.errors.ParserError:
-                # Retry with flexible parsing for CSVs with inconsistent fields
-                uploaded_file.seek(0)
-                df = pd.read_csv(uploaded_file, on_bad_lines='warn', engine='python')
+        if uploaded_file is not None:
+            if uploaded_file.name.endswith('.csv'):
+                try:
+                    df = pd.read_csv(uploaded_file)
+                except pd.errors.ParserError:
+                    # Retry with flexible parsing for CSVs with inconsistent fields
+                    uploaded_file.seek(0)
+                    df = pd.read_csv(uploaded_file, on_bad_lines='warn', engine='python')
+            else:
+                df = pd.read_excel(uploaded_file)
+            st.session_state.uploaded_df = df
+            st.success(f"✅ File loaded successfully: **{uploaded_file.name}**")
         else:
-            df = pd.read_excel(uploaded_file)
-        
-        st.session_state.uploaded_df = df
-        st.success(f"✅ File loaded successfully: **{uploaded_file.name}**")
+            df = st.session_state.uploaded_df
+            st.info("✅ Using sample data from session")
         st.info(f"📊 Found {len(df)} rows and {len(df.columns)} columns")
         
         # Auto-detect columns on first upload (when no columns are mapped yet)

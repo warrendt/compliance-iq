@@ -302,13 +302,21 @@ else:
         st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
 
         # Warn if there is already an active mapping task
-        if has_active_task_of_type("ai_mapping"):
+        has_other_mapping_task = has_active_task_of_type("ai_mapping") and not (
+            st.session_state.mapping_in_progress and st.session_state.mapping_job_id
+        )
+        if has_other_mapping_task:
             st.warning("⚠️ A mapping job is already in progress. You can start another or wait for it to finish.")
 
         col_start, col_cancel = st.columns([1, 1])
 
         with col_start:
-            if st.button("▶️ Start Batch Mapping", type="primary", use_container_width=True):
+            if st.button(
+                "▶️ Start Batch Mapping",
+                type="primary",
+                use_container_width=True,
+                disabled=has_other_mapping_task,
+            ):
                 try:
                     controls_payload = [
                         {

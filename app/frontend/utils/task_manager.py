@@ -50,6 +50,7 @@ def register_task(
     description: str = "",
     page_origin: str = "",
     total: int = 0,
+    poll_backend: bool = True,
 ) -> Dict[str, Any]:
     """Register a new background task.
 
@@ -66,6 +67,7 @@ def register_task(
     entry: Dict[str, Any] = {
         "job_id": job_id,
         "type": task_type,
+        "poll_backend": poll_backend,
         "status": "running",
         "progress": 0,
         "stage": "",
@@ -166,6 +168,14 @@ def poll_active_tasks(api_client: Any) -> int:
     for task in active:
         job_id = task["job_id"]
         task_type = task["type"]
+        should_poll_backend = task.get("poll_backend", True)
+
+        if not should_poll_backend:
+            # Frontend-managed tasks are updated by the page itself.
+            t = get_task(job_id)
+            if t and t["status"] in ("pending", "running"):
+                still_active += 1
+            continue
 
         try:
             if task_type == "ai_mapping":

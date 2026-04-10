@@ -9,6 +9,8 @@ Usage:
 
 from __future__ import annotations
 
+import time
+
 import streamlit as st
 
 from utils.task_manager import (
@@ -40,6 +42,8 @@ _PAGE_MAP = {
     "pipeline_run": "pages/5_🚀_PDF_Pipeline.py",
     "policy_generation": "pages/4_📦_Export_Policy.py",
 }
+
+_DEFAULT_POLL_SECONDS = 2.0
 
 
 def render_task_status_bar() -> None:
@@ -102,7 +106,12 @@ def render_task_status_bar() -> None:
 
     # ── Hint the user to refresh while tasks are active ──────────────
     if active_count > 0:
-        st.caption("🔄 Active tasks detected — the page will update on next interaction or navigation.")
+        st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
+
+        # Keep task progress moving even when the user is idle on a page.
+        poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
+        time.sleep(max(0.5, poll_seconds))
+        st.rerun()
 
 
 def _render_task_row(task: dict) -> None:
