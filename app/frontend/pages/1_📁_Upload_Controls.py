@@ -9,6 +9,8 @@ from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
+from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
 
 st.set_page_config(
     page_title="Upload Controls | ComplianceIQ",
@@ -319,3 +321,7 @@ with st.sidebar:
     
     if st.button("🏠 Back to Home"):
         st.switch_page("app.py")
+
+render_footer()
+render_log_viewer()
+render_backend_log_viewer()

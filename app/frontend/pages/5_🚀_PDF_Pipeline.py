@@ -239,5 +239,6 @@ elif not file_bytes:
         5. **Map → Review → Export** — Continue through Pages 2, 3, and 4 as normal
         """)
 
+render_footer()
 render_log_viewer()
 render_backend_log_viewer()

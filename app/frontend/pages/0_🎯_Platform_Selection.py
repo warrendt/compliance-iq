@@ -9,6 +9,8 @@ from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
+from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
 
 # Page configuration
 st.set_page_config(
@@ -163,3 +165,5 @@ with st.expander("❓ How to Choose", expanded=False):
     """)
 
 render_footer()
+render_log_viewer()
+render_backend_log_viewer()

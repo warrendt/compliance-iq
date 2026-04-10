@@ -405,5 +405,6 @@ with st.sidebar:
     - **Low (<60%)**: Review needed
     """)
 
+render_footer()
 render_log_viewer()
 render_backend_log_viewer()
