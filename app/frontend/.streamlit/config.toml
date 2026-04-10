@@ -1,2 +1,9 @@
 [client]
 showSidebarNavigation = false
+
+[theme]
+primaryColor = "#0078D4"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F2F1"
+textColor = "#31333F"
+font = "sans serif"

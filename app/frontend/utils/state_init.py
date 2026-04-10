@@ -51,6 +51,9 @@ SESSION_DEFAULTS: Dict[str, Any] = {
     # Task manager registry  {job_id -> task_info}
     "task_registry": {},
 
+    # Appearance
+    "selected_theme": "azure_blue",
+
     # Developer tools
     "show_api_logs": False,
     "show_backend_logs": False,
