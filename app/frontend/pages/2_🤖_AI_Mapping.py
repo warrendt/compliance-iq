@@ -253,10 +253,6 @@ else:
                 except Exception:
                     pass  # session save is best-effort
 
-                st.session_state.mappings = mappings
-                st.session_state.mapping_in_progress = False
-                st.session_state.mapping_job_id = None
-
                 mapped_count = result.get('mapped_count') or len(mappings)
                 failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
 

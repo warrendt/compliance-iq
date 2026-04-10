@@ -40,8 +40,9 @@ class MemoryLogHandler(logging.Handler):
                 _log_cursor += 1
                 entry["seq"] = _log_cursor
                 _log_buffer.append(entry)
-        except Exception:
-            pass  # never let logging crash the app
+        except Exception as exc:
+            # Last-resort fallback — write to stderr so the issue is visible
+            sys.stderr.write(f"MemoryLogHandler error: {exc}\n")
 
 
 def get_log_entries(since: int = 0, level: str = "DEBUG", limit: int = 200) -> Dict[str, Any]:

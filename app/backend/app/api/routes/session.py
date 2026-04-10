@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["session"])
 
 CONTAINER_NAME = "user-sessions"
+SESSION_TTL_SECONDS = 604800  # 7 days
 
 
 # ── Models ────────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ async def save_session(req: SessionSaveRequest):
     await cosmos_client.ensure_container(
         CONTAINER_NAME,
         partition_key_paths=["/session_id"],
-        default_ttl=604800,  # 7 days
+        default_ttl=SESSION_TTL_SECONDS,
     )
 
     doc = {
@@ -94,7 +95,7 @@ async def load_session(session_id: str):
     await cosmos_client.ensure_container(
         CONTAINER_NAME,
         partition_key_paths=["/session_id"],
-        default_ttl=604800,
+        default_ttl=SESSION_TTL_SECONDS,
     )
 
     doc = await cosmos_client.get_document(CONTAINER_NAME, session_id, partition_key=session_id)
