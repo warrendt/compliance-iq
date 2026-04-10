@@ -27,6 +27,14 @@
 - **End-to-End Pipeline** — Upload PDF → Extract Controls → AI Map → Review → Export Policy
 - **One-Click Deployment** — Deploy to Azure Container Apps with `azd up`
 
+### Recent Improvements
+
+- **Task Management System** — Background tasks (AI mapping, PDF extraction) are tracked globally and survive page navigation. A task status bar shows active/completed jobs across all pages.
+- **Persistent Session State** — Controls, mappings, and policy decisions are auto-saved to Cosmos DB. Sessions can be recovered after browser refreshes or navigation.
+- **Backend Application Logs** — A new "Show Backend Logs" option in the sidebar streams live application logs from the backend container with configurable poll intervals.
+- **Entra ID Authentication** — Optional authentication via Container Apps Easy Auth v2, configurable through `azd env set AUTH_CLIENT_ID` during deployment.
+- **Centralized State Management** — All session state is initialized from a single schema, eliminating duplicate initialization code across pages.
+
 ---
 
 ## Repository Structure
