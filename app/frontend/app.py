@@ -119,60 +119,51 @@ with st.sidebar:
 # Main page content
 st.markdown("---")
 
-# Welcome message and instructions
-col0, col1, col2, col3 = st.columns(4)
+# Welcome message and instructions — responsive CSS grid
+st.markdown(
+    """
+    <div class="ciq-step-grid">
+        <div class="ciq-step-card">
+            <h3>🎯 Step 0: Platform</h3>
+            <p>Choose your target compliance platform.</p>
+            <p><strong>Options:</strong></p>
+            <ul><li>Defender for Cloud</li><li>Microsoft 365</li><li>Microsoft Purview</li></ul>
+        </div>
+        <div class="ciq-step-card">
+            <h3>📁 Step 1: Upload</h3>
+            <p>Upload your compliance framework controls in CSV or Excel format.</p>
+            <p><strong>Required columns:</strong></p>
+            <ul><li>Control ID</li><li>Control Name</li><li>Description</li><li>Domain (optional)</li></ul>
+        </div>
+        <div class="ciq-step-card">
+            <h3>🤖 Step 2: Map</h3>
+            <p>Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark.</p>
+            <p><strong>Features:</strong></p>
+            <ul><li>AI-powered analysis</li><li>Confidence scoring</li><li>Sovereignty level assignment</li><li>Detailed reasoning</li></ul>
+        </div>
+        <div class="ciq-step-card">
+            <h3>📦 Step 3: Export</h3>
+            <p>Generate Azure Policy initiatives ready for deployment.</p>
+            <p><strong>Outputs:</strong></p>
+            <ul><li>MCSB Policy Initiative</li><li>SLZ Sovereign Initiatives</li><li>Bicep templates &amp; scripts</li></ul>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
+# Navigation buttons (below the grid)
+col0, col1, col2, col3 = st.columns(4)
 with col0:
-    st.markdown("### 🎯 Step 0: Platform")
-    st.markdown("""
-    Choose your target compliance platform.
-    
-    **Options:**
-    - Defender for Cloud
-    - Microsoft 365
-    - Microsoft Purview
-    """)
     if st.button("Select Platform →", key="nav_platform", use_container_width=True):
         st.switch_page("pages/0_🎯_Platform_Selection.py")
-
 with col1:
-    st.markdown("### 📁 Step 1: Upload")
-    st.markdown("""
-    Upload your compliance framework controls in CSV or Excel format.
-    
-    **Required columns:**
-    - Control ID
-    - Control Name  
-    - Description
-    - Domain (optional)
-    """)
     if st.button("Go to Upload →", key="nav_upload", use_container_width=True):
         st.switch_page("pages/1_📁_Upload_Controls.py")
-
 with col2:
-    st.markdown("### 🤖 Step 2: Map")
-    st.markdown("""
-    Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark.
-    
-    **Features:**
-    - AI-powered analysis
-    - Confidence scoring
-    - Sovereignty level assignment
-    - Detailed reasoning
-    """)
     if st.button("Go to Mapping →", key="nav_mapping", use_container_width=True):
         st.switch_page("pages/2_🤖_AI_Mapping.py")
-
 with col3:
-    st.markdown("### 📦 Step 3: Export")
-    st.markdown("""
-    Generate Azure Policy initiatives ready for deployment.
-    
-    **Outputs:**
-    - MCSB Policy Initiative
-    - SLZ Sovereign Initiatives
-    - Bicep templates & scripts
-    """)
     if st.button("Go to Export →", key="nav_export", use_container_width=True):
         st.switch_page("pages/4_📦_Export_Policy.py")
 
