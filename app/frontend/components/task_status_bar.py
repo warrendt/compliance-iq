@@ -100,12 +100,9 @@ def render_task_status_bar() -> None:
                         remove_task(t["job_id"])
                 st.rerun()
 
-    # ── Auto-refresh while tasks are active ───────────────────────────
+    # ── Hint the user to refresh while tasks are active ──────────────
     if active_count > 0:
-        import time
-
-        time.sleep(3)
-        st.rerun()
+        st.caption("🔄 Active tasks detected — the page will update on next interaction or navigation.")
 
 
 def _render_task_row(task: dict) -> None:

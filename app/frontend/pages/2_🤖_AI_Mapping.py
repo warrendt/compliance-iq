@@ -418,5 +418,6 @@ with st.sidebar:
         if st.button("Review →", use_container_width=True):
             st.switch_page("pages/3_✏️_Review_Edit.py")
 
+render_footer()
 render_log_viewer()
 render_backend_log_viewer()

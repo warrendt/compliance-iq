@@ -174,5 +174,6 @@ with tab_assigns:
     else:
         st.info("No policy assignments found at this scope.")
 
+render_footer()
 render_log_viewer()
 render_backend_log_viewer()
