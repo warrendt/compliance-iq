@@ -6,7 +6,10 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
 from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
+from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
     page_title="Review & Edit | ComplianceIQ",
@@ -16,14 +19,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
-
-# Initialize session state
-if 'mappings' not in st.session_state:
-    st.session_state.mappings = []
-if 'framework_name' not in st.session_state:
-    st.session_state.framework_name = ""
-if 'mcsb_controls' not in st.session_state:
-    st.session_state.mcsb_controls = None
+init_session_state()
+render_task_status_bar()
 
 # Header
 st.title("✏️ Review & Edit Mappings")
@@ -297,6 +294,21 @@ else:
 # Show changes notification
 if changes_made:
     st.success("✅ Changes saved! Mappings have been updated.")
+    # Auto-save session after mapping edits
+    try:
+        api_client.save_session(
+            st.session_state["session_uuid"],
+            {
+                "controls": st.session_state.get("controls", []),
+                "mappings": st.session_state.mappings,
+                "framework_name": st.session_state.get("framework_name", ""),
+                "policy_decisions": st.session_state.get("policy_decisions", {}),
+                "selected_platform": st.session_state.get("selected_platform", "azure_defender"),
+                "platform_display_name": st.session_state.get("platform_display_name", ""),
+            },
+        )
+    except Exception:
+        pass  # session save is best-effort
 
 # Export statistics
 st.markdown("---")
@@ -394,3 +406,4 @@ with st.sidebar:
     """)
 
 render_log_viewer()
+render_backend_log_viewer()

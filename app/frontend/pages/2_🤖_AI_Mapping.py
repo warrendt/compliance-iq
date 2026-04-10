@@ -6,7 +6,17 @@ import streamlit as st
 import time
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
+from utils.task_manager import (
+    register_task,
+    update_task,
+    get_task,
+    has_active_task_of_type,
+    get_tasks_by_type,
+)
 from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
+from components.task_status_bar import render_task_status_bar
 import httpx
 
 st.set_page_config(
@@ -17,20 +27,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
-
-# Initialize session state
-if 'controls' not in st.session_state:
-    st.session_state.controls = []
-if 'mappings' not in st.session_state:
-    st.session_state.mappings = []
-if 'framework_name' not in st.session_state:
-    st.session_state.framework_name = ""
-if 'mapping_in_progress' not in st.session_state:
-    st.session_state.mapping_in_progress = False
-if 'mapping_job_id' not in st.session_state:
-    st.session_state.mapping_job_id = None
-if 'mapping_error' not in st.session_state:
-    st.session_state.mapping_error = None
+init_session_state()
+render_task_status_bar()
 
 # Header
 st.title("🤖 AI Control Mapping")
@@ -184,7 +182,7 @@ else:
     # ── Active job: poll status (handles both in-session and resumed jobs) ─
     elif st.session_state.mapping_in_progress and st.session_state.mapping_job_id:
         job_id = st.session_state.mapping_job_id
-        st.info(f"⏳ Mapping job in progress (job ID: `{job_id}`)")
+        st.info(f"⏳ Mapping job in progress (job ID: `{job_id}`) — you can navigate away safely; the task will continue in the background.")
 
         try:
             status = api_client.get_job_status(job_id)
@@ -195,12 +193,22 @@ else:
             st.progress(progress / 100)
             st.text(f"Status: {status.get('status')} — {mapped_controls}/{total_controls} mapped ({progress}%)")
 
+            # Keep task manager in sync
+            update_task(
+                job_id,
+                status="running",
+                progress=progress,
+                stage=status.get("status", ""),
+                mapped=mapped_controls,
+            )
+
             job_status = status.get("status")
             if job_status == "failed":
                 err = status.get("error_message", "Unknown error")
                 st.session_state.mapping_error = err
                 st.session_state.mapping_in_progress = False
                 st.session_state.mapping_job_id = None
+                update_task(job_id, status="failed", error=err)
                 st.rerun()
             elif job_status == "completed":
                 result = status.get("result", {}) or {}
@@ -226,6 +234,24 @@ else:
                 st.session_state.mappings = mappings
                 st.session_state.mapping_in_progress = False
                 st.session_state.mapping_job_id = None
+
+                update_task(job_id, status="completed", progress=100, result=result)
+
+                # Auto-save session state
+                try:
+                    api_client.save_session(
+                        st.session_state["session_uuid"],
+                        {
+                            "controls": st.session_state.controls,
+                            "mappings": mappings,
+                            "framework_name": st.session_state.framework_name,
+                            "policy_decisions": st.session_state.get("policy_decisions", {}),
+                            "selected_platform": st.session_state.get("selected_platform", "azure_defender"),
+                            "platform_display_name": st.session_state.get("platform_display_name", ""),
+                        },
+                    )
+                except Exception:
+                    pass  # session save is best-effort
 
                 mapped_count = result.get('mapped_count') or len(mappings)
                 failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
@@ -275,6 +301,10 @@ else:
         st.info(f"📋 Ready to map **{num_controls}** controls from **{st.session_state.framework_name}**")
         st.warning(f"⏱️ Estimated time: ~{int(est_total)} seconds ({int(est_total)//60}m {int(est_total)%60}s) with {concurrency} parallel workers")
 
+        # Warn if there is already an active mapping task
+        if has_active_task_of_type("ai_mapping"):
+            st.warning("⚠️ A mapping job is already in progress. You can start another or wait for it to finish.")
+
         col_start, col_cancel = st.columns([1, 1])
 
         with col_start:
@@ -297,6 +327,15 @@ else:
                     st.session_state.mapping_job_id = job_id
                     st.session_state.mapping_in_progress = True
                     st.session_state.mapping_error = None
+
+                    # Register in task manager for cross-page tracking
+                    register_task(
+                        job_id,
+                        "ai_mapping",
+                        description=f"{st.session_state.framework_name} ({num_controls} controls)",
+                        page_origin="pages/2_🤖_AI_Mapping.py",
+                        total=num_controls,
+                    )
                     st.rerun()
 
                 except httpx.ConnectError:
@@ -380,3 +419,4 @@ with st.sidebar:
             st.switch_page("pages/3_✏️_Review_Edit.py")
 
 render_log_viewer()
+render_backend_log_viewer()

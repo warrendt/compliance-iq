@@ -48,6 +48,21 @@ hooks:
           exit 1
         fi
         echo "✓ Azure authentication verified"
+
+        echo ""
+        echo "======================================"
+        echo " Authentication Configuration"
+        echo "======================================"
+        if [ -n "${AUTH_CLIENT_ID}" ]; then
+          echo "✓ Entra ID authentication ENABLED"
+          echo "  Client ID: ${AUTH_CLIENT_ID}"
+          echo "  Tenant ID: ${AUTH_TENANT_ID:-<deployment tenant>}"
+        else
+          echo "⚠ Entra ID authentication DISABLED"
+          echo "  To enable, set these environment variables before deploying:"
+          echo "    azd env set AUTH_CLIENT_ID <your-app-registration-client-id>"
+          echo "    azd env set AUTH_TENANT_ID <your-tenant-id>"
+        fi
       continueOnError: false
 
   postprovision:
@@ -64,6 +79,12 @@ hooks:
         echo ""
         echo "Frontend URL: ${FRONTEND_URI}"
         echo "Backend URL: ${BACKEND_URI}"
+        echo ""
+        if [ -n "${AUTH_CLIENT_ID}" ]; then
+          echo "Authentication: ✓ Entra ID enabled"
+        else
+          echo "Authentication: ⚠ Disabled (anonymous access)"
+        fi
         echo ""
         echo "✓ Deployment complete!"
       continueOnError: true

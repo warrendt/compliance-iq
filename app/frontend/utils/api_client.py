@@ -752,6 +752,73 @@ class APIClient:
             response.raise_for_status()
             return response.json()
 
+    # --- Backend application logs ---
+
+    def get_backend_logs(
+        self,
+        since: int = 0,
+        level: str = "DEBUG",
+        limit: int = 200,
+    ) -> Dict[str, Any]:
+        """Fetch recent application log entries from the backend's in-memory buffer.
+
+        Args:
+            since: Sequence cursor for incremental polling.
+            level: Minimum log level filter.
+            limit: Max entries to return.
+
+        Returns:
+            Dict with ``logs``, ``next_cursor``, ``total_buffered``.
+        """
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/health/logs",
+                params={"since": since, "level": level, "limit": limit},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    # --- Session persistence ---
+
+    def save_session(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Persist critical session state to the backend (Cosmos DB).
+
+        Args:
+            session_id: Unique session identifier.
+            payload: State dict to persist.
+
+        Returns:
+            Backend response.
+        """
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/session/save",
+                json={"session_id": session_id, **payload},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def load_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Load a previously saved session from the backend.
+
+        Args:
+            session_id: Session identifier.
+
+        Returns:
+            Session state dict, or None if not found.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/session/{session_id}",
+                )
+                if response.status_code == 404:
+                    return None
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:

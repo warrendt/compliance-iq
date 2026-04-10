@@ -22,6 +22,12 @@
     },
     "devPublicIpAddress": {
       "value": "${DEV_PUBLIC_IP=}"
+    },
+    "authClientId": {
+      "value": "${AUTH_CLIENT_ID=}"
+    },
+    "authTenantId": {
+      "value": "${AUTH_TENANT_ID=}"
     }
   }
 }

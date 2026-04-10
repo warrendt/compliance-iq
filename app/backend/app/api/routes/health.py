@@ -80,3 +80,24 @@ async def health_check():
 async def ping():
     """Simple ping endpoint."""
     return {"message": "pong"}
+
+
+@router.get("/logs")
+async def get_application_logs(
+    since: int = 0,
+    level: str = "DEBUG",
+    limit: int = 200,
+):
+    """Return recent application log entries from the in-memory buffer.
+
+    Args:
+        since: Return entries with sequence number > since (for incremental polling).
+        level: Minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        limit: Maximum number of entries to return (default 200).
+
+    Returns:
+        Dict with ``logs`` list, ``next_cursor``, and ``total_buffered``.
+    """
+    from app.logging_config import get_log_entries
+
+    return get_log_entries(since=since, level=level, limit=limit)

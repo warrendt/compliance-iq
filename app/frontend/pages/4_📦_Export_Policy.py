@@ -12,7 +12,10 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
 from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
+from components.task_status_bar import render_task_status_bar
 
 
 _VALID_MAPPING_TYPES = {"exact", "partial", "conceptual", "none"}
@@ -45,16 +48,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
-
-# Initialize session state
-if 'mappings' not in st.session_state:
-    st.session_state.mappings = []
-if 'framework_name' not in st.session_state:
-    st.session_state.framework_name = ""
-if 'generated_policy' not in st.session_state:
-    st.session_state.generated_policy = None
-if 'session_uuid' not in st.session_state:
-    st.session_state.session_uuid = str(uuid.uuid4())
+init_session_state()
+render_task_status_bar()
 
 # --- Recent Generations (reload from Cosmos) ---
 if st.session_state.generated_policy is None:
@@ -819,3 +814,4 @@ with st.sidebar:
         st.caption("No sovereignty data")
 
 render_log_viewer()
+render_backend_log_viewer()

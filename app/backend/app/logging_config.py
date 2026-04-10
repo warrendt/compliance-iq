@@ -1,12 +1,78 @@
 """
-Structured logging configuration using structlog and Application Insights
+Structured logging configuration using structlog and Application Insights.
+
+Includes a ``MemoryLogHandler`` that keeps the last *N* log entries in an
+in-memory ring buffer so they can be served to the frontend via
+``GET /api/v1/health/logs``.
 """
 import logging
 import sys
-from typing import Any
+from collections import deque
+from datetime import datetime, timezone
+from threading import Lock
+from typing import Any, Dict, List
 import structlog
 from pythonjsonlogger import jsonlogger
 import os
+
+
+# ── In-memory log buffer ──────────────────────────────────────────────────
+
+_MAX_LOG_BUFFER = 500
+_log_buffer: deque[Dict[str, Any]] = deque(maxlen=_MAX_LOG_BUFFER)
+_log_lock = Lock()
+_log_cursor: int = 0  # monotonically increasing sequence number
+
+
+class MemoryLogHandler(logging.Handler):
+    """Handler that stores log records in a bounded in-memory deque."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        global _log_cursor
+        try:
+            entry: Dict[str, Any] = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": self.format(record),
+            }
+            with _log_lock:
+                _log_cursor += 1
+                entry["seq"] = _log_cursor
+                _log_buffer.append(entry)
+        except Exception as exc:
+            # Last-resort fallback — write to stderr so the issue is visible
+            sys.stderr.write(f"MemoryLogHandler error: {exc}\n")
+
+
+def get_log_entries(since: int = 0, level: str = "DEBUG", limit: int = 200) -> Dict[str, Any]:
+    """Return buffered log entries with *seq* > *since*.
+
+    Args:
+        since: Only return entries whose ``seq`` is strictly greater.
+        level: Minimum log level filter (DEBUG, INFO, WARNING, ERROR).
+        limit: Max entries to return.
+
+    Returns:
+        Dict with ``logs`` list, ``next_cursor``, and ``total_buffered``.
+    """
+    min_level = getattr(logging, level.upper(), logging.DEBUG)
+    with _log_lock:
+        entries = [
+            e for e in _log_buffer
+            if e["seq"] > since and getattr(logging, e.get("level", "DEBUG"), 0) >= min_level
+        ]
+    # Apply limit (return newest entries)
+    if len(entries) > limit:
+        entries = entries[-limit:]
+
+    next_cursor = entries[-1]["seq"] if entries else since
+    return {
+        "logs": entries,
+        "next_cursor": next_cursor,
+        "total_buffered": len(_log_buffer),
+    }
+
 
 def configure_logging(level: str = "INFO") -> None:
     """
@@ -23,6 +89,12 @@ def configure_logging(level: str = "INFO") -> None:
         level=log_level,
         stream=sys.stdout
     )
+
+    # Attach the in-memory handler to the root logger
+    memory_handler = MemoryLogHandler()
+    memory_handler.setLevel(log_level)
+    memory_handler.setFormatter(logging.Formatter("%(message)s"))
+    logging.getLogger().addHandler(memory_handler)
     
     # Configure structlog processors
     shared_processors = [

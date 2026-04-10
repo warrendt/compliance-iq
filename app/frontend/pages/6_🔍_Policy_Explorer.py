@@ -7,7 +7,10 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.state_init import init_session_state
 from components.log_viewer import render_log_viewer
+from components.backend_log_viewer import render_backend_log_viewer
+from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
     page_title="Policy Explorer | ComplianceIQ",
@@ -17,6 +20,8 @@ st.set_page_config(
 
 inject_azure_theme()
 render_sidebar()
+init_session_state()
+render_task_status_bar()
 
 # Header
 st.title("🔍 Policy Explorer")
@@ -170,3 +175,4 @@ with tab_assigns:
         st.info("No policy assignments found at this scope.")
 
 render_log_viewer()
+render_backend_log_viewer()

@@ -164,46 +164,62 @@ azd env get-values | grep FRONTEND_URI
 open $(azd env get-values | grep FRONTEND_URI | cut -d '=' -f2)
 ```
 
-### 3. (Optional) Enable Azure AD Authentication
+### 3. (Optional) Enable Entra ID Authentication
 
-**Currently, auth is disabled by default for easier testing.**
+Authentication is **disabled by default** for easier testing.  When enabled,
+the frontend Container App uses **Easy Auth v2** (built-in Entra ID) and the
+backend validates tokens via `fastapi-azure-auth`.
 
-To enable:
+To enable it, set the `AUTH_CLIENT_ID` (and optionally `AUTH_TENANT_ID`)
+environment variables **before** running `azd up`.  If these are left empty,
+authentication is skipped entirely.
 
-#### A. Create Azure AD App Registrations
+#### A. Create an Entra ID App Registration
 
 ```bash
-# Backend API app registration
+# Create a single app registration for both frontend Easy Auth and backend API
 az ad app create \
-  --display-name "ComplianceIQ Backend API" \
-  --sign-in-audience AzureADMyOrg \
-  --enable-id-token-issuance true
-
-# Note the Application (client) ID
-BACKEND_CLIENT_ID="<client-id-from-output>"
-
-# Frontend SPA app registration  
-az ad app create \
-  --display-name "ComplianceIQ Frontend" \
+  --display-name "ComplianceIQ" \
   --sign-in-audience AzureADMyOrg \
   --enable-id-token-issuance true \
   --enable-access-token-issuance true \
-  --spa-redirect-uris "https://your-frontend-url.azurecontainerapps.io"
+  --web-redirect-uris "https://<your-frontend-url>/.auth/login/aad/callback"
 
-FRONTEND_CLIENT_ID="<client-id-from-output>"
+# Note the Application (client) ID from the output
+# You can also find it in the Azure Portal → App registrations
 ```
 
-#### B. Configure Application
+#### B. Wire it into the `azd` Environment
 
 ```bash
-# Set environment variables
-azd env set ENABLE_AUTH true
-azd env set AZURE_AD_TENANT_ID $(az account show --query tenantId -o tsv)
-azd env set AZURE_AD_CLIENT_ID $BACKEND_CLIENT_ID
-azd env set AZURE_AD_FRONTEND_CLIENT_ID $FRONTEND_CLIENT_ID
+# Set the app registration client ID (this enables auth)
+azd env set AUTH_CLIENT_ID <your-app-registration-client-id>
 
-# Redeploy
-azd deploy
+# (Optional) Override the tenant — defaults to the deployment tenant
+azd env set AUTH_TENANT_ID <your-tenant-id>
+
+# Deploy (or redeploy)
+azd up
+```
+
+The `preprovision` hook will confirm whether auth is enabled or disabled.
+The `postprovision` hook will show the auth status in the deployment summary.
+
+#### C. How It Works
+
+| Component | Auth Mechanism |
+|-----------|---------------|
+| **Frontend Container App** | Easy Auth v2 (Container Apps built-in) redirects unauthenticated users to the Entra ID login page |
+| **Backend Container App** | Internal-only ingress — validates the `Authorization: Bearer <token>` header via `fastapi-azure-auth` |
+| **Bicep** | `container-app.bicep` deploys an `authConfig` resource **only** when `authClientId` is non-empty |
+
+#### D. Disable Authentication
+
+Simply leave `AUTH_CLIENT_ID` unset (or empty) and redeploy:
+
+```bash
+azd env set AUTH_CLIENT_ID ""
+azd up
 ```
 
 ---
@@ -218,10 +234,9 @@ azd deploy
 ### Optional
 - `AZURE_OPENAI_MODEL_NAME` - Model to deploy (prompted during `azd up` if not set)
 - `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model if primary is unavailable
-- `ENABLE_AUTH` - Enable Azure AD auth (default: false)
-- `AZURE_AD_TENANT_ID` - Azure AD tenant ID
-- `AZURE_AD_CLIENT_ID` - Backend API client ID
-- `AZURE_AD_FRONTEND_CLIENT_ID` - Frontend client ID
+- `AUTH_CLIENT_ID` - Entra ID App Registration client ID (enables Easy Auth on frontend; leave empty to disable)
+- `AUTH_TENANT_ID` - Entra ID tenant ID (defaults to deployment tenant when empty)
+- `DEV_PUBLIC_IP` - Developer public IP for resource firewall rules
 
 ---
 
