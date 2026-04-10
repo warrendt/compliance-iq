@@ -7,6 +7,7 @@ import time
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
+from utils.animations import render_completion_animation
 from utils.task_manager import (
     register_task,
     update_task,
@@ -260,7 +261,10 @@ else:
                     st.warning(f"⚠️ Mapped {mapped_count} controls, {failed_count} failed (fallback created)")
                 else:
                     st.success(f"✅ Successfully mapped {mapped_count} controls!")
-                st.balloons()
+                render_completion_animation(
+                    message=f"Mapped {mapped_count} controls",
+                    detail="Head to Review & Edit to validate the results",
+                )
 
                 st.markdown("### 📊 Mapping Summary")
                 col_sum1, col_sum2, col_sum3 = st.columns(3)

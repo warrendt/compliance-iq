@@ -8,6 +8,7 @@ import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
+from utils.animations import render_completion_animation
 from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
@@ -227,7 +228,10 @@ if uploaded_file is not None:
                         
                         st.session_state.controls_loaded = True
                         st.success(f"✅ Loaded {len(controls)} controls from **{framework_name}**")
-                        st.balloons()
+                        render_completion_animation(
+                            message=f"Loaded {len(controls)} controls",
+                            detail=f"Framework: {framework_name}",
+                        )
             
             with col_clear:
                 if st.button("🗑️ Clear Upload", use_container_width=True):

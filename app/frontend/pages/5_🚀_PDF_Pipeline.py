@@ -9,6 +9,7 @@ import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
+from utils.animations import render_completion_animation
 from utils.task_manager import register_task, update_task, has_active_task_of_type
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -188,7 +189,10 @@ if extraction:
                     st.session_state.upload_source = "pdf"
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
-                    st.balloons()
+                    render_completion_animation(
+                        message=f"Loaded {len(loaded_controls)} controls",
+                        detail=f"Framework: {framework_name}",
+                    )
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")

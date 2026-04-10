@@ -13,6 +13,7 @@ from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
+from utils.animations import render_completion_animation
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
@@ -202,7 +203,10 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
             st.session_state.generated_policy = result
             st.session_state.policy_generated = True
             st.success("✅ Policy initiative generated successfully!")
-            st.balloons()
+            render_completion_animation(
+                message="Policy initiative generated!",
+                detail="Review the output below and download when ready",
+            )
             
         except httpx.ConnectError:
             st.error("❌ Cannot connect to backend. Make sure it's running.")
@@ -605,7 +609,10 @@ else:
                 )
                 st.session_state.slz_generated = slz_result
                 st.success("✅ SLZ initiatives generated!")
-                st.balloons()
+                render_completion_animation(
+                    message="SLZ initiatives generated!",
+                    detail="Sovereign Landing Zone policies are ready for export",
+                )
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend.")
             except Exception as e:
