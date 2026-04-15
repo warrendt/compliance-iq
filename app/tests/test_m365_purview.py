@@ -318,7 +318,7 @@ class TestPlatformService:
         req = PlatformSelectionRequest(platform=CompliancePlatform.MICROSOFT_365)
         resp = service.select_platform(req)
         steps_text = " ".join(resp.next_steps).lower()
-        assert "microsoft 365" in steps_text or "m365" in steps_text or "365" in steps_text
+        assert "microsoft 365" in steps_text
 
     def test_platform_next_steps_purview(self):
         """Verify Purview next steps mention Purview."""

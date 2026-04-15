@@ -5,6 +5,7 @@ The user uploads a PDF, AI extracts the controls, user reviews/edits, then loads
 
 import os
 import time
+from typing import TypedDict
 import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
@@ -27,7 +28,16 @@ init_session_state()
 render_task_status_bar()
 
 # ── Platform metadata helpers ─────────────────────────────────────────────
-_PLATFORM_META = {
+
+class _PlatformMeta(TypedDict):
+    icon: str
+    label: str
+    next_page: str
+    next_label: str
+    guidance: str
+
+
+_PLATFORM_META: dict[str, _PlatformMeta] = {
     "azure_defender": {
         "icon": "🛡️",
         "label": "Microsoft Defender for Cloud",
@@ -65,7 +75,7 @@ _PLATFORM_META = {
 _DEFAULT_PLATFORM = "azure_defender"
 
 
-def _get_platform_meta(platform_id: str) -> dict:
+def _get_platform_meta(platform_id: str) -> _PlatformMeta:
     """Return metadata for the given platform ID, falling back to Azure Defender."""
     return _PLATFORM_META.get(platform_id, _PLATFORM_META[_DEFAULT_PLATFORM])
 
