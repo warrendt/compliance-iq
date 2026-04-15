@@ -293,6 +293,68 @@ class TestPlatformService:
         service = get_platform_service()
         assert isinstance(service, PlatformService)
 
+    def test_platform_display_names(self):
+        """Verify platform display names match expected UI labels."""
+        service = PlatformService()
+        azure_info = service.get_platform_info(CompliancePlatform.AZURE_DEFENDER)
+        m365_info = service.get_platform_info(CompliancePlatform.MICROSOFT_365)
+        purview_info = service.get_platform_info(CompliancePlatform.MICROSOFT_PURVIEW)
+
+        assert azure_info.display_name == "Microsoft Defender for Cloud"
+        assert m365_info.display_name == "Microsoft 365 Compliance"
+        assert purview_info.display_name == "Microsoft Purview"
+
+    def test_platform_next_steps_azure(self):
+        """Verify Azure Defender next steps mention Azure Policy."""
+        service = PlatformService()
+        req = PlatformSelectionRequest(platform=CompliancePlatform.AZURE_DEFENDER)
+        resp = service.select_platform(req)
+        steps_text = " ".join(resp.next_steps).lower()
+        assert "azure policy" in steps_text
+
+    def test_platform_next_steps_m365(self):
+        """Verify M365 next steps mention Microsoft 365."""
+        service = PlatformService()
+        req = PlatformSelectionRequest(platform=CompliancePlatform.MICROSOFT_365)
+        resp = service.select_platform(req)
+        steps_text = " ".join(resp.next_steps).lower()
+        assert "microsoft 365" in steps_text
+
+    def test_platform_next_steps_purview(self):
+        """Verify Purview next steps mention Purview."""
+        service = PlatformService()
+        req = PlatformSelectionRequest(platform=CompliancePlatform.MICROSOFT_PURVIEW)
+        resp = service.select_platform(req)
+        steps_text = " ".join(resp.next_steps).lower()
+        assert "purview" in steps_text
+
+    def test_all_platforms_have_capabilities(self):
+        """Verify each platform has at least one capability defined."""
+        service = PlatformService()
+        for platform in CompliancePlatform:
+            info = service.get_platform_info(platform)
+            assert len(info.capabilities) > 0, (
+                f"Platform {platform.value} has no capabilities defined"
+            )
+
+    def test_all_platforms_have_icons(self):
+        """Verify each platform has an icon and documentation URL."""
+        service = PlatformService()
+        for platform in CompliancePlatform:
+            info = service.get_platform_info(platform)
+            assert info.icon, f"Platform {platform.value} missing icon"
+            assert info.documentation_url, f"Platform {platform.value} missing documentation_url"
+
+    def test_platform_selection_response_has_next_steps(self):
+        """Verify platform selection always returns next steps."""
+        service = PlatformService()
+        for platform in CompliancePlatform:
+            req = PlatformSelectionRequest(platform=platform)
+            resp = service.select_platform(req)
+            assert len(resp.next_steps) > 0, (
+                f"Platform {platform.value} returned empty next_steps"
+            )
+
 
 # --- M365 Policy Service Tests ---
 

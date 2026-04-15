@@ -117,6 +117,18 @@ def render_sidebar():
 
         st.markdown("---")
 
+        # ── Selected platform ──
+        _platform_icons = {
+            "azure_defender": "🛡️",
+            "microsoft_365": "📧",
+            "microsoft_purview": "🔍",
+        }
+        _platform_display = st.session_state.get("platform_display_name", "")
+        _platform_id = st.session_state.get("selected_platform", "azure_defender")
+        if _platform_display:
+            _icon = _platform_icons.get(_platform_id, "🎯")
+            st.caption(f"{_icon} **{_platform_display}**")
+
         # ── Session metrics ──
         if fw:
             st.info(f"🗂️ **{fw}**")
