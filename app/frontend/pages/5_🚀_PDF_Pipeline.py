@@ -26,6 +26,50 @@ render_sidebar()
 init_session_state()
 render_task_status_bar()
 
+# ── Platform metadata helpers ─────────────────────────────────────────────
+_PLATFORM_META = {
+    "azure_defender": {
+        "icon": "🛡️",
+        "label": "Microsoft Defender for Cloud",
+        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_label": "🤖 AI Mapping",
+        "guidance": (
+            "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
+            "to map them to Azure Policy definitions, then **Review** and **Export**."
+        ),
+    },
+    "microsoft_365": {
+        "icon": "📧",
+        "label": "Microsoft 365 Compliance",
+        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_label": "🤖 AI Mapping",
+        "guidance": (
+            "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
+            "to map them to Microsoft 365 compliance policies (DLP, Conditional Access, Intune), "
+            "then **Review** and **Export**."
+        ),
+    },
+    "microsoft_purview": {
+        "icon": "🔍",
+        "label": "Microsoft Purview",
+        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_label": "🤖 AI Mapping",
+        "guidance": (
+            "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
+            "to map them to Microsoft Purview configurations (sensitivity labels, DLP, retention), "
+            "then **Review** and **Export**."
+        ),
+    },
+}
+
+_DEFAULT_PLATFORM = "azure_defender"
+
+
+def _get_platform_meta(platform_id: str) -> dict:
+    """Return metadata for the given platform ID, falling back to Azure Defender."""
+    return _PLATFORM_META.get(platform_id, _PLATFORM_META[_DEFAULT_PLATFORM])
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("📊 Session Status")
@@ -37,6 +81,14 @@ with st.sidebar:
     else:
         st.info("No controls loaded yet")
 
+    # ── Selected platform ──────────────────────────────────────────────
+    st.markdown("---")
+    _current_platform = st.session_state.get("selected_platform", _DEFAULT_PLATFORM)
+    _pmeta = _get_platform_meta(_current_platform)
+    st.markdown(f"**🎯 Target Platform**")
+    st.info(f"{_pmeta['icon']} {_pmeta['label']}")
+    st.page_link("pages/0_🎯_Platform_Selection.py", label="Change Platform")
+
     api_url = st.text_input(
         "Backend API URL",
         value=os.getenv("BACKEND_URL", "http://localhost:8000"),
@@ -45,6 +97,16 @@ with st.sidebar:
 
 # ── Main content ──────────────────────────────────────────────────────────
 st.title("📄 PDF Control Extraction")
+
+# ── Platform banner ───────────────────────────────────────────────────────
+_selected_platform = st.session_state.get("selected_platform", _DEFAULT_PLATFORM)
+_platform_meta = _get_platform_meta(_selected_platform)
+st.info(
+    f"{_platform_meta['icon']} **Target Platform: {_platform_meta['label']}** — "
+    "Extracted controls will be mapped for this platform. "
+    "[Change platform](./0_🎯_Platform_Selection)"
+)
+
 st.markdown("""
 Upload a compliance framework PDF and AI will extract all controls automatically.
 After review, load them into the **Map → Review → Export** flow.
@@ -224,9 +286,13 @@ if extraction:
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")
-                    st.info(
-                        "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
-                        "to map them to Azure policies, then **Review** and **Export**."
+                    _load_platform = st.session_state.get("selected_platform", _DEFAULT_PLATFORM)
+                    _load_meta = _get_platform_meta(_load_platform)
+                    st.info(_load_meta["guidance"])
+                    st.page_link(
+                        _load_meta["next_page"],
+                        label=f"Continue to {_load_meta['next_label']} →",
+                        icon="➡️",
                     )
 
         with col_clear:
