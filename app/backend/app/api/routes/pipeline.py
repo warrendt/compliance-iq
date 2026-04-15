@@ -27,6 +27,8 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Background
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.db.cosmos_client import cosmos_client
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
@@ -56,6 +58,7 @@ class PipelineJobStatus(BaseModel):
     controls_mapped: int = 0
     error: Optional[str] = None
     output_dir: Optional[str] = None
+    extraction_result: Optional[dict] = None
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
 
@@ -139,6 +142,8 @@ async def run_pipeline_endpoint(
 @router.post("/extract", response_model=PipelineExtractResponse)
 async def extract_controls_from_pdf(
     pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+    session_id: Optional[str] = Form(None, description="Optional frontend session id for recovery"),
+    enrich_legal_references: bool = Form(False, description="Enable legal/statutory citation enrichment from document text"),
 ):
     """
     Extract controls from a compliance PDF (Stages 1-2 only).
@@ -179,7 +184,12 @@ async def extract_controls_from_pdf(
         pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
 
         # Stage 2: AI control extraction
-        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        extraction = extract_controls_from_text(
+            pdf_text,
+            config,
+            pdf_metadata,
+            legal_enrichment=enrich_legal_references,
+        )
 
         # Convert ExtractedControl → CSV-flow format (ExternalControl-compatible)
         csv_controls = [
@@ -194,7 +204,7 @@ async def extract_controls_from_pdf(
             for c in extraction.controls
         ]
 
-        return PipelineExtractResponse(
+        response = PipelineExtractResponse(
             framework_name=extraction.framework_name,
             framework_version=extraction.framework_version,
             issuing_authority=extraction.issuing_authority,
@@ -202,9 +212,56 @@ async def extract_controls_from_pdf(
             controls=csv_controls,
             total_controls=len(csv_controls),
         )
+
+        if session_id:
+            await _persist_extract_result_to_session(
+                session_id=session_id,
+                pdf_filename=pdf_file.filename,
+                extraction_result=response.model_dump(mode="json"),
+            )
+
+        return response
     finally:
         # Clean up temp files
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@router.post("/extract/start", response_model=PipelineJobStatus)
+async def start_extract_controls_job(
+    background_tasks: BackgroundTasks,
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+    session_id: Optional[str] = Form(None, description="Optional frontend session id for recovery"),
+    enrich_legal_references: bool = Form(False, description="Enable legal/statutory citation enrichment from document text"),
+):
+    """Start extract-only pipeline as a background job with progress polling support."""
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    content = await pdf_file.read()
+    job_id, job = _create_job(
+        filename=pdf_file.filename,
+        content=content,
+        min_confidence=0.5,
+        allowed_locations=None,
+        target_platform="extract-only",
+        enrich_legal_references=enrich_legal_references,
+    )
+    job["session_id"] = session_id
+    job["status"] = "queued"
+    job["stage"] = "Queued extract-only job"
+    job["progress"] = 10
+
+    if session_id:
+        await _persist_extract_job_state_to_session(
+            session_id=session_id,
+            job=job,
+        )
+
+    background_tasks.add_task(_run_extract_only_job, job_id)
+    _log_debug(job_id, f"Extract-only job created for {pdf_file.filename}")
+    logger.info(f"Extract-only job created: {job_id} for {pdf_file.filename}")
+
+    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
 
 @router.post("/selftest", response_model=PipelineJobStatus)
@@ -317,10 +374,14 @@ async def run_purview_pipeline_endpoint(
 @router.get("/status/{job_id}", response_model=PipelineJobStatus)
 async def get_pipeline_status(job_id: str):
     """Get the current status of a pipeline job."""
-    if job_id not in _jobs:
-        raise HTTPException(404, f"Job {job_id} not found")
-
-    job = _jobs[job_id]
+    job = _jobs.get(job_id)
+    if job is None:
+        # In multi-replica deployments, requests can land on different pods.
+        # Fall back to Cosmos-backed state when in-memory job registry misses.
+        job = _cosmos_get_job(job_id)
+        if job is None:
+            raise HTTPException(404, f"Job {job_id} not found")
+        _jobs[job_id] = job
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
 
@@ -839,6 +900,194 @@ async def _run_purview_job(job_id: str):
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+async def _persist_extract_result_to_session(
+    *,
+    session_id: str,
+    pdf_filename: str,
+    extraction_result: dict,
+) -> None:
+    """Persist extract-only result to user session for reconnect/recovery scenarios."""
+    if not cosmos_client.database:
+        return
+
+    container_name = "user-sessions"
+    await cosmos_client.ensure_container(
+        container_name,
+        partition_key_paths=["/session_id"],
+        default_ttl=604800,
+    )
+
+    existing = await cosmos_client.get_document(container_name, session_id, partition_key=session_id) or {}
+    existing.update(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "pdf_extraction": extraction_result,
+            "pdf_extraction_file_name": pdf_filename,
+            "pdf_extraction_saved_at": datetime.now(timezone.utc).isoformat(),
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    await cosmos_client.upsert_document(container_name, existing)
+
+
+async def _persist_extract_job_state_to_session(
+    *,
+    session_id: str,
+    job: dict,
+) -> None:
+    """Persist extract-only job state to session for cross-window continuity."""
+    if not cosmos_client.database:
+        return
+
+    container_name = "user-sessions"
+    await cosmos_client.ensure_container(
+        container_name,
+        partition_key_paths=["/session_id"],
+        default_ttl=604800,
+    )
+
+    existing = await cosmos_client.get_document(container_name, session_id, partition_key=session_id) or {}
+    existing.update(
+        {
+            "id": session_id,
+            "session_id": session_id,
+            "pdf_extraction_job_id": job.get("job_id"),
+            "pdf_extraction_job_status": job.get("status"),
+            "pdf_extraction_job_progress": int(job.get("progress") or 0),
+            "pdf_extraction_job_stage": job.get("stage"),
+            "pdf_extraction_file_name": job.get("pdf_filename"),
+            "pdf_extraction_job_updated_at": datetime.now(timezone.utc).isoformat(),
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    await cosmos_client.upsert_document(container_name, existing)
+
+
+async def _run_extract_only_job(job_id: str):
+    """Execute extract-only flow as a background job with stage progress updates."""
+    from app.pipeline import (
+        PipelineConfig,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+        extract_controls_from_text,
+    )
+
+    job = _jobs[job_id]
+    tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_extract_job_")
+    pdf_path = Path(tmp_dir) / job["pdf_filename"]
+
+    try:
+        pdf_path.write_bytes(job["pdf_content"])
+
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            raise RuntimeError(f"Config errors: {'; '.join(errors)}")
+
+        job["status"] = "extracting_text"
+        job["stage"] = "Reading PDF"
+        job["progress"] = 20
+        if job.get("session_id"):
+            await _persist_extract_job_state_to_session(session_id=job["session_id"], job=job)
+        _cosmos_upsert_job(job)
+        _log_debug(job_id, "Starting text extraction")
+
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+
+        job["status"] = "extracting_controls"
+        job["stage"] = (
+            "Preparing AI extraction (legal enrichment enabled)"
+            if job.get("enrich_legal_references")
+            else "Preparing AI extraction"
+        )
+        job["progress"] = 40
+        if job.get("session_id"):
+            await _persist_extract_job_state_to_session(session_id=job["session_id"], job=job)
+        _cosmos_upsert_job(job)
+        _log_debug(job_id, f"Extracted text ({len(pdf_text):,} chars), preparing chunk extraction")
+
+        def chunk_progress(current_chunk: int, total_chunks: int):
+            # 50..90 range during chunk processing for clearer frontend progress movement.
+            step = min(total_chunks, max(1, current_chunk))
+            pct = min(90, 50 + step * 10)
+            job["progress"] = pct
+            job["stage"] = f"Extracting controls (chunk {current_chunk}/{total_chunks})"
+            _cosmos_upsert_job(job)
+
+        job["progress"] = 50
+        job["stage"] = "Extracting controls (chunk 1/?)"
+        if job.get("session_id"):
+            await _persist_extract_job_state_to_session(session_id=job["session_id"], job=job)
+        _cosmos_upsert_job(job)
+        _log_debug(job_id, "Extracting controls with Azure OpenAI")
+
+        extraction = extract_controls_from_text(
+            pdf_text,
+            config,
+            pdf_metadata,
+            progress_callback=chunk_progress,
+            legal_enrichment=bool(job.get("enrich_legal_references", False)),
+        )
+
+        csv_controls = [
+            ExtractedControlCSVFormat(
+                control_id=c.control_id,
+                control_name=c.control_title,
+                description=c.control_description,
+                domain=c.domain,
+                control_type=c.control_type,
+                requirements="; ".join(c.sub_controls) if c.sub_controls else None,
+            ).model_dump(mode="json")
+            for c in extraction.controls
+        ]
+
+        extraction_result = {
+            "framework_name": extraction.framework_name,
+            "framework_version": extraction.framework_version,
+            "issuing_authority": extraction.issuing_authority,
+            "country_or_region": extraction.country_or_region,
+            "controls": csv_controls,
+            "total_controls": len(csv_controls),
+        }
+
+        job["framework_name"] = extraction.framework_name
+        job["controls_extracted"] = len(csv_controls)
+        job["extraction_result"] = extraction_result
+        job["progress"] = 100
+        job["status"] = "completed"
+        job["stage"] = "Extraction complete"
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(job_id, f"Extract-only job completed with {len(csv_controls)} controls")
+
+        if job.get("session_id"):
+            await _persist_extract_job_state_to_session(session_id=job["session_id"], job=job)
+
+        if job.get("session_id"):
+            await _persist_extract_result_to_session(
+                session_id=job["session_id"],
+                pdf_filename=job["pdf_filename"],
+                extraction_result=extraction_result,
+            )
+
+        _cosmos_upsert_job(job)
+        del job["pdf_content"]
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Extract-only job {job_id} failed: {exc}", exc_info=True)
+        job["status"] = "failed"
+        job["error"] = str(exc)
+        job["stage"] = "Extraction failed"
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        _log_debug(job_id, f"Extract-only failed: {exc}")
+        if job.get("session_id"):
+            await _persist_extract_job_state_to_session(session_id=job["session_id"], job=job)
+        _cosmos_upsert_job(job)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
     if not allowed_locations:
         return None
@@ -854,6 +1103,7 @@ def _create_job(
     allowed_locations: Optional[list[str]],
     target_platform: str = "defender",
     enforcement_mode: str = "TestWithNotifications",
+    enrich_legal_references: bool = False,
 ):
     if len(content) == 0:
         raise HTTPException(400, "PDF file is empty")
@@ -879,6 +1129,7 @@ def _create_job(
         "min_confidence": min_confidence,
         "allowed_locations": allowed_locations,
         "enforcement_mode": enforcement_mode,
+        "enrich_legal_references": enrich_legal_references,
     }
     _jobs[job_id] = job
 
@@ -955,11 +1206,21 @@ def _init_cosmos():
         cred = DefaultAzureCredential(exclude_interactive_browser_credential=False)
         _cosmos_client = CosmosClient(endpoint, credential=cred)
         db = _cosmos_client.create_database_if_not_exists(id=database_name)
-        _cosmos_container = db.create_container_if_not_exists(
-            id=container_name,
-            partition_key="/job_id",
-            offer_throughput=400,
-        )
+        try:
+            _cosmos_container = db.create_container_if_not_exists(
+                id=container_name,
+                partition_key="/job_id",
+                offer_throughput=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Serverless Cosmos accounts reject explicit throughput on containers.
+            if "serverless" in str(exc).lower() or "throughput" in str(exc).lower():
+                _cosmos_container = db.create_container_if_not_exists(
+                    id=container_name,
+                    partition_key="/job_id",
+                )
+            else:
+                raise
         logger.info("Cosmos persistence enabled for pipeline jobs")
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"Cosmos not enabled: {exc}")

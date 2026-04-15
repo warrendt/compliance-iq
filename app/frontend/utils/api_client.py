@@ -522,6 +522,8 @@ class APIClient:
         self,
         pdf_bytes: bytes,
         filename: str,
+        session_id: Optional[str] = None,
+        enrich_legal_references: bool = False,
     ) -> Dict[str, Any]:
         """Extract controls from a compliance PDF (Stages 1-2 only).
 
@@ -538,12 +540,77 @@ class APIClient:
         self.timeout = 300.0  # PDF extraction can be slow
         try:
             with self._get_client() as client:
+                data: Dict[str, str] = {
+                    "enrich_legal_references": "true" if enrich_legal_references else "false",
+                }
+                if session_id:
+                    data["session_id"] = session_id
                 response = client.post(
                     f"{self.base_url}/api/v1/pipeline/extract",
                     files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+                    data=data,
                 )
                 response.raise_for_status()
                 return response.json()
+        finally:
+            self.timeout = saved_timeout
+
+    def start_pdf_extraction_job(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+        session_id: Optional[str] = None,
+        enrich_legal_references: bool = False,
+    ) -> Dict[str, Any]:
+        """Start async PDF extraction job and return initial status with job_id.
+
+        Retries transient backend failures to avoid forcing manual re-clicks.
+        """
+        saved_timeout = self.timeout
+        self.timeout = 120.0
+        try:
+            max_attempts = 4
+            backoff_seconds = 1.0
+            transient_statuses = {429, 502, 503, 504}
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    with self._get_client() as client:
+                        data: Dict[str, str] = {
+                            "enrich_legal_references": "true" if enrich_legal_references else "false",
+                        }
+                        if session_id:
+                            data["session_id"] = session_id
+                        response = client.post(
+                            f"{self.base_url}/api/v1/pipeline/extract/start",
+                            files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+                            data=data,
+                        )
+                        response.raise_for_status()
+                        return response.json()
+                except httpx.HTTPStatusError as exc:
+                    status_code = exc.response.status_code if exc.response is not None else None
+                    should_retry = status_code in transient_statuses and attempt < max_attempts
+                    if not should_retry:
+                        raise
+
+                    retry_after = None
+                    try:
+                        retry_after_header = exc.response.headers.get("retry-after") if exc.response is not None else None
+                        if retry_after_header:
+                            retry_after = float(retry_after_header)
+                    except Exception:
+                        retry_after = None
+
+                    time.sleep(retry_after if retry_after is not None else backoff_seconds)
+                    backoff_seconds *= 2
+                except httpx.RequestError:
+                    if attempt >= max_attempts:
+                        raise
+                    time.sleep(backoff_seconds)
+                    backoff_seconds *= 2
+
+            raise RuntimeError("Failed to start extraction job after retries")
         finally:
             self.timeout = saved_timeout
 
@@ -807,6 +874,8 @@ class APIClient:
         Returns:
             Session state dict, or None if not found.
         """
+        saved_timeout = self.timeout
+        self.timeout = 8.0
         try:
             with self._get_client() as client:
                 response = client.get(
@@ -818,6 +887,8 @@ class APIClient:
                 return response.json()
         except Exception:
             return None
+        finally:
+            self.timeout = saved_timeout
 
 
 @st.cache_resource

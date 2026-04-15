@@ -72,6 +72,7 @@ def render_task_status_bar() -> None:
 
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
+    backend_polled_active_count = sum(1 for t in active_tasks if t.get("poll_backend", True))
     if active_count > 0:
         # Build a one-line summary of active tasks
         summaries = []
@@ -108,10 +109,13 @@ def render_task_status_bar() -> None:
     if active_count > 0:
         st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
 
-        # Keep task progress moving even when the user is idle on a page.
-        poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
-        time.sleep(max(0.5, poll_seconds))
-        st.rerun()
+        # Keep backend-polled task progress moving even when the user is idle on a page.
+        # Frontend-managed tasks (poll_backend=False) are progressed by the current page,
+        # so forcing an immediate rerun here can prevent their logic from running.
+        if backend_polled_active_count > 0:
+            poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
+            time.sleep(max(0.5, poll_seconds))
+            st.rerun()
 
 
 def _render_task_row(task: dict) -> None:
@@ -152,6 +156,21 @@ def _render_task_row(task: dict) -> None:
         page = _PAGE_MAP.get(task["type"])
         if task["status"] == "completed" and page:
             if st.button("View", key=f"view_{task['job_id']}"):
+                if task["type"] == "pdf_extraction":
+                    result = task.get("result") or {}
+                    extraction = result.get("extraction") if isinstance(result, dict) else None
+                    if extraction:
+                        st.session_state["pdf_extraction"] = extraction
+                        st.session_state["pdf_extracting"] = False
+                        st.session_state["pdf_extract_task_id"] = None
+                        source_file = result.get("source_file")
+                        if source_file:
+                            st.session_state["pdf_file_name"] = source_file
+                    else:
+                        st.session_state["task_view_notice"] = (
+                            "This completed extraction was created before result payloads were tracked. "
+                            "Run extraction again to enable full View restore."
+                        )
                 st.switch_page(page)
         elif task["status"] in ("completed", "failed", "cancelled"):
             if st.button("✕", key=f"rm_{task['job_id']}"):

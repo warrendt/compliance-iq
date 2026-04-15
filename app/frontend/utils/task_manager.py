@@ -79,6 +79,8 @@ def register_task(
         "mapped": 0,
         "error": None,
         "result": None,
+        "transient_failures": 0,
+        "last_poll_error": None,
     }
     _registry()[job_id] = entry
     return entry
@@ -165,6 +167,9 @@ def poll_active_tasks(api_client: Any) -> int:
     active = get_active_tasks()
     still_active = 0
 
+    max_transient_failures = int(st.session_state.get("task_max_transient_failures", 20))
+    max_not_found_failures = int(st.session_state.get("task_max_not_found_failures", 6))
+
     for task in active:
         job_id = task["job_id"]
         task_type = task["type"]
@@ -188,7 +193,81 @@ def poll_active_tasks(api_client: Any) -> int:
                 # Unknown type — skip
                 pass
         except Exception as exc:
-            update_task(job_id, status="failed", error=str(exc))
+            task_now = get_task(job_id) or {}
+            transient_failures = int(task_now.get("transient_failures", 0))
+            err_text = str(exc).lower()
+            is_transient = any(
+                token in err_text
+                for token in (
+                    "timed out",
+                    "timeout",
+                    "temporarily unavailable",
+                    "connection reset",
+                    "connection aborted",
+                    "502",
+                    "503",
+                    "504",
+                    "404",
+                )
+            )
+            is_not_found = any(
+                token in err_text
+                for token in (
+                    "404",
+                    "not found",
+                    "job",
+                )
+            ) and ("not found" in err_text or "404" in err_text)
+
+            # Only fail immediately on clear non-transient client/auth errors.
+            is_hard_error = any(
+                token in err_text
+                for token in (
+                    "401",
+                    "403",
+                    "422",
+                    "forbidden",
+                    "unauthorized",
+                    "validation error",
+                )
+            )
+
+            if is_hard_error and not is_transient:
+                update_task(job_id, status="failed", error=str(exc))
+            else:
+                next_failures = transient_failures + 1
+                task_now["transient_failures"] = next_failures
+                task_now["last_poll_error"] = str(exc)
+
+                # Repeated not-found typically means orphaned task/job mismatch.
+                if is_not_found and next_failures >= max_not_found_failures:
+                    update_task(
+                        job_id,
+                        status="failed",
+                        stage="orphaned",
+                        error=(
+                            "Task could not be recovered from backend status after multiple attempts. "
+                            "Please restart the operation."
+                        ),
+                    )
+                # Generic transient polling failures should eventually fail to avoid infinite hang.
+                elif next_failures >= max_transient_failures:
+                    update_task(
+                        job_id,
+                        status="failed",
+                        stage="polling_timeout",
+                        error=(
+                            "Task status polling failed repeatedly and was stopped to avoid a hung state. "
+                            "Please retry."
+                        ),
+                    )
+                else:
+                    update_task(
+                        job_id,
+                        status="running",
+                        stage="waiting for status (retrying)",
+                        error=None,
+                    )
 
         # Re-check after update
         t = get_task(job_id)
@@ -230,24 +309,52 @@ def _apply_mapping_status(job_id: str, status: Dict[str, Any]) -> None:
 
 def _apply_pipeline_status(job_id: str, status: Dict[str, Any]) -> None:
     """Apply backend pipeline job status to the task registry."""
+    task = get_task(job_id)
+    is_pdf_extraction = bool(task and task.get("type") == "pdf_extraction")
+
     job_status = status.get("status", "")
     progress = status.get("progress", 0)
     stage = status.get("stage", "")
 
+    if is_pdf_extraction:
+        st.session_state["pdf_extract_backend_job_id"] = job_id
+        st.session_state["pdf_extract_backend_status"] = job_status
+        st.session_state["pdf_extract_backend_progress"] = int(progress or 0)
+        st.session_state["pdf_extract_backend_stage"] = stage
+        if status.get("pdf_filename"):
+            st.session_state["pdf_file_name"] = status.get("pdf_filename")
+
     if job_status == "completed":
+        result_payload: Any = status
+        extraction_result = status.get("extraction_result")
+        if isinstance(extraction_result, dict):
+            result_payload = {
+                "source_file": status.get("pdf_filename"),
+                "extraction": extraction_result,
+            }
         update_task(
             job_id,
             status="completed",
             progress=100,
             stage="completed",
-            result=status,
+            result=result_payload,
         )
+        if is_pdf_extraction:
+            st.session_state["pdf_extracting"] = False
+            st.session_state["pdf_extract_task_id"] = None
+        task_after = get_task(job_id)
+        if task_after is not None:
+            task_after["transient_failures"] = 0
+            task_after["last_poll_error"] = None
     elif job_status == "failed":
         update_task(
             job_id,
             status="failed",
             error=status.get("error", "Unknown error"),
         )
+        if is_pdf_extraction:
+            st.session_state["pdf_extracting"] = False
+            st.session_state["pdf_extract_task_id"] = None
     else:
         update_task(
             job_id,
@@ -256,3 +363,7 @@ def _apply_pipeline_status(job_id: str, status: Dict[str, Any]) -> None:
             stage=stage,
             mapped=status.get("controls_mapped", 0),
         )
+        task_after = get_task(job_id)
+        if task_after is not None:
+            task_after["transient_failures"] = 0
+            task_after["last_poll_error"] = None

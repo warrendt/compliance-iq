@@ -5,7 +5,7 @@ Uses Azure OpenAI with structured outputs to extract compliance controls from ra
 
 import logging
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 import openai
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # ── System prompt for control extraction ──────────────────────────────────────
 
-EXTRACTION_SYSTEM_PROMPT = """You are an expert compliance analyst specializing in cybersecurity, data protection, and cloud governance frameworks from the Middle East, Africa, and global regulatory bodies.
+EXTRACTION_SYSTEM_PROMPT = """You are an expert compliance analyst specializing in multi-domain regulatory and control frameworks, including cybersecurity, privacy, financial services, legal/statutory obligations, operational risk, and industry-specific governance.
 
 Your task is to analyze the raw text extracted from a compliance control document (PDF) and produce a structured extraction of ALL controls found in the document.
 
@@ -27,24 +27,33 @@ Your task is to analyze the raw text extracted from a compliance control documen
 
 2. **Assign a control ID** using the document's own numbering. If the document uses IDs like "TR-01", "POL-03", etc., preserve them exactly. If the document uses section numbers (e.g., 4.1, 4.2), use those. If no numbering exists, create sequential IDs like "CTRL-001", "CTRL-002", etc.
 
-3. **Classify each control's domain** into one of these categories:
-   - Network Security
-   - Identity & Access Management
-   - Data Protection & Encryption
-   - Logging & Monitoring
-   - Endpoint Security
-   - Vulnerability Management
-   - Backup & Recovery
-   - Incident Response
-   - Risk Management
-   - Governance & Policy
-   - Physical Security
-   - Cloud Security
-   - AI & Emerging Technology
-   - Privacy & Data Sovereignty
-   - Compliance & Audit
-   - Supply Chain / Third Party
-   - Business Continuity
+3. **Classify each control's domain** using the best-fit domain label.
+    Prefer one of these standard domains when applicable:
+    - Network Security
+    - Identity & Access Management
+    - Data Protection & Encryption
+    - Logging & Monitoring
+    - Endpoint Security
+    - Vulnerability Management
+    - Backup & Recovery
+    - Incident Response
+    - Risk Management
+    - Governance & Policy
+    - Physical Security
+    - Cloud Security
+    - AI & Emerging Technology
+    - Privacy & Data Sovereignty
+    - Compliance & Audit
+    - Supply Chain / Third Party
+    - Business Continuity
+    - Financial Controls & Reporting
+    - AML / KYC & Financial Crime
+    - Legal & Statutory Obligations
+    - Records Management & Retention
+    - Consumer Protection & Conduct
+    - Operational Resilience
+
+    If none of the above fits well, use a concise domain name taken from the document's own terminology.
 
 4. **Classify each control's type** as one of:
    - Technical: Can be enforced or audited via technical means (Azure Policy, Defender)
@@ -64,7 +73,9 @@ Your task is to analyze the raw text extracted from a compliance control documen
 
 9. **Do NOT invent controls** that are not in the document. Only extract what is explicitly stated.
 
-10. **Provide a summary** of the framework's purpose and scope."""
+10. **Provide a summary** of the framework's purpose and scope.
+
+11. **Do not rely on external databases** for control discovery. Extract controls from the uploaded document text only. If the document cites external laws/standards, include those citations in descriptions or sub-controls when present in the text."""
 
 
 def get_openai_client(config: PipelineConfig):
@@ -77,6 +88,8 @@ def extract_controls_from_text(
     pdf_text: str,
     config: PipelineConfig,
     pdf_metadata: Optional[dict] = None,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+    legal_enrichment: bool = False,
 ) -> ControlExtractionResult:
     """
     Use Azure OpenAI to extract structured controls from raw PDF text.
@@ -107,8 +120,16 @@ def extract_controls_from_text(
     chunks = chunk_text(pdf_text, max_chars=max(8000, config.extract_chunk_chars))
 
     if len(chunks) == 1:
+        if progress_callback:
+            progress_callback(1, 1)
         try:
-            return _extract_single(client, config, chunks[0], metadata_context)
+            return _extract_single(
+                client,
+                config,
+                chunks[0],
+                metadata_context,
+                legal_enrichment=legal_enrichment,
+            )
         except openai.LengthFinishReasonError:
             # If a single-call extraction is truncated by output length, retry in multi-chunk mode.
             fallback_chunk_chars = max(8000, config.extract_chunk_chars // 2)
@@ -119,10 +140,24 @@ def extract_controls_from_text(
                 "Single-chunk extraction hit output length limit. "
                 f"Retrying with {len(retry_chunks)} chunks (max_chars={fallback_chunk_chars})."
             )
-            return _extract_multi_chunk(client, config, retry_chunks, metadata_context)
+            return _extract_multi_chunk(
+                client,
+                config,
+                retry_chunks,
+                metadata_context,
+                progress_callback=progress_callback,
+                legal_enrichment=legal_enrichment,
+            )
     else:
         logger.info(f"Document split into {len(chunks)} chunks for extraction")
-        return _extract_multi_chunk(client, config, chunks, metadata_context)
+        return _extract_multi_chunk(
+            client,
+            config,
+            chunks,
+            metadata_context,
+            progress_callback=progress_callback,
+            legal_enrichment=legal_enrichment,
+        )
 
 
 def _get_retry_after(exc: openai.RateLimitError, default: float) -> float:
@@ -184,8 +219,20 @@ def _extract_single(
     config: PipelineConfig,
     text: str,
     metadata_context: str,
+    legal_enrichment: bool = False,
 ) -> ControlExtractionResult:
     """Extract controls from a single text chunk."""
+
+    enrichment_block = """
+## Additional Legal/Statutory Focus
+
+When extracting controls, prioritize explicit legal/statutory obligations and citations in the text, including:
+- Acts, laws, decrees, directives, circulars, and regulations
+- Clauses, articles, sections, schedules, and appendices
+- Mandatory retention, reporting, disclosure, and record-keeping obligations
+
+Capture cited references exactly as written when they appear in the document.
+""" if legal_enrichment else ""
 
     user_prompt = f"""{metadata_context}
 
@@ -194,6 +241,8 @@ def _extract_single(
 {text}
 
 ---
+
+{enrichment_block}
 
 Extract ALL compliance controls from this document. Be thorough — capture every control, requirement, and sub-requirement.
 Return the structured result with framework metadata and a complete list of controls."""
@@ -226,6 +275,8 @@ def _extract_multi_chunk(
     config: PipelineConfig,
     chunks: list[str],
     metadata_context: str,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+    legal_enrichment: bool = False,
 ) -> ControlExtractionResult:
     """Extract controls from multiple chunks and merge results."""
 
@@ -238,7 +289,15 @@ def _extract_multi_chunk(
     summary = ""
 
     for i, chunk in enumerate(chunks):
+        if progress_callback:
+            progress_callback(i + 1, len(chunks))
         logger.info(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk):,} chars)")
+
+        enrichment_block = """
+    ## Additional Legal/Statutory Focus
+
+    Within this chunk, prioritize extraction of legal/statutory obligations and cited references exactly as written.
+    """ if legal_enrichment else ""
 
         user_prompt = f"""{metadata_context}
 
@@ -247,6 +306,8 @@ def _extract_multi_chunk(
 {chunk}
 
 ---
+
+    {enrichment_block}
 
 Extract ALL compliance controls found in this portion of the document.
 This is part {i + 1} of {len(chunks)} parts of the same document.

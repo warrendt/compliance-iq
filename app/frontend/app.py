@@ -25,6 +25,10 @@ inject_azure_theme()
 # ── Centralized session state initialization ──────────────────────────────
 init_session_state()
 
+if st.session_state.get("_session_recovery_notice"):
+    st.info(f"🔄 {st.session_state['_session_recovery_notice']}")
+    st.session_state["_session_recovery_notice"] = None
+
 # ── Session recovery — check if a saved session exists in Cosmos DB ───────
 if (
     not st.session_state.get("controls")
