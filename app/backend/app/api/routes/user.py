@@ -263,6 +263,9 @@ async def get_mappings(
     )
 
     try:
+        # mapping-results uses a composite partition key (/userId, /date).
+        # Querying across all dates for the user requires a cross-partition
+        # scan, so no single partition_key value is passed here.
         items = await cosmos_client.query_documents(
             _MAPPINGS_CONTAINER,
             query=query,
