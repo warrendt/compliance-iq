@@ -5,7 +5,7 @@ policies including DLP, Conditional Access, Device Compliance, and
 Information Protection policies.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.models.control import ExternalControl
+from app.auth.azure_ad_auth import User, get_current_user
 from app.models.m365_policy import (
     M365PolicyType,
     M365ServiceScope,
@@ -171,7 +172,11 @@ async def map_batch_controls_m365(request: M365MapBatchRequest):
 
 
 @router.post("/generate")
-async def generate_m365_policies(request: M365GenerateRequest, http_request: Request):
+async def generate_m365_policies(
+    request: M365GenerateRequest,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """
     Generate a complete Microsoft 365 policy package from compliance controls.
 
@@ -199,11 +204,15 @@ async def generate_m365_policies(request: M365GenerateRequest, http_request: Req
 
         # Persist to Cosmos DB if available
         if _cosmos_ready():
-            session_id = http_request.headers.get("X-Session-ID", "anonymous")
+            raw_session_id = http_request.headers.get("X-Session-ID", "default")
+            session_id = f"{current_user.user_id}:{raw_session_id}"
             artifact_id = str(uuid.uuid4())
             artifact_doc = {
                 "id": artifact_id,
                 "session_id": session_id,
+                "tenant_id": current_user.tenant_id,
+                "user_id": current_user.user_id,
+                "user_email": current_user.email,
                 "type": "m365_policy_package",
                 "framework_name": request.framework_name,
                 "policy_count": len(package.policies),
@@ -215,6 +224,18 @@ async def generate_m365_policies(request: M365GenerateRequest, http_request: Req
                     cosmos_client.GENERATED_ARTIFACTS, artifact_doc
                 )
                 result["artifact_id"] = artifact_id
+                await cosmos_client.append_history_event(
+                    user_id=current_user.user_id,
+                    tenant_id=current_user.tenant_id,
+                    event_type="export.created",
+                    resource_type="m365_artifact",
+                    resource_id=artifact_id,
+                    session_id=session_id,
+                    details={
+                        "framework_name": request.framework_name,
+                        "policy_count": len(package.policies),
+                    },
+                )
             except Exception as e:
                 logger.warning(f"Failed to persist M365 artifact: {e}")
 

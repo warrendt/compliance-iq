@@ -2,13 +2,14 @@
 FastAPI main application for AI Control Mapping Agent.
 """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 from app.config import get_settings
+from app.auth.azure_ad_auth import get_current_user
 from app.api.routes import health, mapping, policy, sovereignty, pipeline, deploy, platform, m365, purview, session
 from app.logging_config import configure_logging, get_logger
 from app.monitoring import app_insights
@@ -62,15 +63,15 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Include routers
 app.include_router(health.router, prefix=f"{settings.api_v1_prefix}/health")
-app.include_router(mapping.router, prefix=settings.api_v1_prefix)
-app.include_router(policy.router, prefix=settings.api_v1_prefix)
-app.include_router(sovereignty.router, prefix=settings.api_v1_prefix)
-app.include_router(pipeline.router, prefix=settings.api_v1_prefix)
-app.include_router(deploy.router, prefix=settings.api_v1_prefix)
-app.include_router(platform.router, prefix=settings.api_v1_prefix)
-app.include_router(m365.router, prefix=settings.api_v1_prefix)
-app.include_router(purview.router, prefix=settings.api_v1_prefix)
-app.include_router(session.router, prefix=settings.api_v1_prefix)
+app.include_router(mapping.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(policy.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(sovereignty.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(pipeline.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(deploy.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(platform.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(m365.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(purview.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
+app.include_router(session.router, prefix=settings.api_v1_prefix, dependencies=[Depends(get_current_user)])
 
 
 @app.on_event("startup")

@@ -9,9 +9,10 @@ State is persisted to Cosmos DB in the ``user-sessions`` container.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.azure_ad_auth import User, get_current_user
 from app.db.cosmos_client import cosmos_client
 
 import logging
@@ -41,7 +42,7 @@ class SessionSaveRequest(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────────
 
 @router.post("/save")
-async def save_session(req: SessionSaveRequest):
+async def save_session(req: SessionSaveRequest, current_user: User = Depends(get_current_user)):
     """Persist critical session state to Cosmos DB."""
     if not cosmos_client.database:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -56,6 +57,9 @@ async def save_session(req: SessionSaveRequest):
     doc = {
         "id": req.session_id,
         "session_id": req.session_id,
+        "tenant_id": current_user.tenant_id,
+        "user_id": current_user.user_id,
+        "user_email": current_user.email,
         "controls": req.controls,
         "mappings": req.mappings,
         "framework_name": req.framework_name,
@@ -67,6 +71,19 @@ async def save_session(req: SessionSaveRequest):
     }
 
     await cosmos_client.upsert_document(CONTAINER_NAME, doc)
+    await cosmos_client.append_history_event(
+        user_id=current_user.user_id,
+        tenant_id=current_user.tenant_id,
+        event_type="session.saved",
+        resource_type="session",
+        resource_id=req.session_id,
+        session_id=req.session_id,
+        details={
+            "controls": len(req.controls),
+            "mappings": len(req.mappings),
+            "platform": req.selected_platform,
+        },
+    )
 
     logger.info(
         "session_saved",
@@ -86,7 +103,7 @@ async def save_session(req: SessionSaveRequest):
 
 
 @router.get("/{session_id}")
-async def load_session(session_id: str):
+async def load_session(session_id: str, current_user: User = Depends(get_current_user)):
     """Restore a previously saved session from Cosmos DB."""
     if not cosmos_client.database:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -101,6 +118,8 @@ async def load_session(session_id: str):
     doc = await cosmos_client.get_document(CONTAINER_NAME, session_id, partition_key=session_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    if doc.get("user_id") and doc.get("user_id") != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     return {
         "session_id": doc.get("session_id"),

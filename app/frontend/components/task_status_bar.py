@@ -72,6 +72,7 @@ def render_task_status_bar() -> None:
 
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
+    backend_polled_active = [t for t in active_tasks if t.get("poll_backend", True)]
     if active_count > 0:
         # Build a one-line summary of active tasks
         summaries = []
@@ -104,14 +105,23 @@ def render_task_status_bar() -> None:
                         remove_task(t["job_id"])
                 st.rerun()
 
+            if st.button("⏹️ Cancel active tasks", key="cancel_active_tasks"):
+                for t in list(all_tasks):
+                    if t["status"] in ("pending", "running"):
+                        remove_task(t["job_id"])
+                st.rerun()
+
     # ── Hint the user to refresh while tasks are active ──────────────
     if active_count > 0:
-        st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
+        if backend_polled_active:
+            st.caption("🔄 Active backend tasks detected — auto-refresh is enabled while jobs are running.")
 
-        # Keep task progress moving even when the user is idle on a page.
-        poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
-        time.sleep(max(0.5, poll_seconds))
-        st.rerun()
+            # Keep backend-polled task progress moving even when the user is idle on a page.
+            poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
+            time.sleep(max(0.5, poll_seconds))
+            st.rerun()
+        else:
+            st.caption("⏸️ Active local tasks detected — auto-refresh is paused to avoid interrupting page processing.")
 
 
 def _render_task_row(task: dict) -> None:

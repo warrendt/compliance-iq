@@ -5,6 +5,7 @@ MCSB controls, and Defender for Cloud recommendations.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 from .models import (
@@ -153,27 +154,68 @@ def map_controls_to_azure_policies(
     # Process in batches
     total_batches = (len(controls) + batch_size - 1) // batch_size
 
+    batch_specs: list[tuple[int, int, int, list[ExtractedControl]]] = []
     for batch_idx in range(total_batches):
         start = batch_idx * batch_size
         end = min(start + batch_size, len(controls))
-        batch = controls[start:end]
+        batch_specs.append((batch_idx, start, end, controls[start:end]))
 
+    batch_results: dict[int, list[ControlPolicyMapping]] = {}
+    mapped_count = 0
+    max_workers = min(max(1, config.mapping_parallelism), total_batches)
+
+    def _map_batch_with_index(
+        batch_idx: int,
+        start: int,
+        end: int,
+        batch: list[ExtractedControl],
+    ) -> tuple[int, int, list[ControlPolicyMapping]]:
         logger.info(
             f"Mapping batch {batch_idx + 1}/{total_batches} "
             f"(controls {start + 1}-{end} of {len(controls)})"
         )
-
-        batch_mappings = _map_batch(
-            client=client,
-            config=config,
-            controls=batch,
-            framework_name=extraction.framework_name,
+        # Use a per-worker client to avoid any potential shared-client thread-safety issues.
+        worker_client = get_openai_client(config)
+        return (
+            batch_idx,
+            len(batch),
+            _map_batch(
+                client=worker_client,
+                config=config,
+                controls=batch,
+                framework_name=extraction.framework_name,
+            ),
         )
 
-        all_mappings.extend(batch_mappings)
+    if max_workers == 1:
+        for batch_idx, start, end, batch in batch_specs:
+            result_idx, batch_size_done, mappings = _map_batch_with_index(batch_idx, start, end, batch)
+            batch_results[result_idx] = mappings
+            mapped_count += batch_size_done
+            if progress_callback:
+                progress_callback(mapped_count, len(controls))
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_map_batch_with_index, batch_idx, start, end, batch): batch_idx
+                for batch_idx, start, end, batch in batch_specs
+            }
+            for future in as_completed(futures):
+                try:
+                    result_idx, batch_size_done, mappings = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"Batch mapping failed: {exc}")
+                    continue
+                batch_results[result_idx] = mappings
+                mapped_count += batch_size_done
+                if progress_callback:
+                    progress_callback(mapped_count, len(controls))
 
-        if progress_callback:
-            progress_callback(end, len(controls))
+    if not batch_results and controls:
+        raise ValueError("All mapping batches failed")
+
+    for batch_idx in range(total_batches):
+        all_mappings.extend(batch_results.get(batch_idx, []))
 
     logger.info(f"Completed mapping {len(all_mappings)} controls to Azure Policies")
     return all_mappings

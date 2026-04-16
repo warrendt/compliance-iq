@@ -105,6 +105,9 @@ class MappingJob(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
     result: Optional[MappingBatch] = None
 
     model_config = ConfigDict(json_schema_extra={

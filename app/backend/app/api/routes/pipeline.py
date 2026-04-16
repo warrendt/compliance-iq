@@ -23,9 +23,11 @@ from typing import Optional
 import httpx
 from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
+
+from app.auth.azure_ad_auth import User, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,9 @@ class PipelineJobStatus(BaseModel):
     controls_mapped: int = 0
     error: Optional[str] = None
     output_dir: Optional[str] = None
+    stage1_seconds: Optional[float] = None
+    stage2_seconds: Optional[float] = None
+    stage3_seconds: Optional[float] = None
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
 
@@ -96,6 +101,8 @@ class PipelineExtractResponse(BaseModel):
     country_or_region: Optional[str] = None
     controls: list[ExtractedControlCSVFormat]
     total_controls: int
+    stage1_seconds: Optional[float] = None
+    stage2_seconds: Optional[float] = None
 
 
 @router.post("/run", response_model=PipelineJobStatus)
@@ -104,6 +111,7 @@ async def run_pipeline_endpoint(
     pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
     min_confidence: float = Form(0.5, ge=0.0, le=1.0),
     allowed_locations: Optional[str] = Form(None, description="Comma-separated Azure regions"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Submit a compliance PDF for automated processing.
@@ -122,11 +130,14 @@ async def run_pipeline_endpoint(
         raise HTTPException(400, "File must be a PDF document")
 
     content = await pdf_file.read()
+    session_id = f"{current_user.user_id}:{uuid.uuid4()}"
     job_id, job = _create_job(
         filename=pdf_file.filename,
         content=content,
         min_confidence=min_confidence,
         allowed_locations=_parse_locations(allowed_locations),
+        current_user=current_user,
+        session_id=session_id,
     )
 
     background_tasks.add_task(_run_pipeline_job, job_id)
@@ -175,11 +186,15 @@ async def extract_controls_from_pdf(
             raise HTTPException(500, f"Config errors: {'; '.join(errors)}")
 
         # Stage 1: Extract text
+        stage1_started = time.perf_counter()
         pdf_metadata = get_pdf_metadata(str(pdf_path))
         pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        stage1_seconds = round(time.perf_counter() - stage1_started, 3)
 
         # Stage 2: AI control extraction
+        stage2_started = time.perf_counter()
         extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        stage2_seconds = round(time.perf_counter() - stage2_started, 3)
 
         # Convert ExtractedControl → CSV-flow format (ExternalControl-compatible)
         csv_controls = [
@@ -201,6 +216,8 @@ async def extract_controls_from_pdf(
             country_or_region=extraction.country_or_region,
             controls=csv_controls,
             total_controls=len(csv_controls),
+            stage1_seconds=stage1_seconds,
+            stage2_seconds=stage2_seconds,
         )
     finally:
         # Clean up temp files
@@ -213,6 +230,7 @@ async def run_pipeline_selftest(
     pdf_url: str = Form("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"),
     min_confidence: float = Form(0.5, ge=0.0, le=1.0),
     allowed_locations: Optional[str] = Form(None, description="Comma-separated Azure regions"),
+    current_user: User = Depends(get_current_user),
 ):
     """Run a self-test job using a small public PDF. Helpful for smoke testing inside the private app."""
 
@@ -229,6 +247,8 @@ async def run_pipeline_selftest(
         content=content,
         min_confidence=min_confidence,
         allowed_locations=_parse_locations(allowed_locations),
+        current_user=current_user,
+        session_id=f"{current_user.user_id}:{uuid.uuid4()}",
     )
 
     background_tasks.add_task(_run_pipeline_job, job_id)
@@ -244,6 +264,7 @@ async def run_m365_pipeline_endpoint(
     pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
     min_confidence: float = Form(0.5, ge=0.0, le=1.0),
     enforcement_mode: str = Form("TestWithNotifications", description="M365 policy enforcement mode"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Submit a compliance PDF for Microsoft 365 policy generation.
@@ -268,6 +289,8 @@ async def run_m365_pipeline_endpoint(
         allowed_locations=None,
         target_platform="m365",
         enforcement_mode=enforcement_mode,
+        current_user=current_user,
+        session_id=f"{current_user.user_id}:{uuid.uuid4()}",
     )
 
     background_tasks.add_task(_run_m365_job, job_id)
@@ -282,6 +305,7 @@ async def run_purview_pipeline_endpoint(
     pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
     min_confidence: float = Form(0.5, ge=0.0, le=1.0),
     enforcement_mode: str = Form("TestWithNotifications", description="Purview policy enforcement mode"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Submit a compliance PDF for Microsoft Purview configuration generation.
@@ -306,6 +330,8 @@ async def run_purview_pipeline_endpoint(
         allowed_locations=None,
         target_platform="purview",
         enforcement_mode=enforcement_mode,
+        current_user=current_user,
+        session_id=f"{current_user.user_id}:{uuid.uuid4()}",
     )
 
     background_tasks.add_task(_run_purview_job, job_id)
@@ -315,23 +341,30 @@ async def run_purview_pipeline_endpoint(
 
 
 @router.get("/status/{job_id}", response_model=PipelineJobStatus)
-async def get_pipeline_status(job_id: str):
+async def get_pipeline_status(job_id: str, current_user: User = Depends(get_current_user)):
     """Get the current status of a pipeline job."""
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
 
     job = _jobs[job_id]
+    _assert_job_owner(job, current_user)
     return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
 
 
 @router.get("/logs/{job_id}")
-async def get_pipeline_logs(job_id: str, since: int = 0):
+async def get_pipeline_logs(
+    job_id: str,
+    since: int = 0,
+    current_user: User = Depends(get_current_user),
+):
     """Return buffered debug logs for a job. Available only when PIPELINE_DEBUG_LOG is enabled."""
     if not PIPELINE_DEBUG_LOG:
         raise HTTPException(404, "Pipeline logging is disabled")
 
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
+
+    _assert_job_owner(_jobs[job_id], current_user)
 
     logs = _job_logs.get(job_id, [])
     sliced = logs[since:]
@@ -341,7 +374,7 @@ async def get_pipeline_logs(job_id: str, since: int = 0):
 
 
 @router.get("/download/{job_id}")
-async def download_pipeline_output(job_id: str):
+async def download_pipeline_output(job_id: str, current_user: User = Depends(get_current_user)):
     """
     Download the generated compliance artifacts.
 
@@ -353,6 +386,7 @@ async def download_pipeline_output(job_id: str):
         raise HTTPException(404, f"Job {job_id} not found")
 
     job = _jobs[job_id]
+    _assert_job_owner(job, current_user)
 
     if job["status"] != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job['status']})")
@@ -400,12 +434,17 @@ async def download_pipeline_output(job_id: str):
 
 
 @router.post("/repack/{job_id}")
-async def repack_pipeline_output(job_id: str, payload: PipelineRepackRequest):
+async def repack_pipeline_output(
+    job_id: str,
+    payload: PipelineRepackRequest,
+    current_user: User = Depends(get_current_user),
+):
     """Repack initiative ZIP with edited mappings CSV (no full re-run)."""
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
 
     job = _jobs[job_id]
+    _assert_job_owner(job, current_user)
 
     if job.get("status") != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
@@ -440,12 +479,13 @@ async def repack_pipeline_output(job_id: str, payload: PipelineRepackRequest):
 
 
 @router.get("/artifacts/{job_id}", response_model=PipelineArtifacts)
-async def get_pipeline_artifacts(job_id: str):
+async def get_pipeline_artifacts(job_id: str, current_user: User = Depends(get_current_user)):
     """Return generated artifacts as JSON-friendly payload for UI preview/edit."""
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
 
     job = _jobs[job_id]
+    _assert_job_owner(job, current_user)
 
     if job.get("status") != "completed":
         raise HTTPException(400, f"Job is not completed (status: {job.get('status')})")
@@ -492,11 +532,12 @@ async def get_pipeline_artifacts(job_id: str):
 
 
 @router.get("/jobs", response_model=list[PipelineJobStatus])
-async def list_pipeline_jobs():
+async def list_pipeline_jobs(current_user: User = Depends(get_current_user)):
     """List all pipeline jobs."""
     return [
         PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
         for job in _jobs.values()
+        if job.get("user_id") == current_user.user_id
     ]
 
 
@@ -537,9 +578,12 @@ async def _run_pipeline_job(job_id: str):
         job["progress"] = 5
         _log_debug(job_id, "Starting text extraction")
 
+        stage1_started = time.perf_counter()
         pdf_metadata = get_pdf_metadata(str(pdf_path))
         pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        job["stage1_seconds"] = round(time.perf_counter() - stage1_started, 3)
         _log_debug(job_id, f"Extracted text ({len(pdf_text):,} chars) from {pdf_metadata.get('pages', '?')} pages")
+        _log_debug(job_id, f"Stage 1 duration: {job['stage1_seconds']}s")
 
         job["progress"] = 15
 
@@ -549,12 +593,15 @@ async def _run_pipeline_job(job_id: str):
         job["progress"] = 20
         _log_debug(job_id, "Extracting controls with Azure OpenAI")
 
+        stage2_started = time.perf_counter()
         extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        job["stage2_seconds"] = round(time.perf_counter() - stage2_started, 3)
 
         job["framework_name"] = extraction.framework_name
         job["controls_extracted"] = len(extraction.controls)
         job["progress"] = 40
         _log_debug(job_id, f"Extracted {len(extraction.controls)} controls (framework: {extraction.framework_name})")
+        _log_debug(job_id, f"Stage 2 duration: {job['stage2_seconds']}s")
 
         # ── Stage 3: Map to Azure Policies ────────────────────────────
         job["status"] = "mapping_policies"
@@ -569,10 +616,13 @@ async def _run_pipeline_job(job_id: str):
             job["controls_mapped"] = current
             _log_debug(job_id, f"Mapped {current}/{total} controls")
 
+        stage3_started = time.perf_counter()
         mappings = map_controls_to_azure_policies(extraction, config, progress_callback=progress_cb)
+        job["stage3_seconds"] = round(time.perf_counter() - stage3_started, 3)
         job["controls_mapped"] = len(mappings)
         job["progress"] = 80
         _log_debug(job_id, f"Completed mapping for {len(mappings)} controls")
+        _log_debug(job_id, f"Stage 3 duration: {job['stage3_seconds']}s")
 
         # ── Stage 4: Validate ─────────────────────────────────────────
         job["status"] = "validating"
@@ -846,6 +896,13 @@ def _parse_locations(allowed_locations: Optional[str]) -> Optional[list[str]]:
     return parsed or None
 
 
+def _assert_job_owner(job: dict, current_user: User) -> None:
+    """Raise 403 if the current caller does not own the job."""
+    owner_user_id = job.get("user_id")
+    if owner_user_id and owner_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 def _create_job(
     *,
     filename: str,
@@ -854,6 +911,8 @@ def _create_job(
     allowed_locations: Optional[list[str]],
     target_platform: str = "defender",
     enforcement_mode: str = "TestWithNotifications",
+    current_user: User,
+    session_id: str,
 ):
     if len(content) == 0:
         raise HTTPException(400, "PDF file is empty")
@@ -872,8 +931,15 @@ def _create_job(
         "controls_mapped": 0,
         "error": None,
         "output_dir": None,
+        "stage1_seconds": None,
+        "stage2_seconds": None,
+        "stage3_seconds": None,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
+        "tenant_id": current_user.tenant_id,
+        "user_id": current_user.user_id,
+        "user_email": current_user.email,
+        "session_id": session_id,
         "pdf_filename": filename,
         "pdf_content": content,
         "min_confidence": min_confidence,

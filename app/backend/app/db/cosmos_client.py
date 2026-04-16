@@ -3,6 +3,7 @@ Cosmos DB client for data persistence
 """
 import os
 from typing import List, Dict, Any, Optional
+import uuid
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
 from azure.identity.aio import DefaultAzureCredential
@@ -29,6 +30,7 @@ class CosmosDBClient:
         self.GENERATED_ARTIFACTS = "generated-artifacts"
         self.MAPPING_JOBS = "mapping-jobs"
         self.POLICY_CACHE = "policy-cache"
+        self.HISTORY_EVENTS = "history-events"
     
     async def initialize(self) -> None:
         """Initialize Cosmos DB client with managed identity"""
@@ -63,6 +65,12 @@ class CosmosDBClient:
             await self.ensure_container(
                 self.GENERATED_ARTIFACTS,
                 partition_key_paths=["/session_id"],
+                default_ttl=7776000  # 90 days
+            )
+
+            await self.ensure_container(
+                self.HISTORY_EVENTS,
+                partition_key_paths=["/user_id"],
                 default_ttl=7776000  # 90 days
             )
             
@@ -300,6 +308,45 @@ class CosmosDBClient:
 
         except Exception as e:
             logger.warning(f"Failed to ensure container {container_name}: {e}")
+
+    async def append_history_event(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        event_type: str,
+        resource_type: str,
+        resource_id: str,
+        session_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        """Append an immutable user-scoped history event.
+
+        Uses create_item semantics (not upsert) to preserve append-only history.
+        """
+        if not self.database:
+            return None
+
+        event_id = str(uuid.uuid4())
+        document = {
+            "id": event_id,
+            "event_id": event_id,
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "event_type": event_type,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "session_id": session_id,
+            "details": details or {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        try:
+            await self.insert_document(self.HISTORY_EVENTS, document)
+            return event_id
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Failed to append history event: {exc}")
+            return None
 
 
 # Global client instance

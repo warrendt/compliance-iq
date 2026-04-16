@@ -5,6 +5,7 @@ Uses Azure OpenAI with structured outputs to extract compliance controls from ra
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 import openai
@@ -237,23 +238,28 @@ def _extract_multi_chunk(
     country_or_region = None
     summary = ""
 
-    for i, chunk in enumerate(chunks):
-        logger.info(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk):,} chars)")
+    chunk_results: dict[int, ControlExtractionResult] = {}
+    max_workers = min(max(1, config.extract_parallelism), len(chunks))
+
+    def _extract_chunk(idx: int, chunk_text: str) -> tuple[int, Optional[ControlExtractionResult]]:
+        logger.info(f"Processing chunk {idx + 1}/{len(chunks)} ({len(chunk_text):,} chars)")
+        # Use a per-worker client to avoid any potential shared-client thread-safety issues.
+        worker_client = get_openai_client(config)
 
         user_prompt = f"""{metadata_context}
 
-## Document Text (Part {i + 1} of {len(chunks)})
+## Document Text (Part {idx + 1} of {len(chunks)})
 
-{chunk}
+{chunk_text}
 
 ---
 
 Extract ALL compliance controls found in this portion of the document.
-This is part {i + 1} of {len(chunks)} parts of the same document.
+This is part {idx + 1} of {len(chunks)} parts of the same document.
 Be thorough — capture every control, requirement, and sub-requirement found in this section."""
 
         completion = _parse_with_retry(
-            client,
+            worker_client,
             config,
             messages=[
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
@@ -262,13 +268,41 @@ Be thorough — capture every control, requirement, and sub-requirement found in
             response_format=ControlExtractionResult,
         )
 
-        result = completion.choices[0].message.parsed
-        if not result:
-            logger.warning(f"Chunk {i + 1} returned empty result")
-            continue
+        return idx, completion.choices[0].message.parsed
 
-        # Take metadata from first chunk
-        if i == 0:
+    if max_workers == 1:
+        for idx, chunk in enumerate(chunks):
+            result_idx, result = _extract_chunk(idx, chunk)
+            if not result:
+                logger.warning(f"Chunk {idx + 1} returned empty result")
+                continue
+            chunk_results[result_idx] = result
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_extract_chunk, idx, chunk): idx
+                for idx, chunk in enumerate(chunks)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    result_idx, result = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"Chunk {idx + 1} failed during extraction: {exc}")
+                    continue
+                if not result:
+                    logger.warning(f"Chunk {idx + 1} returned empty result")
+                    continue
+                chunk_results[result_idx] = result
+
+    if not chunk_results:
+        raise ValueError("All extraction chunks failed")
+
+    for i in sorted(chunk_results.keys()):
+        result = chunk_results[i]
+
+        # Prefer metadata from chunk 1; fallback to first non-empty chunk.
+        if i == 0 or not framework_name:
             framework_name = result.framework_name
             framework_version = result.framework_version
             issuing_authority = result.issuing_authority

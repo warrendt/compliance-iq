@@ -21,12 +21,12 @@ class PipelineConfig:
 
     # Model settings
     max_tokens: int = 16000
-    batch_size: int = 5  # Controls per LLM call for mapping
+    batch_size: int = 8  # Controls per LLM call for mapping
 
     # Pipeline settings
     min_confidence_threshold: float = 0.5  # Include mappings above this confidence
     include_low_confidence: bool = True  # Include low-confidence with warnings
-    max_pdf_pages: int = 200  # Safety limit for PDF page count
+    max_pdf_pages: int = 120  # Safety limit for PDF page count
 
     # Output
     output_dir: str = "./output"
@@ -49,10 +49,10 @@ class PipelineConfig:
             azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
             azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             max_tokens=int(os.getenv("AI_MAX_TOKENS", "16000")),
-            batch_size=int(os.getenv("AI_BATCH_SIZE", "5")),
+            batch_size=max(1, int(os.getenv("AI_BATCH_SIZE", "8"))),
             min_confidence_threshold=float(os.getenv("MIN_CONFIDENCE", "0.5")),
             include_low_confidence=os.getenv("INCLUDE_LOW_CONFIDENCE", "true").lower() == "true",
-            max_pdf_pages=int(os.getenv("MAX_PDF_PAGES", "200")),
+            max_pdf_pages=max(1, int(os.getenv("MAX_PDF_PAGES", "120"))),
             output_dir=os.getenv("OUTPUT_DIR", "./output"),
         )
 

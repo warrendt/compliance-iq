@@ -2,7 +2,7 @@
 Azure Policy generation endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
+from app.auth.azure_ad_auth import User, get_current_user
 from app.services import get_policy_service
 from app.db import cosmos_client
 
@@ -28,6 +29,7 @@ async def _persist_artifact(artifact: dict) -> Optional[str]:
     """Persist a generated artifact to Cosmos DB. Returns artifact_id or None."""
     if not _cosmos_ready():
         return None
+
     try:
         await cosmos_client.upsert_document(
             cosmos_client.GENERATED_ARTIFACTS,
@@ -40,9 +42,17 @@ async def _persist_artifact(artifact: dict) -> Optional[str]:
         return None
 
 
+def _derive_user_session_id(http_request: Request, current_user: User) -> str:
+    raw_session_id = http_request.headers.get("X-Session-ID", "default")
+    return f"{current_user.user_id}:{raw_session_id}"
+
+
 @router.post("/generate")
-async def generate_policy_initiative(request: PolicyGenerationRequest,
-                                      http_request: Request):
+async def generate_policy_initiative(
+    request: PolicyGenerationRequest,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """
     Generate Azure Policy initiative from control mappings.
 
@@ -78,11 +88,14 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         result["cli_script"] = scripts.get("cli", "")
 
         # Persist to Cosmos DB
-        session_id = http_request.headers.get("X-Session-ID", "anonymous")
+        session_id = _derive_user_session_id(http_request, current_user)
         artifact_id = str(uuid.uuid4())
         artifact_doc = {
             "id": artifact_id,
             "session_id": session_id,
+            "tenant_id": current_user.tenant_id,
+            "user_id": current_user.user_id,
+            "user_email": current_user.email,
             "type": "mcsb_initiative",
             "framework_name": request.framework_name,
             "initiative_id": result["initiative_id"],
@@ -99,6 +112,18 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         persisted_id = await _persist_artifact(artifact_doc)
         if persisted_id:
             result["artifact_id"] = persisted_id
+            await cosmos_client.append_history_event(
+                user_id=current_user.user_id,
+                tenant_id=current_user.tenant_id,
+                event_type="export.created",
+                resource_type="policy_artifact",
+                resource_id=persisted_id,
+                session_id=session_id,
+                details={
+                    "artifact_type": "mcsb_initiative",
+                    "framework_name": request.framework_name,
+                },
+            )
 
         return result
 
@@ -223,8 +248,11 @@ class SLZGenerationRequest(BaseModel):
 
 
 @router.post("/generate/slz")
-async def generate_slz_initiatives(request: SLZGenerationRequest,
-                                    http_request: Request):
+async def generate_slz_initiatives(
+    request: SLZGenerationRequest,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """
     Generate Sovereign Landing Zone policy initiatives per archetype.
 
@@ -264,11 +292,14 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
         }
 
         # Persist to Cosmos DB
-        session_id = http_request.headers.get("X-Session-ID", "anonymous")
+        session_id = _derive_user_session_id(http_request, current_user)
         artifact_id = str(uuid.uuid4())
         artifact_doc = {
             "id": artifact_id,
             "session_id": session_id,
+            "tenant_id": current_user.tenant_id,
+            "user_id": current_user.user_id,
+            "user_email": current_user.email,
             "type": "slz_initiative",
             "framework_name": request.framework_name,
             "archetypes": result,
@@ -279,6 +310,18 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
         persisted_id = await _persist_artifact(artifact_doc)
         if persisted_id:
             response_data["artifact_id"] = persisted_id
+            await cosmos_client.append_history_event(
+                user_id=current_user.user_id,
+                tenant_id=current_user.tenant_id,
+                event_type="export.created",
+                resource_type="policy_artifact",
+                resource_id=persisted_id,
+                session_id=session_id,
+                details={
+                    "artifact_type": "slz_initiative",
+                    "framework_name": request.framework_name,
+                },
+            )
 
         return response_data
 
@@ -295,6 +338,7 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
 @router.get("/artifacts")
 async def list_artifacts(
     http_request: Request,
+    current_user: User = Depends(get_current_user),
     artifact_type: str = Query(None, description="Filter by type (mcsb_initiative, slz_initiative)"),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -302,9 +346,12 @@ async def list_artifacts(
     if not _cosmos_ready():
         return {"artifacts": [], "total": 0}
 
-    session_id = http_request.headers.get("X-Session-ID", "anonymous")
-    query = "SELECT c.id, c.type, c.framework_name, c.initiative_id, c.mappings_count, c.included_policies, c.created_at FROM c WHERE c.session_id = @sid"
-    params: list[dict] = [{"name": "@sid", "value": session_id}]
+    session_id = _derive_user_session_id(http_request, current_user)
+    query = "SELECT c.id, c.type, c.framework_name, c.initiative_id, c.mappings_count, c.included_policies, c.created_at FROM c WHERE c.session_id = @sid AND c.user_id = @uid"
+    params: list[dict] = [
+        {"name": "@sid", "value": session_id},
+        {"name": "@uid", "value": current_user.user_id},
+    ]
 
     if artifact_type:
         query += " AND c.type = @atype"
@@ -324,18 +371,24 @@ async def list_artifacts(
 
 
 @router.get("/artifacts/{artifact_id}")
-async def get_artifact(artifact_id: str, http_request: Request):
+async def get_artifact(
+    artifact_id: str,
+    http_request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """Retrieve a single generated policy artifact by ID."""
     if not _cosmos_ready():
         raise HTTPException(status_code=503, detail="Cosmos DB not available")
 
-    session_id = http_request.headers.get("X-Session-ID", "anonymous")
+    session_id = _derive_user_session_id(http_request, current_user)
     try:
         doc = await cosmos_client.get_document(
             cosmos_client.GENERATED_ARTIFACTS, artifact_id, session_id
         )
         if not doc:
             raise HTTPException(status_code=404, detail="Artifact not found")
+        if doc.get("user_id") and doc.get("user_id") != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
         return doc
     except HTTPException:
         raise

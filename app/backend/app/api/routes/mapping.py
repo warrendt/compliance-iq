@@ -2,7 +2,7 @@
 Control mapping endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
@@ -17,6 +17,7 @@ from app.models import (
     MappingRequest,
     MappingJob
 )
+from app.auth.azure_ad_auth import User, get_current_user
 from app.services import get_ai_mapping_service, get_mcsb_service
 from app.db import cosmos_client
 
@@ -188,7 +189,8 @@ async def map_batch_controls(request: MapBatchRequest):
 @router.post("/analyze", response_model=MappingJob)
 async def analyze_controls(
     request: MappingRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
 ):
     """
     Start batch control mapping job.
@@ -220,13 +222,27 @@ async def analyze_controls(
         framework_name=request.framework_name,
         status="pending",
         total_controls=len(request.controls),
-        mapped_controls=0
+        mapped_controls=0,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_email=current_user.email,
     )
 
     mapping_jobs[job_id] = job
 
     # Persist immediately so other replicas can serve status
     await _persist_job(job)
+    await cosmos_client.append_history_event(
+        user_id=current_user.user_id,
+        tenant_id=current_user.tenant_id,
+        event_type="mapping.job_created",
+        resource_type="mapping_job",
+        resource_id=job_id,
+        details={
+            "framework_name": request.framework_name,
+            "total_controls": len(request.controls),
+        },
+    )
 
     # Start background task
     background_tasks.add_task(
@@ -240,7 +256,7 @@ async def analyze_controls(
 
 
 @router.get("/status/{job_id}", response_model=MappingJob)
-async def get_mapping_status(job_id: str):
+async def get_mapping_status(job_id: str, current_user: User = Depends(get_current_user)):
     """
     Get status of a mapping job.
 
@@ -253,6 +269,8 @@ async def get_mapping_status(job_id: str):
     job = await _load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    if job.user_id and job.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     return job
 
@@ -338,6 +356,19 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         job.completed_at = datetime.now(timezone.utc)
 
         await _persist_job(job)
+        if job.user_id:
+            await cosmos_client.append_history_event(
+                user_id=job.user_id,
+                tenant_id=job.tenant_id or "common",
+                event_type="mapping.job_completed",
+                resource_type="mapping_job",
+                resource_id=job_id,
+                details={
+                    "mapped_controls": job.mapped_controls,
+                    "total_controls": job.total_controls,
+                    "framework_name": job.framework_name,
+                },
+            )
 
         logger.info(f"Job {job_id} completed successfully")
 
@@ -346,3 +377,12 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         job.status = "failed"
         job.error_message = str(e)
         await _persist_job(job)
+        if job.user_id:
+            await cosmos_client.append_history_event(
+                user_id=job.user_id,
+                tenant_id=job.tenant_id or "common",
+                event_type="mapping.job_failed",
+                resource_type="mapping_job",
+                resource_id=job_id,
+                details={"error": str(e)},
+            )

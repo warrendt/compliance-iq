@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.3  # Lower for consistency
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
+    ai_extract_chunk_chars: int = 40000  # Chunk size for PDF control extraction
+    ai_extract_parallelism: int = 3  # Parallel extraction worker count
+    ai_mapping_parallelism: int = 3  # Parallel mapping worker count
+    max_pdf_pages: int = 120  # Page limit for initial runs
 
     model_config = SettingsConfigDict(
         env_file=".env",

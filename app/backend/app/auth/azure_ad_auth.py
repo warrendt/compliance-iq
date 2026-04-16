@@ -53,6 +53,16 @@ class User:
     def __str__(self) -> str:
         return f"User(oid={self.oid}, email={self.email})"
 
+    @property
+    def user_id(self) -> str:
+        """Stable user key for persistence and ownership checks."""
+        return self.oid or self.email
+
+    @property
+    def tenant_id(self) -> str:
+        """Tenant derived from configured auth tenant."""
+        return _get_tenant_id()
+
 
 # ---------------------------------------------------------------------------
 # JWKS helpers
@@ -229,23 +239,5 @@ async def get_optional_user(
     """Same as get_current_user but returns None instead of raising 401."""
     try:
         return await get_current_user(request, credentials)
-    except HTTPException:
-        return None
-
-
-async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Optional[User]:
-    """
-    Optional authentication - returns None if not authenticated.
-    
-    Args:
-        credentials: Bearer token from Authorization header
-        
-    Returns:
-        User object or None
-    """
-    try:
-        return await get_current_user(credentials)
     except HTTPException:
         return None
