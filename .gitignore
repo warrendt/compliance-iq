@@ -36,8 +36,6 @@ Thumbs.db
 # Reference docs (not for public)
 Microsoft_SITA Reference Architecture Document.pdf
 
-# Legacy
-.github/
 
 # Local secrets - never commit these
 .env.ps1
