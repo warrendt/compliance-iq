@@ -259,6 +259,32 @@ resource policyCacheContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
   }
 }
 
+// Container for user profiles
+resource userProfilesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: database
+  name: 'user-profiles'
+  properties: {
+    resource: {
+      id: 'user-profiles'
+      partitionKey: {
+        paths: [
+          '/userId'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+      }
+    }
+  }
+}
+
 // Built-in Data Contributor role definition ID
 var dataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 
