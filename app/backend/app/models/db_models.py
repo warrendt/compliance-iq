@@ -113,3 +113,28 @@ class GeneratedArtifactDocument(BaseDocument):
             "fileSize": 2048
         }
     })
+
+
+class UserProfileDocument(BaseDocument):
+    """Document for user profiles — one document per user (partitioned by userId)."""
+    userId: str
+    displayName: str = ""
+    email: str = ""
+    preferredPlatform: str = "azure_defender"
+    uploadCount: int = 0
+    mappingCount: int = 0
+    exportCount: int = 0
+    lastActive: Optional[datetime] = None
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "displayName": "Jane Smith",
+            "email": "user@example.com",
+            "preferredPlatform": "azure_defender",
+            "uploadCount": 5,
+            "mappingCount": 12,
+            "exportCount": 3,
+            "lastActive": "2026-01-01T12:00:00Z"
+        }
+    })

@@ -89,6 +89,7 @@ def render_sidebar():
         st.page_link("pages/4_📦_Export_Policy.py", label="📦 Export Policy")
         st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Pipeline")
         st.page_link("pages/6_🔍_Policy_Explorer.py", label="🔍 Policy Explorer")
+        st.page_link("pages/7_👤_Profile.py", label="👤 Profile & History")
         st.markdown("---")
 
         # ── Progress tracker ──

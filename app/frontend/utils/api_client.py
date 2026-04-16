@@ -819,6 +819,126 @@ class APIClient:
         except Exception:
             return None
 
+    # --- User profile & history ---
+
+    def get_user_profile(self) -> Optional[Dict[str, Any]]:
+        """Fetch the current user's profile from the backend.
+
+        Returns:
+            Profile dict or None if unavailable.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(f"{self.base_url}/api/v1/user/profile")
+                if response.status_code == 401:
+                    return None
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def update_user_profile(self, display_name: Optional[str] = None, preferred_platform: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Update the current user's profile.
+
+        Args:
+            display_name: New display name (optional).
+            preferred_platform: New preferred platform ID (optional).
+
+        Returns:
+            Updated profile dict or None on error.
+        """
+        payload: Dict[str, Any] = {}
+        if display_name is not None:
+            payload["displayName"] = display_name
+        if preferred_platform is not None:
+            payload["preferredPlatform"] = preferred_platform
+
+        try:
+            with self._get_client() as client:
+                response = client.put(
+                    f"{self.base_url}/api/v1/user/profile",
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def get_user_history(self, limit: int = 50, event_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch the user's activity history.
+
+        Args:
+            limit: Maximum number of events to return.
+            event_type: Optional filter (``upload``, ``mapping``, ``export``).
+
+        Returns:
+            List of history event dicts.
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if event_type:
+            params["event_type"] = event_type
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/history",
+                    params=params,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return []
+
+    def get_user_uploads(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch the user's upload records.
+
+        Returns:
+            List of upload dicts.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/uploads",
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return []
+
+    def get_user_mappings(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch the user's AI mapping results.
+
+        Returns:
+            List of mapping result dicts.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/mappings",
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return []
+
+    def get_user_exports(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch the user's policy export records.
+
+        Returns:
+            List of export artifact dicts.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/exports",
+                    params={"limit": limit},
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return []
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:
