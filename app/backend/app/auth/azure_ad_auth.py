@@ -231,21 +231,3 @@ async def get_optional_user(
         return await get_current_user(request, credentials)
     except HTTPException:
         return None
-
-
-async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Optional[User]:
-    """
-    Optional authentication - returns None if not authenticated.
-    
-    Args:
-        credentials: Bearer token from Authorization header
-        
-    Returns:
-        User object or None
-    """
-    try:
-        return await get_current_user(credentials)
-    except HTTPException:
-        return None
