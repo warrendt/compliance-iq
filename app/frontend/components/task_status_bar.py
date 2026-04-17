@@ -70,6 +70,8 @@ def render_task_status_bar() -> None:
         except Exception:
             pass  # backend may be unavailable
 
+    auto_refresh_tasks = [t for t in active_tasks if t.get("poll_backend", True)]
+
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
     if active_count > 0:
@@ -108,10 +110,11 @@ def render_task_status_bar() -> None:
     if active_count > 0:
         st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
 
-        # Keep task progress moving even when the user is idle on a page.
-        poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
-        time.sleep(max(0.5, poll_seconds))
-        st.rerun()
+        if auto_refresh_tasks:
+            # Keep backend-polled task progress moving even when the user is idle on a page.
+            poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
+            time.sleep(max(0.5, poll_seconds))
+            st.rerun()
 
 
 def _render_task_row(task: dict) -> None:

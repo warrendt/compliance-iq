@@ -8,6 +8,12 @@
     "location": {
       "value": "${AZURE_LOCATION=swedencentral}"
     },
+    "resourceGroupName": {
+      "value": "${AZURE_RESOURCE_GROUP=}"
+    },
+    "namingPrefix": {
+      "value": "${AZURE_NAME_PREFIX=}"
+    },
     "openAiModelName": {
       "value": "${AZURE_OPENAI_MODEL_NAME=gpt-5.2}"
     },
@@ -25,6 +31,9 @@
     },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID=}"
+    },
+    "authClientSecret": {
+      "value": "${AUTH_CLIENT_SECRET=}"
     },
     "authTenantId": {
       "value": "${AUTH_TENANT_ID=}"

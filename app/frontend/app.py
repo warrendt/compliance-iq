@@ -6,10 +6,22 @@ import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import init_session_state
+from utils.auth import get_request_path
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 import httpx
+
+_DEEPLINK_PAGE_MAP = {
+    "Platform_Selection": "pages/0_🎯_Platform_Selection.py",
+    "Upload_Controls": "pages/1_📁_Upload_Controls.py",
+    "AI_Mapping": "pages/2_🤖_AI_Mapping.py",
+    "Review_Edit": "pages/3_✏️_Review_Edit.py",
+    "Export_Policy": "pages/4_📦_Export_Policy.py",
+    "PDF_Pipeline": "pages/5_🚀_PDF_Pipeline.py",
+    "Policy_Explorer": "pages/6_🔍_Policy_Explorer.py",
+    "Profile": "pages/7_👤_Profile.py",
+}
 
 # Page configuration
 st.set_page_config(
@@ -24,6 +36,14 @@ inject_azure_theme()
 
 # ── Centralized session state initialization ──────────────────────────────
 init_session_state()
+
+# ── Direct deep-link recovery behind reverse proxy ─────────────────────────
+_request_path = get_request_path().strip("/")
+if _request_path:
+    _first_segment = _request_path.split("/", 1)[0]
+    _target_page = _DEEPLINK_PAGE_MAP.get(_first_segment)
+    if _target_page:
+        st.switch_page(_target_page)
 
 # ── Session recovery — check if a saved session exists in Cosmos DB ───────
 if (

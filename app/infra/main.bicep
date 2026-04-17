@@ -9,6 +9,12 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
+@description('Optional explicit resource group name. Leave empty to use rg-<environmentName>.')
+param resourceGroupName string = ''
+
+@description('Optional naming prefix for resources. Use letters and numbers only; separators are stripped automatically.')
+param namingPrefix string = ''
+
 @description('Azure OpenAI model name to deploy')
 param openAiModelName string = 'gpt-5.2'
 
@@ -36,12 +42,19 @@ param authClientId string = ''
 @description('Entra ID tenant ID for Easy Auth (defaults to deployment tenant when empty)')
 param authTenantId string = ''
 
+@secure()
+@description('Entra ID app registration client secret for Easy Auth token store and delegated ARM tokens')
+param authClientSecret string = ''
+
 @description('Developer public IP address for resource firewall rules (empty to keep fully private)')
 param devPublicIpAddress string = ''
 
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var defaultResourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var sanitizedNamingPrefix = toLower(replace(replace(replace(replace(trim(namingPrefix), '-', ''), '_', ''), ' ', ''), '.', ''))
+var resourceToken = !empty(sanitizedNamingPrefix) ? '${take(sanitizedNamingPrefix, 12)}${take(defaultResourceToken, 8)}' : defaultResourceToken
+var resolvedResourceGroupName = !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
 var acrName = '${abbrs.containerRegistryRegistries}${resourceToken}'
 var tags = {
   'azd-env-name': environmentName
@@ -52,7 +65,7 @@ var tags = {
 
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: '${abbrs.resourcesResourceGroups}${environmentName}'
+  name: resolvedResourceGroupName
   location: location
   tags: tags
 }
@@ -259,6 +272,7 @@ module frontendApp './core/container-app.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     authClientId: authClientId
     authTenantId: authTenantId
+    authClientSecret: authClientSecret
     environmentVariables: [
       {
         name: 'BACKEND_URL'

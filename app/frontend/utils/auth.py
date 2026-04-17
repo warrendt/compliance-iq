@@ -8,6 +8,7 @@ Resolution order:
 """
 
 import os
+from urllib.parse import urlsplit
 from typing import Optional
 
 import streamlit as st
@@ -34,44 +35,120 @@ class AuthUser:
 # Easy Auth (Container Apps built-in authentication)
 # ---------------------------------------------------------------------------
 
-def _get_easy_auth_user() -> Optional[AuthUser]:
-    """Read identity from Easy Auth reverse-proxy headers.
+def _get_request_headers() -> dict[str, str]:
+    """Return browser request headers visible to the current Streamlit session."""
+    try:
+        from streamlit.web.server.websocket_headers import _get_websocket_headers
 
-    These headers are injected by Container Apps when authentication is
-    configured on the frontend app and are NOT forgeable by the client.
-    """
-    # Streamlit doesn't expose inbound HTTP headers directly; however when
-    # running behind Container Apps Easy Auth the /.auth/me endpoint returns
-    # the user's claims.  We cache the result in session_state.
-    if "easy_auth_user" in st.session_state:
-        return st.session_state["easy_auth_user"]
+        headers = _get_websocket_headers() or {}
+        return {str(key).lower(): str(value) for key, value in headers.items()}
+    except Exception:
+        return {}
+
+
+def get_request_path() -> str:
+    """Return the current browser request path when available."""
+    headers = _get_request_headers()
+    forwarded_uri = headers.get("x-forwarded-uri", "")
+    if forwarded_uri:
+        return urlsplit(forwarded_uri).path or "/"
+
+    forwarded_path = headers.get("x-original-uri", "")
+    if forwarded_path:
+        return urlsplit(forwarded_path).path or "/"
+
+    return "/"
+
+
+def _claims_to_user(claims: dict[str, str], access_token: str = "") -> AuthUser:
+    """Convert Easy Auth claims into the frontend auth model."""
+    email = claims.get(
+        "preferred_username",
+        claims.get(
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "",
+        ),
+    )
+    name = claims.get(
+        "name",
+        claims.get(
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+            "",
+        ),
+    )
+    oid = claims.get(
+        "http://schemas.microsoft.com/identity/claims/objectidentifier",
+        claims.get("oid", ""),
+    )
+    return AuthUser(name=name, email=email, oid=oid, access_token=access_token)
+
+
+def _get_auth_me_user(headers: dict[str, str]) -> Optional[AuthUser]:
+    """Query /.auth/me using the caller's session cookie when available."""
+    cookie = headers.get("cookie", "")
+    session_token = headers.get("x-zumo-auth", "")
+    if not cookie and not session_token:
+        return None
 
     try:
         import httpx
 
-        # /.auth/me is served by the Easy Auth sidecar on the same origin
+        request_headers = {}
+        if cookie:
+            request_headers["Cookie"] = cookie
+        if session_token:
+            request_headers["X-ZUMO-AUTH"] = session_token
+
         resp = httpx.get(
-            f"{_frontend_origin()}/.auth/me",
+            f"{_frontend_origin(headers)}/.auth/me",
+            headers=request_headers,
             timeout=5,
             follow_redirects=False,
         )
-        if resp.status_code == 200:
-            data = resp.json()
-            if data:
-                claims = {c["typ"]: c["val"] for c in data[0].get("user_claims", [])}
-                user = AuthUser(
-                    name=claims.get("name", ""),
-                    email=claims.get(
-                        "preferred_username",
-                        claims.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", ""),
-                    ),
-                    oid=claims.get("http://schemas.microsoft.com/identity/claims/objectidentifier", ""),
-                    access_token=data[0].get("access_token", ""),
-                )
-                st.session_state["easy_auth_user"] = user
-                return user
+        if resp.status_code != 200:
+            return None
+
+        data = resp.json()
+        if not data:
+            return None
+
+        claims = {c["typ"]: c["val"] for c in data[0].get("user_claims", [])}
+        return _claims_to_user(claims, access_token=data[0].get("access_token", ""))
     except Exception:
-        pass
+        return None
+
+
+def _get_easy_auth_user() -> Optional[AuthUser]:
+    """Resolve the current user from Container Apps Easy Auth."""
+    if "easy_auth_user" in st.session_state:
+        return st.session_state["easy_auth_user"]
+
+    headers = _get_request_headers()
+    principal_name = headers.get("x-ms-client-principal-name", "")
+    principal_id = headers.get("x-ms-client-principal-id", "")
+    access_token = headers.get("x-ms-token-aad-access-token", "")
+
+    header_user = None
+    if principal_name:
+        header_user = AuthUser(
+            name=principal_name.split("@")[0] if "@" in principal_name else principal_name,
+            email=principal_name,
+            oid=principal_id,
+            access_token=access_token,
+        )
+
+    auth_me_user = _get_auth_me_user(headers)
+    user = header_user or auth_me_user
+    if user and auth_me_user:
+        user.name = auth_me_user.name or user.name
+        user.email = auth_me_user.email or user.email
+        user.oid = auth_me_user.oid or user.oid
+        user.access_token = auth_me_user.access_token or user.access_token
+
+    if user:
+        st.session_state["easy_auth_user"] = user
+        return user
+
     return None
 
 
@@ -132,8 +209,15 @@ def _get_msal_user() -> Optional[AuthUser]:
 # Public API
 # ---------------------------------------------------------------------------
 
-def _frontend_origin() -> str:
+def _frontend_origin(headers: Optional[dict[str, str]] = None) -> str:
     """Best-guess origin of the running Streamlit app."""
+    headers = headers or _get_request_headers()
+    forwarded_host = headers.get("x-forwarded-host", headers.get("host", ""))
+    if forwarded_host:
+        scheme = headers.get("x-forwarded-proto", "https").split(",")[0].strip() or "https"
+        host = forwarded_host.split(",")[0].strip()
+        if host:
+            return f"{scheme}://{host}"
     return os.getenv("FRONTEND_URL", "http://localhost:8501")
 
 
@@ -159,6 +243,28 @@ def get_access_token() -> Optional[str]:
     """Return the AAD access token for the logged-in user, or None."""
     user = get_current_user()
     return user.access_token if user else None
+
+
+def get_backend_auth_headers() -> dict[str, str]:
+    """Return auth headers that the backend can trust in the current runtime."""
+    user = get_current_user()
+    if not user:
+        return {}
+
+    if "easy_auth_user" in st.session_state:
+        headers = {
+            "X-MS-CLIENT-PRINCIPAL-NAME": user.email,
+        }
+        if user.oid:
+            headers["X-MS-CLIENT-PRINCIPAL-ID"] = user.oid
+        if user.access_token:
+            headers["X-MS-TOKEN-AAD-ACCESS-TOKEN"] = user.access_token
+        return headers
+
+    if user.access_token:
+        return {"Authorization": f"Bearer {user.access_token}"}
+
+    return {}
 
 
 def require_auth() -> AuthUser:

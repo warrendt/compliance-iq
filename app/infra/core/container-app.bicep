@@ -16,6 +16,36 @@ param containerRegistryName string = ''
 // Authentication (Easy Auth v2) – only applied when authClientId is set
 param authClientId string = ''
 param authTenantId string = ''
+@secure()
+param authClientSecret string = ''
+
+var authEnabled = !empty(authClientId)
+var containerSecrets = concat(
+  !empty(containerRegistryName) ? [
+    {
+      name: 'acr-password'
+      value: containerRegistry.listCredentials().passwords[0].value
+    }
+  ] : [],
+  !empty(authClientSecret) ? [
+    {
+      name: 'auth-client-secret'
+      value: authClientSecret
+    }
+  ] : []
+)
+var aadRegistration = union({
+  clientId: authClientId
+  openIdIssuer: 'https://sts.windows.net/${!empty(authTenantId) ? authTenantId : tenant().tenantId}/v2.0'
+}, !empty(authClientSecret) ? {
+  clientSecretSettingName: 'auth-client-secret'
+} : {})
+var aadLogin = !empty(authClientSecret) ? {
+  loginParameters: [
+    'response_type=code id_token'
+    'scope=openid profile email offline_access https://management.azure.com/user_impersonation'
+  ]
+} : null
 
 // Reference existing ACR to get admin credentials
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = if (!empty(containerRegistryName)) {
@@ -51,12 +81,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           passwordSecretRef: 'acr-password'
         }
       ] : []
-      secrets: !empty(containerRegistryName) ? [
-        {
-          name: 'acr-password'
-          value: containerRegistry.listCredentials().passwords[0].value
-        }
-      ] : []
+      secrets: containerSecrets
     }
     template: {
       containers: [
@@ -95,7 +120,7 @@ output uri string = 'https://${containerApp.properties.configuration.ingress.fqd
 output identityPrincipalId string = containerApp.identity.principalId
 
 // Easy Auth v2 – conditionally deployed when authClientId is provided
-resource authConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (!empty(authClientId)) {
+resource authConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (authEnabled) {
   parent: containerApp
   name: 'current'
   properties: {
@@ -109,20 +134,17 @@ resource authConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (!
     identityProviders: {
       azureActiveDirectory: {
         registration: {
-          clientId: authClientId
-          openIdIssuer: 'https://sts.windows.net/${!empty(authTenantId) ? authTenantId : tenant().tenantId}/v2.0'
+          clientId: aadRegistration.clientId
+          openIdIssuer: aadRegistration.openIdIssuer
+          clientSecretSettingName: contains(aadRegistration, 'clientSecretSettingName') ? aadRegistration.clientSecretSettingName : null
         }
+        login: aadLogin
         validation: {
           allowedAudiences: [
             'api://${authClientId}'
             authClientId
           ]
         }
-      }
-    }
-    login: {
-      tokenStore: {
-        enabled: true
       }
     }
   }

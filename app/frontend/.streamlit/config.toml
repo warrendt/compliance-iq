@@ -1,2 +1,14 @@
 [client]
 showSidebarNavigation = false
+
+[server]
+port = 8502
+address = "127.0.0.1"
+headless = true
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"

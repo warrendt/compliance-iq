@@ -12,7 +12,7 @@ azd show
 azd logs --tail 100
 
 # Check Azure resources
-az resource list --resource-group rg-compliance-iq-dev -o table
+az resource list --resource-group <your-resource-group> -o table
 
 # Validate Bicep templates
 az deployment sub validate \
@@ -104,7 +104,7 @@ azd logs --service backend --tail 50
 # Verify environment variables
 az containerapp show \
   --name ca-backend-<token> \
-  --resource-group rg-compliance-iq-dev \
+  --resource-group <your-resource-group> \
   --query properties.template.containers[0].env -o table
 ```
 
@@ -139,7 +139,7 @@ azd logs --service backend --follow
 # Verify managed identity role assignment
 az cosmosdb sql role assignment list \
   --account-name cosmos-<token> \
-  --resource-group rg-compliance-iq-dev
+  --resource-group <your-resource-group>
 
 # Recreate role assignment if missing
 azd provision
@@ -171,13 +171,13 @@ azd env get-values | grep FRONTEND_URI
 # Check Container App status
 az containerapp show \
   --name ca-frontend-<token> \
-  --resource-group rg-compliance-iq-dev \
+  --resource-group <your-resource-group> \
   --query properties.managementState
 
 # Check if ingress is enabled
 az containerapp show \
   --name ca-frontend-<token> \
-  --resource-group rg-compliance-iq-dev \
+  --resource-group <your-resource-group> \
   --query properties.configuration.ingress
 ```
 
@@ -264,7 +264,7 @@ azd logs --service backend | grep cosmos
 # Verify Cosmos DB containers exist
 az cosmosdb sql database show \
   --account-name cosmos-<token> \
-  --resource-group rg-compliance-iq-dev \
+  --resource-group <your-resource-group> \
   --name compliance-iq-db
 ```
 
@@ -385,7 +385,7 @@ azd logs --service backend --follow
 az portal
 
 # Navigate to:
-# - Resource Group: rg-compliance-iq-dev
+# - Resource Group: <your-resource-group>
 # - Application Insights: Live Metrics
 # - Container Apps: Logs and Monitoring
 # - Cosmos DB: Data Explorer and Metrics
@@ -407,7 +407,7 @@ az portal
 # Set up health check endpoint monitoring
 az monitor app-insights web-test create \
   --name backend-health-check \
-  --resource-group rg-compliance-iq-dev \
+  --resource-group <your-resource-group> \
   --location swedencentral \
   --web-test-kind ping \
   --frequency 300 \

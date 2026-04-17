@@ -81,7 +81,7 @@ azd up
 
 **What happens:**
 1. Prompts for Azure region (defaults to Sweden Central)
-2. Creates resource group: `rg-compliance-iq-dev`
+2. Creates resource group `rg-<environment>` by default, or uses `AZURE_RESOURCE_GROUP` when set
 3. Provisions infrastructure (Cosmos DB, OpenAI, Container Apps, etc.)
 4. Builds Docker images
 5. Pushes images to Azure Container Registry
@@ -118,6 +118,12 @@ Uses defaults:
 ```bash
 # Set custom region
 azd env set AZURE_LOCATION eastus
+
+# Use an explicit resource group name
+azd env set AZURE_RESOURCE_GROUP wdt-ciq-dev
+
+# Prefix resource names (the template appends a short unique suffix)
+azd env set AZURE_NAME_PREFIX ciqdev
 
 # Override model selection (skips the interactive prompt)
 azd env set AZURE_OPENAI_MODEL_NAME <model-name>
@@ -195,12 +201,19 @@ az ad app create \
 # Set the app registration client ID (this enables auth)
 azd env set AUTH_CLIENT_ID <your-app-registration-client-id>
 
+# Required for Easy Auth to return delegated access tokens to the frontend/backed flow
+azd env set AUTH_CLIENT_SECRET <your-app-registration-client-secret>
+
 # (Optional) Override the tenant — defaults to the deployment tenant
 azd env set AUTH_TENANT_ID <your-tenant-id>
 
 # Deploy (or redeploy)
 azd up
 ```
+
+> The Entra app registration also needs delegated permission for
+> `https://management.azure.com/user_impersonation` with tenant consent if you
+> want the authenticated `/api/v1/deploy` flow to work in production.
 
 The `preprovision` hook will confirm whether auth is enabled or disabled.
 The `postprovision` hook will show the auth status in the deployment summary.
@@ -210,7 +223,7 @@ The `postprovision` hook will show the auth status in the deployment summary.
 | Component | Auth Mechanism |
 |-----------|---------------|
 | **Frontend Container App** | Easy Auth v2 (Container Apps built-in) redirects unauthenticated users to the Entra ID login page |
-| **Backend Container App** | Internal-only ingress — validates the `Authorization: Bearer <token>` header via `fastapi-azure-auth` |
+| **Backend Container App** | Internal-only ingress — accepts trusted Easy Auth headers forwarded by the frontend, or bearer tokens for local MSAL development |
 | **Bicep** | `container-app.bicep` deploys an `authConfig` resource **only** when `authClientId` is non-empty |
 
 #### D. Disable Authentication
@@ -232,9 +245,12 @@ azd up
 - `AZURE_SUBSCRIPTION_ID` - Azure subscription ID
 
 ### Optional
+- `AZURE_RESOURCE_GROUP` - Explicit resource group name override (defaults to `rg-<environment>`)
+- `AZURE_NAME_PREFIX` - Optional resource naming prefix; separators are stripped and a short unique suffix is appended
 - `AZURE_OPENAI_MODEL_NAME` - Model to deploy (prompted during `azd up` if not set)
 - `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model if primary is unavailable
 - `AUTH_CLIENT_ID` - Entra ID App Registration client ID (enables Easy Auth on frontend; leave empty to disable)
+- `AUTH_CLIENT_SECRET` - Entra ID App Registration client secret (required for Easy Auth token store and delegated ARM tokens)
 - `AUTH_TENANT_ID` - Entra ID tenant ID (defaults to deployment tenant when empty)
 - `DEV_PUBLIC_IP` - Developer public IP for resource firewall rules
 
@@ -284,10 +300,10 @@ azd logs --tail 100
 az portal
 
 # View resource group
-az group show --name rg-compliance-iq-dev
+az group show --name <your-resource-group>
 
 # View Container Apps
-az containerapp list --resource-group rg-compliance-iq-dev -o table
+az containerapp list --resource-group <your-resource-group> -o table
 ```
 
 ---

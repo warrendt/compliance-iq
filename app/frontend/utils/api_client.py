@@ -96,11 +96,9 @@ class APIClient:
         """Get an HTTP client with configured timeout, auth headers, and logging."""
         headers: Dict[str, str] = {}
         try:
-            from utils.auth import get_access_token
+            from utils.auth import get_backend_auth_headers
 
-            token = get_access_token()
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
+            headers.update(get_backend_auth_headers())
         except Exception:
             pass  # auth module unavailable or no token
         return httpx.Client(
