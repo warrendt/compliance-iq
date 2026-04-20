@@ -1,0 +1,43 @@
+name: CI — Unit Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: app/backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Run user-profile unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+        run: |
+          python -m pytest app/tests/test_user_profile.py --noconftest -v
+
+      - name: Run M365/Purview unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+        run: |
+          python -m pytest app/tests/test_m365_purview.py --noconftest -v
+
