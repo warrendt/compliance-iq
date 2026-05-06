@@ -5,6 +5,7 @@ targeting Azure Defender for Cloud, Microsoft 365, or Microsoft Purview.
 Also provides an extract-only endpoint that returns controls in CSV-flow format.
 """
 
+import asyncio
 import base64
 import csv
 import json
@@ -174,12 +175,16 @@ async def extract_controls_from_pdf(
         if errors:
             raise HTTPException(500, f"Config errors: {'; '.join(errors)}")
 
-        # Stage 1: Extract text
-        pdf_metadata = get_pdf_metadata(str(pdf_path))
-        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        # Stage 1: Extract text (blocking I/O — run in thread to free the event loop)
+        pdf_metadata = await asyncio.to_thread(get_pdf_metadata, str(pdf_path))
+        pdf_text = await asyncio.to_thread(
+            extract_text_from_pdf, str(pdf_path), max_pages=config.max_pdf_pages
+        )
 
-        # Stage 2: AI control extraction
-        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
+        # Stage 2: AI control extraction (blocking network call — run in thread)
+        extraction = await asyncio.to_thread(
+            extract_controls_from_text, pdf_text, config, pdf_metadata
+        )
 
         # Convert ExtractedControl → CSV-flow format (ExternalControl-compatible)
         csv_controls = [
@@ -500,8 +505,8 @@ async def list_pipeline_jobs():
     ]
 
 
-async def _run_pipeline_job(job_id: str):
-    """Execute the pipeline in the background."""
+def _run_pipeline_job(job_id: str):
+    """Execute the pipeline in the background (runs in thread pool via FastAPI BackgroundTasks)."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
@@ -629,8 +634,8 @@ async def _run_pipeline_job(job_id: str):
         _log_debug(job_id, f"Pipeline failed: {e}")
 
 
-async def _run_m365_job(job_id: str):
-    """Extract controls from PDF and generate a Microsoft 365 policy package."""
+def _run_m365_job(job_id: str):
+    """Extract controls from PDF and generate a Microsoft 365 policy package (runs in thread pool)."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
@@ -731,8 +736,8 @@ async def _run_m365_job(job_id: str):
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-async def _run_purview_job(job_id: str):
-    """Extract controls from PDF and generate a Microsoft Purview configuration package."""
+def _run_purview_job(job_id: str):
+    """Extract controls from PDF and generate a Microsoft Purview configuration package (runs in thread pool)."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
