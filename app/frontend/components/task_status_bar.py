@@ -107,7 +107,12 @@ def render_task_status_bar() -> None:
                 st.rerun()
 
     # ── Hint the user to refresh while tasks are active ──────────────
-    if active_count > 0:
+    # Only auto-rerun for backend-polled tasks. Frontend-managed tasks
+    # (poll_backend=False, e.g. PDF extraction) execute synchronously in
+    # their own page block — auto-rerunning here would starve that block
+    # and the request would never be issued.
+    backend_polled_active = [t for t in active_tasks if t.get("poll_backend", True)]
+    if backend_polled_active:
         st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
 
         if auto_refresh_tasks:
