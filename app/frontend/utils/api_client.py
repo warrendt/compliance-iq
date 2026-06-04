@@ -937,6 +937,77 @@ class APIClient:
         except Exception:
             return []
 
+    # ── Control comparison (diff) ─────────────────────────────────────────
+
+    def list_comparison_frameworks(self) -> List[Dict[str, Any]]:
+        """List external frameworks available for comparison.
+
+        Returns:
+            List of dicts with key, display_name, control_count.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/comparison/frameworks"
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return []
+
+    def run_comparison(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+        external_framework: str,
+    ) -> Dict[str, Any]:
+        """Start an internal-vs-external comparison job.
+
+        Args:
+            pdf_bytes: Raw internal control PDF bytes.
+            filename: Original filename.
+            external_framework: External framework key (see list_comparison_frameworks).
+
+        Returns:
+            Dict with comparison_id and initial status.
+        """
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/comparison/run",
+                files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+                data={"external_framework": external_framework},
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_comparison_status(self, comparison_id: str) -> Dict[str, Any]:
+        """Poll the status of a comparison job."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/comparison/status/{comparison_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_comparison(self, comparison_id: str) -> Dict[str, Any]:
+        """Fetch the full comparison result document."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/comparison/{comparison_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def list_comparisons(self) -> List[Dict[str, Any]]:
+        """List the current user's comparisons (newest first)."""
+        try:
+            with self._get_client() as client:
+                response = client.get(f"{self.base_url}/api/v1/comparison")
+                response.raise_for_status()
+                return response.json().get("comparisons", [])
+        except Exception:
+            return []
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:

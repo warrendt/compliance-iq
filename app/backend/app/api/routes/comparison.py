@@ -89,7 +89,9 @@ async def _update_job(comparison_id: str, user_id: str, **fields: Any) -> None:
         return
     doc.update(fields)
     doc["updatedAt"] = _now()
-    await cosmos_client.upsert_document(cosmos_client.COMPARISONS, doc)
+    # Strip Cosmos system fields (_etag/_rid/_self/_ts) before writing back.
+    clean = {k: v for k, v in doc.items() if not k.startswith("_")}
+    await cosmos_client.upsert_document(cosmos_client.COMPARISONS, clean)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -237,7 +239,8 @@ async def _run_comparison_job(
 
         await _update_job(comparison_id, user_id, status="running", stage="extracting_text")
 
-        pdf_path = Path(tmp_dir) / filename
+        # Use only the basename to avoid path traversal via a crafted filename.
+        pdf_path = Path(tmp_dir) / (Path(filename).name or "internal.pdf")
         pdf_path.write_bytes(content)
         metadata = await asyncio.to_thread(get_pdf_metadata, str(pdf_path))
         text = await asyncio.to_thread(extract_text_from_pdf, str(pdf_path), config.max_pdf_pages)
