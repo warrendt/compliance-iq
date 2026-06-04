@@ -5,6 +5,8 @@ param tags object = {}
 param logAnalyticsWorkspaceId string
 param infrastructureSubnetId string
 param workloadSubnetId string
+@description('Use an internal-only environment (private load balancer, no public IP). Required by subscriptions that forbid public IP addresses.')
+param internal bool = false
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: name
@@ -20,7 +22,7 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
     }
     vnetConfiguration: {
       infrastructureSubnetId: infrastructureSubnetId
-      internal: false
+      internal: internal
     }
     workloadProfiles: [
       {

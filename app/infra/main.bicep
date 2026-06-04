@@ -49,6 +49,12 @@ param authClientSecret string = ''
 @description('Developer public IP address for resource firewall rules (empty to keep fully private)')
 param devPublicIpAddress string = ''
 
+@description('Optional DataClassification tag value applied to all resources (e.g., required by governed/sovereign subscriptions). Leave empty to omit the tag.')
+param dataClassification string = ''
+
+@description('Set to "true" to deploy an internal-only Container Apps environment (private load balancer, no public IP) for subscriptions that forbid public IP addresses.')
+param internalEnvironment string = 'false'
+
 // Generate resource names
 var abbrs = loadJsonContent('./abbreviations.json')
 var defaultResourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -56,12 +62,13 @@ var sanitizedNamingPrefix = toLower(replace(replace(replace(replace(trim(namingP
 var resourceToken = !empty(sanitizedNamingPrefix) ? '${take(sanitizedNamingPrefix, 12)}${take(defaultResourceToken, 8)}' : defaultResourceToken
 var resolvedResourceGroupName = !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
 var acrName = '${abbrs.containerRegistryRegistries}${resourceToken}'
-var tags = {
+var baseTags = {
   'azd-env-name': environmentName
   Environment: environmentName
   ManagedBy: 'azd'
   Project: 'compliance-iq'
 }
+var tags = empty(dataClassification) ? baseTags : union(baseTags, { DataClassification: dataClassification })
 
 // Resource Group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -180,6 +187,7 @@ module containerAppsEnvironment './core/container-apps-environment.bicep' = {
     logAnalyticsWorkspaceId: logAnalytics.outputs.id
     infrastructureSubnetId: network.outputs.infraSubnetId
     workloadSubnetId: network.outputs.workloadSubnetId
+    internal: toLower(internalEnvironment) == 'true'
   }
 }
 

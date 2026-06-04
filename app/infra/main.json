@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "15078774586306284586"
+      "version": "0.43.8.12551",
+      "templateHash": "738570681422185942"
     }
   },
   "parameters": {
@@ -113,6 +113,20 @@
       "defaultValue": "",
       "metadata": {
         "description": "Developer public IP address for resource firewall rules (empty to keep fully private)"
+      }
+    },
+    "dataClassification": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional DataClassification tag value applied to all resources (e.g., required by governed/sovereign subscriptions). Leave empty to omit the tag."
+      }
+    },
+    "internalEnvironment": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Set to \"true\" to deploy an internal-only Container Apps environment (private load balancer, no public IP) for subscriptions that forbid public IP addresses."
       }
     }
   },
@@ -260,12 +274,13 @@
     "resourceToken": "[if(not(empty(variables('sanitizedNamingPrefix'))), format('{0}{1}', take(variables('sanitizedNamingPrefix'), 12), take(variables('defaultResourceToken'), 8)), variables('defaultResourceToken'))]",
     "resolvedResourceGroupName": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
     "acrName": "[format('{0}{1}', variables('abbrs').containerRegistryRegistries, variables('resourceToken'))]",
-    "tags": {
+    "baseTags": {
       "azd-env-name": "[parameters('environmentName')]",
       "Environment": "[parameters('environmentName')]",
       "ManagedBy": "azd",
       "Project": "compliance-iq"
     },
+    "tags": "[if(empty(parameters('dataClassification')), variables('baseTags'), union(variables('baseTags'), createObject('DataClassification', parameters('dataClassification'))))]",
     "acrPullRoleId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d', subscription().subscriptionId)]"
   },
   "resources": [
@@ -303,8 +318,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "11087974061149340357"
+              "version": "0.43.8.12551",
+              "templateHash": "13209342643894966374"
             }
           },
           "parameters": {
@@ -465,8 +480,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "16487885283693973664"
+              "version": "0.43.8.12551",
+              "templateHash": "10363558410637292596"
             }
           },
           "parameters": {
@@ -517,6 +532,7 @@
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}-link', 'privatelink.documents.azure.com', parameters('environmentName'))]",
               "location": "global",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "virtualNetwork": {
                   "id": "[parameters('vnetId')]"
@@ -532,6 +548,7 @@
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}-link', 'privatelink.openai.azure.com', parameters('environmentName'))]",
               "location": "global",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "virtualNetwork": {
                   "id": "[parameters('vnetId')]"
@@ -548,6 +565,7 @@
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}-link', 'privatelink.azurecr.io', parameters('environmentName'))]",
               "location": "global",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "virtualNetwork": {
                   "id": "[parameters('vnetId')]"
@@ -610,8 +628,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "7063869007145073488"
+              "version": "0.43.8.12551",
+              "templateHash": "18108012424414195100"
             }
           },
           "parameters": {
@@ -708,8 +726,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "3549420163886053076"
+              "version": "0.43.8.12551",
+              "templateHash": "16313992801405767510"
             }
           },
           "parameters": {
@@ -817,8 +835,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "1328253959646691554"
+              "version": "0.43.8.12551",
+              "templateHash": "16629868287981559240"
             }
           },
           "parameters": {
@@ -875,6 +893,7 @@
               "apiVersion": "2021-08-01",
               "name": "[format('{0}-pe', parameters('name'))]",
               "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "subnet": {
                   "id": "[parameters('privateEndpointSubnetId')]"
@@ -991,8 +1010,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "10310898283935882531"
+              "version": "0.43.8.12551",
+              "templateHash": "11735011002900376381"
             }
           },
           "parameters": {
@@ -1139,6 +1158,7 @@
               "apiVersion": "2021-08-01",
               "name": "[format('{0}-pe', parameters('name'))]",
               "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "subnet": {
                   "id": "[parameters('privateEndpointSubnetId')]"
@@ -1257,8 +1277,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "18314874785476698433"
+              "version": "0.43.8.12551",
+              "templateHash": "14989046195306307721"
             }
           },
           "parameters": {
@@ -1347,6 +1367,7 @@
               "apiVersion": "2021-08-01",
               "name": "[format('{0}-pe', parameters('name'))]",
               "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "subnet": {
                   "id": "[parameters('privateEndpointSubnetId')]"
@@ -1407,6 +1428,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}', parameters('name'), parameters('databaseName'))]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "[parameters('databaseName')]"
@@ -1420,6 +1442,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'mapping-results')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "mapping-results",
@@ -1451,6 +1474,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'audit-logs')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "audit-logs",
@@ -1480,6 +1504,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'user-uploads')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "user-uploads",
@@ -1504,6 +1529,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'generated-artifacts')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "generated-artifacts",
@@ -1528,6 +1554,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'mapping-jobs')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "mapping-jobs",
@@ -1552,6 +1579,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'policy-cache')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "policy-cache",
@@ -1576,6 +1604,7 @@
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
               "apiVersion": "2023-04-15",
               "name": "[format('{0}/{1}/{2}', parameters('name'), parameters('databaseName'), 'user-profiles')]",
+              "tags": "[parameters('tags')]",
               "properties": {
                 "resource": {
                   "id": "user-profiles",
@@ -1659,6 +1688,9 @@
           },
           "workloadSubnetId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'network'), '2025-04-01').outputs.workloadSubnetId.value]"
+          },
+          "internal": {
+            "value": "[equals(toLower(parameters('internalEnvironment')), 'true')]"
           }
         },
         "template": {
@@ -1667,8 +1699,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "15735454997666607486"
+              "version": "0.43.8.12551",
+              "templateHash": "3979428359485699455"
             }
           },
           "parameters": {
@@ -1691,6 +1723,13 @@
             },
             "workloadSubnetId": {
               "type": "string"
+            },
+            "internal": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use an internal-only environment (private load balancer, no public IP). Required by subscriptions that forbid public IP addresses."
+              }
             }
           },
           "resources": [
@@ -1710,7 +1749,7 @@
                 },
                 "vnetConfiguration": {
                   "infrastructureSubnetId": "[parameters('infrastructureSubnetId')]",
-                  "internal": false
+                  "internal": "[parameters('internal')]"
                 },
                 "workloadProfiles": [
                   {
@@ -1850,8 +1889,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "532833625818912992"
+              "version": "0.43.8.12551",
+              "templateHash": "12271450100268662721"
             }
           },
           "parameters": {
@@ -2133,8 +2172,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "532833625818912992"
+              "version": "0.43.8.12551",
+              "templateHash": "12271450100268662721"
             }
           },
           "parameters": {
@@ -2354,8 +2393,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "8870339220331590504"
+              "version": "0.43.8.12551",
+              "templateHash": "15529700734220590152"
             }
           },
           "parameters": {
@@ -2423,8 +2462,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "14355444167290652116"
+              "version": "0.43.8.12551",
+              "templateHash": "4332774421096111608"
             }
           },
           "parameters": {
@@ -2503,8 +2542,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "16601857770809221433"
+              "version": "0.43.8.12551",
+              "templateHash": "15522689748822222218"
             }
           },
           "parameters": {
@@ -2581,8 +2620,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "16601857770809221433"
+              "version": "0.43.8.12551",
+              "templateHash": "15522689748822222218"
             }
           },
           "parameters": {

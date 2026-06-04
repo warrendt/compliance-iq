@@ -93,6 +93,7 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
 resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = {
   name: '${name}-pe'
   location: location
+  tags: tags
   properties: {
     subnet: {
       id: privateEndpointSubnetId
