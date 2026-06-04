@@ -22,6 +22,12 @@
 #   FRONTEND_APP    Frontend Container App name        [ca-frontend-nuib2mtsi7po6]
 #   IMAGE_PREFIX    Image repository prefix            [compliance-iq]
 #   IMAGE_SUFFIX    Image name suffix                  [wdt-cciq-03]
+#   SUBSCRIPTION    Azure subscription id (pinned)     [6250ffbd-…-1b14d2a6c4c7]
+#
+# SUBSCRIPTION is passed explicitly to every az call. This matters because
+# `az acr build` resets the CLI's *active* subscription to the machine default
+# mid-run, which previously made a subsequent `az containerapp update` fail with
+# SubscriptionNotFound. Pinning it keeps the whole script on the right tenant.
 #
 set -euo pipefail
 
@@ -36,6 +42,7 @@ BACKEND_APP="${BACKEND_APP:-ca-backend-nuib2mtsi7po6}"
 FRONTEND_APP="${FRONTEND_APP:-ca-frontend-nuib2mtsi7po6}"
 IMAGE_PREFIX="${IMAGE_PREFIX:-compliance-iq}"
 IMAGE_SUFFIX="${IMAGE_SUFFIX:-wdt-cciq-03}"
+SUBSCRIPTION="${SUBSCRIPTION:-6250ffbd-c968-488c-ae7d-1b14d2a6c4c7}"
 
 TARGET="${1:-both}"
 TAG="${2:-$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null || echo latest)}"
@@ -47,8 +54,8 @@ if ! command -v az >/dev/null 2>&1; then
   echo "Error: Azure CLI (az) is not installed." >&2
   exit 1
 fi
-if ! az account show >/dev/null 2>&1; then
-  echo "Error: not logged in to Azure. Run 'az login' first." >&2
+if ! az account show --subscription "${SUBSCRIPTION}" >/dev/null 2>&1; then
+  echo "Error: cannot access subscription '${SUBSCRIPTION}'. Run 'az login' (and ensure this account can see it)." >&2
   exit 1
 fi
 
@@ -69,6 +76,7 @@ build_and_deploy() {
 
   echo "==> [${service}] building ${LOGIN_SERVER}/${image} (server-side, amd64)"
   az acr build \
+    --subscription "${SUBSCRIPTION}" \
     --registry "${REGISTRY}" \
     --image "${image}" \
     --file "${dockerfile}" \
@@ -76,6 +84,7 @@ build_and_deploy() {
 
   echo "==> [${service}] updating Container App '${app_name}'"
   az containerapp update \
+    --subscription "${SUBSCRIPTION}" \
     --name "${app_name}" \
     --resource-group "${RESOURCE_GROUP}" \
     --image "${LOGIN_SERVER}/${image}"
@@ -84,6 +93,7 @@ build_and_deploy() {
 }
 
 echo "Registry:       ${LOGIN_SERVER}"
+echo "Subscription:   ${SUBSCRIPTION}"
 echo "Resource group: ${RESOURCE_GROUP}"
 echo "Target:         ${TARGET}"
 echo "Tag:            ${TAG}"
