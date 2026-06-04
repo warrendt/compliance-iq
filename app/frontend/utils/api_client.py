@@ -1008,6 +1008,61 @@ class APIClient:
         except Exception:
             return []
 
+    # ── Initiative build (full union) + versions ──────────────────────────────
+
+    def build_initiative(self, comparison_id: str) -> Dict[str, Any]:
+        """Kick off (or return) an initiative build for a completed comparison."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/comparison/{comparison_id}/build-initiative"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_build_status(self, comparison_id: str) -> Dict[str, Any]:
+        """Poll the status of an initiative build for a comparison."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/comparison/{comparison_id}/build-status"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def list_versions(self) -> List[Dict[str, Any]]:
+        """List the current user's policy versions (newest first, metadata only)."""
+        try:
+            with self._get_client() as client:
+                response = client.get(f"{self.base_url}/api/v1/versions")
+                response.raise_for_status()
+                return response.json().get("versions", [])
+        except Exception:
+            return []
+
+    def get_version(self, version_id: str) -> Dict[str, Any]:
+        """Fetch a single version document (including its artifact bundle)."""
+        with self._get_client() as client:
+            response = client.get(f"{self.base_url}/api/v1/versions/{version_id}")
+            response.raise_for_status()
+            return response.json()
+
+    def download_version(self, version_id: str) -> Dict[str, Any]:
+        """Fetch just the artifact payload (files) for a version."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/versions/{version_id}/download"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def revert_version(self, version_id: str) -> Dict[str, Any]:
+        """Revert by creating a new version that copies the target's bundle."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/versions/{version_id}/revert"
+            )
+            response.raise_for_status()
+            return response.json()
+
 
 @st.cache_resource
 def get_api_client() -> APIClient:

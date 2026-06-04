@@ -344,3 +344,113 @@ async def compare_controls(
         "counts": counts,
         "summary": " ".join(summaries).strip(),
     }
+
+
+# ── Full-union initiative construction (Phase 3) ──────────────────────────────
+
+_ALLOWED_CONTROL_TYPES = {
+    "Technical", "Policy", "Contractual", "Management", "Operational", "Governance",
+}
+
+
+def _coerce_control_type(value: Optional[str]) -> str:
+    """Map free-text control types onto the ExtractedControl Literal set."""
+    raw = (value or "").strip()
+    for allowed in _ALLOWED_CONTROL_TYPES:
+        if raw.lower() == allowed.lower():
+            return allowed
+    return "Technical"
+
+
+def build_union_extraction(comparison_doc: Dict[str, Any]):
+    """Build a ``ControlExtractionResult`` for the *effective union* of a completed
+    comparison: **all** internal controls (matched + partial-overlap + gap) plus the
+    **external** controls that have no internal equivalent (the ``extra`` bucket).
+
+    Requires the comparison ``result`` to carry the full ``internal_controls`` dicts
+    (persisted by the comparison job). Raises ``ValueError`` if they are absent
+    (e.g. a comparison created before this field existed → caller should re-run).
+    """
+    from app.pipeline.models import ControlExtractionResult, ExtractedControl
+
+    result = (comparison_doc or {}).get("result") or {}
+    internal_controls = result.get("internal_controls")
+    if not internal_controls:
+        raise ValueError(
+            "This comparison predates union-build support. Please re-run the comparison."
+        )
+
+    framework_key = comparison_doc.get("externalFramework") or ""
+    internal_fw = result.get("internal_framework") or "Internal Controls"
+    external_fw = result.get("external_framework") or framework_key or "External Framework"
+
+    controls: List[ExtractedControl] = []
+    seen_ids: set[str] = set()
+
+    def _add(cid: str, title: str, desc: str, domain: str, ctype: str) -> None:
+        cid = (cid or "").strip()
+        if not cid:
+            return
+        key = _norm(cid)
+        if key in seen_ids:
+            return
+        seen_ids.add(key)
+        title = (title or "").strip() or cid
+        controls.append(
+            ExtractedControl(
+                control_id=cid,
+                control_title=title,
+                control_description=(desc or "").strip() or title,
+                domain=(domain or "").strip() or "General",
+                control_type=_coerce_control_type(ctype),
+                sub_controls=[],
+            )
+        )
+
+    # 1. All internal controls (the org's own control set).
+    for c in internal_controls:
+        _add(
+            c.get("id", ""),
+            c.get("title", ""),
+            c.get("description", ""),
+            c.get("domain", ""),
+            c.get("control_type", ""),
+        )
+
+    # 2. External controls with no internal equivalent (the ``extra`` bucket).
+    extra_ids = {
+        _norm(m.get("external_control_id"))
+        for m in result.get("matches", [])
+        if m.get("bucket") == "extra" and m.get("external_control_id")
+    }
+    if extra_ids and framework_key:
+        try:
+            _, external_controls = load_external_controls(framework_key)
+        except ValueError:
+            external_controls = []
+        for ext in external_controls:
+            if _norm(ext.control_id) in extra_ids:
+                _add(
+                    ext.control_id,
+                    ext.control_name,
+                    ext.description,
+                    ext.domain,
+                    ext.control_type,
+                )
+
+    counts = result.get("counts", {}) or {}
+    summary = (
+        f"Effective union of {internal_fw} and {external_fw}: "
+        f"{len(controls)} controls "
+        f"({counts.get('matched', 0)} matched, {counts.get('partial-overlap', 0)} partial, "
+        f"{counts.get('gap', 0)} gaps, {counts.get('extra', 0)} external-only)."
+    )
+
+    return ControlExtractionResult(
+        framework_name=f"Effective Union — {internal_fw} + {external_fw}",
+        framework_version=None,
+        issuing_authority=None,
+        country_or_region=None,
+        controls=controls,
+        summary=summary,
+    )

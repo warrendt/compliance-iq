@@ -58,6 +58,7 @@ st.markdown(
 st.session_state.setdefault("cmp_id", None)
 st.session_state.setdefault("cmp_status", None)
 st.session_state.setdefault("cmp_result", None)
+st.session_state.setdefault("cmp_building", None)
 
 # ── Step 1: choose external framework ─────────────────────────────────────────
 
@@ -214,10 +215,104 @@ if cmp_id:
         else:
             st.caption("No controls in the selected buckets.")
 
+        # ── Build Azure Policy initiative (full union) ────────────────────────
+        st.markdown("---")
+        st.markdown("#### 🏗️ Build Azure Policy initiative")
+        st.caption(
+            "Generate a Defender for Cloud initiative from the **full union** — all "
+            "your internal controls plus the external-only controls — and save it as "
+            "an immutable version you can revert to later."
+        )
+
+        # Seed build state from the persisted comparison doc, unless a poll is active.
+        build_status = result.get("buildStatus", "none")
+        build_version_id = result.get("buildVersionId")
+        build_version_number = result.get("buildVersionNumber")
+        build_error = result.get("buildError")
+
+        paused_key = f"build_poll_paused_{cmp_id}"
+        # Poll while our flag is set OR the persisted doc says "building" (e.g. the
+        # user navigated away and back, losing the in-memory flag) — unless paused
+        # after a transient poll failure.
+        poll_active = (
+            st.session_state.cmp_building == cmp_id
+            or (build_status == "building" and not st.session_state.get(paused_key))
+        )
+
+        if poll_active:
+            st.session_state.cmp_building = cmp_id
+            try:
+                bpoll = api.get_build_status(cmp_id)
+                build_status = bpoll.get("buildStatus", "building")
+                build_version_id = bpoll.get("buildVersionId")
+                build_version_number = bpoll.get("buildVersionNumber")
+                build_error = bpoll.get("buildError")
+            except Exception as exc:  # noqa: BLE001 — transient poll failure, not a build failure
+                st.session_state.cmp_building = None
+                st.session_state[paused_key] = True
+                st.warning(
+                    f"Couldn't fetch build status: {exc}. The build may still be "
+                    "running on the server."
+                )
+                if st.button("🔄 Resume checking", key=f"resume_{cmp_id}"):
+                    st.session_state[paused_key] = False
+                    st.rerun()
+            else:
+                if build_status == "building":
+                    st.info("⏳ Building initiative… mapping controls to Azure Policy. "
+                            "This can take a minute.")
+                    time.sleep(2.5)
+                    st.rerun()
+                else:
+                    # Build finished — refresh the cached doc and clear the poll flag.
+                    st.session_state.cmp_building = None
+                    try:
+                        st.session_state.cmp_result = api.get_comparison(cmp_id)
+                    except Exception:  # noqa: BLE001
+                        pass
+
+        if build_status == "completed" and build_version_id:
+            st.success(
+                f"✅ Initiative built as **version {build_version_number}**."
+            )
+            st.page_link(
+                "pages/9_🗂_Version_History.py",
+                label="Open Version History",
+                icon="🗂",
+            )
+        elif build_status == "failed":
+            st.error(f"❌ Initiative build failed: {build_error or 'Unknown error'}")
+            if st.button("🔁 Retry build", use_container_width=True):
+                try:
+                    api.build_initiative(cmp_id)
+                    st.session_state[paused_key] = False
+                    st.session_state.cmp_building = cmp_id
+                    st.rerun()
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Could not start build: {exc}")
+        elif build_status == "building":
+            # Paused after a poll failure — the warning + resume button above stands.
+            pass
+        else:
+            if st.button("🏗️ Build initiative (full union)", type="primary",
+                         use_container_width=True):
+                try:
+                    resp = api.build_initiative(cmp_id)
+                    st.session_state[paused_key] = False
+                    if resp.get("buildStatus") == "completed" and resp.get("buildVersionId"):
+                        st.session_state.cmp_result = api.get_comparison(cmp_id)
+                    else:
+                        st.session_state.cmp_building = cmp_id
+                    st.rerun()
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Could not start build: {exc}")
+
+        st.markdown("---")
         if st.button("🆕 Start a new comparison"):
             st.session_state.cmp_id = None
             st.session_state.cmp_status = None
             st.session_state.cmp_result = None
+            st.session_state.cmp_building = None
             st.rerun()
 
 # ── Previous comparisons ──────────────────────────────────────────────────────
@@ -244,6 +339,7 @@ with st.expander("🕓 Previous comparisons"):
                 st.session_state.cmp_id = item.get("id")
                 st.session_state.cmp_status = item.get("status")
                 st.session_state.cmp_result = None
+                st.session_state.cmp_building = None
                 st.rerun()
 
 render_footer()

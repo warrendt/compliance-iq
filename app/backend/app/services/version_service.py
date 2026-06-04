@@ -102,6 +102,27 @@ async def list_versions(user_id: str) -> List[Dict[str, Any]]:
     )
 
 
+async def list_version_summaries(user_id: str) -> List[Dict[str, Any]]:
+    """Return lightweight version metadata (no artifact payloads), newest first.
+
+    Avoids returning the full ``artifact_payload`` (potentially large file bundles)
+    for every version when only the history list is needed.
+    """
+    _require_db()
+    await _ensure()
+
+    return await cosmos_client.query_documents(
+        _container(),
+        query=(
+            "SELECT c.id, c.version_number, c.parent_version, c.status, "
+            "c.sourceComparisonId, c.metadata, c.timestamp "
+            "FROM c WHERE c.userId = @userId ORDER BY c.version_number DESC"
+        ),
+        parameters=[{"name": "@userId", "value": user_id}],
+        partition_key=user_id,
+    )
+
+
 async def get_version(user_id: str, version_id: str) -> Optional[Dict[str, Any]]:
     """Return a single version document by id, or None if not found."""
     _require_db()
