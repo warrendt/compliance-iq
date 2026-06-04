@@ -252,7 +252,6 @@ async def compare_controls(
 
     # internal canonical id -> best match record
     best: Dict[str, Dict[str, Any]] = {}
-    summaries: List[str] = []
 
     for start in range(0, len(internal_controls), size):
         batch = internal_controls[start:start + size]
@@ -263,9 +262,6 @@ async def compare_controls(
         except Exception as exc:  # noqa: BLE001 — surface as gaps, keep job alive
             logger.warning("comparison_batch_failed", extra={"start": start, "error": str(exc)})
             result = ComparisonResult(matches=[], summary="")
-
-        if result.summary:
-            summaries.append(result.summary)
 
         for m in result.matches:
             nid = _norm(m.internal_control_id)
@@ -339,10 +335,20 @@ async def compare_controls(
     for m in matches:
         counts[m["bucket"]] = counts.get(m["bucket"], 0) + 1
 
+    # A concise, deterministic headline. Per-batch LLM summaries are intentionally
+    # NOT concatenated — with small batches that produced an unreadable wall of
+    # text. The UI renders the bucket counts and per-control table separately.
+    summary = (
+        f"Compared {len(internal_controls)} internal controls against "
+        f"{len(external_controls)} external controls — "
+        f"{counts['matched']} matched, {counts['partial-overlap']} partially covered, "
+        f"{counts['gap']} gaps, {counts['extra']} external-only."
+    )
+
     return {
         "matches": matches,
         "counts": counts,
-        "summary": " ".join(summaries).strip(),
+        "summary": summary,
     }
 
 

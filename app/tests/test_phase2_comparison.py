@@ -96,7 +96,13 @@ async def test_compare_buckets_counts_and_extra(monkeypatch):
     assert by_int["INT-3"]["bucket"] == "gap"
     extras = [m for m in result["matches"] if m["bucket"] == "extra"]
     assert len(extras) == 1 and extras[0]["external_control_id"] == "EXT-9"
-    assert result["summary"] == "batch summary"
+    # Summary is a concise, deterministic one-liner derived from counts — NOT a
+    # concatenation of per-batch LLM summaries (which produced an unreadable wall).
+    assert result["summary"] == (
+        "Compared 3 internal controls against 3 external controls — "
+        "1 matched, 1 partially covered, 1 gaps, 1 external-only."
+    )
+    assert "batch summary" not in result["summary"]
 
 
 @pytest.mark.asyncio
@@ -171,6 +177,38 @@ async def test_compare_batch_failure_yields_gaps(monkeypatch):
     # Internal control still surfaces as a gap; external as extra. No crash.
     assert result["counts"]["gap"] == 1
     assert result["counts"]["extra"] == 1
+
+
+@pytest.mark.asyncio
+async def test_summary_stays_concise_across_many_batches(monkeypatch):
+    """Regression: with many small batches the summary must remain a single
+    concise line, not a concatenation of every batch's LLM summary."""
+    internal = [
+        {"id": f"INT-{n}", "title": f"Ctrl {n}", "description": "", "domain": "D"}
+        for n in range(40)
+    ]
+    external = _ext("EXT-1")
+
+    def fake_batch(config, batch, ext):
+        # Each batch returns a verbose summary that must NOT be concatenated.
+        return ComparisonResult(
+            matches=[
+                ComparisonControlMatch(internal_control_id=c["id"], bucket="gap")
+                for c in batch
+            ],
+            summary="This batch is a long-winded paragraph about coverage. " * 5,
+        )
+
+    # batch_size=5 → 8 batches; the old code would join 8 verbose paragraphs.
+    monkeypatch.setattr(cs, "_compare_batch", fake_batch)
+    result = await cs.compare_controls(internal, external, _cfg(batch_size=5))
+
+    assert result["summary"] == (
+        "Compared 40 internal controls against 1 external controls — "
+        "0 matched, 0 partially covered, 40 gaps, 1 external-only."
+    )
+    assert "long-winded" not in result["summary"]
+    assert result["summary"].count(".") == 1  # exactly one sentence
 
 
 # ── Routes (Cosmos mocked, auth in dev mode) ──────────────────────────────────
