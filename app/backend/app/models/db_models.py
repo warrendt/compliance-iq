@@ -138,3 +138,58 @@ class UserProfileDocument(BaseDocument):
             "lastActive": "2026-01-01T12:00:00Z"
         }
     })
+
+
+class ComparisonDocument(BaseDocument):
+    """Document for an internal-vs-external control diff/comparison run.
+
+    Partitioned by ``userId``. Phase 1 defines the shape; the comparison
+    service (Phase 2) populates ``result`` and ``counts``.
+    """
+    userId: str
+    status: str = "pending"  # pending | running | completed | failed
+    internalFileName: str = ""
+    externalFramework: str = ""
+    direction: str = "internal_vs_external"
+    result: Dict[str, Any] = Field(default_factory=dict)
+    counts: Dict[str, int] = Field(default_factory=dict)
+    errorMessage: Optional[str] = None
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "status": "completed",
+            "internalFileName": "popia.pdf",
+            "externalFramework": "SAMA",
+            "direction": "internal_vs_external",
+            "counts": {"matched": 12, "partial-overlap": 5, "gap": 8, "extra": 3},
+        }
+    })
+
+
+class PolicyVersionDocument(BaseDocument):
+    """Immutable per-user policy initiative version (partitioned by ``userId``).
+
+    Versions are never mutated. A revert creates a *new* version that copies the
+    target's ``artifact_payload`` and records lineage in ``parent_version`` /
+    ``metadata``.
+    """
+    userId: str
+    version_number: int
+    parent_version: Optional[int] = None
+    artifact_payload: Dict[str, Any] = Field(default_factory=dict)
+    status: str = "active"
+    sourceComparisonId: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "userId": "user@example.com",
+            "version_number": 2,
+            "parent_version": 1,
+            "status": "active",
+            "sourceComparisonId": "cmp-123",
+            "artifact_payload": {"initiative": {}, "artifacts": []},
+            "metadata": {"reverted_from_version": 1},
+        }
+    })

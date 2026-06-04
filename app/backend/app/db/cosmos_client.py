@@ -30,6 +30,8 @@ class CosmosDBClient:
         self.MAPPING_JOBS = "mapping-jobs"
         self.POLICY_CACHE = "policy-cache"
         self.USER_PROFILES = "user-profiles"
+        self.COMPARISONS = "comparisons"
+        self.POLICY_VERSIONS = "policy-versions"
     
     async def initialize(self) -> None:
         """Initialize Cosmos DB client with managed identity"""
@@ -71,7 +73,20 @@ class CosmosDBClient:
                 self.USER_PROFILES,
                 partition_key_paths=["/userId"],
             )
-            
+
+            # Per-user diff comparisons (90-day TTL — regenerable analysis output)
+            await self.ensure_container(
+                self.COMPARISONS,
+                partition_key_paths=["/userId"],
+                default_ttl=7776000,  # 90 days
+            )
+
+            # Immutable per-user policy version history (no TTL — permanent)
+            await self.ensure_container(
+                self.POLICY_VERSIONS,
+                partition_key_paths=["/userId"],
+            )
+
             logger.info("Cosmos DB client initialized successfully", extra={
                 "endpoint": self.endpoint,
                 "database": self.database_name
