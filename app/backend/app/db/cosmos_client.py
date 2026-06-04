@@ -12,6 +12,19 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_document_for_write(document: Dict[str, Any]) -> None:
+    """Mutate a document in place so Cosmos accepts it.
+
+    Documents built from ``BaseDocument`` always carry a ``ttl`` key which is
+    ``None`` unless explicitly set. Cosmos rejects an explicit ``ttl: null`` on a
+    TTL-enabled container ("The input ttl 'null' is invalid"). Omitting the key
+    lets Cosmos apply the container's default TTL. Valid values (a positive int
+    or ``-1`` for never-expire) are preserved.
+    """
+    if document.get("ttl") is None:
+        document.pop("ttl", None)
+
+
 class CosmosDBClient:
     """Async Cosmos DB client with managed identity authentication"""
     
@@ -121,6 +134,7 @@ class CosmosDBClient:
             if '_ts' not in document:
                 document['timestamp'] = datetime.now(timezone.utc).isoformat()
             
+            _sanitize_document_for_write(document)
             result = await container.create_item(body=document)
             
             logger.info("document_inserted", extra={
@@ -150,6 +164,7 @@ class CosmosDBClient:
             if '_ts' not in document:
                 document['timestamp'] = datetime.now(timezone.utc).isoformat()
 
+            _sanitize_document_for_write(document)
             result = await container.upsert_item(body=document)
 
             logger.info("document_upserted", extra={
@@ -249,6 +264,7 @@ class CosmosDBClient:
         """
         try:
             container = self.database.get_container_client(container_name)
+            _sanitize_document_for_write(document)
             result = await container.replace_item(
                 item=document['id'],
                 body=document
