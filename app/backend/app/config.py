@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Data paths
     mcsb_data_path: str = "data/mcsb/mcsb_v1_controls.json"
     policy_mappings_path: str = "data/mcsb/azure_policy_mappings.json"
+    # Bundled external-framework catalogues (CSV). Relative paths are resolved
+    # against the backend ``app/`` package dir; absolute paths are used as-is.
+    catalogues_dir: str = "data/catalogues"
 
     # AI Mapping Settings
     ai_temperature: float = 0.3  # Lower for consistency

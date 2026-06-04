@@ -83,8 +83,12 @@ class MCSBService:
         try:
             import pandas as pd
 
-            # Load existing SAMA catalog as reference
-            catalog_path = Path("../../catalogues/SAMA_Catalog_Azure_Mappings.csv")
+            # Load existing SAMA catalog as reference (bundled into the image
+            # under app/data/catalogues/; resolved robustly relative to this file).
+            catalog_path = (
+                Path(__file__).resolve().parent.parent
+                / "data" / "catalogues" / "SAMA_Catalog_Azure_Mappings.csv"
+            )
 
             if not catalog_path.exists():
                 logger.warning("No existing catalogs found, creating default controls")
