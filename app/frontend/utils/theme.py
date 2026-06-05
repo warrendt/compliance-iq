@@ -220,6 +220,10 @@ FLUENT_CSS = """
         border: 1px solid var(--brand-primary);
         color: #FFFFFF;
     }
+    .stButton > button[kind="primary"] *,
+    .stButton > button[kind="primary"] p {
+        color: #FFFFFF !important;
+    }
     .stButton > button[kind="primary"]:hover {
         background-color: var(--brand-hover);
         border-color: var(--brand-hover);
