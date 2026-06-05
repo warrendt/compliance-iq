@@ -59,10 +59,10 @@ versions = api.list_versions()
 
 if not versions:
     st.info(
-        "No versions yet. Run a comparison on the **Diff Compare** page, then use "
+        "No versions yet. Run a comparison on the **Gap Analysis** page, then use "
         "**Build initiative (full union)** to create your first version."
     )
-    st.page_link("pages/8_🔀_Diff_Compare.py", label="Go to Diff Compare", icon="🔀")
+    st.page_link("pages/8_🔀_Diff_Compare.py", label="Go to Gap Analysis", icon="🎯")
     render_footer()
     st.stop()
 

@@ -445,11 +445,11 @@ def render_sidebar():
         st.page_link("pages/2_🤖_AI_Mapping.py", label="🤖 AI Mapping")
         st.page_link("pages/3_✏️_Review_Edit.py", label="✏️ Review & Edit")
         st.page_link("pages/4_📦_Export_Policy.py", label="📦 Export Policy")
-        st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Pipeline")
+        st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Extraction")
         st.page_link("pages/6_🔍_Policy_Explorer.py", label="🔍 Policy Explorer")
-        st.page_link("pages/8_🔀_Diff_Compare.py", label="🔀 Diff Compare")
+        st.page_link("pages/8_🔀_Diff_Compare.py", label="🎯 Gap Analysis")
         st.page_link("pages/9_🗂_Version_History.py", label="🗂 Version History")
-        st.page_link("pages/7_👤_Profile.py", label="👤 Profile & History")
+        st.page_link("pages/7_👤_Profile.py", label="👤 Profile")
         st.markdown("---")
 
         # ── Progress tracker ──
