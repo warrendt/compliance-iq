@@ -1,6 +1,16 @@
 [client]
 showSidebarNavigation = false
 
+# Fluent 2 design tokens (Microsoft 365 / Defender / Purview shell).
+# Keep these in sync with the CSS variables in utils/theme.py.
+[theme]
+base = "light"
+primaryColor = "#0F6CBD"            # colorBrandBackground (Microsoft blue)
+backgroundColor = "#FFFFFF"         # colorNeutralBackground1 (content canvas)
+secondaryBackgroundColor = "#FAFAFA" # colorNeutralBackground2 (nav / layers)
+textColor = "#242424"               # colorNeutralForeground1
+font = "sans serif"                 # Segoe UI Variable, Segoe UI, system sans
+
 [server]
 port = 8502
 address = "127.0.0.1"

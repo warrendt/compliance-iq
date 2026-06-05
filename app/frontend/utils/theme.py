@@ -1,84 +1,378 @@
 """
-Shared Azure theme & branding for all Streamlit pages.
+Shared Microsoft 365 / Fluent 2 theme & branding for all Streamlit pages.
+
+The styling targets the Microsoft 365 / Defender / Purview shell: a slim
+brand-filled suite header, a light neutral left navigation tree with a
+selected-state accent bar, and a content canvas built on Fluent 2 design
+tokens (color, type ramp, 4-8px corner radii, subtle elevation).
+
+Tokens mirror the Fluent 2 design system. Keep the brand/neutral/semantic
+values in sync with the ``[theme]`` block in ``.streamlit/config.toml``.
+
+The public helpers keep their historical names (``inject_azure_theme``,
+``render_sidebar``, ``render_footer``) so existing page imports keep working;
+``inject_fluent_theme`` is provided as a forward-looking alias.
 """
 
 import streamlit as st
 
 
-AZURE_CSS = """
+# ── Fluent 2 design tokens + component styling ─────────────────────────────
+FLUENT_CSS = """
 <style>
-    /* Azure primary palette */
+    /* ───────────── Fluent 2 design tokens ───────────── */
     :root {
-        --azure-blue: #0078D4;
-        --azure-dark: #003B73;
-        --azure-light: #50E6FF;
-        --azure-bg: #F3F2F1;
-        --azure-green: #107C10;
+        /* Brand ramp (Microsoft blue) */
+        --brand-primary: #0F6CBD;          /* colorBrandBackground */
+        --brand-hover:   #115EA3;          /* colorBrandBackgroundHover */
+        --brand-pressed: #0E4775;          /* colorBrandBackgroundPressed */
+        --brand-selected:#0F548C;
+        --brand-tint:    #EBF3FC;          /* colorBrandBackground2 (subtle) */
+        --brand-tint-2:  #CFE4FA;
+        --brand-foreground: #0F6CBD;       /* colorBrandForegroundLink */
+
+        /* Neutral ramp (structural majority) */
+        --neutral-fg-1:  #242424;          /* colorNeutralForeground1 */
+        --neutral-fg-2:  #424242;          /* colorNeutralForeground2 */
+        --neutral-fg-3:  #616161;          /* colorNeutralForeground3 */
+        --neutral-fg-disabled: #BDBDBD;
+        --neutral-bg-1:  #FFFFFF;          /* canvas */
+        --neutral-bg-2:  #FAFAFA;          /* layer / nav */
+        --neutral-bg-3:  #F5F5F5;          /* subtle layer */
+        --neutral-bg-4:  #F0F0F0;
+        --neutral-stroke-1: #D1D1D1;       /* colorNeutralStroke1 */
+        --neutral-stroke-2: #E0E0E0;       /* colorNeutralStroke2 */
+        --neutral-stroke-subtle: #EBEBEB;
+
+        /* Shared / semantic status colors */
+        --status-success:    #0E700E;
+        --status-success-bg: #E7F5E7;
+        --status-success-stroke: #9FD89F;
+        --status-warning:    #BC4B09;
+        --status-warning-bg: #FCF4D6;
+        --status-warning-stroke: #F2D98E;
+        --status-danger:     #C50F1F;
+        --status-danger-bg:  #FDE7E9;
+        --status-danger-stroke: #F1A9AF;
+        --status-info:       #0F6CBD;
+        --status-info-bg:    #EBF3FC;
+        --status-info-stroke: #B4D6FA;
+
+        /* Shape — corner radii (small, Fluent uses 4-8px) */
+        --radius-sm: 3px;
+        --radius-md: 4px;
+        --radius-lg: 6px;
+        --radius-xl: 8px;
+
+        /* Elevation — subtle shadows for cards / flyouts / dialogs */
+        --elevation-2: 0 1px 2px rgba(0,0,0,0.12), 0 0 1px rgba(0,0,0,0.10);
+        --elevation-4: 0 2px 4px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+        --elevation-8: 0 4px 8px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+        --elevation-16: 0 8px 16px rgba(0,0,0,0.14), 0 0 2px rgba(0,0,0,0.12);
+
+        /* Typography — Segoe UI Variable ramp */
+        --font-family: "Segoe UI Variable", "Segoe UI", -apple-system,
+                       BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+
+        /* Suite header */
+        --suite-header-height: 48px;
     }
 
-    /* Header styling */
+    /* ───────────── Base typography ───────────── */
+    html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"] {
+        font-family: var(--font-family);
+        color: var(--neutral-fg-1);
+    }
+    .stApp { background-color: var(--neutral-bg-1); }
+
+    /* Type ramp — keep corners crisp, Fluent weights */
+    h1 { font-size: 1.75rem; font-weight: 600; line-height: 2.25rem;
+         color: var(--neutral-fg-1); letter-spacing: -0.01em; }
+    h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.75rem;
+         color: var(--neutral-fg-1); }
+    h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.5rem;
+         color: var(--neutral-fg-1); }
+    h4, h5, h6 { font-weight: 600; color: var(--neutral-fg-2); }
+    p, li, label, .stMarkdown { color: var(--neutral-fg-2); }
+
+    /* ───────────── Suite header (M365 top bar) ───────────── */
+    header[data-testid="stHeader"] {
+        background: var(--brand-primary);
+        height: var(--suite-header-height);
+        box-shadow: var(--elevation-2);
+    }
+    header[data-testid="stHeader"]::before {
+        content: "\\01F6E1\\FE0F  ComplianceIQ";
+        position: absolute;
+        left: 1rem;
+        top: 0;
+        height: var(--suite-header-height);
+        display: flex;
+        align-items: center;
+        color: #FFFFFF;
+        font-family: var(--font-family);
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        pointer-events: none;
+        z-index: 1;
+    }
+    /* Make the header toolbar icons legible on the brand fill */
+    header[data-testid="stHeader"] [data-testid="stToolbar"] button,
+    header[data-testid="stHeader"] [data-testid="stToolbar"] svg {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+    /* Nudge content below the slim suite header */
+    [data-testid="stAppViewContainer"] > .main .block-container {
+        padding-top: 3.25rem;
+        max-width: 1400px;
+    }
+
+    /* ───────────── Page header (content canvas largeTitle) ───────────── */
     .main-header {
-        font-size: 2.6rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #0078D4, #50E6FF);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 0.25rem;
+        font-size: 1.9rem;
+        font-weight: 600;
+        line-height: 2.4rem;
+        color: var(--neutral-fg-1);
+        text-align: left;
+        letter-spacing: -0.01em;
+        margin: 0 0 0.15rem 0;
     }
     .sub-header {
-        font-size: 1.1rem;
-        text-align: center;
-        color: #605E5C;
-        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        text-align: left;
+        color: var(--neutral-fg-3);
+        margin-bottom: 1.25rem;
     }
 
-    /* Sidebar branding */
+    /* ───────────── Left navigation (Fluent vertical nav tree) ───────────── */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #001D3D 0%, #003566 100%);
+        background: var(--neutral-bg-2);
+        border-right: 1px solid var(--neutral-stroke-2);
     }
     [data-testid="stSidebar"] * {
-        color: #E0E0E0 !important;
+        color: var(--neutral-fg-2);
     }
-    [data-testid="stSidebar"] .stMetric label,
-    [data-testid="stSidebar"] .stMetric [data-testid="stMetricValue"] {
-        color: #50E6FF !important;
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] h4 {
+        color: var(--neutral-fg-1) !important;
+    }
+    [data-testid="stSidebar"] hr {
+        border-color: var(--neutral-stroke-subtle);
+        margin: 0.6rem 0;
+    }
+    /* Nav items (st.page_link) — Fluent list rows with selected accent bar */
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a,
+    [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
+        border-radius: var(--radius-md);
+        padding: 0.3rem 0.6rem;
+        border-left: 3px solid transparent;
+        color: var(--neutral-fg-2) !important;
+        transition: background-color 0.1s ease-in, border-color 0.1s ease-in;
+    }
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a:hover,
+    [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]:hover {
+        background-color: var(--neutral-bg-4);
+    }
+    /* Selected nav item — left accent bar + brand tint fill */
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a[aria-current="page"],
+    [data-testid="stSidebar"] a[aria-current="page"] {
+        background-color: var(--brand-tint) !important;
+        border-left: 3px solid var(--brand-primary);
+        color: var(--brand-foreground) !important;
+        font-weight: 600;
+    }
+    /* Sidebar metric values use brand accent */
+    [data-testid="stSidebar"] [data-testid="stMetricValue"] {
+        color: var(--brand-primary) !important;
+        font-weight: 600;
+    }
+    [data-testid="stSidebar"] [data-testid="stMetricLabel"] {
+        color: var(--neutral-fg-3) !important;
     }
 
-    /* Primary buttons */
+    /* ───────────── Buttons (Fluent) ───────────── */
+    .stButton > button {
+        border-radius: var(--radius-md);
+        font-family: var(--font-family);
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: background-color 0.1s ease-in, border-color 0.1s ease-in;
+    }
+    /* Subtle / secondary button (outline) */
+    .stButton > button[kind="secondary"] {
+        background-color: var(--neutral-bg-1);
+        color: var(--neutral-fg-1);
+        border: 1px solid var(--neutral-stroke-1);
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background-color: var(--neutral-bg-3);
+        border-color: var(--neutral-stroke-1);
+        color: var(--neutral-fg-1);
+    }
+    /* Primary / brand button (filled) */
     .stButton > button[kind="primary"] {
-        background-color: #0078D4;
-        border: none;
+        background-color: var(--brand-primary);
+        border: 1px solid var(--brand-primary);
+        color: #FFFFFF;
     }
     .stButton > button[kind="primary"]:hover {
-        background-color: #106EBE;
+        background-color: var(--brand-hover);
+        border-color: var(--brand-hover);
+    }
+    .stButton > button[kind="primary"]:active {
+        background-color: var(--brand-pressed);
+        border-color: var(--brand-pressed);
+    }
+    .stDownloadButton > button {
+        border-radius: var(--radius-md);
+        font-weight: 600;
     }
 
-    /* Footer */
+    /* ───────────── Inputs / SearchBox / Combobox ───────────── */
+    [data-baseweb="input"], [data-baseweb="select"], [data-baseweb="textarea"] {
+        border-radius: var(--radius-md) !important;
+    }
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
+        border-radius: var(--radius-md) !important;
+    }
+    .stTextInput input:focus, .stNumberInput input:focus,
+    .stTextArea textarea:focus {
+        border-color: var(--brand-primary) !important;
+        box-shadow: 0 0 0 1px var(--brand-primary) !important;
+    }
+
+    /* ───────────── Tabs (Fluent TabList) ───────────── */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.25rem;
+        border-bottom: 1px solid var(--neutral-stroke-2);
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-family: var(--font-family);
+        font-weight: 600;
+        color: var(--neutral-fg-3);
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    .stTabs [aria-selected="true"] {
+        color: var(--brand-primary) !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: var(--brand-primary);
+    }
+
+    /* ───────────── Cards / expanders / containers (elevation) ───────────── */
+    [data-testid="stExpander"] {
+        border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--elevation-2);
+        background: var(--neutral-bg-1);
+    }
+    [data-testid="stExpander"] summary { font-weight: 600; }
+    [data-testid="stMetric"] {
+        background: var(--neutral-bg-1);
+        border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg);
+        padding: 0.75rem 1rem;
+        box-shadow: var(--elevation-2);
+    }
+    /* Bordered containers behave like Fluent cards */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: var(--radius-lg);
+    }
+
+    /* ───────────── MessageBar (alerts: info/success/warning/error) ─────── */
+    [data-testid="stAlert"] {
+        border-radius: var(--radius-md);
+        border-left-width: 4px;
+        border-left-style: solid;
+        box-shadow: none;
+    }
+    [data-testid="stAlert"][data-baseweb="notification"] { padding: 0.75rem 1rem; }
+
+    /* ───────────── DataGrid / DetailsList (tables) ───────────── */
+    [data-testid="stDataFrame"], [data-testid="stTable"] {
+        border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+    [data-testid="stTable"] thead tr th {
+        background: var(--neutral-bg-3);
+        color: var(--neutral-fg-2);
+        font-weight: 600;
+        border-bottom: 1px solid var(--neutral-stroke-1);
+    }
+    [data-testid="stTable"] tbody tr:hover {
+        background: var(--brand-tint);
+    }
+
+    /* ───────────── Progress bar (brand) ───────────── */
+    .stProgress > div > div > div > div {
+        background-color: var(--brand-primary);
+    }
+
+    /* ───────────── Badges / pills ───────────── */
+    .fluent-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.1rem 0.55rem;
+        border-radius: 999px;            /* pill shape */
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.1rem;
+        border: 1px solid transparent;
+    }
+    .fluent-badge.success { color: var(--status-success);
+        background: var(--status-success-bg); border-color: var(--status-success-stroke); }
+    .fluent-badge.warning { color: var(--status-warning);
+        background: var(--status-warning-bg); border-color: var(--status-warning-stroke); }
+    .fluent-badge.danger  { color: var(--status-danger);
+        background: var(--status-danger-bg);  border-color: var(--status-danger-stroke); }
+    .fluent-badge.info    { color: var(--status-info);
+        background: var(--status-info-bg);    border-color: var(--status-info-stroke); }
+    .fluent-badge.neutral { color: var(--neutral-fg-2);
+        background: var(--neutral-bg-3);      border-color: var(--neutral-stroke-2); }
+
+    /* ───────────── Links ───────────── */
+    a { color: var(--brand-foreground); }
+
+    /* ───────────── Footer ───────────── */
     .wdt-footer {
         text-align: center;
         padding: 2rem 0 1rem;
-        color: #8A8886;
-        font-size: 0.85rem;
+        color: var(--neutral-fg-3);
+        font-size: 0.8rem;
+        border-top: 1px solid var(--neutral-stroke-subtle);
+        margin-top: 1.5rem;
     }
     .wdt-footer a {
-        color: #0078D4;
+        color: var(--brand-foreground);
         text-decoration: none;
     }
+    .wdt-footer a:hover { text-decoration: underline; }
 </style>
 """
 
 
+def inject_fluent_theme():
+    """Inject the Microsoft 365 / Fluent 2 themed CSS into the current page."""
+    st.markdown(FLUENT_CSS, unsafe_allow_html=True)
+
+
+# Backwards-compatible alias — pages import ``inject_azure_theme``.
 def inject_azure_theme():
-    """Inject Azure-themed CSS into the current page."""
-    st.markdown(AZURE_CSS, unsafe_allow_html=True)
+    """Deprecated alias for :func:`inject_fluent_theme`."""
+    inject_fluent_theme()
 
 
 def render_sidebar():
-    """Render a consistent branded sidebar across all pages."""
+    """Render a consistent Fluent-styled left navigation across all pages."""
     with st.sidebar:
         st.markdown("### 🛡️ ComplianceIQ")
-        st.caption("AI-Powered Compliance Mapping")
+        st.caption("Compliance · Microsoft 365 & Azure")
         st.markdown("---")
 
         # ── Clickable navigation ──
@@ -173,7 +467,6 @@ def render_sidebar():
 
 def render_footer():
     """Render the page footer with branding."""
-    st.markdown("---")
     st.markdown(
         '<div class="wdt-footer">'
         "<strong>ComplianceIQ — AI Control Mapping Agent</strong><br>"
