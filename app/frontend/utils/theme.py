@@ -195,46 +195,105 @@ FLUENT_CSS = """
         color: var(--neutral-fg-3) !important;
     }
 
-    /* ───────────── Buttons (Fluent) ───────────── */
-    .stButton > button {
-        border-radius: var(--radius-md);
+    /* ───────────── Buttons (Fluent 2 · canvas/workspace feel) ─────────────
+       Tuned to feel like a modern workspace surface (Figma / Linear / Loop /
+       Whiteboard): softer corners, a touch more padding, gentle elevation
+       on hover, an accessible focus-visible ring, and a tactile press
+       micro-interaction. Brand tokens and Streamlit `kind` semantics
+       (primary / secondary) are preserved. */
+    .stButton > button,
+    .stDownloadButton > button,
+    .stLinkButton > a,
+    [data-testid="stFormSubmitButton"] button {
+        border-radius: var(--radius-lg);                /* 6px — workspace softness */
         font-family: var(--font-family);
         font-weight: 600;
         font-size: 0.875rem;
-        transition: background-color 0.1s ease-in, border-color 0.1s ease-in;
+        line-height: 1.25rem;
+        padding: 0.45rem 1rem;                          /* tactile target */
+        min-height: 34px;
+        letter-spacing: 0.005em;
+        box-shadow: var(--elevation-2);                 /* subtle lift off canvas */
+        transition: background-color 0.12s ease,
+                    border-color 0.12s ease,
+                    box-shadow 0.12s ease,
+                    transform 0.06s ease;
+        will-change: transform, box-shadow;
     }
-    /* Subtle / secondary button (outline) */
-    .stButton > button[kind="secondary"] {
+    /* Accessible focus ring (Fluent focus stroke) — keyboard only */
+    .stButton > button:focus-visible,
+    .stDownloadButton > button:focus-visible,
+    .stLinkButton > a:focus-visible,
+    [data-testid="stFormSubmitButton"] button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--neutral-bg-1),
+                    0 0 0 4px var(--brand-primary),
+                    var(--elevation-4);
+    }
+
+    /* Subtle / secondary button (outline) — default Streamlit kind */
+    .stButton > button[kind="secondary"],
+    .stDownloadButton > button,
+    .stLinkButton > a {
         background-color: var(--neutral-bg-1);
         color: var(--neutral-fg-1);
         border: 1px solid var(--neutral-stroke-1);
     }
-    .stButton > button[kind="secondary"]:hover {
-        background-color: var(--neutral-bg-3);
-        border-color: var(--neutral-stroke-1);
+    .stButton > button[kind="secondary"]:hover,
+    .stDownloadButton > button:hover,
+    .stLinkButton > a:hover {
+        background-color: var(--neutral-bg-2);
+        border-color: var(--neutral-fg-3);
         color: var(--neutral-fg-1);
+        box-shadow: var(--elevation-4);
+        transform: translateY(-1px);                    /* gentle hover lift */
     }
+    .stButton > button[kind="secondary"]:active,
+    .stDownloadButton > button:active,
+    .stLinkButton > a:active {
+        background-color: var(--neutral-bg-3);
+        box-shadow: var(--elevation-2);
+        transform: translateY(0);                       /* press settle */
+    }
+
     /* Primary / brand button (filled) */
-    .stButton > button[kind="primary"] {
+    .stButton > button[kind="primary"],
+    [data-testid="stFormSubmitButton"] button {
         background-color: var(--brand-primary);
         border: 1px solid var(--brand-primary);
         color: #FFFFFF;
     }
     .stButton > button[kind="primary"] *,
-    .stButton > button[kind="primary"] p {
+    .stButton > button[kind="primary"] p,
+    [data-testid="stFormSubmitButton"] button *,
+    [data-testid="stFormSubmitButton"] button p {
         color: #FFFFFF !important;
     }
-    .stButton > button[kind="primary"]:hover {
+    .stButton > button[kind="primary"]:hover,
+    [data-testid="stFormSubmitButton"] button:hover {
         background-color: var(--brand-hover);
         border-color: var(--brand-hover);
+        box-shadow: var(--elevation-8);
+        transform: translateY(-1px);
     }
-    .stButton > button[kind="primary"]:active {
+    .stButton > button[kind="primary"]:active,
+    [data-testid="stFormSubmitButton"] button:active {
         background-color: var(--brand-pressed);
         border-color: var(--brand-pressed);
+        box-shadow: var(--elevation-2);
+        transform: translateY(0);
     }
-    .stDownloadButton > button {
-        border-radius: var(--radius-md);
-        font-weight: 600;
+
+    /* Disabled — flatten and dim, no lift */
+    .stButton > button:disabled,
+    .stDownloadButton > button:disabled,
+    [data-testid="stFormSubmitButton"] button:disabled {
+        background-color: var(--neutral-bg-3) !important;
+        color: var(--neutral-fg-disabled) !important;
+        border-color: var(--neutral-stroke-2) !important;
+        box-shadow: none !important;
+        transform: none !important;
+        cursor: not-allowed;
     }
 
     /* ───────────── Inputs / SearchBox / Combobox ───────────── */
