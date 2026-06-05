@@ -50,6 +50,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
 resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = {
   name: '${name}-pe'
   location: location
+  tags: tags
   properties: {
     subnet: {
       id: privateEndpointSubnetId
@@ -108,6 +109,7 @@ resource regionalARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (
 resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {
   parent: cosmosAccount
   name: databaseName
+  tags: tags
   properties: {
     resource: {
       id: databaseName
@@ -119,6 +121,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15
 resource mappingResultsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'mapping-results'
+  tags: tags
   properties: {
     resource: {
       id: 'mapping-results'
@@ -148,6 +151,7 @@ resource mappingResultsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatab
 resource auditLogsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'audit-logs'
+  tags: tags
   properties: {
     resource: {
       id: 'audit-logs'
@@ -175,6 +179,7 @@ resource auditLogsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
 resource userUploadsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'user-uploads'
+  tags: tags
   properties: {
     resource: {
       id: 'user-uploads'
@@ -197,6 +202,7 @@ resource userUploadsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
 resource generatedArtifactsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'generated-artifacts'
+  tags: tags
   properties: {
     resource: {
       id: 'generated-artifacts'
@@ -219,6 +225,7 @@ resource generatedArtifactsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlD
 resource mappingJobsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'mapping-jobs'
+  tags: tags
   properties: {
     resource: {
       id: 'mapping-jobs'
@@ -241,6 +248,7 @@ resource mappingJobsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
 resource policyCacheContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'policy-cache'
+  tags: tags
   properties: {
     resource: {
       id: 'policy-cache'
@@ -263,6 +271,7 @@ resource policyCacheContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabase
 resource userProfilesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'user-profiles'
+  tags: tags
   properties: {
     resource: {
       id: 'user-profiles'

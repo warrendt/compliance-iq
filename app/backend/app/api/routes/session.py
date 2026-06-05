@@ -9,10 +9,12 @@ State is persisted to Cosmos DB in the ``user-sessions`` container.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.azure_ad_auth import User, get_current_user
 from app.db.cosmos_client import cosmos_client
+from app.services import audit_service
 
 import logging
 
@@ -41,8 +43,8 @@ class SessionSaveRequest(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────────
 
 @router.post("/save")
-async def save_session(req: SessionSaveRequest):
-    """Persist critical session state to Cosmos DB."""
+async def save_session(req: SessionSaveRequest, user: User = Depends(get_current_user)):
+    """Persist critical session state to Cosmos DB, scoped to the current user."""
     if not cosmos_client.database:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -53,9 +55,19 @@ async def save_session(req: SessionSaveRequest):
         default_ttl=SESSION_TTL_SECONDS,
     )
 
+    # Reject overwriting a session that belongs to a different user.
+    existing = await cosmos_client.get_document(
+        CONTAINER_NAME, req.session_id, partition_key=req.session_id
+    )
+    if existing is not None:
+        owner = existing.get("userId")
+        if owner and owner != user.email:
+            raise HTTPException(status_code=404, detail="Session not found")
+
     doc = {
         "id": req.session_id,
         "session_id": req.session_id,
+        "userId": user.email,
         "controls": req.controls,
         "mappings": req.mappings,
         "framework_name": req.framework_name,
@@ -68,10 +80,19 @@ async def save_session(req: SessionSaveRequest):
 
     await cosmos_client.upsert_document(CONTAINER_NAME, doc)
 
+    await audit_service.write_audit(
+        user,
+        action="session.saved",
+        resource_type="session",
+        resource_id=req.session_id,
+        metadata={"controls": len(req.controls), "mappings": len(req.mappings)},
+    )
+
     logger.info(
         "session_saved",
         extra={
             "session_id": req.session_id,
+            "userId": user.email,
             "controls": len(req.controls),
             "mappings": len(req.mappings),
         },
@@ -86,8 +107,8 @@ async def save_session(req: SessionSaveRequest):
 
 
 @router.get("/{session_id}")
-async def load_session(session_id: str):
-    """Restore a previously saved session from Cosmos DB."""
+async def load_session(session_id: str, user: User = Depends(get_current_user)):
+    """Restore a previously saved session, scoped to the current user."""
     if not cosmos_client.database:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -102,8 +123,15 @@ async def load_session(session_id: str):
     if doc is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Enforce per-user isolation. Legacy docs without a userId remain accessible
+    # for back-compat; once re-saved they are stamped with the owner.
+    owner = doc.get("userId")
+    if owner and owner != user.email:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     return {
         "session_id": doc.get("session_id"),
+        "userId": doc.get("userId"),
         "controls": doc.get("controls", []),
         "mappings": doc.get("mappings", []),
         "framework_name": doc.get("framework_name", ""),

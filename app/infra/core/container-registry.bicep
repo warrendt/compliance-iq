@@ -25,6 +25,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
 resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = if (enablePrivateEndpoint) {
   name: '${name}-pe'
   location: location
+  tags: tags
   properties: {
     subnet: {
       id: privateEndpointSubnetId

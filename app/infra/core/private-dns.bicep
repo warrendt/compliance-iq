@@ -26,6 +26,7 @@ resource acrZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (enableAcrP
 resource cosmosLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
   name: '${cosmosZone.name}/${environmentName}-link'
   location: 'global'
+  tags: tags
   properties: {
     virtualNetwork: {
       id: vnetId
@@ -37,6 +38,7 @@ resource cosmosLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-
 resource openaiLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
   name: '${openaiZone.name}/${environmentName}-link'
   location: 'global'
+  tags: tags
   properties: {
     virtualNetwork: {
       id: vnetId
@@ -48,6 +50,7 @@ resource openaiLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-
 resource acrLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (enableAcrPrivateEndpoint) {
   name: '${acrZone.name}/${environmentName}-link'
   location: 'global'
+  tags: tags
   properties: {
     virtualNetwork: {
       id: vnetId

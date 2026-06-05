@@ -109,7 +109,7 @@ with st.sidebar:
             else:
                 st.warning("⚠️ SLZ Policies not loaded")
 
-            if health.get("azure_openai", {}).get("status") == "configured":
+            if health.get("azure_openai_connected"):
                 st.success("✅ Azure OpenAI Ready")
             else:
                 st.warning("⚠️ Azure OpenAI not configured")
