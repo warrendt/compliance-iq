@@ -17,7 +17,7 @@ from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
-    page_title="PDF Pipeline | ComplianceIQ",
+    page_title="PDF Extraction | ComplianceIQ",
     page_icon="🛡️",
     layout="wide",
 )

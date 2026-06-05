@@ -26,7 +26,7 @@ render_sidebar()
 # ── Auth check ─────────────────────────────────────────────────────────────
 auth_user = get_current_user()
 
-st.markdown("## 👤 User Profile & History")
+st.markdown("## 👤 Profile")
 st.markdown("View your account details and activity history.")
 st.markdown("---")
 

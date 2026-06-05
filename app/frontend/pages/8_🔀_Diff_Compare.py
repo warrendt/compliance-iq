@@ -18,7 +18,7 @@ from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
-    page_title="Diff Compare | ComplianceIQ",
+    page_title="Gap Analysis | ComplianceIQ",
     page_icon="🛡️",
     layout="wide",
 )
@@ -46,10 +46,10 @@ _BUCKET_META = {
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
-st.markdown('<div class="main-header">🔀 Diff Compare</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🎯 Gap Analysis</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="sub-header">Compare your internal controls against an external '
-    'framework — see what is matched, partially covered, missing, or extra.</div>',
+    '<div class="sub-header">See how your internal controls measure up against an '
+    'external framework — what is matched, partially covered, missing, or extra.</div>',
     unsafe_allow_html=True,
 )
 
