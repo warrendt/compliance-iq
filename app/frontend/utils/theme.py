@@ -449,7 +449,7 @@ def render_sidebar():
         st.page_link("pages/6_🔍_Policy_Explorer.py", label="🔍 Policy Explorer")
         st.page_link("pages/8_🔀_Diff_Compare.py", label="🎯 Gap Analysis")
         st.page_link("pages/9_🗂_Version_History.py", label="🗂 Version History")
-        st.page_link("pages/7_👤_Profile.py", label="👤 Profile")
+        st.page_link("pages/7_👤_Profile.py", label="🧭 My Workspace")
         st.markdown("---")
 
         # ── Progress tracker ──

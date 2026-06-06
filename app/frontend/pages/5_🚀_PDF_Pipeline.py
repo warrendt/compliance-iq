@@ -167,6 +167,21 @@ if file_bytes:
                 )
                 st.session_state.pdf_extraction = result
                 st.session_state.pdf_extracting = False
+                # Record the uploaded document (+ version) to the workspace.
+                try:
+                    client.record_upload(
+                        file_name=file_name,
+                        file_type="application/pdf",
+                        category="document",
+                        file_size=len(file_bytes) if file_bytes else 0,
+                        row_count=result.get("total_controls", 0),
+                        metadata={
+                            "framework": result.get("framework_name"),
+                            "source": "pdf_extraction",
+                        },
+                    )
+                except Exception:
+                    pass  # activity logging is best-effort
                 update_task(
                     task_id,
                     status="completed",

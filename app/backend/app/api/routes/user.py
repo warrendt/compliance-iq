@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.azure_ad_auth import User, get_current_user
 from app.db.cosmos_client import cosmos_client
+from app.services import activity_service
 
 import logging
 
@@ -221,6 +222,7 @@ async def get_uploads(
 
     query = (
         f"SELECT TOP {limit} c.id, c.fileName, c.fileSize, c.fileType, "
+        f"c.category, c.version, c.controlCount, "
         f"c.rowCount, c.columnNames, c.timestamp "
         f"FROM c WHERE c.userId = @userId ORDER BY c.timestamp DESC"
     )
@@ -311,3 +313,133 @@ async def get_exports(
         items = []
 
     return items
+
+
+# ---------------------------------------------------------------------------
+# Activity recording (write) endpoints
+#
+# The frontend orchestrates the pipeline and knows when each milestone happens,
+# so it posts here at each step. Identity is ALWAYS taken from the authenticated
+# principal (never the request body), so a client cannot forge another user's
+# activity. All recording is best-effort inside activity_service.
+# ---------------------------------------------------------------------------
+
+class RecordUploadRequest(BaseModel):
+    """Record an uploaded document or a loaded control set."""
+    fileName: str
+    fileType: str = "text/csv"
+    category: str = activity_service.CATEGORY_DOCUMENT  # 'document' | 'controls'
+    fileSize: int = 0
+    rowCount: int = 0
+    columnNames: List[str] = Field(default_factory=list)
+    controls: Optional[List[Dict[str, Any]]] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordMappingsRequest(BaseModel):
+    """Record a batch of AI mapping results."""
+    framework: str
+    mappings: List[Dict[str, Any]] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordExportRequest(BaseModel):
+    """Record a generated/exported policy artifact."""
+    framework: str
+    artifactType: str = "initiative"
+    controlCount: int = 0
+    fileName: str = ""
+    fileSize: int = 0
+    sessionId: Optional[str] = None
+    content: str = ""
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordActivityRequest(BaseModel):
+    """Record a generic activity (e.g. an edit) into the unified feed."""
+    action: str
+    resourceType: str = "edit"
+    summary: str
+    resourceId: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/uploads", status_code=201)
+async def record_upload(
+    request: Request,
+    body: RecordUploadRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a document upload or control-set load for the current user."""
+    category = (
+        activity_service.CATEGORY_CONTROLS
+        if body.category == activity_service.CATEGORY_CONTROLS
+        else activity_service.CATEGORY_DOCUMENT
+    )
+    doc = await activity_service.record_upload(
+        user,
+        file_name=body.fileName,
+        file_type=body.fileType,
+        category=category,
+        file_size=body.fileSize,
+        row_count=body.rowCount,
+        column_names=body.columnNames,
+        controls=body.controls,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "id": doc.get("id"), "version": doc.get("version")}
+
+
+@router.post("/mappings", status_code=201)
+async def record_mappings(
+    request: Request,
+    body: RecordMappingsRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a batch of AI mapping results for the current user."""
+    written = await activity_service.record_mappings(
+        user,
+        framework=body.framework,
+        mappings=body.mappings,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "written": written, "received": len(body.mappings)}
+
+
+@router.post("/exports", status_code=201)
+async def record_export(
+    request: Request,
+    body: RecordExportRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a generated/exported policy artifact for the current user."""
+    doc = await activity_service.record_export(
+        user,
+        framework=body.framework,
+        artifact_type=body.artifactType,
+        control_count=body.controlCount,
+        file_name=body.fileName,
+        file_size=body.fileSize,
+        session_id=body.sessionId,
+        content=body.content,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "id": doc.get("id")}
+
+
+@router.post("/activity", status_code=201)
+async def record_activity(
+    request: Request,
+    body: RecordActivityRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a generic activity (e.g. an edit) into the unified history feed."""
+    await activity_service.record_activity(
+        user,
+        action=body.action,
+        resource_type=body.resourceType,
+        summary=body.summary,
+        resource_id=body.resourceId,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded"}

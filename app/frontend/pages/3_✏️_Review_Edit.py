@@ -310,6 +310,21 @@ if changes_made:
     except Exception:
         pass  # session save is best-effort
 
+    # Record the edit to the user's workspace activity feed (best-effort).
+    try:
+        api_client.record_activity(
+            action="mapping.edited",
+            resource_type="edit",
+            summary=(
+                f"Edited mappings for '{st.session_state.get('framework_name', '')}'"
+            ),
+            metadata={
+                "framework": st.session_state.get("framework_name", ""),
+                "mappingCount": len(st.session_state.mappings),
+            },
+        )
+    except Exception:
+        pass  # activity logging is best-effort
 # Export statistics
 st.markdown("---")
 st.markdown("### 📊 Mapping Statistics")

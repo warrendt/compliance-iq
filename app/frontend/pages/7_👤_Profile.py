@@ -26,11 +26,27 @@ render_sidebar()
 # ── Auth check ─────────────────────────────────────────────────────────────
 auth_user = get_current_user()
 
-st.markdown("## 👤 Profile")
-st.markdown("View your account details and activity history.")
+st.markdown("## 🧭 My Workspace")
+st.markdown(
+    "Your one-stop compliance workspace — every document, control set, mapping, "
+    "edit, and policy you build is captured here for your tenant."
+)
 st.markdown("---")
 
 api = get_api_client()
+
+# ── Quick actions ──────────────────────────────────────────────────────────
+qa1, qa2, qa3, qa4 = st.columns(4)
+if qa1.button("📁 Upload controls", use_container_width=True):
+    st.switch_page("pages/1_📁_Upload_Controls.py")
+if qa2.button("🤖 AI mapping", use_container_width=True):
+    st.switch_page("pages/2_🤖_AI_Mapping.py")
+if qa3.button("🎯 Gap analysis", use_container_width=True):
+    st.switch_page("pages/8_🔀_Diff_Compare.py")
+if qa4.button("📦 Export policy", use_container_width=True):
+    st.switch_page("pages/4_📦_Export_Policy.py")
+
+st.markdown("---")
 
 # ── Profile card ───────────────────────────────────────────────────────────
 col_profile, col_stats = st.columns([1, 2])
@@ -84,13 +100,21 @@ with col_profile:
     else:
         st.info("🔒 Sign in to view your profile.")
 
+# Load the workspace streams once and reuse across summary + tabs.
+uploads = api.get_user_uploads(limit=200)
+documents = [u for u in uploads if u.get("category") != "controls"]
+control_sets = [u for u in uploads if u.get("category") == "controls"]
+
 with col_stats:
     st.markdown("### 📊 Activity Summary")
     if profile:
-        m1, m2, m3 = st.columns(3)
-        m1.metric("📁 Uploads", profile.get("uploadCount", 0))
-        m2.metric("🤖 Mappings", profile.get("mappingCount", 0))
-        m3.metric("📦 Exports", profile.get("exportCount", 0))
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("📄 Documents", len(documents))
+        m2.metric("📋 Control sets", len(control_sets))
+        m3.metric("🤖 Mappings", profile.get("mappingCount", 0))
+        m4.metric("📦 Exports", profile.get("exportCount", 0))
+        # Document versions = total document uploads (each re-upload bumps version).
+        m5.metric("🗂 Versions", len(documents))
 
         last_active = profile.get("lastActive", "")
         if last_active:
@@ -100,12 +124,21 @@ with col_stats:
 
 st.markdown("---")
 
-# ── History tabs ───────────────────────────────────────────────────────────
-tab_history, tab_uploads, tab_mappings, tab_exports = st.tabs([
+# ── Workspace streams ──────────────────────────────────────────────────────
+(
+    tab_history,
+    tab_documents,
+    tab_controls,
+    tab_mappings,
+    tab_changes,
+    tab_exports,
+) = st.tabs([
     "🕒 All Activity",
-    "📁 Uploads",
+    "📄 Documents",
+    "📋 Controls",
     "🤖 Mappings",
-    "📦 Exports",
+    "✏️ Changes",
+    "📦 Policies",
 ])
 
 # All Activity
@@ -115,35 +148,60 @@ with tab_history:
     if history:
         for item in history:
             ts = item.get("timestamp", "")[:19].replace("T", " ")
-            icon_map = {"upload": "📁", "mapping": "🤖", "export": "📦"}
+            icon_map = {
+                "upload": "📄",
+                "mapping": "🤖",
+                "export": "📦",
+                "edit": "✏️",
+                "comparison": "🎯",
+                "policy_version": "🗂",
+            }
             icon = icon_map.get(item.get("type", ""), "📋")
             summary = item.get("summary", item.get("type", "event"))
             st.markdown(f"{icon} **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
     else:
         st.info("No activity recorded yet. Start by uploading a compliance framework.")
 
-# Uploads
-with tab_uploads:
-    st.markdown("#### Uploaded Files")
-    uploads = api.get_user_uploads(limit=50)
-    if uploads:
-        for up in uploads:
+# Documents (with versions — stream #3/#6)
+with tab_documents:
+    st.markdown("#### Uploaded Documents")
+    if documents:
+        for up in documents:
             ts = up.get("timestamp", "")[:19].replace("T", " ")
             fname = up.get("fileName", "unknown")
+            version = up.get("version", 1)
             rows = up.get("rowCount", 0)
-            size_kb = round(up.get("fileSize", 0) / 1024, 1)
-            with st.container():
-                c1, c2, c3 = st.columns([3, 1, 1])
-                c1.markdown(f"📄 **{fname}**")
-                c2.caption(f"{rows} rows · {size_kb} KB")
-                c3.caption(ts)
+            size_kb = round((up.get("fileSize", 0) or 0) / 1024, 1)
+            c1, c2, c3 = st.columns([3, 1, 1])
+            c1.markdown(f"📄 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c2.caption(f"{rows} controls · {size_kb} KB")
+            c3.caption(ts)
             st.divider()
     else:
-        st.info("No uploads recorded yet.")
-        if st.button("📁 Go to Upload", key="profile_goto_upload"):
+        st.info("No documents uploaded yet.")
+        if st.button("📄 Upload a document (PDF)", key="ws_goto_pdf"):
+            st.switch_page("pages/5_🚀_PDF_Pipeline.py")
+
+# Controls (stream #5)
+with tab_controls:
+    st.markdown("#### Stored Control Sets")
+    if control_sets:
+        for up in control_sets:
+            ts = up.get("timestamp", "")[:19].replace("T", " ")
+            fname = up.get("fileName", "unknown")
+            version = up.get("version", 1)
+            count = up.get("controlCount", up.get("rowCount", 0))
+            c1, c2, c3 = st.columns([3, 1, 1])
+            c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c2.caption(f"{count} controls")
+            c3.caption(ts)
+            st.divider()
+    else:
+        st.info("No control sets stored yet.")
+        if st.button("📁 Load controls", key="ws_goto_upload"):
             st.switch_page("pages/1_📁_Upload_Controls.py")
 
-# Mappings
+# Mappings (stream #1)
 with tab_mappings:
     st.markdown("#### AI Mapping Results")
     mappings = api.get_user_mappings(limit=50)
@@ -154,20 +212,32 @@ with tab_mappings:
             framework = m.get("framework", "")
             conf = m.get("confidence", None)
             conf_str = f"{conf:.0%}" if conf is not None else "—"
-            with st.container():
-                c1, c2, c3 = st.columns([3, 1, 1])
-                c1.markdown(f"🤖 **{control_name}** <small>({framework})</small>", unsafe_allow_html=True)
-                c2.caption(f"Confidence: {conf_str}")
-                c3.caption(ts)
+            c1, c2, c3 = st.columns([3, 1, 1])
+            c1.markdown(f"🤖 **{control_name}** <small>({framework})</small>", unsafe_allow_html=True)
+            c2.caption(f"Confidence: {conf_str}")
+            c3.caption(ts)
             st.divider()
     else:
         st.info("No AI mapping results recorded yet.")
         if st.button("🤖 Go to AI Mapping", key="profile_goto_mapping"):
             st.switch_page("pages/2_🤖_AI_Mapping.py")
 
-# Exports
+# Changes (stream #2 — edits, audit-only)
+with tab_changes:
+    st.markdown("#### Changes You've Made")
+    changes = api.get_user_history(limit=50, event_type="edit")
+    if changes:
+        for item in changes:
+            ts = item.get("timestamp", "")[:19].replace("T", " ")
+            summary = item.get("summary", "Edit")
+            st.markdown(f"✏️ **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
+            st.divider()
+    else:
+        st.info("No edits recorded yet. Changes you make in Review & Edit appear here.")
+
+# Policies / exports (stream #4)
 with tab_exports:
-    st.markdown("#### Policy Exports")
+    st.markdown("#### Policy Exports & Builds")
     exports = api.get_user_exports(limit=50)
     if exports:
         for exp in exports:
@@ -176,11 +246,10 @@ with tab_exports:
             framework = exp.get("framework", "")
             artifact_type = exp.get("artifactType", "")
             count = exp.get("controlCount", 0)
-            with st.container():
-                c1, c2, c3 = st.columns([3, 1, 1])
-                c1.markdown(f"📦 **{fname}** <small>({framework} · {artifact_type})</small>", unsafe_allow_html=True)
-                c2.caption(f"{count} controls")
-                c3.caption(ts)
+            c1, c2, c3 = st.columns([3, 1, 1])
+            c1.markdown(f"📦 **{fname}** <small>({framework} · {artifact_type})</small>", unsafe_allow_html=True)
+            c2.caption(f"{count} controls")
+            c3.caption(ts)
             st.divider()
     else:
         st.info("No policy exports recorded yet.")
