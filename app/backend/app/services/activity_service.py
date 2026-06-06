@@ -19,6 +19,7 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
+from uuid import uuid4
 
 from app.auth.azure_ad_auth import User
 from app.db.cosmos_client import cosmos_client
@@ -158,6 +159,7 @@ async def record_upload(
     file_hash = hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()
 
     doc: Dict[str, Any] = {
+        "id": str(uuid4()),
         "userId": user_id,
         "fileName": file_name,
         "fileType": file_type,
@@ -240,6 +242,7 @@ async def record_mappings(
             )
             for m in mappings:
                 doc = {
+                    "id": str(uuid4()),
                     "userId": user_id,
                     "date": date,
                     "controlId": str(m.get("controlId") or m.get("control_id") or ""),
@@ -313,6 +316,7 @@ async def record_export(
     partition = session_id or user_id
 
     doc: Dict[str, Any] = {
+        "id": str(uuid4()),
         "userId": user_id,
         "session_id": partition,
         "artifactType": artifact_type,
