@@ -2,7 +2,7 @@
 Azure Policy generation endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
+from app.services import activity_service
+from app.auth.azure_ad_auth import User, get_current_user
 from app.db import cosmos_client
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,8 @@ async def _persist_artifact(artifact: dict) -> Optional[str]:
 
 @router.post("/generate")
 async def generate_policy_initiative(request: PolicyGenerationRequest,
-                                      http_request: Request):
+                                      http_request: Request,
+                                      user: User = Depends(get_current_user)):
     """
     Generate Azure Policy initiative from control mappings.
 
@@ -99,6 +102,26 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         persisted_id = await _persist_artifact(artifact_doc)
         if persisted_id:
             result["artifact_id"] = persisted_id
+
+        # Record the generated initiative to the user's workspace + audit feed
+        # (server-side so it is reliably saved regardless of the frontend).
+        try:
+            await activity_service.record_export(
+                user,
+                framework=request.framework_name,
+                artifact_type="mcsb_initiative",
+                control_count=len(request.mappings),
+                file_name=f"{request.framework_name.replace(' ', '_')}_initiative.json",
+                session_id=session_id,
+                metadata={
+                    "initiativeId": result["initiative_id"],
+                    "enforceMode": request.enforce_mode,
+                    "includedPolicies": response.included_policies,
+                    "excludedPolicies": response.excluded_policies,
+                },
+            )
+        except Exception as rec_exc:  # noqa: BLE001
+            logger.warning(f"Failed to record MCSB initiative activity: {rec_exc}")
 
         return result
 
@@ -224,7 +247,8 @@ class SLZGenerationRequest(BaseModel):
 
 @router.post("/generate/slz")
 async def generate_slz_initiatives(request: SLZGenerationRequest,
-                                    http_request: Request):
+                                    http_request: Request,
+                                    user: User = Depends(get_current_user)):
     """
     Generate Sovereign Landing Zone policy initiatives per archetype.
 
@@ -279,6 +303,26 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
         persisted_id = await _persist_artifact(artifact_doc)
         if persisted_id:
             response_data["artifact_id"] = persisted_id
+
+        # Record the generated SLZ initiative to the user's workspace + audit feed
+        # (server-side so it is reliably saved regardless of the frontend).
+        try:
+            archetype_count = len(result) if isinstance(result, dict) else 0
+            await activity_service.record_export(
+                user,
+                framework=request.framework_name,
+                artifact_type="slz_initiative",
+                control_count=len(sov_mappings),
+                file_name=f"{request.framework_name.replace(' ', '_')}_slz.zip",
+                session_id=session_id,
+                metadata={
+                    "archetypeCount": archetype_count,
+                    "sovereigntyMappings": len(sov_mappings),
+                    "totalMappings": len(request.mappings),
+                },
+            )
+        except Exception as rec_exc:  # noqa: BLE001
+            logger.warning(f"Failed to record SLZ initiative activity: {rec_exc}")
 
         return response_data
 

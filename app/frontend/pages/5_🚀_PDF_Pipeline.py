@@ -309,6 +309,29 @@ if extraction:
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
                     st.balloons()
 
+                    # Record the extracted control set to the user's workspace so
+                    # PDF control extraction lands in the per-tenant control library
+                    # + activity history (best-effort).
+                    try:
+                        get_api_client().record_upload(
+                            file_name=f"{framework_name}.csv",
+                            file_type="text/csv",
+                            category="controls",
+                            row_count=len(loaded_controls),
+                            column_names=[
+                                "control_id", "control_name", "description",
+                                "domain", "control_type",
+                            ],
+                            controls=loaded_controls,
+                            metadata={
+                                "framework": framework_name,
+                                "source": "pdf_extraction",
+                                "sourceDocument": st.session_state.get("pdf_file_name"),
+                            },
+                        )
+                    except Exception:
+                        pass  # activity logging is best-effort
+
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")
                     _load_platform = st.session_state.get("selected_platform", _DEFAULT_PLATFORM)

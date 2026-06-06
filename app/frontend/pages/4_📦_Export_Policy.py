@@ -204,22 +204,6 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
             st.success("✅ Policy initiative generated successfully!")
             st.balloons()
 
-            # Record the export to the user's workspace (best-effort).
-            try:
-                api_client.record_export(
-                    framework=st.session_state.framework_name,
-                    artifact_type="mcsb_initiative",
-                    control_count=len(filtered_mappings),
-                    file_name=f"{st.session_state.framework_name}_initiative.json",
-                    session_id=st.session_state.session_uuid,
-                    metadata={
-                        "initiativeId": result.get("initiative_id"),
-                        "enforceMode": enforce_mode,
-                    },
-                )
-            except Exception:
-                pass  # activity logging is best-effort
-
         except httpx.ConnectError:
             st.error("❌ Cannot connect to backend. Make sure it's running.")
         except Exception as e:
