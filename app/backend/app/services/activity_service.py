@@ -37,6 +37,17 @@ _UPLOAD_TTL_SECONDS = 2592000  # 30 days (matches the /user/uploads reader)
 _MAPPING_TTL_SECONDS = 2592000  # 30 days
 _ARTIFACT_TTL_SECONDS = 7776000  # 90 days
 
+# Guard against Cosmos's 2MB item limit. Downloadable artifact content is
+# measured in UTF-8 bytes; oversized payloads are dropped wholesale (never
+# truncated mid-token, which would yield a corrupt download) and flagged so the
+# workspace can explain why the artifact isn't downloadable.
+_MAX_CONTENT_BYTES = 1_500_000
+
+# Discriminator for the user-scoped export record (distinguishes it from the
+# session-keyed `_persist_artifact` doc that shares the GENERATED_ARTIFACTS
+# container but carries no userId).
+_USER_EXPORT_DOC_KIND = "user_export_record"
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -315,18 +326,32 @@ async def record_export(
     metadata = dict(metadata or {})
     partition = session_id or user_id
 
+    # Cap downloadable content by UTF-8 byte size. If it would exceed Cosmos's
+    # item limit we drop it entirely (rather than truncate into invalid data)
+    # and record why, so the workspace shows an honest "too large" state.
+    content = content or ""
+    content_skipped_reason = ""
+    if len(content.encode("utf-8")) > _MAX_CONTENT_BYTES:
+        content = ""
+        content_skipped_reason = "too_large"
+    content_available = bool(content)
+
     doc: Dict[str, Any] = {
         "id": str(uuid4()),
         "userId": user_id,
         "session_id": partition,
+        "docKind": _USER_EXPORT_DOC_KIND,
         "artifactType": artifact_type,
         "framework": framework,
         "controlCount": int(control_count or 0),
-        "content": content or "",
+        "content": content,
+        "contentAvailable": content_available,
         "fileName": file_name,
         "fileSize": int(file_size or 0),
         "timestamp": _now_iso(),
     }
+    if content_skipped_reason:
+        doc["contentSkippedReason"] = content_skipped_reason
 
     if _ready():
         try:

@@ -3,6 +3,10 @@ User Profile & History page — shows the current user's profile information,
 upload history, AI mapping results, and export history.
 """
 
+import csv
+import io
+import json
+
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
@@ -10,6 +14,44 @@ from utils.state_init import init_session_state
 from utils.auth import get_current_user
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
+
+
+def _files_from_envelope(content: str, fallback_name: str):
+    """Parse a stored artifact envelope into ``(name, data, mime)`` tuples.
+
+    Artifacts are stored as ``{"files": [{name, mime, content}, ...]}`` so each
+    generated format can be re-downloaded. Falls back to a single file for any
+    legacy/plain content.
+    """
+    try:
+        obj = json.loads(content)
+        files = obj.get("files") if isinstance(obj, dict) else None
+        if isinstance(files, list) and files:
+            return [
+                (
+                    f.get("name") or fallback_name or "artifact.txt",
+                    f.get("content") or "",
+                    f.get("mime") or "text/plain",
+                )
+                for f in files
+                if f.get("content")
+            ]
+    except (ValueError, TypeError):
+        pass
+    return [(fallback_name or "artifact.txt", content, "application/octet-stream")]
+
+
+def _controls_to_csv(controls: list, column_names: list) -> str:
+    """Rebuild a CSV from a stored control set for re-download."""
+    if not controls:
+        return ""
+    headers = list(column_names) if column_names else list(controls[0].keys())
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader()
+    for row in controls:
+        writer.writerow({h: row.get(h, "") for h in headers})
+    return buf.getvalue()
 
 # ── Page configuration ─────────────────────────────────────────────────────
 st.set_page_config(
@@ -34,6 +76,10 @@ st.markdown(
 st.markdown("---")
 
 api = get_api_client()
+
+# Stable per-user prefix so cached download payloads in session_state never leak
+# across accounts on a shared browser session.
+ws_user_key = (auth_user.email if auth_user else "anon")
 
 # ── Quick actions ──────────────────────────────────────────────────────────
 qa1, qa2, qa3, qa4 = st.columns(4)
@@ -191,10 +237,30 @@ with tab_controls:
             fname = up.get("fileName", "unknown")
             version = up.get("version", 1)
             count = up.get("controlCount", up.get("rowCount", 0))
-            c1, c2, c3 = st.columns([3, 1, 1])
+            up_id = up.get("id", "")
+            c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
             c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
             c2.caption(f"{count} controls")
             c3.caption(ts)
+            cache_key = f"ws_ctrl:{ws_user_key}:{up_id}"
+            if c4.button("⬇️ Prepare", key=f"prep_ctrl_{up_id}"):
+                st.session_state[cache_key] = api.get_user_upload(up_id) or {}
+            detail = st.session_state.get(cache_key)
+            if detail is not None:
+                csv_text = _controls_to_csv(
+                    detail.get("controls", []), detail.get("columnNames", [])
+                )
+                if csv_text:
+                    dl_name = fname if fname.lower().endswith(".csv") else f"{fname}.csv"
+                    st.download_button(
+                        "⬇️ Download CSV",
+                        data=csv_text,
+                        file_name=dl_name,
+                        mime="text/csv",
+                        key=f"dl_ctrl_{up_id}",
+                    )
+                else:
+                    st.caption("⚠️ Control rows are no longer available for re-download.")
             st.divider()
     else:
         st.info("No control sets stored yet.")
@@ -246,10 +312,41 @@ with tab_exports:
             framework = exp.get("framework", "")
             artifact_type = exp.get("artifactType", "")
             count = exp.get("controlCount", 0)
-            c1, c2, c3 = st.columns([3, 1, 1])
+            exp_id = exp.get("id", "")
+            has_content = exp.get("contentAvailable", True)
+            c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
             c1.markdown(f"📦 **{fname}** <small>({framework} · {artifact_type})</small>", unsafe_allow_html=True)
             c2.caption(f"{count} controls")
             c3.caption(ts)
+            cache_key = f"ws_exp:{ws_user_key}:{exp_id}"
+            if has_content:
+                if c4.button("⬇️ Prepare", key=f"prep_exp_{exp_id}"):
+                    st.session_state[cache_key] = api.get_user_export(
+                        exp_id, session_id=exp.get("session_id")
+                    ) or {}
+            else:
+                c4.caption("—")
+            detail = st.session_state.get(cache_key)
+            if detail is not None:
+                if detail.get("hasContent"):
+                    files = _files_from_envelope(
+                        detail.get("content", ""), detail.get("fileName", fname)
+                    )
+                    dcols = st.columns(min(len(files), 4) or 1)
+                    for i, (name, data, mime) in enumerate(files):
+                        dcols[i % len(dcols)].download_button(
+                            f"⬇️ {name}",
+                            data=data,
+                            file_name=name,
+                            mime=mime,
+                            key=f"dl_exp_{exp_id}_{i}",
+                        )
+                else:
+                    reason = detail.get("contentSkippedReason")
+                    if reason == "too_large":
+                        st.caption("⚠️ Artifact too large to download from the workspace.")
+                    else:
+                        st.caption("No downloadable content available for this export.")
             st.divider()
     else:
         st.info("No policy exports recorded yet.")

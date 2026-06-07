@@ -937,6 +937,42 @@ class APIClient:
         except Exception:
             return []
 
+    def get_user_export(
+        self, export_id: str, session_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch a single export artifact including its downloadable content.
+
+        Returns the detail dict (with ``content``/``hasContent``) or None.
+        """
+        params: Dict[str, Any] = {}
+        if session_id:
+            params["session_id"] = session_id
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/exports/{export_id}",
+                    params=params,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def get_user_upload(self, upload_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a single stored control set including its parsed controls.
+
+        Returns the detail dict (with ``controls``/``columnNames``) or None.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/uploads/{upload_id}",
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
     # ── Activity recording (write) ────────────────────────────────────────
 
     def record_upload(
@@ -1009,6 +1045,7 @@ class APIClient:
         file_name: str = "",
         file_size: int = 0,
         session_id: Optional[str] = None,
+        content: str = "",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Record a generated/exported policy artifact for the current user."""
@@ -1023,6 +1060,7 @@ class APIClient:
                         "fileName": file_name,
                         "fileSize": file_size,
                         "sessionId": session_id,
+                        "content": content,
                         "metadata": metadata or {},
                     },
                 )

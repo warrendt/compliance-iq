@@ -27,6 +27,7 @@ _AUDIT_CONTAINER = "audit-logs"
 _UPLOADS_CONTAINER = "user-uploads"
 _MAPPINGS_CONTAINER = "mapping-results"
 _ARTIFACTS_CONTAINER = "generated-artifacts"
+_ARTIFACTS_TTL = 7776000  # 90 days — matches activity_service._ARTIFACT_TTL_SECONDS
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +241,45 @@ async def get_uploads(
     return items
 
 
-@router.get("/mappings", response_model=List[Dict[str, Any]])
+@router.get("/uploads/{upload_id}", response_model=Dict[str, Any])
+async def get_upload_detail(
+    request: Request,
+    upload_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Return a single stored control set including its parsed ``controls``.
+
+    Scoped to control sets (``category == 'controls'``) so the workspace can
+    rebuild a downloadable CSV. USER_UPLOADS is partitioned by ``/userId`` so
+    this is an authorization-safe point read; identity is re-verified anyway.
+    """
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        doc = await cosmos_client.get_document(
+            _UPLOADS_CONTAINER, upload_id, user.email
+        )
+    except Exception:
+        doc = None
+
+    if (
+        not doc
+        or doc.get("userId") != user.email
+        or doc.get("category") != activity_service.CATEGORY_CONTROLS
+    ):
+        raise HTTPException(status_code=404, detail="Control set not found")
+
+    return {
+        "id": doc.get("id"),
+        "fileName": doc.get("fileName", ""),
+        "version": doc.get("version", 1),
+        "controls": doc.get("controls") or [],
+        "columnNames": doc.get("columnNames") or [],
+        "rowCount": doc.get("rowCount", 0),
+        "controlCount": doc.get("controlCount", 0),
+        "timestamp": doc.get("timestamp", ""),
+    }
 async def get_mappings(
     request: Request,
     limit: int = 50,
@@ -294,12 +333,12 @@ async def get_exports(
     await cosmos_client.ensure_container(
         _ARTIFACTS_CONTAINER,
         partition_key_paths=["/session_id"],
-        default_ttl=2592000,
+        default_ttl=_ARTIFACTS_TTL,
     )
 
     query = (
-        f"SELECT TOP {limit} c.id, c.artifactType, c.framework, "
-        f"c.controlCount, c.fileName, c.fileSize, c.timestamp "
+        f"SELECT TOP {limit} c.id, c.session_id, c.artifactType, c.framework, "
+        f"c.controlCount, c.fileName, c.fileSize, c.contentAvailable, c.timestamp "
         f"FROM c WHERE c.userId = @userId ORDER BY c.timestamp DESC"
     )
 
@@ -313,6 +352,62 @@ async def get_exports(
         items = []
 
     return items
+
+
+@router.get("/exports/{export_id}", response_model=Dict[str, Any])
+async def get_export_detail(
+    request: Request,
+    export_id: str,
+    session_id: Optional[str] = None,
+    user: User = Depends(get_current_user),
+):
+    """Return a single export artifact including its downloadable ``content``.
+
+    GENERATED_ARTIFACTS is partitioned by ``/session_id``; when the caller knows
+    the session id (from the list projection) we do an efficient point read,
+    otherwise we fall back to a cross-partition lookup by id. Identity is always
+    re-verified against the authenticated principal before returning content, so
+    a user can never download another user's artifact.
+    """
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    doc: Optional[Dict[str, Any]] = None
+    if session_id:
+        try:
+            doc = await cosmos_client.get_document(
+                _ARTIFACTS_CONTAINER, export_id, session_id
+            )
+        except Exception:
+            doc = None
+    if doc is None:
+        try:
+            items = await cosmos_client.query_documents(
+                _ARTIFACTS_CONTAINER,
+                query="SELECT * FROM c WHERE c.id = @id AND c.userId = @userId",
+                parameters=[
+                    {"name": "@id", "value": export_id},
+                    {"name": "@userId", "value": user.email},
+                ],
+            )
+            doc = items[0] if items else None
+        except Exception:
+            doc = None
+
+    if not doc or doc.get("userId") != user.email:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    content = doc.get("content") or ""
+    return {
+        "id": doc.get("id"),
+        "fileName": doc.get("fileName", ""),
+        "framework": doc.get("framework", ""),
+        "artifactType": doc.get("artifactType", ""),
+        "content": content,
+        "hasContent": bool(content),
+        "contentSkippedReason": doc.get("contentSkippedReason", ""),
+        "timestamp": doc.get("timestamp", ""),
+    }
 
 
 # ---------------------------------------------------------------------------

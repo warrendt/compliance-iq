@@ -21,6 +21,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
+def _artifact_envelope(files: List[dict]) -> str:
+    """Serialize a downloadable multi-file bundle for the user's workspace.
+
+    Stored as the export record's ``content`` so every format the user
+    generated (initiative JSON, Bicep, deployment scripts) can be re-downloaded
+    later from My Workspace — not just a single format.
+    """
+    clean = [f for f in files if f.get("content")]
+    return json.dumps({"files": clean}, indent=2)
+
+
 def _cosmos_ready() -> bool:
     """Check if Cosmos DB is initialized."""
     return bool(cosmos_client and cosmos_client.database)
@@ -106,13 +117,37 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         # Record the generated initiative to the user's workspace + audit feed
         # (server-side so it is reliably saved regardless of the frontend).
         try:
+            base_name = request.framework_name.replace(" ", "_")
+            envelope = _artifact_envelope([
+                {
+                    "name": f"{base_name}_initiative.json",
+                    "mime": "application/json",
+                    "content": json.dumps(initiative_json, indent=2),
+                },
+                {
+                    "name": f"{base_name}.bicep",
+                    "mime": "text/plain",
+                    "content": bicep_template,
+                },
+                {
+                    "name": f"{base_name}_deploy.ps1",
+                    "mime": "text/plain",
+                    "content": scripts.get("powershell", ""),
+                },
+                {
+                    "name": f"{base_name}_deploy.sh",
+                    "mime": "text/plain",
+                    "content": scripts.get("cli", ""),
+                },
+            ])
             await activity_service.record_export(
                 user,
                 framework=request.framework_name,
                 artifact_type="mcsb_initiative",
                 control_count=len(request.mappings),
-                file_name=f"{request.framework_name.replace(' ', '_')}_initiative.json",
+                file_name=f"{base_name}_initiative.json",
                 session_id=session_id,
+                content=envelope,
                 metadata={
                     "initiativeId": result["initiative_id"],
                     "enforceMode": request.enforce_mode,
@@ -308,13 +343,22 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
         # (server-side so it is reliably saved regardless of the frontend).
         try:
             archetype_count = len(result) if isinstance(result, dict) else 0
+            base_name = request.framework_name.replace(" ", "_")
+            envelope = _artifact_envelope([
+                {
+                    "name": f"{base_name}_slz_initiatives.json",
+                    "mime": "application/json",
+                    "content": json.dumps(result, indent=2),
+                },
+            ])
             await activity_service.record_export(
                 user,
                 framework=request.framework_name,
                 artifact_type="slz_initiative",
                 control_count=len(sov_mappings),
-                file_name=f"{request.framework_name.replace(' ', '_')}_slz.zip",
+                file_name=f"{base_name}_slz_initiatives.json",
                 session_id=session_id,
+                content=envelope,
                 metadata={
                     "archetypeCount": archetype_count,
                     "sovereigntyMappings": len(sov_mappings),

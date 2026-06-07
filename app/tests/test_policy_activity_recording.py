@@ -77,6 +77,12 @@ class TestMcsbRecording:
         assert kwargs["framework"] == "Test Framework"
         assert kwargs["control_count"] == 1
         assert kwargs["session_id"] == "sess-1"
+        # Downloadable multi-format envelope is stored as content.
+        import json as _json
+        envelope = _json.loads(kwargs["content"])
+        names = [f["name"] for f in envelope["files"]]
+        assert any(n.endswith("_initiative.json") for n in names)
+        assert any(n.endswith(".bicep") for n in names)
 
     def test_record_failure_does_not_break_generation(self):
         record = AsyncMock(side_effect=RuntimeError("cosmos down"))
