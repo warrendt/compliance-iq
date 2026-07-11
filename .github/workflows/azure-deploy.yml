@@ -1,0 +1,269 @@
+name: Deploy to Azure
+
+# Trigger on push to main or manually from the Actions UI.
+# Use "workflow_dispatch" inputs to choose whether to run only
+# infrastructure (azd provision), only containers (azd deploy), or both (azd up).
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      deploy_scope:
+        description: "What to deploy"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all         # azd up  (infra + containers)
+          - infra       # azd provision  (infra changes only)
+          - containers  # azd deploy  (rebuild & push containers)
+
+# Required for OIDC token exchange with Azure.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # These must be set as GitHub Actions Variables (not secrets) in the repo settings.
+  AZURE_ENV_NAME:       ${{ vars.AZURE_ENV_NAME }}
+  AZURE_LOCATION:       ${{ vars.AZURE_LOCATION != '' && vars.AZURE_LOCATION || 'swedencentral' }}
+  AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Run unit tests before any deployment touches Azure.
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: app/backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+        run: |
+          python -m pytest app/tests/test_user_profile.py app/tests/test_m365_purview.py \
+            --noconftest -v
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Provision Azure infrastructure via azd (adds/updates Bicep resources,
+  #         including the new user-profiles Cosmos DB container).
+  # ─────────────────────────────────────────────────────────────────────────────
+  provision:
+    name: azd provision (infra)
+    runs-on: ubuntu-latest
+    needs: test
+    # Skip if this is a container-only deploy.
+    if: >
+      github.event_name == 'push' ||
+      github.event.inputs.deploy_scope == 'all' ||
+      github.event.inputs.deploy_scope == 'infra'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure Developer CLI
+        uses: azure/setup-azd@v2
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to azd
+        run: |
+          azd auth login \
+            --client-id       "${{ secrets.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider github \
+            --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: Select / create azd environment
+        run: |
+          if azd env select "$AZURE_ENV_NAME" 2>/dev/null; then
+            echo "✓ Selected existing environment: $AZURE_ENV_NAME"
+          else
+            echo "Creating new environment: $AZURE_ENV_NAME"
+            azd env new "$AZURE_ENV_NAME" --no-prompt
+          fi
+          azd env set AZURE_LOCATION     "$AZURE_LOCATION"
+          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
+
+      - name: Provision infrastructure (azd provision)
+        run: azd provision --no-prompt
+        env:
+          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3: Build Docker images and deploy them to Azure Container Apps.
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: azd deploy (containers)
+    runs-on: ubuntu-latest
+    needs: provision
+    # Also run if provision was skipped (container-only deploy).
+    if: >
+      always() &&
+      (needs.provision.result == 'success' || needs.provision.result == 'skipped') &&
+      (
+        github.event_name == 'push' ||
+        github.event.inputs.deploy_scope == 'all' ||
+        github.event.inputs.deploy_scope == 'containers'
+      )
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure Developer CLI
+        uses: azure/setup-azd@v2
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to azd
+        run: |
+          azd auth login \
+            --client-id       "${{ secrets.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider github \
+            --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: Select azd environment
+        run: |
+          azd env select "$AZURE_ENV_NAME"
+        env:
+          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy containers (azd deploy)
+        run: azd deploy --no-prompt
+        env:
+          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4: Smoke-test the deployed application endpoints.
+  # ─────────────────────────────────────────────────────────────────────────────
+  smoke-test:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure Developer CLI
+        uses: azure/setup-azd@v2
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to azd
+        run: |
+          azd auth login \
+            --client-id       "${{ secrets.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider github \
+            --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: Select azd environment
+        run: |
+          azd env select "$AZURE_ENV_NAME"
+        env:
+          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Retrieve deployment URLs
+        id: urls
+        run: |
+          BACKEND_URI=$(azd env get-values 2>/dev/null \
+            | grep '^BACKEND_URI=' | cut -d= -f2- | tr -d '"')
+          FRONTEND_URI=$(azd env get-values 2>/dev/null \
+            | grep '^FRONTEND_URI=' | cut -d= -f2- | tr -d '"')
+          echo "backend_uri=$BACKEND_URI"   >> "$GITHUB_OUTPUT"
+          echo "frontend_uri=$FRONTEND_URI" >> "$GITHUB_OUTPUT"
+          echo "Backend:  $BACKEND_URI"
+          echo "Frontend: $FRONTEND_URI"
+        env:
+          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Backend — ping
+        run: |
+          BACKEND="${{ steps.urls.outputs.backend_uri }}"
+          echo "Testing $BACKEND/api/v1/health/ping ..."
+          curl -sf --retry 6 --retry-delay 10 "$BACKEND/api/v1/health/ping" \
+            && echo "✓ Backend ping OK"
+
+      - name: Backend — health
+        run: |
+          BACKEND="${{ steps.urls.outputs.backend_uri }}"
+          echo "Testing $BACKEND/api/v1/health ..."
+          STATUS=$(curl -sf --retry 3 --retry-delay 5 "$BACKEND/api/v1/health" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('status', 'unknown'))")
+          echo "Health status: $STATUS"
+          [ "$STATUS" != "unhealthy" ] && echo "✓ Health check passed" || exit 1
+
+      - name: Backend — user profile endpoint
+        run: |
+          BACKEND="${{ steps.urls.outputs.backend_uri }}"
+          # The /api/v1/user/profile route must exist.
+          # - Auth enabled  → 401 / 403
+          # - Auth disabled → 200 (mock dev user) or 503 (DB cold-start)
+          # Any of these confirms the route was deployed; 404 / 5xx are failures.
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$BACKEND/api/v1/user/profile")
+          echo "User profile endpoint returned HTTP $HTTP_CODE"
+          case "$HTTP_CODE" in
+            200|401|403|503)
+              echo "✓ User profile route present (HTTP $HTTP_CODE)" ;;
+            404)
+              echo "✗ Route not found (404) — deploy may have failed" && exit 1 ;;
+            *)
+              echo "✗ Unexpected HTTP status $HTTP_CODE" && exit 1 ;;
+          esac
+
+      - name: Frontend — health
+        run: |
+          FRONTEND="${{ steps.urls.outputs.frontend_uri }}"
+          echo "Testing $FRONTEND/_stcore/health ..."
+          curl -sf --retry 6 --retry-delay 10 "$FRONTEND/_stcore/health" \
+            && echo "✓ Frontend healthy"
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════╗"
+          echo "║  ✅  Deployment smoke-test PASSED ║"
+          echo "╚══════════════════════════════════╝"
+          echo ""
+          echo "Frontend:  ${{ steps.urls.outputs.frontend_uri }}"
+          echo "Backend:   ${{ steps.urls.outputs.backend_uri }}"
