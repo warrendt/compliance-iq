@@ -95,6 +95,51 @@ def test_get_current_user_forwards_cookie_to_auth_me(monkeypatch):
     assert captured["follow_redirects"] is False
 
 
+def test_easy_auth_cache_is_cleared_when_request_is_signed_out(monkeypatch):
+    st_stub = _streamlit_stub()
+    st_stub.session_state.update(
+        {
+            "easy_auth_user": auth.AuthUser("Alice", "alice@example.com"),
+            "_easy_auth_context": "principal:oid-123",
+        }
+    )
+    monkeypatch.setattr(auth, "st", st_stub)
+    monkeypatch.setattr(auth, "_get_request_headers", lambda: {})
+
+    assert auth.get_current_user() is None
+    assert "easy_auth_user" not in st_stub.session_state
+    assert "_easy_auth_context" not in st_stub.session_state
+
+
+def test_easy_auth_cache_tracks_the_current_principal(monkeypatch):
+    st_stub = _streamlit_stub()
+    st_stub.session_state.update(
+        {
+            "easy_auth_user": auth.AuthUser("Alice", "alice@example.com"),
+            "_easy_auth_context": "principal:alice-oid",
+        }
+    )
+    monkeypatch.setattr(auth, "st", st_stub)
+    monkeypatch.setattr(
+        auth,
+        "_get_request_headers",
+        lambda: {
+            "x-ms-client-principal-name": "bob@example.com",
+            "x-ms-client-principal-id": "bob-oid",
+        },
+    )
+    monkeypatch.setattr(auth, "_get_auth_me_user", lambda headers: None)
+
+    user = auth.get_current_user()
+
+    assert user.email == "bob@example.com"
+    assert st_stub.session_state["_easy_auth_context"] == "principal:bob-oid"
+
+
+def test_easy_auth_logout_uses_platform_endpoint():
+    assert auth.get_logout_url() == "/.auth/logout?post_logout_redirect_uri=/"
+
+
 def test_get_request_path_prefers_forwarded_uri(monkeypatch):
     st_stub = _streamlit_stub()
     monkeypatch.setattr(auth, "st", st_stub)

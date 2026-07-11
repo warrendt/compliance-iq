@@ -10,7 +10,12 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state
+from utils.state_init import (
+    init_session_state,
+    load_controls_state,
+    persist_session_state,
+    recover_session_state,
+)
 from utils.task_manager import register_task, update_task, has_active_task_of_type
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -25,6 +30,7 @@ st.set_page_config(
 inject_azure_theme()
 render_sidebar()
 init_session_state()
+recover_session_state(get_api_client())
 render_task_status_bar()
 
 # ── Platform metadata helpers ─────────────────────────────────────────────
@@ -299,12 +305,16 @@ if extraction:
                         }
                         loaded_controls.append(control)
 
-                    # Save to session state — same format as CSV upload (Page 1)
-                    st.session_state.controls = loaded_controls
-                    st.session_state.framework_name = framework_name
-                    st.session_state.mappings = []  # Reset any previous mappings
-                    st.session_state.controls_loaded = True
-                    st.session_state.upload_source = "pdf"
+                    load_controls_state(
+                        loaded_controls,
+                        framework_name,
+                        source="pdf",
+                    )
+                    if not persist_session_state(get_api_client()):
+                        st.warning(
+                            "Controls are loaded locally, but could not be saved "
+                            "for recovery. Check the backend connection."
+                        )
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
                     st.balloons()

@@ -7,8 +7,9 @@ Resolution order:
   3. Anonymous / no-auth when ENABLE_AUTH != "true"
 """
 
+import hashlib
 import os
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from typing import Optional
 
 import streamlit as st
@@ -120,13 +121,29 @@ def _get_auth_me_user(headers: dict[str, str]) -> Optional[AuthUser]:
 
 def _get_easy_auth_user() -> Optional[AuthUser]:
     """Resolve the current user from Container Apps Easy Auth."""
-    if "easy_auth_user" in st.session_state:
-        return st.session_state["easy_auth_user"]
-
     headers = _get_request_headers()
     principal_name = headers.get("x-ms-client-principal-name", "")
     principal_id = headers.get("x-ms-client-principal-id", "")
     access_token = headers.get("x-ms-token-aad-access-token", "")
+    cookie = headers.get("cookie", "")
+    session_token = headers.get("x-zumo-auth", "")
+    cached_user = st.session_state.get("easy_auth_user")
+    cached_context = st.session_state.get("_easy_auth_context")
+
+    if principal_name:
+        context = f"principal:{principal_id or principal_name.lower()}"
+    elif cookie or session_token:
+        context_value = f"{cookie}\0{session_token}".encode()
+        context = f"session:{hashlib.sha256(context_value).hexdigest()}"
+    else:
+        st.session_state.pop("easy_auth_user", None)
+        st.session_state.pop("_easy_auth_context", None)
+        return None
+
+    if cached_user and cached_context == context:
+        if access_token:
+            cached_user.access_token = access_token
+        return cached_user
 
     header_user = None
     if principal_name:
@@ -147,6 +164,7 @@ def _get_easy_auth_user() -> Optional[AuthUser]:
 
     if user:
         st.session_state["easy_auth_user"] = user
+        st.session_state["_easy_auth_context"] = context
         return user
 
     return None
@@ -287,7 +305,18 @@ def require_auth() -> AuthUser:
     st.stop()
 
 
+def get_login_url() -> str:
+    """Return the Container Apps Easy Auth Microsoft sign-in endpoint."""
+    redirect_path = quote(get_request_path() or "/", safe="/")
+    return f"/.auth/login/aad?post_login_redirect_uri={redirect_path}"
+
+
+def get_logout_url() -> str:
+    """Return the Container Apps Easy Auth endpoint that clears its session."""
+    return "/.auth/logout?post_logout_redirect_uri=/"
+
+
 def logout():
     """Clear cached auth state."""
-    for key in ("easy_auth_user", "msal_user"):
+    for key in ("easy_auth_user", "_easy_auth_context", "msal_user"):
         st.session_state.pop(key, None)

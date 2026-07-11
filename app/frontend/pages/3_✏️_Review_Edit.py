@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state
+from utils.state_init import init_session_state, recover_session_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
@@ -20,6 +20,8 @@ st.set_page_config(
 inject_azure_theme()
 render_sidebar()
 init_session_state()
+api_client = get_api_client()
+recover_session_state(api_client)
 render_task_status_bar()
 
 # Header
@@ -34,9 +36,6 @@ if not st.session_state.mappings:
     if st.button("Go to AI Mapping"):
         st.switch_page("pages/2_🤖_AI_Mapping.py")
     st.stop()
-
-# Get API client
-api_client = get_api_client()
 
 # Load MCSB controls for reference (cached)
 # Fix stale cache: force refetch if data is not a list-of-dicts

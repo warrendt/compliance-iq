@@ -809,6 +809,7 @@ class APIClient:
             with self._get_client() as client:
                 response = client.get(
                     f"{self.base_url}/api/v1/session/{session_id}",
+                    timeout=10.0,
                 )
                 if response.status_code == 404:
                     return None
@@ -816,6 +817,18 @@ class APIClient:
                 return response.json()
         except Exception:
             return None
+
+    def load_latest_session(self) -> Optional[Dict[str, Any]]:
+        """Load the current user's most recently saved workflow session."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/session/latest",
+                timeout=10.0,
+            )
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return response.json()
 
     # --- User profile & history ---
 

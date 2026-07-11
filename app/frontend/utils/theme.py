@@ -517,14 +517,20 @@ def render_sidebar():
 
         # ── Authenticated user ──
         try:
-            from utils.auth import get_current_user, logout
+            from utils.auth import get_current_user, get_logout_url, logout
 
             user = get_current_user()
             if user:
                 st.markdown("---")
                 st.markdown(f"👤 **{user.display_name}**")
                 st.caption(user.email)
-                if st.button("Sign out", key="sidebar_signout"):
+                if "easy_auth_user" in st.session_state:
+                    st.link_button(
+                        "Sign out",
+                        get_logout_url(),
+                        use_container_width=True,
+                    )
+                elif st.button("Sign out", key="sidebar_signout"):
                     logout()
                     st.rerun()
         except Exception:
