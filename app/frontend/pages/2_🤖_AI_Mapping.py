@@ -6,7 +6,12 @@ import streamlit as st
 import time
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state
+from utils.state_init import (
+    apply_mapping_result,
+    init_session_state,
+    persist_session_state,
+    recover_session_state,
+)
 from utils.task_manager import (
     register_task,
     update_task,
@@ -28,6 +33,8 @@ st.set_page_config(
 inject_azure_theme()
 render_sidebar()
 init_session_state()
+api_client = get_api_client()
+recover_session_state(api_client)
 render_task_status_bar()
 
 # Header
@@ -77,9 +84,6 @@ with col_config2:
     )
 
 st.markdown("---")
-
-# API client
-api_client = get_api_client()
 
 # Single control test mode
 if mapping_mode == "Single Control Test":
@@ -212,46 +216,14 @@ else:
                 st.rerun()
             elif job_status == "completed":
                 result = status.get("result", {}) or {}
-                raw_mappings = result.get("mappings", [])
-                mappings = []
-                for m in raw_mappings:
-                    mapping = {
-                        'control_id': m.get('external_control_id', 'N/A'),
-                        'control_name': m.get('external_control_name', 'N/A'),
-                        'description': next((c['description'] for c in st.session_state.controls if c['control_id'] == m.get('external_control_id')), ''),
-                        'domain': next((c.get('domain') for c in st.session_state.controls if c['control_id'] == m.get('external_control_id')), None),
-                        'mcsb_control_id': m.get('mcsb_control_id', 'N/A'),
-                        'mcsb_control_name': m.get('mcsb_control_name', 'N/A'),
-                        'mcsb_domain': m.get('mcsb_domain', 'N/A'),
-                        'confidence_score': m.get('confidence_score', 0.0),
-                        'reasoning': m.get('reasoning', ''),
-                        'azure_policy_ids': m.get('azure_policy_ids', []),
-                        'mapping_type': m.get('mapping_type', 'unknown'),
-                        'sovereignty': m.get('sovereignty'),
-                    }
-                    mappings.append(mapping)
-
-                st.session_state.mappings = mappings
-                st.session_state.mapping_in_progress = False
-                st.session_state.mapping_job_id = None
+                mappings = apply_mapping_result(result)
 
                 update_task(job_id, status="completed", progress=100, result=result)
-
-                # Auto-save session state
-                try:
-                    api_client.save_session(
-                        st.session_state["session_uuid"],
-                        {
-                            "controls": st.session_state.controls,
-                            "mappings": mappings,
-                            "framework_name": st.session_state.framework_name,
-                            "policy_decisions": st.session_state.get("policy_decisions", {}),
-                            "selected_platform": st.session_state.get("selected_platform", "azure_defender"),
-                            "platform_display_name": st.session_state.get("platform_display_name", ""),
-                        },
+                if not persist_session_state(api_client):
+                    st.warning(
+                        "Mappings are available locally, but could not be saved "
+                        "for recovery. Check the backend connection."
                     )
-                except Exception:
-                    pass  # session save is best-effort
 
                 mapped_count = result.get('mapped_count') or len(mappings)
                 failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
@@ -344,6 +316,11 @@ else:
                         page_origin="pages/2_🤖_AI_Mapping.py",
                         total=num_controls,
                     )
+                    if not persist_session_state(api_client):
+                        st.warning(
+                            "Mapping started, but its recovery state could not be saved. "
+                            "Keep this browser session open."
+                        )
                     st.rerun()
 
                 except httpx.ConnectError:

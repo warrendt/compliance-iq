@@ -19,6 +19,7 @@ def _streamlit_stub(rerun_calls: list[str]):
     return SimpleNamespace(
         session_state={},
         info=lambda *args, **kwargs: None,
+        warning=lambda *args, **kwargs: None,
         caption=lambda *args, **kwargs: None,
         markdown=lambda *args, **kwargs: None,
         progress=lambda *args, **kwargs: None,
@@ -75,3 +76,30 @@ def test_render_task_status_bar_reruns_for_backend_polled_tasks(monkeypatch):
     status_bar.render_task_status_bar()
 
     assert rerun_calls == ["rerun"]
+
+
+def test_view_completed_mapping_hydrates_before_navigation(monkeypatch):
+    events = []
+    task = {
+        "job_id": "job-1",
+        "type": "ai_mapping",
+        "status": "completed",
+        "progress": 100,
+        "result": {"mappings": [{"external_control_id": "A"}]},
+    }
+    st_stub = _streamlit_stub([])
+    st_stub.button = lambda label, **kwargs: label == "View"
+    st_stub.switch_page = lambda page: events.append(("switch", page))
+    monkeypatch.setattr(status_bar, "st", st_stub)
+    monkeypatch.setattr(
+        status_bar,
+        "apply_mapping_result",
+        lambda result: events.append(("hydrate", result)),
+    )
+
+    status_bar._render_task_row(task)
+
+    assert events == [
+        ("hydrate", task["result"]),
+        ("switch", "pages/2_🤖_AI_Mapping.py"),
+    ]

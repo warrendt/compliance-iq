@@ -19,6 +19,7 @@ from utils.task_manager import (
     poll_active_tasks,
     remove_task,
 )
+from utils.state_init import apply_mapping_result
 
 
 _TYPE_LABELS = {
@@ -53,6 +54,20 @@ def render_task_status_bar() -> None:
     When there are active tasks it polls the backend for updates and
     schedules a rerun after a short interval.
     """
+    save_error = st.session_state.get("session_save_error")
+    if save_error:
+        st.warning(
+            "Your latest workflow changes are available in this browser but "
+            "could not be saved for recovery."
+        )
+    recovery_error = st.session_state.get("session_recovery_error")
+    if recovery_error:
+        st.warning("Your saved workflow could not be restored from the backend.")
+        if st.button("Retry session recovery", key="retry_session_recovery"):
+            st.session_state["_session_recovery_checked"] = False
+            st.session_state["session_recovery_error"] = None
+            st.rerun()
+
     all_tasks = get_all_tasks()
     active_tasks = get_active_tasks()
 
@@ -160,6 +175,8 @@ def _render_task_row(task: dict) -> None:
         page = _PAGE_MAP.get(task["type"])
         if task["status"] == "completed" and page:
             if st.button("View", key=f"view_{task['job_id']}"):
+                if task["type"] == "ai_mapping" and task.get("result"):
+                    apply_mapping_result(task["result"])
                 st.switch_page(page)
         elif task["status"] in ("completed", "failed", "cancelled"):
             if st.button("✕", key=f"rm_{task['job_id']}"):
