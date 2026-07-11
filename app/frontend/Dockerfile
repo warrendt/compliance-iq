@@ -32,7 +32,7 @@ RUN mkdir -p /app/.streamlit && chown -R appuser:appuser /app/.streamlit
 COPY --chown=appuser:appuser .streamlit/config.toml /app/.streamlit/config.toml
 COPY --chown=appuser:appuser nginx.conf /app/nginx.conf
 COPY --chown=appuser:appuser start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 # Set environment variables
 ENV PORT=8501 \

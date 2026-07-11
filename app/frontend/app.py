@@ -5,7 +5,11 @@ Main Streamlit application for AI Control Mapping Agent.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state
+from utils.state_init import (
+    clear_workflow_state,
+    init_session_state,
+    recover_session_state,
+)
 from utils.auth import get_request_path
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
@@ -45,42 +49,21 @@ if _request_path:
     if _target_page:
         st.switch_page(_target_page)
 
-# ── Session recovery — check if a saved session exists in Cosmos DB ───────
-if (
-    not st.session_state.get("controls")
-    and not st.session_state.get("_session_recovery_checked")
-):
-    st.session_state["_session_recovery_checked"] = True
-    try:
-        _api = get_api_client()
-        _saved = _api.load_session(st.session_state["session_uuid"])
-        if _saved and (_saved.get("controls") or _saved.get("mappings")):
-            st.session_state["_recovery_data"] = _saved
-    except Exception:
-        pass  # backend unavailable — skip silently
+# ── Session recovery ────────────────────────────────────────────────────────
+_session_recovered = False
+try:
+    _session_recovered = recover_session_state(get_api_client())
+except Exception as exc:
+    st.session_state["session_save_error"] = f"Session recovery failed: {exc}"
 
-_recovery = st.session_state.pop("_recovery_data", None)
-if _recovery:
-    with st.container():
-        _n_ctrl = len(_recovery.get("controls", []))
-        _n_map = len(_recovery.get("mappings", []))
-        _saved_at = _recovery.get("saved_at", "unknown")[:19]
-        st.info(
-            f"🔄 **Previous session found** — {_n_ctrl} controls, "
-            f"{_n_map} mappings (saved {_saved_at})"
-        )
-        col_restore, col_skip = st.columns([1, 1])
-        with col_restore:
-            if st.button("♻️ Restore session", type="primary"):
-                for key in ("controls", "mappings", "framework_name",
-                            "policy_decisions", "generated_policy",
-                            "selected_platform", "platform_display_name"):
-                    if key in _recovery:
-                        st.session_state[key] = _recovery[key]
-                st.rerun()
-        with col_skip:
-            if st.button("🗑️ Start fresh"):
-                st.rerun()
+if _session_recovered:
+    st.info(
+        f"🔄 Restored **{len(st.session_state.controls)} controls** and "
+        f"**{len(st.session_state.mappings)} mappings** from your latest session."
+    )
+    if st.button("🗑️ Start a new session"):
+        clear_workflow_state()
+        st.rerun()
 
 # Main content
 st.markdown('<div class="main-header">🛡️ ComplianceIQ</div>', unsafe_allow_html=True)

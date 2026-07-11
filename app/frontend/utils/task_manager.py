@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 import streamlit as st
 
+from utils.state_init import apply_mapping_result, persist_session_state
+
 # ── Types ─────────────────────────────────────────────────────────────────
 
 TaskType = Literal[
@@ -180,7 +182,7 @@ def poll_active_tasks(api_client: Any) -> int:
         try:
             if task_type == "ai_mapping":
                 status = api_client.get_job_status(job_id)
-                _apply_mapping_status(job_id, status)
+                _apply_mapping_status(job_id, status, api_client)
             elif task_type in ("pipeline_run", "pdf_extraction"):
                 status = api_client.get_pipeline_status(job_id)
                 _apply_pipeline_status(job_id, status)
@@ -198,19 +200,28 @@ def poll_active_tasks(api_client: Any) -> int:
     return still_active
 
 
-def _apply_mapping_status(job_id: str, status: Dict[str, Any]) -> None:
+def _apply_mapping_status(
+    job_id: str,
+    status: Dict[str, Any],
+    api_client: Any = None,
+) -> None:
     """Apply backend mapping job status to the task registry."""
     job_status = status.get("status", "")
     progress = status.get("progress", 0)
     mapped = status.get("mapped_controls", 0)
 
     if job_status == "completed":
+        result = status.get("result") or {}
+        if result:
+            apply_mapping_result(result)
+            if api_client is not None:
+                persist_session_state(api_client)
         update_task(
             job_id,
             status="completed",
             progress=100,
             mapped=mapped,
-            result=status.get("result"),
+            result=result,
         )
     elif job_status == "failed":
         update_task(
