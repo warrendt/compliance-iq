@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.azure_ad_auth import User, get_current_user
 from app.db.cosmos_client import cosmos_client
+from app.services import activity_service
 
 import logging
 
@@ -26,6 +27,7 @@ _AUDIT_CONTAINER = "audit-logs"
 _UPLOADS_CONTAINER = "user-uploads"
 _MAPPINGS_CONTAINER = "mapping-results"
 _ARTIFACTS_CONTAINER = "generated-artifacts"
+_ARTIFACTS_TTL = 7776000  # 90 days — matches activity_service._ARTIFACT_TTL_SECONDS
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +223,7 @@ async def get_uploads(
 
     query = (
         f"SELECT TOP {limit} c.id, c.fileName, c.fileSize, c.fileType, "
+        f"c.category, c.version, c.controlCount, "
         f"c.rowCount, c.columnNames, c.timestamp "
         f"FROM c WHERE c.userId = @userId ORDER BY c.timestamp DESC"
     )
@@ -238,7 +241,45 @@ async def get_uploads(
     return items
 
 
-@router.get("/mappings", response_model=List[Dict[str, Any]])
+@router.get("/uploads/{upload_id}", response_model=Dict[str, Any])
+async def get_upload_detail(
+    request: Request,
+    upload_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Return a single stored control set including its parsed ``controls``.
+
+    Scoped to control sets (``category == 'controls'``) so the workspace can
+    rebuild a downloadable CSV. USER_UPLOADS is partitioned by ``/userId`` so
+    this is an authorization-safe point read; identity is re-verified anyway.
+    """
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        doc = await cosmos_client.get_document(
+            _UPLOADS_CONTAINER, upload_id, user.email
+        )
+    except Exception:
+        doc = None
+
+    if (
+        not doc
+        or doc.get("userId") != user.email
+        or doc.get("category") != activity_service.CATEGORY_CONTROLS
+    ):
+        raise HTTPException(status_code=404, detail="Control set not found")
+
+    return {
+        "id": doc.get("id"),
+        "fileName": doc.get("fileName", ""),
+        "version": doc.get("version", 1),
+        "controls": doc.get("controls") or [],
+        "columnNames": doc.get("columnNames") or [],
+        "rowCount": doc.get("rowCount", 0),
+        "controlCount": doc.get("controlCount", 0),
+        "timestamp": doc.get("timestamp", ""),
+    }
 async def get_mappings(
     request: Request,
     limit: int = 50,
@@ -292,12 +333,12 @@ async def get_exports(
     await cosmos_client.ensure_container(
         _ARTIFACTS_CONTAINER,
         partition_key_paths=["/session_id"],
-        default_ttl=2592000,
+        default_ttl=_ARTIFACTS_TTL,
     )
 
     query = (
-        f"SELECT TOP {limit} c.id, c.artifactType, c.framework, "
-        f"c.controlCount, c.fileName, c.fileSize, c.timestamp "
+        f"SELECT TOP {limit} c.id, c.session_id, c.artifactType, c.framework, "
+        f"c.controlCount, c.fileName, c.fileSize, c.contentAvailable, c.timestamp "
         f"FROM c WHERE c.userId = @userId ORDER BY c.timestamp DESC"
     )
 
@@ -311,3 +352,189 @@ async def get_exports(
         items = []
 
     return items
+
+
+@router.get("/exports/{export_id}", response_model=Dict[str, Any])
+async def get_export_detail(
+    request: Request,
+    export_id: str,
+    session_id: Optional[str] = None,
+    user: User = Depends(get_current_user),
+):
+    """Return a single export artifact including its downloadable ``content``.
+
+    GENERATED_ARTIFACTS is partitioned by ``/session_id``; when the caller knows
+    the session id (from the list projection) we do an efficient point read,
+    otherwise we fall back to a cross-partition lookup by id. Identity is always
+    re-verified against the authenticated principal before returning content, so
+    a user can never download another user's artifact.
+    """
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    doc: Optional[Dict[str, Any]] = None
+    if session_id:
+        try:
+            doc = await cosmos_client.get_document(
+                _ARTIFACTS_CONTAINER, export_id, session_id
+            )
+        except Exception:
+            doc = None
+    if doc is None:
+        try:
+            items = await cosmos_client.query_documents(
+                _ARTIFACTS_CONTAINER,
+                query="SELECT * FROM c WHERE c.id = @id AND c.userId = @userId",
+                parameters=[
+                    {"name": "@id", "value": export_id},
+                    {"name": "@userId", "value": user.email},
+                ],
+            )
+            doc = items[0] if items else None
+        except Exception:
+            doc = None
+
+    if not doc or doc.get("userId") != user.email:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    content = doc.get("content") or ""
+    return {
+        "id": doc.get("id"),
+        "fileName": doc.get("fileName", ""),
+        "framework": doc.get("framework", ""),
+        "artifactType": doc.get("artifactType", ""),
+        "content": content,
+        "hasContent": bool(content),
+        "contentSkippedReason": doc.get("contentSkippedReason", ""),
+        "timestamp": doc.get("timestamp", ""),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Activity recording (write) endpoints
+#
+# The frontend orchestrates the pipeline and knows when each milestone happens,
+# so it posts here at each step. Identity is ALWAYS taken from the authenticated
+# principal (never the request body), so a client cannot forge another user's
+# activity. All recording is best-effort inside activity_service.
+# ---------------------------------------------------------------------------
+
+class RecordUploadRequest(BaseModel):
+    """Record an uploaded document or a loaded control set."""
+    fileName: str
+    fileType: str = "text/csv"
+    category: str = activity_service.CATEGORY_DOCUMENT  # 'document' | 'controls'
+    fileSize: int = 0
+    rowCount: int = 0
+    columnNames: List[str] = Field(default_factory=list)
+    controls: Optional[List[Dict[str, Any]]] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordMappingsRequest(BaseModel):
+    """Record a batch of AI mapping results."""
+    framework: str
+    mappings: List[Dict[str, Any]] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordExportRequest(BaseModel):
+    """Record a generated/exported policy artifact."""
+    framework: str
+    artifactType: str = "initiative"
+    controlCount: int = 0
+    fileName: str = ""
+    fileSize: int = 0
+    sessionId: Optional[str] = None
+    content: str = ""
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RecordActivityRequest(BaseModel):
+    """Record a generic activity (e.g. an edit) into the unified feed."""
+    action: str
+    resourceType: str = "edit"
+    summary: str
+    resourceId: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/uploads", status_code=201)
+async def record_upload(
+    request: Request,
+    body: RecordUploadRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a document upload or control-set load for the current user."""
+    category = (
+        activity_service.CATEGORY_CONTROLS
+        if body.category == activity_service.CATEGORY_CONTROLS
+        else activity_service.CATEGORY_DOCUMENT
+    )
+    doc = await activity_service.record_upload(
+        user,
+        file_name=body.fileName,
+        file_type=body.fileType,
+        category=category,
+        file_size=body.fileSize,
+        row_count=body.rowCount,
+        column_names=body.columnNames,
+        controls=body.controls,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "id": doc.get("id"), "version": doc.get("version")}
+
+
+@router.post("/mappings", status_code=201)
+async def record_mappings(
+    request: Request,
+    body: RecordMappingsRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a batch of AI mapping results for the current user."""
+    written = await activity_service.record_mappings(
+        user,
+        framework=body.framework,
+        mappings=body.mappings,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "written": written, "received": len(body.mappings)}
+
+
+@router.post("/exports", status_code=201)
+async def record_export(
+    request: Request,
+    body: RecordExportRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a generated/exported policy artifact for the current user."""
+    doc = await activity_service.record_export(
+        user,
+        framework=body.framework,
+        artifact_type=body.artifactType,
+        control_count=body.controlCount,
+        file_name=body.fileName,
+        file_size=body.fileSize,
+        session_id=body.sessionId,
+        content=body.content,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded", "id": doc.get("id")}
+
+
+@router.post("/activity", status_code=201)
+async def record_activity(
+    request: Request,
+    body: RecordActivityRequest,
+    user: User = Depends(get_current_user),
+):
+    """Record a generic activity (e.g. an edit) into the unified history feed."""
+    await activity_service.record_activity(
+        user,
+        action=body.action,
+        resource_type=body.resourceType,
+        summary=body.summary,
+        resource_id=body.resourceId,
+        metadata=body.metadata,
+    )
+    return {"status": "recorded"}

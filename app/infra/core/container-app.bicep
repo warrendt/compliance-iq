@@ -36,7 +36,7 @@ var containerSecrets = concat(
 )
 var aadRegistration = union({
   clientId: authClientId
-  openIdIssuer: 'https://sts.windows.net/${!empty(authTenantId) ? authTenantId : tenant().tenantId}/v2.0'
+  openIdIssuer: 'https://login.microsoftonline.com/${!empty(authTenantId) ? authTenantId : tenant().tenantId}/v2.0'
 }, !empty(authClientSecret) ? {
   clientSecretSettingName: 'auth-client-secret'
 } : {})

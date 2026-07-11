@@ -247,6 +247,25 @@ if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
                             )
                         st.success(f"✅ Loaded {len(controls)} controls from **{framework_name}**")
                         st.balloons()
+
+                        # Record the loaded control set to the user's workspace
+                        # (best-effort; keeps the per-tenant control library + audit).
+                        try:
+                            get_api_client().record_upload(
+                                file_name=(
+                                    uploaded_file.name
+                                    if uploaded_file is not None
+                                    else f"{framework_name}.csv"
+                                ),
+                                file_type="text/csv",
+                                category="controls",
+                                row_count=len(controls),
+                                column_names=list(df.columns.astype(str)),
+                                controls=controls,
+                                metadata={"framework": framework_name},
+                            )
+                        except Exception:
+                            pass  # activity logging is best-effort
             
             with col_clear:
                 if st.button("🗑️ Clear Upload", use_container_width=True):

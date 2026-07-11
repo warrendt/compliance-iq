@@ -201,7 +201,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
             st.session_state.policy_generated = True
             st.success("✅ Policy initiative generated successfully!")
             st.balloons()
-            
+
         except httpx.ConnectError:
             st.error("❌ Cannot connect to backend. Make sure it's running.")
         except Exception as e:

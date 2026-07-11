@@ -23,6 +23,7 @@ services:
     docker:
       path: ./Dockerfile
       context: .
+      remoteBuild: true
 
   frontend:
     project: app/frontend
@@ -31,6 +32,7 @@ services:
     docker:
       path: ./Dockerfile
       context: .
+      remoteBuild: true
 
 hooks:
   preprovision:

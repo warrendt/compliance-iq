@@ -173,6 +173,21 @@ if file_bytes:
                 )
                 st.session_state.pdf_extraction = result
                 st.session_state.pdf_extracting = False
+                # Record the uploaded document (+ version) to the workspace.
+                try:
+                    client.record_upload(
+                        file_name=file_name,
+                        file_type="application/pdf",
+                        category="document",
+                        file_size=len(file_bytes) if file_bytes else 0,
+                        row_count=result.get("total_controls", 0),
+                        metadata={
+                            "framework": result.get("framework_name"),
+                            "source": "pdf_extraction",
+                        },
+                    )
+                except Exception:
+                    pass  # activity logging is best-effort
                 update_task(
                     task_id,
                     status="completed",
@@ -303,6 +318,29 @@ if extraction:
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
                     st.balloons()
+
+                    # Record the extracted control set to the user's workspace so
+                    # PDF control extraction lands in the per-tenant control library
+                    # + activity history (best-effort).
+                    try:
+                        get_api_client().record_upload(
+                            file_name=f"{framework_name}.csv",
+                            file_type="text/csv",
+                            category="controls",
+                            row_count=len(loaded_controls),
+                            column_names=[
+                                "control_id", "control_name", "description",
+                                "domain", "control_type",
+                            ],
+                            controls=loaded_controls,
+                            metadata={
+                                "framework": framework_name,
+                                "source": "pdf_extraction",
+                                "sourceDocument": st.session_state.get("pdf_file_name"),
+                            },
+                        )
+                    except Exception:
+                        pass  # activity logging is best-effort
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")

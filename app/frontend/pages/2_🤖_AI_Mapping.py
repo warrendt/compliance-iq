@@ -225,6 +225,31 @@ else:
                         "for recovery. Check the backend connection."
                     )
 
+                # Record mapping results to the user's workspace (best-effort).
+                try:
+                    api_client.record_mappings(
+                        framework=st.session_state.framework_name,
+                        mappings=[
+                            {
+                                "control_id": m.get("control_id"),
+                                "control_name": m.get("control_name"),
+                                "domain": m.get("domain"),
+                                "confidence_score": m.get("confidence_score", 0.0),
+                                "reasoning": m.get("reasoning", ""),
+                                "mcsb_mappings": [{
+                                    "mcsbControlId": m.get("mcsb_control_id"),
+                                    "mcsbControlName": m.get("mcsb_control_name"),
+                                    "mcsbDomain": m.get("mcsb_domain"),
+                                }],
+                                "policy_recommendations": m.get("azure_policy_ids", []),
+                            }
+                            for m in mappings
+                        ],
+                        metadata={"jobId": job_id},
+                    )
+                except Exception:
+                    pass  # activity logging is best-effort
+
                 mapped_count = result.get('mapped_count') or len(mappings)
                 failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
 
