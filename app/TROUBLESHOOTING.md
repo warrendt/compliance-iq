@@ -72,7 +72,9 @@ azd env set AZURE_OPENAI_MODEL_NAME <model-name>
 azd provision
 ```
 
-**Tip:** Run `azd up` without pre-setting `AZURE_OPENAI_MODEL_NAME` to be prompted with a list of supported choices.
+**Tip:** The default deployment uses `gpt-5.6-sol` with `gpt-4.1-fallback`.
+Before overriding either model, verify the target account's available model name,
+version, format, and SKU with `az cognitiveservices account list-models`.
 
 #### "Quota exceeded for model deployment"
 

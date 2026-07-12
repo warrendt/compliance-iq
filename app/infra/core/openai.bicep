@@ -2,10 +2,18 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param modelName string = 'gpt-5.2'
-param modelVersion string = '2025-12-11'
-param fallbackModel string = 'gpt-5.4-mini'
-param fallbackVersion string = '2026-03-17'
+@description('Azure OpenAI model identifier for the primary deployment')
+param modelName string = 'gpt-5.6-sol'
+@description('Azure OpenAI model version for the primary deployment')
+param modelVersion string = '2026-07-09'
+@description('Stable Azure OpenAI model identifier for the fallback deployment')
+param fallbackModel string = 'gpt-4.1'
+@description('Azure OpenAI model version for the fallback deployment')
+param fallbackVersion string = '2025-04-14'
+@description('Application-facing name of the primary deployment')
+param primaryDeploymentName string = 'gpt-5.6-sol'
+@description('Application-facing name of the fallback deployment')
+param fallbackDeploymentName string = 'gpt-4.1-fallback'
 param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
 @description('SKU used for model deployments (e.g., GlobalStandard for GPT-5 family)')
@@ -49,10 +57,11 @@ resource existingOpenai 'Microsoft.CognitiveServices/accounts@2023-05-01' existi
 var openaiId = existingAccount ? existingOpenai.id : openai.id
 var openaiEndpoint = existingAccount ? existingOpenai.properties.endpoint : openai.properties.endpoint
 
-// Deploy requested model
+// Deployment names are distinct from model identifiers so application references
+// remain stable if a model version changes.
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount) {
   parent: openai
-  name: modelName
+  name: primaryDeploymentName
   sku: {
     name: deploymentSku
     capacity: deploymentCapacity
@@ -68,10 +77,10 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   }
 }
 
-// Fallback deployment for reliability
-resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount && modelName != fallbackModel) {
+// A separate deployment lets the application retry on a broadly available model.
+resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount && modelName != fallbackModel && primaryDeploymentName != fallbackDeploymentName) {
   parent: openai
-  name: '${fallbackModel}-fallback'
+  name: fallbackDeploymentName
   sku: {
     name: deploymentSku
     capacity: deploymentCapacity
@@ -137,7 +146,7 @@ var openAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 output id string = openaiId
 output name string = name
 output endpoint string = openaiEndpoint
-output deploymentName string = existingAccount ? modelName : modelDeployment.name
-output fallbackDeploymentName string = existingAccount ? '${fallbackModel}-fallback' : (modelName != fallbackModel ? fallbackDeployment.name : '')
+output deploymentName string = existingAccount ? primaryDeploymentName : modelDeployment.name
+output fallbackDeploymentName string = existingAccount ? fallbackDeploymentName : (modelName != fallbackModel && primaryDeploymentName != fallbackDeploymentName ? fallbackDeployment.name : '')
 output apiVersion string = apiVersion
 output openAiUserRoleId string = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAiUserRoleId)

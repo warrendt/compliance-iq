@@ -109,7 +109,8 @@ azd up
 ```
 
 Uses defaults:
-- Model: configurable (you will be prompted to choose during `azd up`)
+- Primary model deployment: `gpt-5.6-sol` (`gpt-5.6-sol`, version `2026-07-09`)
+- Fallback model deployment: `gpt-4.1-fallback` (`gpt-4.1`, version `2025-04-14`)
 - Region: Sweden Central
 - Authentication: Disabled
 
@@ -125,8 +126,11 @@ azd env set AZURE_RESOURCE_GROUP wdt-ciq-dev
 # Prefix resource names (the template appends a short unique suffix)
 azd env set AZURE_NAME_PREFIX ciqdev
 
-# Override model selection (skips the interactive prompt)
+# Override a model only after confirming its model name, version, format, SKU,
+# and subscription availability with `az cognitiveservices account list-models`.
 azd env set AZURE_OPENAI_MODEL_NAME <model-name>
+azd env set AZURE_OPENAI_MODEL_VERSION <model-version>
+azd env set AZURE_OPENAI_PRIMARY_DEPLOYMENT_NAME <deployment-name>
 
 # View all environment variables
 azd env get-values
@@ -247,8 +251,12 @@ azd up
 ### Optional
 - `AZURE_RESOURCE_GROUP` - Explicit resource group name override (defaults to `rg-<environment>`)
 - `AZURE_NAME_PREFIX` - Optional resource naming prefix; separators are stripped and a short unique suffix is appended
-- `AZURE_OPENAI_MODEL_NAME` - Model to deploy (prompted during `azd up` if not set)
-- `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model if primary is unavailable
+- `AZURE_OPENAI_MODEL_NAME` - Primary model identifier
+- `AZURE_OPENAI_MODEL_VERSION` - Version of the primary model
+- `AZURE_OPENAI_PRIMARY_DEPLOYMENT_NAME` - Application-facing primary deployment name
+- `AZURE_OPENAI_FALLBACK_MODEL` - Fallback model identifier
+- `AZURE_OPENAI_FALLBACK_VERSION` - Version of the fallback model
+- `AZURE_OPENAI_FALLBACK_DEPLOYMENT_NAME` - Application-facing fallback deployment name
 - `AUTH_CLIENT_ID` - Entra ID App Registration client ID (enables Easy Auth on frontend; leave empty to disable)
 - `AUTH_CLIENT_SECRET` - Entra ID App Registration client secret (required for Easy Auth token store and delegated ARM tokens)
 - `AUTH_TENANT_ID` - Entra ID tenant ID (defaults to deployment tenant when empty)
@@ -257,6 +265,30 @@ azd up
 ---
 
 ## Managing Deployments
+
+### Azure OpenAI Primary/Fallback Strategy
+
+The Bicep template deploys two distinct Azure OpenAI deployments. The backend
+uses `AZURE_OPENAI_DEPLOYMENT_NAME` first and retries rate-limited requests with
+`AZURE_OPENAI_FALLBACK_MODEL`. Deployment names are intentionally separate from
+model identifiers so changing a model version does not change the value consumed
+by the application.
+
+`gpt-5.6-sol` version `2026-07-09` was verified as generally available for
+Azure OpenAI `GlobalStandard` in Sweden Central through the Microsoft Foundry
+model catalog on 2026-07-12. Subscription-specific quota and entitlement must
+still be verified before provisioning:
+
+```bash
+az cognitiveservices account list-models \
+  --name <openai-account-name> \
+  --resource-group rg-cciq-01
+```
+
+Confirm `gpt-5.6-sol`, version `2026-07-09`, `OpenAI` format, and
+`GlobalStandard` before applying infrastructure changes. If it is unavailable,
+set the primary model and deployment-name variables to the validated fallback
+values; do not remove the fallback deployment.
 
 ### Update Application Code
 

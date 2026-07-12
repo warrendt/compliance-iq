@@ -14,7 +14,8 @@ internal control). The ``extra`` bucket is computed deterministically afterwards
 from the external controls that no match referenced.
 
 The model is read from ``PipelineConfig.from_env()`` (``AZURE_OPENAI_DEPLOYMENT_NAME``)
-— never hardcoded — so the live deployment's model (e.g. gpt-5.2) is honoured.
+— never hardcoded — so the live deployment's model (for example,
+``gpt-5.6-sol``) is honoured.
 """
 
 import asyncio

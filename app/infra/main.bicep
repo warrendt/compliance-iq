@@ -15,17 +15,23 @@ param resourceGroupName string = ''
 @description('Optional naming prefix for resources. Use letters and numbers only; separators are stripped automatically.')
 param namingPrefix string = ''
 
-@description('Azure OpenAI model name to deploy')
-param openAiModelName string = 'gpt-5.2'
+@description('Azure OpenAI model identifier for the primary deployment')
+param openAiModelName string = 'gpt-5.6-sol'
 
-@description('Azure OpenAI model version')
-param openAiModelVersion string = '2025-12-11'
+@description('Azure OpenAI model version for the primary deployment')
+param openAiModelVersion string = '2026-07-09'
 
-@description('Fallback Azure OpenAI model if primary is not available')
-param openAiFallbackModel string = 'gpt-5.4-mini'
+@description('Stable Azure OpenAI model identifier for the fallback deployment')
+param openAiFallbackModel string = 'gpt-4.1'
 
-@description('Fallback model version')
-param openAiFallbackVersion string = '2026-03-17'
+@description('Azure OpenAI model version for the fallback deployment')
+param openAiFallbackVersion string = '2025-04-14'
+
+@description('Application-facing name of the primary model deployment')
+param openAiPrimaryDeploymentName string = 'gpt-5.6-sol'
+
+@description('Application-facing name of the fallback model deployment')
+param openAiFallbackDeploymentName string = 'gpt-4.1-fallback'
 
 @description('Azure OpenAI API version')
 param openAiApiVersion string = '2024-12-01-preview'
@@ -153,6 +159,8 @@ module openai './core/openai.bicep' = {
     modelVersion: openAiModelVersion
     fallbackModel: openAiFallbackModel
     fallbackVersion: openAiFallbackVersion
+    primaryDeploymentName: openAiPrimaryDeploymentName
+    fallbackDeploymentName: openAiFallbackDeploymentName
     apiVersion: openAiApiVersion
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.openaiZoneId

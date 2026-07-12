@@ -137,8 +137,6 @@ class AIMappingService:
 
         try:
             # Call Azure OpenAI with structured output
-            # Note: Using gpt-4.1 primary model with max_completion_tokens
-            # and uses max_completion_tokens instead of max_tokens
             completion = self.client.beta.chat.completions.parse(
                 model=self.model,
                 messages=[

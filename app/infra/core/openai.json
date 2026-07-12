@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "13947351553815189254"
+      "version": "0.44.1.10279",
+      "templateHash": "10335844818587316252"
     }
   },
   "parameters": {
@@ -22,11 +22,45 @@
     },
     "modelName": {
       "type": "string",
-      "defaultValue": "gpt-4.1"
+      "defaultValue": "gpt-5.6-sol",
+      "metadata": {
+        "description": "Azure OpenAI model identifier for the primary deployment"
+      }
+    },
+    "modelVersion": {
+      "type": "string",
+      "defaultValue": "2026-07-09",
+      "metadata": {
+        "description": "Azure OpenAI model version for the primary deployment"
+      }
     },
     "fallbackModel": {
       "type": "string",
-      "defaultValue": "gpt-4o"
+      "defaultValue": "gpt-4.1",
+      "metadata": {
+        "description": "Stable Azure OpenAI model identifier for the fallback deployment"
+      }
+    },
+    "fallbackVersion": {
+      "type": "string",
+      "defaultValue": "2025-04-14",
+      "metadata": {
+        "description": "Azure OpenAI model version for the fallback deployment"
+      }
+    },
+    "primaryDeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-5.6-sol",
+      "metadata": {
+        "description": "Application-facing name of the primary deployment"
+      }
+    },
+    "fallbackDeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1-fallback",
+      "metadata": {
+        "description": "Application-facing name of the fallback deployment"
+      }
     },
     "apiVersion": {
       "type": "string",
@@ -35,13 +69,46 @@
     "sku": {
       "type": "string",
       "defaultValue": "S0"
+    },
+    "deploymentSku": {
+      "type": "string",
+      "defaultValue": "GlobalStandard",
+      "metadata": {
+        "description": "SKU used for model deployments (e.g., GlobalStandard for GPT-5 family)"
+      }
+    },
+    "deploymentCapacity": {
+      "type": "int",
+      "defaultValue": 10,
+      "metadata": {
+        "description": "Capacity for each model deployment"
+      }
+    },
+    "privateEndpointSubnetId": {
+      "type": "string"
+    },
+    "privateDnsZoneId": {
+      "type": "string"
+    },
+    "existingAccount": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "devPublicIpAddress": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Developer public IP address for firewall rule (empty to keep fully private)"
+      }
     }
   },
   "variables": {
+    "openaiId": "[if(parameters('existingAccount'), resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), resourceId('Microsoft.CognitiveServices/accounts', parameters('name')))]",
     "openAiUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
   },
   "resources": [
     {
+      "condition": "[not(parameters('existingAccount'))]",
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2023-05-01",
       "name": "[parameters('name')]",
@@ -53,25 +120,28 @@
       },
       "properties": {
         "customSubDomainName": "[parameters('name')]",
-        "publicNetworkAccess": "Enabled",
+        "publicNetworkAccess": "[if(not(empty(parameters('devPublicIpAddress'))), 'Enabled', 'Disabled')]",
         "networkAcls": {
-          "defaultAction": "Allow"
+          "defaultAction": "Deny",
+          "ipRules": "[if(not(empty(parameters('devPublicIpAddress'))), createArray(createObject('value', parameters('devPublicIpAddress'))), createArray())]",
+          "virtualNetworkRules": []
         }
       }
     },
     {
+      "condition": "[not(parameters('existingAccount'))]",
       "type": "Microsoft.CognitiveServices/accounts/deployments",
       "apiVersion": "2023-05-01",
-      "name": "[format('{0}/{1}', parameters('name'), parameters('modelName'))]",
+      "name": "[format('{0}/{1}', parameters('name'), parameters('primaryDeploymentName'))]",
       "sku": {
-        "name": "Standard",
-        "capacity": 10
+        "name": "[parameters('deploymentSku')]",
+        "capacity": "[parameters('deploymentCapacity')]"
       },
       "properties": {
         "model": {
           "format": "OpenAI",
           "name": "[parameters('modelName')]",
-          "version": "latest"
+          "version": "[parameters('modelVersion')]"
         },
         "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
         "raiPolicyName": "Microsoft.Default"
@@ -81,33 +151,79 @@
       ]
     },
     {
-      "condition": "[not(equals(parameters('modelName'), parameters('fallbackModel')))]",
+      "condition": "[and(and(not(parameters('existingAccount')), not(equals(parameters('modelName'), parameters('fallbackModel')))), not(equals(parameters('primaryDeploymentName'), parameters('fallbackDeploymentName'))))]",
       "type": "Microsoft.CognitiveServices/accounts/deployments",
       "apiVersion": "2023-05-01",
-      "name": "[format('{0}/{1}', parameters('name'), format('{0}-fallback', parameters('fallbackModel')))]",
+      "name": "[format('{0}/{1}', parameters('name'), parameters('fallbackDeploymentName'))]",
       "sku": {
-        "name": "Standard",
-        "capacity": 10
+        "name": "[parameters('deploymentSku')]",
+        "capacity": "[parameters('deploymentCapacity')]"
       },
       "properties": {
         "model": {
           "format": "OpenAI",
           "name": "[parameters('fallbackModel')]",
-          "version": "latest"
+          "version": "[parameters('fallbackVersion')]"
         },
         "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
         "raiPolicyName": "Microsoft.Default"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('modelName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('primaryDeploymentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2021-08-01",
+      "name": "[format('{0}-pe', parameters('name'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "subnet": {
+          "id": "[parameters('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('{0}-pe-conn', parameters('name'))]",
+            "properties": {
+              "privateLinkServiceId": "[variables('openaiId')]",
+              "groupIds": [
+                "account"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('fallbackDeploymentName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('primaryDeploymentName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2021-08-01",
+      "name": "[format('{0}/{1}', format('{0}-pe', parameters('name')), 'default')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "openai",
+            "properties": {
+              "privateDnsZoneId": "[parameters('privateDnsZoneId')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-pe', parameters('name')))]"
       ]
     }
   ],
   "outputs": {
     "id": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+      "value": "[variables('openaiId')]"
     },
     "name": {
       "type": "string",
@@ -115,15 +231,15 @@
     },
     "endpoint": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), '2023-05-01').endpoint]"
+      "value": "[if(parameters('existingAccount'), reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), '2023-05-01').endpoint, reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), '2023-05-01').endpoint)]"
     },
     "deploymentName": {
       "type": "string",
-      "value": "[parameters('modelName')]"
+      "value": "[if(parameters('existingAccount'), parameters('primaryDeploymentName'), parameters('primaryDeploymentName'))]"
     },
     "fallbackDeploymentName": {
       "type": "string",
-      "value": "[if(not(equals(parameters('modelName'), parameters('fallbackModel'))), format('{0}-fallback', parameters('fallbackModel')), '')]"
+      "value": "[if(parameters('existingAccount'), parameters('fallbackDeploymentName'), if(and(not(equals(parameters('modelName'), parameters('fallbackModel'))), not(equals(parameters('primaryDeploymentName'), parameters('fallbackDeploymentName')))), parameters('fallbackDeploymentName'), ''))]"
     },
     "apiVersion": {
       "type": "string",
