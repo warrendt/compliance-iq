@@ -51,7 +51,7 @@ deployment names explicit and independent from model identifiers.
 | Microsoft Foundry model catalog and detail lookup | Passed: `gpt-5.6-sol` version `2026-07-09` is GA, supports Azure OpenAI, and lists `SWEDENCENTRAL` for `GlobalStandard`. |
 | `az bicep build --file app/infra/core/openai.bicep` | Passed. Existing nullability warnings remain for conditional Azure resource references. |
 | `az bicep build --file app/infra/main.bicep` | Passed. Existing repository lint warnings remain in unrelated network, private DNS, registry, Cosmos DB, and Container App modules. |
-| Focused regression tests | Passed: 74 tests, including `test_openai_model_selection.py`, `test_user_profile.py`, and `test_m365_purview.py`. |
+| Focused regression tests | Passed: 75 tests, including `test_openai_model_selection.py`, `test_user_profile.py`, and `test_m365_purview.py`. |
 | `az deployment sub validate` with resolved `cciq-01` parameters | Blocked by the existing landing-zone `Deny-Subnet-Without-Nsg` policy for the template VNet. |
 | `azd provision --preview --no-prompt` using supplied subscription, resource group, and location | Blocked by the same subnet-NSG policy before a complete resource diff. No resources were provisioned. |
 
