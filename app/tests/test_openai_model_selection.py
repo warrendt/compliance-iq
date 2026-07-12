@@ -45,3 +45,11 @@ def test_bicep_parameters_keep_primary_and_fallback_deployment_names_explicit():
     assert values["openAiFallbackVersion"]["value"] == "${AZURE_OPENAI_FALLBACK_VERSION=2025-04-14}"
     assert values["openAiPrimaryDeploymentName"]["value"] == "${AZURE_OPENAI_PRIMARY_DEPLOYMENT_NAME=gpt-5.6-sol}"
     assert values["openAiFallbackDeploymentName"]["value"] == "${AZURE_OPENAI_FALLBACK_DEPLOYMENT_NAME=gpt-4.1-fallback}"
+
+
+def test_network_template_attaches_an_nsg_to_each_subnet():
+    network_template = (APP_ROOT / "infra" / "core" / "network.bicep").read_text()
+
+    assert "id: infraNsg.id" in network_template
+    assert "id: workloadNsg.id" in network_template
+    assert "id: peNsg.id" in network_template

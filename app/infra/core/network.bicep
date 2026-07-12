@@ -9,6 +9,20 @@ var infraPrefix = '10.20.0.0/23'
 var workloadPrefix = '10.20.2.0/24'
 var privateEndpointPrefix = '10.20.3.0/24'
 
+// Policy requires every subnet to have an NSG. These retain Azure's default
+// virtual-network and load-balancer rules while providing an explicit boundary.
+resource infraNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
+  name: '${name}-aca-infra-nsg'
+  location: location
+  tags: tags
+}
+
+resource workloadNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
+  name: '${name}-aca-workload-nsg'
+  location: location
+  tags: tags
+}
+
 // NSG for private endpoint subnet (allow 443 from vnet)
 resource peNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
   name: '${name}-pe-nsg'
@@ -46,6 +60,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
         name: 'aca-infra'
         properties: {
           addressPrefix: infraPrefix
+          networkSecurityGroup: {
+            id: infraNsg.id
+          }
           delegations: [
             {
               name: 'Microsoft.App/environments'
@@ -60,6 +77,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
         name: 'aca-workload'
         properties: {
           addressPrefix: workloadPrefix
+          networkSecurityGroup: {
+            id: workloadNsg.id
+          }
         }
       }
       {

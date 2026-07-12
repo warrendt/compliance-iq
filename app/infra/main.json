@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "11135067837997231688"
+      "templateHash": "11322763476510876396"
     }
   },
   "parameters": {
@@ -333,7 +333,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10285706754563756363"
+              "templateHash": "12390196827513625284"
             }
           },
           "parameters": {
@@ -359,6 +359,20 @@
             "privateEndpointPrefix": "10.20.3.0/24"
           },
           "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-aca-infra-nsg', parameters('name'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-aca-workload-nsg', parameters('name'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
             {
               "type": "Microsoft.Network/networkSecurityGroups",
               "apiVersion": "2023-09-01",
@@ -400,6 +414,9 @@
                     "name": "aca-infra",
                     "properties": {
                       "addressPrefix": "[variables('infraPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-infra-nsg', parameters('name')))]"
+                      },
                       "delegations": [
                         {
                           "name": "Microsoft.App/environments",
@@ -413,7 +430,10 @@
                   {
                     "name": "aca-workload",
                     "properties": {
-                      "addressPrefix": "[variables('workloadPrefix')]"
+                      "addressPrefix": "[variables('workloadPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-workload-nsg', parameters('name')))]"
+                      }
                     }
                   },
                   {
@@ -429,7 +449,9 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('name')))]"
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-infra-nsg', parameters('name')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('name')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-workload-nsg', parameters('name')))]"
               ]
             }
           ],

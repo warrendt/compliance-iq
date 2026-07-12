@@ -1,6 +1,6 @@
 # Deployment Plan: Azure OpenAI Model Deployment Update
 
-**Status:** Validation Blocked
+**Status:** Provisioned
 
 ## 1. Scope
 
@@ -51,10 +51,41 @@ deployment names explicit and independent from model identifiers.
 | Microsoft Foundry model catalog and detail lookup | Passed: `gpt-5.6-sol` version `2026-07-09` is GA, supports Azure OpenAI, and lists `SWEDENCENTRAL` for `GlobalStandard`. |
 | `az bicep build --file app/infra/core/openai.bicep` | Passed. Existing nullability warnings remain for conditional Azure resource references. |
 | `az bicep build --file app/infra/main.bicep` | Passed. Existing repository lint warnings remain in unrelated network, private DNS, registry, Cosmos DB, and Container App modules. |
-| Focused regression tests | Passed: 75 tests, including `test_openai_model_selection.py`, `test_user_profile.py`, and `test_m365_purview.py`. |
+| Focused regression tests | Passed: 76 tests, including `test_openai_model_selection.py`, `test_user_profile.py`, and `test_m365_purview.py`. |
 | `az deployment sub validate` with resolved `cciq-01` parameters | Blocked by the existing landing-zone `Deny-Subnet-Without-Nsg` policy for the template VNet. |
 | `azd provision --preview --no-prompt` using supplied subscription, resource group, and location | Blocked by the same subnet-NSG policy before a complete resource diff. No resources were provisioned. |
+| Re-validation after NSG remediation | Passed: `az deployment sub validate` completed without errors and `azd provision --preview --no-prompt` completed successfully. |
 
-The model change is not validated for the target subscription until the
-subscription policy blocker is resolved or an approved compliant network
-configuration is supplied. Do not deploy while this status is blocked.
+## 6. Policy Remediation
+
+The `Deny-Subnet-Without-Nsg` failure is remediated in
+`app/infra/core/network.bicep` by associating dedicated NSGs with the
+`aca-infra` and `aca-workload` subnets. The existing private-endpoint NSG is
+unchanged.
+
+## 7. Approved Deployment Change
+
+The successful preview includes the existing Cosmos DB change
+`disableLocalAuth: true => false`. The user explicitly approved applying this
+change on 2026-07-12. Provisioning can therefore continue with the complete
+previewed deployment.
+
+## 8. Deployment Proof
+
+- `azd provision --no-prompt` succeeded on 2026-07-12 for `rg-cciq-01`.
+- Azure OpenAI deployments `gpt-5.6-sol` (`2026-07-09`) and
+  `gpt-4.1-fallback` (`gpt-4.1`, `2025-04-14`) both report `Succeeded`.
+- All three virtual network subnets have an NSG associated.
+- The live Cosmos account reports `disableLocalAuth: true`; the previewed
+  property removal did not change the existing setting.
+- `azd deploy --no-prompt` succeeded for the backend and frontend Container
+  Apps. Both latest revisions report `Succeeded` and `Running`.
+- Live RBAC verification passed: both Container Apps have `AcrPull`; the
+  backend has `Cognitive Services OpenAI User` at resource-group scope and
+  Cosmos DB Built-in Data Contributor at the Cosmos account scope.
+- Backend endpoint:
+  `https://ca-backend-uiznynljoc44m.internal.redbush-d47b5f12.swedencentral.azurecontainerapps.io/`
+- Frontend endpoint:
+  `https://ca-frontend-uiznynljoc44m.redbush-d47b5f12.swedencentral.azurecontainerapps.io/`
+  Anonymous requests receive the configured Microsoft Entra authentication
+  challenge (`401`).
