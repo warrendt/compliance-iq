@@ -2,7 +2,7 @@
 Control mapping endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
@@ -18,6 +18,8 @@ from app.models import (
     MappingJob
 )
 from app.services import get_ai_mapping_service, get_mcsb_service
+from app.services.policy_validation_service import PolicyValidationService
+from app.auth.azure_ad_auth import User, get_current_user
 from app.db import cosmos_client
 
 logger = logging.getLogger(__name__)
@@ -188,7 +190,8 @@ async def map_batch_controls(request: MapBatchRequest):
 @router.post("/analyze", response_model=MappingJob)
 async def analyze_controls(
     request: MappingRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
 ):
     """
     Start batch control mapping job.
@@ -228,15 +231,45 @@ async def analyze_controls(
     # Persist immediately so other replicas can serve status
     await _persist_job(job)
 
+    # Capture the caller's ARM token now — the background task runs after the
+    # response is sent, so it cannot read it from request context later.
+    access_token = user.access_token if request.validate_guids else None
+    if request.validate_guids and not access_token:
+        logger.warning(
+            "validate_guids requested but no user ARM token available; "
+            "job %s will fall back to offline validation", job_id
+        )
+
     # Start background task
     background_tasks.add_task(
         process_mapping_job,
         job_id,
-        request.controls
+        request.controls,
+        request.validate_guids,
+        access_token,
     )
 
     logger.info(f"Created mapping job {job_id} with {len(request.controls)} controls")
     return job
+
+
+@router.get("/validation/preflight")
+async def validation_preflight(user: User = Depends(get_current_user)):
+    """Report whether the caller can validate policy GUIDs against ARM.
+
+    Probes one known-good built-in policy definition with the user's delegated
+    token. 200 → ``can_validate=true``; missing token or 401/403 → false with a
+    reason. The AI Mapping page uses this to enable/disable the validation
+    checkbox.
+    """
+    if not user.access_token:
+        return {
+            "can_validate": False,
+            "reason": "Sign in with Entra ID to enable ARM policy validation.",
+        }
+    validator = PolicyValidationService(user.access_token)
+    can_validate, reason = await validator.can_validate()
+    return {"can_validate": can_validate, "reason": reason}
 
 
 @router.get("/status/{job_id}", response_model=MappingJob)
@@ -303,13 +336,20 @@ async def get_mcsb_domains():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
+async def process_mapping_job(
+    job_id: str,
+    controls: List[ExternalControl],
+    validate_guids: bool = False,
+    access_token: Optional[str] = None,
+):
     """
     Background task to process mapping job.
 
     Args:
         job_id: Job identifier
         controls: List of controls to map
+        validate_guids: Validate azure_policy_ids against ARM as the signed-in user
+        access_token: Caller's ARM-audience token (captured at request time)
     """
     job = await _load_job(job_id)
     if not job:
@@ -329,7 +369,12 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
             logger.debug(f"Job {job_id}: {current}/{total} ({job.progress}%)")
 
         # Map controls
-        batch_result = await ai_service.map_controls_batch(controls, progress_callback)
+        batch_result = await ai_service.map_controls_batch(
+            controls,
+            progress_callback,
+            validate_guids=validate_guids,
+            access_token=access_token,
+        )
 
         # Update job
         job.status = "completed"

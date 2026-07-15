@@ -83,6 +83,25 @@ with col_config2:
         help="Number of controls to map concurrently (higher = faster but uses more API quota)"
     )
 
+    # Full ARM GUID validation (uses the signed-in user's Azure permissions).
+    # A preflight probe decides whether the checkbox can be enabled.
+    preflight = api_client.preflight_validation()
+    can_validate = bool(preflight.get("can_validate"))
+    validate_guids = st.checkbox(
+        "🔐 Enable full GUID validation",
+        value=False,
+        disabled=not can_validate,
+        help=(
+            "Verify each Azure Policy GUID exists in Azure Resource Manager using "
+            "your Entra ID permissions. When off, GUIDs are checked offline against "
+            "the bundled known-good MCSB set."
+        ),
+    )
+    if can_validate:
+        st.caption("✅ ARM validation available with your permissions")
+    else:
+        st.caption(f"ℹ️ Offline validation only — {preflight.get('reason', 'sign in to enable ARM checks')}")
+
 st.markdown("---")
 
 # Single control test mode
@@ -328,6 +347,8 @@ else:
                     job_id = api_client.start_batch_mapping(
                         controls=controls_payload,
                         framework_name=st.session_state.framework_name,
+                        validate_guids=validate_guids,
+                        concurrency=concurrency,
                     )
                     st.session_state.mapping_job_id = job_id
                     st.session_state.mapping_in_progress = True

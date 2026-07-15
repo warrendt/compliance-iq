@@ -229,20 +229,27 @@ class APIClient:
     def start_batch_mapping(
         self,
         controls: List[Dict[str, str]],
-        framework_name: str
+        framework_name: str,
+        validate_guids: bool = False,
+        concurrency: int = 5,
     ) -> str:
         """Start a batch mapping job.
         
         Args:
             controls: List of controls to map
             framework_name: Name of the framework
+            validate_guids: Validate Azure Policy GUIDs against ARM using the
+                caller's Entra ID permissions
+            concurrency: Max controls to map concurrently
             
         Returns:
             Job ID for tracking progress
         """
         payload = {
             "controls": controls,
-            "framework_name": framework_name
+            "framework_name": framework_name,
+            "validate_guids": validate_guids,
+            "concurrency": concurrency,
         }
         
         self.timeout = 600.0  # 10 minutes for batch jobs
@@ -254,6 +261,23 @@ class APIClient:
             response.raise_for_status()
             result = response.json()
             return result.get("job_id")
+
+    def preflight_validation(self) -> Dict[str, Any]:
+        """Check whether the caller can validate policy GUIDs against ARM.
+
+        Returns:
+            ``{"can_validate": bool, "reason": str}``. On any error, returns
+            ``can_validate=False`` with the error as the reason.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/mapping/validation/preflight"
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception as exc:  # noqa: BLE001
+            return {"can_validate": False, "reason": str(exc)}
     
     def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of a mapping job.

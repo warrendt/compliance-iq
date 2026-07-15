@@ -33,6 +33,21 @@ class ControlMapping(BaseModel):
         description="Azure Policy definition GUIDs for this control"
     )
 
+    invalid_policy_ids: List[str] = Field(
+        default_factory=list,
+        description="GUIDs ARM confirmed do not exist (dropped from azure_policy_ids)"
+    )
+
+    unverified_policy_ids: List[str] = Field(
+        default_factory=list,
+        description="GUIDs that could not be confirmed (offline mode; kept but flagged)"
+    )
+
+    policy_validation_mode: Literal["none", "offline", "arm"] = Field(
+        default="none",
+        description="How azure_policy_ids were validated: ARM existence, offline known-good, or none"
+    )
+
     mapping_type: Literal["exact", "partial", "conceptual", "none"] = Field(
         ...,
         description="Type of mapping relationship"
@@ -126,11 +141,21 @@ class MappingRequest(BaseModel):
     framework_name: str = Field(..., description="Name of framework")
     controls: List[ExternalControl] = Field(..., description="Controls to map")
     batch_mode: bool = Field(True, description="Process in batch mode")
+    validate_guids: bool = Field(
+        False,
+        description="Validate azure_policy_ids against ARM using the caller's Entra ID permissions"
+    )
+    concurrency: int = Field(
+        5, ge=1, le=10,
+        description="Max concurrent AI mapping calls"
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "framework_name": "SAMA Cybersecurity",
             "controls": [],
-            "batch_mode": True
+            "batch_mode": True,
+            "validate_guids": False,
+            "concurrency": 5
         }
     })

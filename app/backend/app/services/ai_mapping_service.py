@@ -17,6 +17,13 @@ from app.models.sovereignty import SovereigntyMapping
 from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
 from app.services.sovereignty_service import get_sovereignty_service
+from app.services.policy_validation_service import (
+    PolicyValidationService,
+    PolicyValidationAuthError,
+    clean_policy_ids,
+    annotate_offline,
+    annotate_arm,
+)
 from app.auth import get_azure_openai_client
 from app.config import get_settings
 
@@ -214,6 +221,11 @@ class AIMappingService:
             if not hasattr(mapping, 'external_control_name'):
                 mapping.external_control_name = external_control.control_name
 
+            # Always strip non-GUID noise (e.g. "See documentation") and dedupe
+            # before the mapping leaves the service. ARM/offline verification of
+            # which GUIDs actually exist happens at the batch layer.
+            mapping.azure_policy_ids = clean_policy_ids(mapping.azure_policy_ids)
+
             logger.info(
                 f"Mapped {external_control.control_id} -> {mapping.mcsb_control_id} "
                 f"(confidence: {mapping.confidence_score:.2f})"
@@ -234,12 +246,19 @@ class AIMappingService:
     async def map_controls_batch(
         self,
         external_controls: List[ExternalControl],
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        validate_guids: bool = False,
+        access_token: Optional[str] = None,
     ) -> MappingBatch:
         """Map multiple controls in batch (async-safe).
 
         Runs map_control with awaits to avoid nesting asyncio.run inside a running
         loop (which was causing failures in background tasks).
+
+        When ``validate_guids`` is set and an ARM-audience ``access_token`` is
+        supplied, each mapping's azure_policy_ids are checked for existence in
+        Azure Resource Manager as the signed-in user; otherwise they are checked
+        offline against the bundled known-good MCSB policy set.
         """
         logger.info(f"Starting batch mapping for {len(external_controls)} controls")
 
@@ -261,6 +280,8 @@ class AIMappingService:
                 else:
                     progress_callback(idx + 1, total_controls)
 
+        await self._apply_policy_validation(mappings, validate_guids, access_token)
+
         mapped_count = len(mappings)
         avg_confidence = (
             sum(m.confidence_score for m in mappings) / mapped_count
@@ -280,6 +301,38 @@ class AIMappingService:
 
         logger.info(f"Batch mapping complete: {summary}")
         return batch
+
+    async def _apply_policy_validation(
+        self,
+        mappings: List[ControlMapping],
+        validate_guids: bool,
+        access_token: Optional[str],
+    ) -> None:
+        """Verify each mapping's azure_policy_ids (ARM if permitted, else offline).
+
+        Falls back to offline known-good validation if ARM denies the token, so
+        a permissions problem never fails the whole job.
+        """
+        if not mappings:
+            return
+
+        if validate_guids and access_token:
+            validator = PolicyValidationService(access_token)
+            try:
+                await annotate_arm(mappings, validator)
+                logger.info("Validated policy GUIDs against ARM as the signed-in user")
+                return
+            except PolicyValidationAuthError as exc:
+                logger.warning(
+                    "ARM policy validation unavailable (%s); falling back to offline", exc
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "ARM policy validation failed (%s); falling back to offline", exc
+                )
+
+        annotate_offline(mappings)
+        logger.info("Validated policy GUIDs offline against the bundled known-good MCSB set")
 
     async def _search_azure_policies(self, external_control: ExternalControl) -> str:
         """

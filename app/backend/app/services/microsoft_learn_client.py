@@ -143,11 +143,13 @@ class MicrosoftLearnClient:
                 # Look for policy GUID in URL
                 match = guid_pattern.search(url)
                 policy_id = match.group(0) if match else None
-                
-                # Include results that have a policy ID or mention policy in title
-                if policy_id or "policy" in title.lower():
+
+                # Only surface entries backed by a real policy GUID — the list
+                # exists to supply azure_policy_ids, so entries without a GUID
+                # (previously emitted as "See documentation") are noise.
+                if policy_id:
                     policies.append({
-                        "policy_id": policy_id or "See documentation",
+                        "policy_id": policy_id,
                         "policy_name": title,
                         "description": description[:200],
                         "learn_url": url
