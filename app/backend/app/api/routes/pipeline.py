@@ -5,8 +5,8 @@ targeting Azure Defender for Cloud, Microsoft 365, or Microsoft Purview.
 Also provides an extract-only endpoint that returns controls in CSV-flow format.
 """
 
-import asyncio
 import base64
+import asyncio
 import csv
 import json
 import logging
@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-from azure.cosmos import CosmosClient
+from azure.cosmos import CosmosClient, PartitionKey
 from azure.identity import DefaultAzureCredential
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
@@ -45,6 +45,10 @@ _cosmos_client = None
 _cosmos_container = None
 
 
+class PipelineJobCancelled(Exception):
+    """Stop cooperative worker processing after a user cancels a job."""
+
+
 class PipelineJobStatus(BaseModel):
     """Status of a pipeline job."""
     job_id: str
@@ -59,6 +63,7 @@ class PipelineJobStatus(BaseModel):
     output_dir: Optional[str] = None
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
+    extraction: Optional[dict] = None
 
 
 class PipelineRequest(BaseModel):
@@ -175,16 +180,12 @@ async def extract_controls_from_pdf(
         if errors:
             raise HTTPException(500, f"Config errors: {'; '.join(errors)}")
 
-        # Stage 1: Extract text (blocking I/O — run in thread to free the event loop)
-        pdf_metadata = await asyncio.to_thread(get_pdf_metadata, str(pdf_path))
-        pdf_text = await asyncio.to_thread(
-            extract_text_from_pdf, str(pdf_path), max_pages=config.max_pdf_pages
-        )
+        # Stage 1: Extract text
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
 
-        # Stage 2: AI control extraction (blocking network call — run in thread)
-        extraction = await asyncio.to_thread(
-            extract_controls_from_text, pdf_text, config, pdf_metadata
-        )
+        # Stage 2: AI control extraction
+        extraction = extract_controls_from_text(pdf_text, config, pdf_metadata)
 
         # Convert ExtractedControl → CSV-flow format (ExternalControl-compatible)
         csv_controls = [
@@ -210,6 +211,30 @@ async def extract_controls_from_pdf(
     finally:
         # Clean up temp files
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@router.post("/extract/jobs", response_model=PipelineJobStatus)
+async def start_pdf_extraction(
+    background_tasks: BackgroundTasks,
+    pdf_file: UploadFile = File(..., description="Compliance control PDF document"),
+):
+    """Submit PDF extraction as a background job that can be polled for status."""
+    if not pdf_file.filename or not pdf_file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "File must be a PDF document")
+
+    content = await pdf_file.read()
+    job_id, job = _create_job(
+        filename=pdf_file.filename,
+        content=content,
+        min_confidence=0.0,
+        allowed_locations=None,
+        target_platform="extract",
+    )
+
+    background_tasks.add_task(_run_pdf_extraction_job, job_id)
+    logger.info("PDF extraction job created: %s for %s", job_id, pdf_file.filename)
+    _log_debug(job_id, f"Extraction job created for {pdf_file.filename}")
+    return PipelineJobStatus(**_status_fields(job))
 
 
 @router.post("/selftest", response_model=PipelineJobStatus)
@@ -322,18 +347,51 @@ async def run_purview_pipeline_endpoint(
 @router.get("/status/{job_id}", response_model=PipelineJobStatus)
 async def get_pipeline_status(job_id: str):
     """Get the current status of a pipeline job."""
-    if job_id not in _jobs:
+    job = _jobs.get(job_id)
+    if job is None:
+        job = _cosmos_get_job(job_id)
+        if job is None:
+            raise HTTPException(404, f"Job {job_id} not found")
+
+        if job.get("status") not in {"completed", "failed", "cancelled"}:
+            job["status"] = "failed"
+            job["stage"] = "Interrupted"
+            job["error"] = (
+                "The worker restarted before this job completed. "
+                "Please retry the extraction."
+            )
+            job["completed_at"] = datetime.now(timezone.utc).isoformat()
+            _cosmos_upsert_job(job)
+        _jobs[job_id] = job
+
+    return PipelineJobStatus(**_status_fields(job))
+
+
+@router.post("/status/{job_id}/cancel", response_model=PipelineJobStatus)
+async def cancel_pipeline_job(job_id: str):
+    """Cancel an active PDF job and prevent it from starting further AI work."""
+    job = _jobs.get(job_id) or _cosmos_get_job(job_id)
+    if job is None:
         raise HTTPException(404, f"Job {job_id} not found")
 
-    job = _jobs[job_id]
-    return PipelineJobStatus(**{k: v for k, v in job.items() if k in PipelineJobStatus.model_fields})
+    if job.get("status") not in {"completed", "failed", "cancelled"}:
+        job.update(
+            status="cancelled",
+            stage="Cancelled",
+            completed_at=datetime.now(timezone.utc).isoformat(),
+            cancel_requested=True,
+        )
+        _jobs[job_id] = job
+        _cosmos_upsert_job(job)
+        _log_debug(job_id, "Cancellation requested by user")
+        logger.info("Pipeline job %s cancelled by user", job_id)
+
+    return PipelineJobStatus(**_status_fields(job))
 
 
 @router.get("/logs/{job_id}")
 async def get_pipeline_logs(job_id: str, since: int = 0):
-    """Return buffered debug logs for a job. Available only when PIPELINE_DEBUG_LOG is enabled."""
-    if not PIPELINE_DEBUG_LOG:
-        raise HTTPException(404, "Pipeline logging is disabled")
+    """Return bounded, user-safe execution logs for a job."""
 
     if job_id not in _jobs:
         raise HTTPException(404, f"Job {job_id} not found")
@@ -506,7 +564,7 @@ async def list_pipeline_jobs():
 
 
 def _run_pipeline_job(job_id: str):
-    """Execute the pipeline in the background (runs in thread pool via FastAPI BackgroundTasks)."""
+    """Execute the blocking full pipeline in Starlette's background threadpool."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
@@ -634,8 +692,109 @@ def _run_pipeline_job(job_id: str):
         _log_debug(job_id, f"Pipeline failed: {e}")
 
 
+async def _run_pdf_extraction_job(job_id: str) -> None:
+    """Run the blocking PDF and LLM work outside FastAPI's event loop."""
+    await asyncio.to_thread(_run_pdf_extraction_job_sync, job_id)
+
+
+def _run_pdf_extraction_job_sync(job_id: str) -> None:
+    """Extract controls and persist an explicit terminal status for every outcome."""
+    from app.pipeline import (
+        PipelineConfig,
+        extract_controls_from_text,
+        extract_text_from_pdf,
+        get_pdf_metadata,
+    )
+
+    job = _jobs[job_id]
+    tmp_dir: Optional[str] = None
+
+    def ensure_not_cancelled() -> None:
+        if job.get("cancel_requested") or job.get("status") == "cancelled":
+            raise PipelineJobCancelled()
+
+    def update(status: str, stage: str, progress: int) -> None:
+        ensure_not_cancelled()
+        job.update(status=status, stage=stage, progress=progress)
+        _cosmos_upsert_job(job)
+
+    def extraction_progress(current: int, total: int) -> None:
+        ensure_not_cancelled()
+        progress = 20 + int((current / max(total, 1)) * 70)
+        update("extracting_controls", f"AI extracting controls ({current}/{total} sections)", progress)
+
+    try:
+        ensure_not_cancelled()
+        update("extracting_text", "Extracting text from PDF", 5)
+        tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_extract_")
+        pdf_path = Path(tmp_dir) / job["pdf_filename"]
+        pdf_path.write_bytes(job["pdf_content"])
+
+        config = PipelineConfig.from_env()
+        errors = config.validate()
+        if errors:
+            raise RuntimeError(f"Configuration error: {'; '.join(errors)}")
+
+        pdf_metadata = get_pdf_metadata(str(pdf_path))
+        pdf_text = extract_text_from_pdf(str(pdf_path), max_pages=config.max_pdf_pages)
+        ensure_not_cancelled()
+        _log_debug(job_id, f"Extracted {len(pdf_text):,} characters from PDF")
+
+        update("extracting_controls", "AI extracting controls from document", 20)
+        extraction = extract_controls_from_text(
+            pdf_text,
+            config,
+            pdf_metadata,
+            progress_callback=extraction_progress,
+        )
+        ensure_not_cancelled()
+        controls = [
+            ExtractedControlCSVFormat(
+                control_id=control.control_id,
+                control_name=control.control_title,
+                description=control.control_description,
+                domain=control.domain,
+                control_type=control.control_type,
+                requirements="; ".join(control.sub_controls) if control.sub_controls else None,
+            ).model_dump()
+            for control in extraction.controls
+        ]
+
+        job["extraction"] = PipelineExtractResponse(
+            framework_name=extraction.framework_name,
+            framework_version=extraction.framework_version,
+            issuing_authority=extraction.issuing_authority,
+            country_or_region=extraction.country_or_region,
+            controls=controls,
+            total_controls=len(controls),
+        ).model_dump()
+        job["framework_name"] = extraction.framework_name
+        job["controls_extracted"] = len(controls)
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        update("completed", "Extraction complete", 100)
+        _log_debug(job_id, f"Extracted {len(controls)} controls")
+    except PipelineJobCancelled:
+        job.update(
+            status="cancelled",
+            stage="Cancelled",
+            completed_at=job.get("completed_at") or datetime.now(timezone.utc).isoformat(),
+        )
+        _log_debug(job_id, "Extraction cancelled before the next processing stage")
+    except Exception as exc:
+        logger.error("PDF extraction job %s failed: %s", job_id, exc, exc_info=True)
+        job["error"] = str(exc)
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        update("failed", "Extraction failed", job.get("progress", 0))
+        _log_debug(job_id, f"Extraction failed: {exc}")
+    finally:
+        job.pop("pdf_content", None)
+        _cosmos_upsert_job(job)
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _run_m365_job(job_id: str):
-    """Extract controls from PDF and generate a Microsoft 365 policy package (runs in thread pool)."""
+    """Generate an M365 package in Starlette's background threadpool."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
@@ -737,7 +896,7 @@ def _run_m365_job(job_id: str):
 
 
 def _run_purview_job(job_id: str):
-    """Extract controls from PDF and generate a Microsoft Purview configuration package (runs in thread pool)."""
+    """Generate a Purview package in Starlette's background threadpool."""
     from app.pipeline import (
         PipelineConfig,
         extract_text_from_pdf,
@@ -867,6 +1026,7 @@ def _create_job(
 
     job_id = str(uuid.uuid4())
     job = {
+        "id": job_id,
         "job_id": job_id,
         "status": "pending",
         "progress": 0,
@@ -893,6 +1053,11 @@ def _create_job(
 
     _cosmos_upsert_job(job)
     return job_id, job
+
+
+def _status_fields(job: dict) -> dict:
+    """Return only fields exposed by the job status API."""
+    return {key: value for key, value in job.items() if key in PipelineJobStatus.model_fields}
 
 
 def _zip_dir(out: Path) -> bytes:
@@ -962,8 +1127,7 @@ def _init_cosmos():
         db = _cosmos_client.create_database_if_not_exists(id=database_name)
         _cosmos_container = db.create_container_if_not_exists(
             id=container_name,
-            partition_key="/job_id",
-            offer_throughput=400,
+            partition_key=PartitionKey(path="/job_id"),
         )
         logger.info("Cosmos persistence enabled for pipeline jobs")
     except Exception as exc:  # noqa: BLE001
@@ -977,7 +1141,13 @@ def _cosmos_upsert_job(job: dict):
     if _cosmos_container is None:
         return
     try:
-        _cosmos_container.upsert_item(job)
+        document = {
+            key: value
+            for key, value in job.items()
+            if key not in {"pdf_content", "output_dir"}
+        }
+        document.setdefault("id", document["job_id"])
+        _cosmos_container.upsert_item(document)
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"Failed to persist job {job.get('job_id')}: {exc}")
 
@@ -994,9 +1164,7 @@ def _cosmos_get_job(job_id: str) -> Optional[dict]:
 
 
 def _log_debug(job_id: str, message: str):
-    """Append a debug log entry for a job if debug logging is enabled."""
-    if not PIPELINE_DEBUG_LOG:
-        return
+    """Append a bounded, user-safe execution log entry for a job."""
     if job_id not in _job_logs:
         _job_logs[job_id] = []
 

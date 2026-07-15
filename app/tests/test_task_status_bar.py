@@ -5,6 +5,7 @@ Unit tests for the Streamlit task status bar.
 from types import SimpleNamespace
 
 from components import task_status_bar as status_bar
+from utils import task_manager
 
 
 class _DummyContext:
@@ -15,16 +16,20 @@ class _DummyContext:
         return False
 
 
-def _streamlit_stub(rerun_calls: list[str]):
+def _streamlit_stub(rerun_calls: list[str], popover_labels: list[str] | None = None):
+    def popover(label: str):
+        if popover_labels is not None:
+            popover_labels.append(label)
+        return _DummyContext()
+
     return SimpleNamespace(
         session_state={},
         info=lambda *args, **kwargs: None,
-        warning=lambda *args, **kwargs: None,
         caption=lambda *args, **kwargs: None,
         markdown=lambda *args, **kwargs: None,
         progress=lambda *args, **kwargs: None,
         button=lambda *args, **kwargs: False,
-        expander=lambda *args, **kwargs: _DummyContext(),
+        popover=popover,
         columns=lambda spec: [_DummyContext() for _ in spec],
         rerun=lambda: rerun_calls.append("rerun"),
     )
@@ -33,20 +38,13 @@ def _streamlit_stub(rerun_calls: list[str]):
 def test_render_task_status_bar_does_not_rerun_for_frontend_managed_tasks(monkeypatch):
     rerun_calls: list[str] = []
     monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls))
-    monkeypatch.setattr(status_bar, "_render_task_row", lambda task: None)
-    monkeypatch.setattr(
-        status_bar,
-        "get_all_tasks",
-        lambda: [{"job_id": "pdf-1", "type": "pdf_extraction", "status": "running", "progress": 5, "poll_backend": False}],
-    )
+    monkeypatch.setattr(status_bar, "get_task_notifications", lambda: [])
     monkeypatch.setattr(
         status_bar,
         "get_active_tasks",
         lambda: [{"job_id": "pdf-1", "type": "pdf_extraction", "status": "running", "progress": 5, "poll_backend": False}],
     )
     monkeypatch.setattr(status_bar, "poll_active_tasks", lambda api_client: 1)
-    monkeypatch.setattr(status_bar.time, "sleep", lambda seconds: None)
-
     monkeypatch.setattr("utils.api_client.get_api_client", lambda: object())
 
     status_bar.render_task_status_bar()
@@ -54,52 +52,108 @@ def test_render_task_status_bar_does_not_rerun_for_frontend_managed_tasks(monkey
     assert rerun_calls == []
 
 
-def test_render_task_status_bar_reruns_for_backend_polled_tasks(monkeypatch):
+def test_render_task_status_bar_does_not_interrupt_backend_polled_workflow_page(monkeypatch):
     rerun_calls: list[str] = []
     monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls))
-    monkeypatch.setattr(status_bar, "_render_task_row", lambda task: None)
-    monkeypatch.setattr(
-        status_bar,
-        "get_all_tasks",
-        lambda: [{"job_id": "job-1", "type": "ai_mapping", "status": "running", "progress": 25, "poll_backend": True}],
-    )
+    monkeypatch.setattr(status_bar, "get_task_notifications", lambda: [])
     monkeypatch.setattr(
         status_bar,
         "get_active_tasks",
         lambda: [{"job_id": "job-1", "type": "ai_mapping", "status": "running", "progress": 25, "poll_backend": True}],
     )
     monkeypatch.setattr(status_bar, "poll_active_tasks", lambda api_client: 1)
-    monkeypatch.setattr(status_bar.time, "sleep", lambda seconds: None)
-
     monkeypatch.setattr("utils.api_client.get_api_client", lambda: object())
 
     status_bar.render_task_status_bar()
 
+    assert rerun_calls == []
+
+
+def test_viewing_completed_pdf_task_selects_its_extraction(monkeypatch):
+    selected_pages: list[str] = []
+    rerun_calls: list[str] = []
+    streamlit = _streamlit_stub(rerun_calls)
+    streamlit.switch_page = selected_pages.append
+    monkeypatch.setattr(status_bar, "st", streamlit)
+
+    status_bar._view_task(
+        {
+            "job_id": "pdf-1",
+            "type": "pdf_extraction",
+        },
+        "pages/5_🚀_PDF_Pipeline.py",
+    )
+
+    assert streamlit.session_state["pdf_extraction_task_to_view"] == "pdf-1"
+    assert selected_pages == ["pages/5_🚀_PDF_Pipeline.py"]
     assert rerun_calls == ["rerun"]
 
 
-def test_view_completed_mapping_hydrates_before_navigation(monkeypatch):
-    events = []
-    task = {
-        "job_id": "job-1",
-        "type": "ai_mapping",
-        "status": "completed",
-        "progress": 100,
-        "result": {"mappings": [{"external_control_id": "A"}]},
-    }
-    st_stub = _streamlit_stub([])
-    st_stub.button = lambda label, **kwargs: label == "View"
-    st_stub.switch_page = lambda page: events.append(("switch", page))
-    monkeypatch.setattr(status_bar, "st", st_stub)
-    monkeypatch.setattr(
-        status_bar,
-        "apply_mapping_result",
-        lambda result: events.append(("hydrate", result)),
+def test_registering_and_completing_task_records_distinct_notifications(monkeypatch):
+    streamlit = SimpleNamespace(session_state={})
+    monkeypatch.setattr(task_manager, "st", streamlit)
+
+    task_manager.register_task(
+        "job-1",
+        "pdf_extraction",
+        description="Extract controls from framework.pdf",
+        page_origin="pdf_pipeline",
     )
+    task_manager.update_task("job-1", status="running", progress=50)
+    task_manager.update_task("job-1", status="completed", progress=100)
+    task_manager.update_task("job-1", status="completed", progress=100)
 
-    status_bar._render_task_row(task)
+    notifications = task_manager.get_task_notifications()
 
-    assert events == [
-        ("hydrate", task["result"]),
-        ("switch", "pages/2_🤖_AI_Mapping.py"),
+    assert [notification["event"] for notification in notifications] == ["completed", "started"]
+    assert all(notification["job_id"] == "job-1" for notification in notifications)
+
+
+def test_replacing_pdf_task_id_preserves_notification_actions(monkeypatch):
+    streamlit = SimpleNamespace(session_state={})
+    monkeypatch.setattr(task_manager, "st", streamlit)
+    task_manager.register_task("temporary-id", "pdf_extraction", page_origin="pdf_pipeline")
+
+    task_manager.replace_task_job_id("temporary-id", "backend-id")
+
+    notification = task_manager.get_task_notifications()[0]
+    assert task_manager.get_task("temporary-id") is None
+    assert task_manager.get_task("backend-id")["job_id"] == "backend-id"
+    assert notification["job_id"] == "backend-id"
+    assert notification["id"] == "backend-id:started"
+
+
+def test_dismissing_notification_keeps_task_result_available(monkeypatch):
+    streamlit = SimpleNamespace(session_state={})
+    monkeypatch.setattr(task_manager, "st", streamlit)
+    task_manager.register_task("job-1", "ai_mapping", page_origin="pages/2_🤖_AI_Mapping.py")
+    notification_id = task_manager.get_task_notifications()[0]["id"]
+
+    task_manager.dismiss_task_notification(notification_id)
+
+    assert task_manager.get_task_notifications() == []
+    assert task_manager.get_task("job-1") is not None
+
+
+def test_cancelling_active_task_releases_its_type_and_retains_a_notification(monkeypatch):
+    streamlit = SimpleNamespace(session_state={})
+    monkeypatch.setattr(task_manager, "st", streamlit)
+    task_manager.register_task("pdf-1", "pdf_extraction", page_origin="pdf_pipeline")
+
+    task_manager.cancel_task("pdf-1", error="Cancelled when the user cleared the PDF workflow")
+
+    assert task_manager.get_task("pdf-1")["status"] == "cancelled"
+    assert not task_manager.has_active_task_of_type("pdf_extraction")
+    assert [event["event"] for event in task_manager.get_task_notifications()] == [
+        "cancelled",
+        "started",
     ]
+
+
+def test_bell_label_includes_retained_notification_count():
+    assert status_bar._notification_bell_label(0) == "🔔"
+    assert status_bar._notification_bell_label(3) == "🔔 3"
+
+
+def test_notification_layout_reserves_space_for_view_action():
+    assert status_bar._NOTIFICATION_COLUMN_WIDTHS == [5, 1.5, 0.75]

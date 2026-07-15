@@ -24,10 +24,11 @@ class Settings(BaseSettings):
 
     # Azure Open AI Settings
     azure_openai_endpoint: str
-    azure_openai_deployment_name: str = "gpt-4.1"  # Primary model
-    azure_openai_fallback_model: str = "gpt-4o-fallback"  # Fallback if gpt-4.1 unavailable
+    azure_openai_deployment_name: str = "gpt-5.6-sol"
+    azure_openai_fallback_model: str = "gpt-4.1-fallback"
     azure_openai_api_version: str = "2024-12-01-preview"
     azure_openai_api_key: Optional[str] = None  # If set, uses API key; else DefaultAzureCredential
+    azure_openai_request_timeout_seconds: float = 45.0
 
     # Optional: For user-assigned managed identity
     azure_client_id: Optional[str] = None
@@ -78,6 +79,7 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.3  # Lower for consistency
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
+    ai_mapping_max_concurrency: int = 10
 
     model_config = SettingsConfigDict(
         env_file=".env",

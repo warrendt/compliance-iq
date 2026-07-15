@@ -33,6 +33,8 @@ class TestNewDocuments:
     def test_policy_version_required_number(self):
         doc = PolicyVersionDocument(userId="dev@example.com", version_number=1)
         assert doc.version_number == 1
+        assert doc.semantic_version == "1.0.0"
+        assert doc.version_stream == "initiative:default"
         assert doc.parent_version is None
         assert doc.status == "active"
         assert doc.artifact_payload == {}
@@ -160,7 +162,7 @@ class TestVersionService:
             mock_cosmos.database = MagicMock()
             mock_cosmos.POLICY_VERSIONS = "policy-versions"
             mock_cosmos.ensure_container = AsyncMock()
-            mock_cosmos.query_documents = AsyncMock(return_value=[4])  # MAX = 4
+            mock_cosmos.query_documents = AsyncMock(side_effect=[[], [4]])  # no stream version; MAX = 4
             mock_cosmos.insert_document = AsyncMock(side_effect=lambda c, b: b)
 
             body = await version_service.create_version(
@@ -188,7 +190,7 @@ class TestVersionService:
 
         assert result == [{"version_number": 1}]
         args, kwargs = mock_cosmos.query_documents.call_args
-        assert "ORDER BY c.version_number" in args[1] if len(args) > 1 else "ORDER BY c.version_number" in kwargs["query"]
+        assert "ORDER BY c.timestamp" in args[1] if len(args) > 1 else "ORDER BY c.timestamp" in kwargs["query"]
         assert kwargs["partition_key"] == "dev@example.com"
 
     @pytest.mark.asyncio
@@ -209,7 +211,7 @@ class TestVersionService:
             mock_cosmos.POLICY_VERSIONS = "policy-versions"
             mock_cosmos.ensure_container = AsyncMock()
             mock_cosmos.get_document = AsyncMock(return_value=target)
-            mock_cosmos.query_documents = AsyncMock(return_value=[5])  # current MAX
+            mock_cosmos.query_documents = AsyncMock(side_effect=[[], [5]])  # no stream version; current MAX
             mock_cosmos.insert_document = AsyncMock(side_effect=lambda c, b: b)
 
             new_version = await version_service.revert_to_version("dev@example.com", "ver-1")
@@ -225,6 +227,102 @@ class TestVersionService:
         assert new_version["sourceComparisonId"] == "cmp-9"
         # Target document untouched
         assert target == target_snapshot
+
+    @pytest.mark.asyncio
+    async def test_stream_versions_are_independent_and_use_semantic_changes(self):
+        mcsb_previous = {
+            "semantic_version": "1.0.0",
+            "artifact_payload": {
+                "files": [{
+                    "name": "mcsb_initiative.json",
+                    "content": '{"properties":{"policyDefinitions":[{"policyDefinitionId":"a","policyDefinitionReferenceId":"a"}]}}',
+                }],
+            },
+        }
+        inserted = []
+
+        async def _insert(container, body):
+            inserted.append(body)
+            return body
+
+        with patch("app.services.version_service.cosmos_client") as mock_cosmos:
+            mock_cosmos.database = MagicMock()
+            mock_cosmos.POLICY_VERSIONS = "policy-versions"
+            mock_cosmos.ensure_container = AsyncMock()
+            mock_cosmos.query_documents = AsyncMock(
+                side_effect=[
+                    [mcsb_previous], [5],  # MCSB stream: add a policy -> minor
+                    [], [6],               # SLZ stream: no prior version -> initial
+                ]
+            )
+            mock_cosmos.insert_document = AsyncMock(side_effect=_insert)
+
+            mcsb = await version_service.create_version(
+                "dev@example.com",
+                artifact_payload={
+                    "framework_name": "AHDICS",
+                    "files": [{
+                        "name": "mcsb_initiative.json",
+                        "content": '{"properties":{"policyDefinitions":[{"policyDefinitionId":"a","policyDefinitionReferenceId":"a"},{"policyDefinitionId":"b","policyDefinitionReferenceId":"b"}]}}',
+                    }],
+                },
+                metadata={"source": "mcsb_initiative", "policy_name": "AHDICS"},
+            )
+            slz = await version_service.create_version(
+                "dev@example.com",
+                artifact_payload={"framework_name": "AHDICS", "files": []},
+                metadata={"source": "slz_initiative", "policy_name": "AHDICS SLZ"},
+            )
+
+        assert mcsb["semantic_version"] == "1.1.0"
+        assert mcsb["version_stream"] == "mcsb_initiative:ahdics"
+        assert mcsb["metadata"]["version_change"] == "minor"
+        assert slz["semantic_version"] == "1.0.0"
+        assert slz["version_stream"] == "slz_initiative:ahdics-slz"
+
+    def test_policy_definition_removal_is_a_major_version(self):
+        previous = {
+            "semantic_version": "1.3.2",
+            "artifact_payload": {
+                "files": [{
+                    "name": "policy_initiative.json",
+                    "content": '{"properties":{"policyDefinitions":[{"policyDefinitionId":"a","policyDefinitionReferenceId":"a"},{"policyDefinitionId":"b","policyDefinitionReferenceId":"b"}]}}',
+                }],
+            },
+        }
+        current = {
+            "files": [{
+                "name": "policy_initiative.json",
+                "content": '{"properties":{"policyDefinitions":[{"policyDefinitionId":"a","policyDefinitionReferenceId":"a"}]}}',
+            }],
+        }
+
+        semantic_version, change_type = version_service._next_semantic_version(previous, current)
+
+        assert semantic_version == "2.0.0"
+        assert change_type == "major"
+
+    def test_legacy_mcsb_and_slz_records_start_independent_semantic_streams(self):
+        rows = [
+            {
+                "version_number": 2,
+                "timestamp": "2026-07-13T16:01:00Z",
+                "metadata": {"source": "slz_initiative", "framework_name": "AHDICS"},
+            },
+            {
+                "version_number": 1,
+                "timestamp": "2026-07-13T16:00:00Z",
+                "metadata": {"source": "mcsb_initiative", "framework_name": "AHDICS"},
+            },
+        ]
+
+        normalized = version_service._add_legacy_semantic_versions(rows)
+
+        assert {row["semantic_version"] for row in normalized} == {"1.0.0"}
+        assert {row["version_stream"] for row in normalized} == {
+            "mcsb_initiative:ahdics",
+            "slz_initiative:ahdics-slz",
+        }
 
     @pytest.mark.asyncio
     async def test_revert_missing_target_raises_404(self):

@@ -16,8 +16,6 @@ from typing import Any, Dict, List, Literal, Optional
 
 import streamlit as st
 
-from utils.state_init import apply_mapping_result, persist_session_state
-
 # ── Types ─────────────────────────────────────────────────────────────────
 
 TaskType = Literal[
@@ -35,6 +33,9 @@ TaskStatus = Literal[
     "cancelled",
 ]
 
+TaskNotificationEvent = Literal["started", "completed", "failed", "cancelled"]
+_TERMINAL_TASK_STATUSES = {"completed", "failed", "cancelled"}
+
 
 # ── Registry helpers ──────────────────────────────────────────────────────
 
@@ -43,6 +44,29 @@ def _registry() -> Dict[str, Dict[str, Any]]:
     if "task_registry" not in st.session_state:
         st.session_state["task_registry"] = {}
     return st.session_state["task_registry"]
+
+
+def _notifications() -> List[Dict[str, Any]]:
+    """Return the session-scoped task notification feed."""
+    if "task_notifications" not in st.session_state:
+        st.session_state["task_notifications"] = []
+    return st.session_state["task_notifications"]
+
+
+def _record_notification(task: Dict[str, Any], event: TaskNotificationEvent) -> None:
+    """Append one immutable lifecycle event for a task."""
+    _notifications().append(
+        {
+            "id": f"{task['job_id']}:{event}",
+            "job_id": task["job_id"],
+            "event": event,
+            "status": task["status"],
+            "type": task["type"],
+            "description": task["description"],
+            "page_origin": task["page_origin"],
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
 
 
 def register_task(
@@ -83,6 +107,7 @@ def register_task(
         "result": None,
     }
     _registry()[job_id] = entry
+    _record_notification(entry, "started")
     return entry
 
 
@@ -101,6 +126,7 @@ def update_task(
     task = reg.get(job_id)
     if task is None:
         return
+    previous_status = task["status"]
     if status is not None:
         task["status"] = status
     if progress is not None:
@@ -113,13 +139,36 @@ def update_task(
         task["error"] = error
     if result is not None:
         task["result"] = result
-    if status in ("completed", "failed", "cancelled") and task["completed_at"] is None:
+    if status in _TERMINAL_TASK_STATUSES and task["completed_at"] is None:
         task["completed_at"] = datetime.now(timezone.utc).isoformat()
+    if status in _TERMINAL_TASK_STATUSES and status != previous_status:
+        _record_notification(task, status)
 
 
 def remove_task(job_id: str) -> None:
     """Remove a task from the registry."""
     _registry().pop(job_id, None)
+
+
+def cancel_task(job_id: str, error: str = "Cancelled by user") -> None:
+    """Mark an active task cancelled without removing its retained notification."""
+    task = get_task(job_id)
+    if task and task["status"] in ("pending", "running"):
+        update_task(job_id, status="cancelled", error=error)
+
+
+def replace_task_job_id(previous_job_id: str, job_id: str) -> None:
+    """Replace a temporary frontend task ID with the backend job ID."""
+    task = _registry().pop(previous_job_id, None)
+    if task is None:
+        return
+
+    task["job_id"] = job_id
+    _registry()[job_id] = task
+    for notification in _notifications():
+        if notification["job_id"] == previous_job_id:
+            notification["job_id"] = job_id
+            notification["id"] = f"{job_id}:{notification['event']}"
 
 
 def get_task(job_id: str) -> Optional[Dict[str, Any]]:
@@ -142,6 +191,25 @@ def get_all_tasks() -> List[Dict[str, Any]]:
     tasks = list(_registry().values())
     tasks.sort(key=lambda t: t.get("started_at", ""), reverse=True)
     return tasks
+
+
+def get_task_notifications() -> List[Dict[str, Any]]:
+    """Return retained task notifications with newest events first."""
+    return sorted(_notifications(), key=lambda event: event["occurred_at"], reverse=True)
+
+
+def dismiss_task_notification(notification_id: str) -> None:
+    """Remove one notification without deleting its task or result."""
+    st.session_state["task_notifications"] = [
+        notification
+        for notification in _notifications()
+        if notification["id"] != notification_id
+    ]
+
+
+def dismiss_all_task_notifications() -> None:
+    """Remove all retained notifications without interrupting active tasks."""
+    st.session_state["task_notifications"] = []
 
 
 def has_active_task_of_type(task_type: TaskType) -> bool:
@@ -182,7 +250,7 @@ def poll_active_tasks(api_client: Any) -> int:
         try:
             if task_type == "ai_mapping":
                 status = api_client.get_job_status(job_id)
-                _apply_mapping_status(job_id, status, api_client)
+                _apply_mapping_status(job_id, status)
             elif task_type in ("pipeline_run", "pdf_extraction"):
                 status = api_client.get_pipeline_status(job_id)
                 _apply_pipeline_status(job_id, status)
@@ -200,28 +268,19 @@ def poll_active_tasks(api_client: Any) -> int:
     return still_active
 
 
-def _apply_mapping_status(
-    job_id: str,
-    status: Dict[str, Any],
-    api_client: Any = None,
-) -> None:
+def _apply_mapping_status(job_id: str, status: Dict[str, Any]) -> None:
     """Apply backend mapping job status to the task registry."""
     job_status = status.get("status", "")
     progress = status.get("progress", 0)
     mapped = status.get("mapped_controls", 0)
 
     if job_status == "completed":
-        result = status.get("result") or {}
-        if result:
-            apply_mapping_result(result)
-            if api_client is not None:
-                persist_session_state(api_client)
         update_task(
             job_id,
             status="completed",
             progress=100,
             mapped=mapped,
-            result=result,
+            result=status.get("result"),
         )
     elif job_status == "failed":
         update_task(

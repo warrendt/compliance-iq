@@ -1,5 +1,5 @@
 # Streamlit framework
-streamlit==1.31.0
+streamlit==1.37.0
 
 # Interactive components
 streamlit-aggrid==0.3.4

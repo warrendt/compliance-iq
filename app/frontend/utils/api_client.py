@@ -229,7 +229,8 @@ class APIClient:
     def start_batch_mapping(
         self,
         controls: List[Dict[str, str]],
-        framework_name: str
+        framework_name: str,
+        concurrency: int = 1,
     ) -> str:
         """Start a batch mapping job.
         
@@ -242,7 +243,8 @@ class APIClient:
         """
         payload = {
             "controls": controls,
-            "framework_name": framework_name
+            "framework_name": framework_name,
+            "concurrency": concurrency,
         }
         
         self.timeout = 600.0  # 10 minutes for batch jobs
@@ -545,6 +547,20 @@ class APIClient:
         finally:
             self.timeout = saved_timeout
 
+    def start_pdf_extraction(
+        self,
+        pdf_bytes: bytes,
+        filename: str,
+    ) -> Dict[str, Any]:
+        """Submit PDF extraction and return immediately with a pollable job ID."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/extract/jobs",
+                files={"pdf_file": (filename, pdf_bytes, "application/pdf")},
+            )
+            response.raise_for_status()
+            return response.json()
+
     def get_pipeline_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of a pipeline job.
 
@@ -557,6 +573,15 @@ class APIClient:
         with self._get_client() as client:
             response = client.get(
                 f"{self.base_url}/api/v1/pipeline/status/{job_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def cancel_pipeline_job(self, job_id: str) -> Dict[str, Any]:
+        """Request cooperative cancellation of an active PDF pipeline job."""
+        with self._get_client() as client:
+            response = client.post(
+                f"{self.base_url}/api/v1/pipeline/status/{job_id}/cancel"
             )
             response.raise_for_status()
             return response.json()
@@ -809,7 +834,6 @@ class APIClient:
             with self._get_client() as client:
                 response = client.get(
                     f"{self.base_url}/api/v1/session/{session_id}",
-                    timeout=10.0,
                 )
                 if response.status_code == 404:
                     return None
@@ -819,16 +843,16 @@ class APIClient:
             return None
 
     def load_latest_session(self) -> Optional[Dict[str, Any]]:
-        """Load the current user's most recently saved workflow session."""
-        with self._get_client() as client:
-            response = client.get(
-                f"{self.base_url}/api/v1/session/latest",
-                timeout=10.0,
-            )
-            if response.status_code == 404:
-                return None
-            response.raise_for_status()
-            return response.json()
+        """Load the authenticated user's latest persisted workflow."""
+        try:
+            with self._get_client() as client:
+                response = client.get(f"{self.base_url}/api/v1/session/latest")
+                if response.status_code == 404:
+                    return None
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
 
     # --- User profile & history ---
 
@@ -949,165 +973,6 @@ class APIClient:
                 return response.json()
         except Exception:
             return []
-
-    def get_user_export(
-        self, export_id: str, session_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
-        """Fetch a single export artifact including its downloadable content.
-
-        Returns the detail dict (with ``content``/``hasContent``) or None.
-        """
-        params: Dict[str, Any] = {}
-        if session_id:
-            params["session_id"] = session_id
-        try:
-            with self._get_client() as client:
-                response = client.get(
-                    f"{self.base_url}/api/v1/user/exports/{export_id}",
-                    params=params,
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
-
-    def get_user_upload(self, upload_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch a single stored control set including its parsed controls.
-
-        Returns the detail dict (with ``controls``/``columnNames``) or None.
-        """
-        try:
-            with self._get_client() as client:
-                response = client.get(
-                    f"{self.base_url}/api/v1/user/uploads/{upload_id}",
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
-
-    # ── Activity recording (write) ────────────────────────────────────────
-
-    def record_upload(
-        self,
-        *,
-        file_name: str,
-        file_type: str = "text/csv",
-        category: str = "document",
-        file_size: int = 0,
-        row_count: int = 0,
-        column_names: Optional[List[str]] = None,
-        controls: Optional[List[Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """Record a document upload or control-set load for the current user.
-
-        Best-effort: returns None on any failure so it never blocks the UI.
-        """
-        payload: Dict[str, Any] = {
-            "fileName": file_name,
-            "fileType": file_type,
-            "category": category,
-            "fileSize": file_size,
-            "rowCount": row_count,
-            "columnNames": column_names or [],
-            "metadata": metadata or {},
-        }
-        if controls is not None:
-            payload["controls"] = controls
-        try:
-            with self._get_client() as client:
-                response = client.post(
-                    f"{self.base_url}/api/v1/user/uploads",
-                    json=payload,
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
-
-    def record_mappings(
-        self,
-        *,
-        framework: str,
-        mappings: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """Record a batch of AI mapping results for the current user."""
-        try:
-            with self._get_client() as client:
-                response = client.post(
-                    f"{self.base_url}/api/v1/user/mappings",
-                    json={
-                        "framework": framework,
-                        "mappings": mappings,
-                        "metadata": metadata or {},
-                    },
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
-
-    def record_export(
-        self,
-        *,
-        framework: str,
-        artifact_type: str = "initiative",
-        control_count: int = 0,
-        file_name: str = "",
-        file_size: int = 0,
-        session_id: Optional[str] = None,
-        content: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """Record a generated/exported policy artifact for the current user."""
-        try:
-            with self._get_client() as client:
-                response = client.post(
-                    f"{self.base_url}/api/v1/user/exports",
-                    json={
-                        "framework": framework,
-                        "artifactType": artifact_type,
-                        "controlCount": control_count,
-                        "fileName": file_name,
-                        "fileSize": file_size,
-                        "sessionId": session_id,
-                        "content": content,
-                        "metadata": metadata or {},
-                    },
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
-
-    def record_activity(
-        self,
-        *,
-        action: str,
-        summary: str,
-        resource_type: str = "edit",
-        resource_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """Record a generic activity (e.g. an edit) into the unified feed."""
-        try:
-            with self._get_client() as client:
-                response = client.post(
-                    f"{self.base_url}/api/v1/user/activity",
-                    json={
-                        "action": action,
-                        "summary": summary,
-                        "resourceType": resource_type,
-                        "resourceId": resource_id,
-                        "metadata": metadata or {},
-                    },
-                )
-                response.raise_for_status()
-                return response.json()
-        except Exception:
-            return None
 
     # ── Control comparison (diff) ─────────────────────────────────────────
 

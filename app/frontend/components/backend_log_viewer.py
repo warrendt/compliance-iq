@@ -28,6 +28,46 @@ _LEVEL_ICONS = {
 }
 
 
+def render_job_activity(events: list[dict], waiting_message: str) -> None:
+    """Render a bounded, scrollable, job-scoped execution trace."""
+    if not events:
+        st.caption(waiting_message)
+        return
+
+    with st.container(height=200):
+        for event in events[-12:]:
+            level = event.get("level", "INFO")
+            icon = _LEVEL_ICONS.get(level, "ℹ️")
+            timestamp = str(event.get("ts", ""))[:19]
+            message = " ".join(str(event.get("message", "")).split())[:240]
+            st.caption(f"{icon} {timestamp} — {message}")
+
+
+def render_pdf_backend_activity(job_id: str) -> None:
+    """Fetch and render the PDF extraction's dedicated execution trace."""
+    cursor_key = f"_pdf_job_log_cursor_{job_id}"
+    cache_key = f"_pdf_job_log_cache_{job_id}"
+    cursor = st.session_state.setdefault(cursor_key, 0)
+    cached_logs = st.session_state.setdefault(cache_key, [])
+
+    try:
+        from utils.api_client import get_api_client
+
+        data = get_api_client().get_pipeline_logs(job_id, since=cursor)
+        new_logs = data.get("logs", [])
+        if new_logs:
+            st.session_state[cache_key] = (cached_logs + new_logs)[-50:]
+            st.session_state[cursor_key] = data.get("next_cursor", cursor)
+    except Exception:
+        st.caption("Live extraction events are temporarily unavailable.")
+        return
+
+    render_job_activity(
+        st.session_state[cache_key],
+        "Waiting for the extraction service to report its first event.",
+    )
+
+
 def render_backend_log_viewer() -> None:
     """Render the backend application log panel if the user has toggled it on.
 

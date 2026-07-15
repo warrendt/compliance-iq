@@ -1,6 +1,7 @@
 """
-Page 9: Version History — browse the immutable Azure Policy initiative versions
-built from the full-union diff, download their artifact bundles, and revert.
+Page 9: Version History — browse immutable Azure Policy initiative versions
+generated from Export Policy or the full-union diff, download their bundles,
+and revert.
 
 Versions are immutable: a "Revert" never mutates the target. It creates a *new*
 version that copies the target's bundle, so the lineage is always preserved.
@@ -25,8 +26,8 @@ st.set_page_config(
 )
 
 inject_azure_theme()
-render_sidebar()
 init_session_state()
+render_sidebar()
 render_task_status_bar()
 
 api = get_api_client()
@@ -35,9 +36,10 @@ api = get_api_client()
 
 st.markdown('<div class="main-header">🗂 Version History</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="sub-header">Every initiative you build from a full-union diff is '
-    'saved here as an immutable version. Download a bundle or revert to any '
-    'previous version — reverting always creates a new version.</div>',
+    '<div class="sub-header">Every generated MCSB initiative, SLZ initiative, '
+    'and full-union initiative is saved here as an immutable version. Download '
+    'a bundle or revert to any previous version — reverting always creates a '
+    'new version.</div>',
     unsafe_allow_html=True,
 )
 
@@ -59,37 +61,57 @@ versions = api.list_versions()
 
 if not versions:
     st.info(
-        "No versions yet. Run a comparison on the **Gap Analysis** page, then use "
-        "**Build initiative (full union)** to create your first version."
+        "No versions yet. Generate an MCSB or SLZ initiative from **Export Policy**, "
+        "or build a full-union initiative from **Gap Analysis**."
     )
-    st.page_link("pages/8_🔀_Diff_Compare.py", label="Go to Gap Analysis", icon="🎯")
+    st.page_link("pages/4_📦_Export_Policy.py", label="Go to Export Policy", icon="📦")
     render_footer()
     st.stop()
 
 st.caption(f"{len(versions)} version(s) · newest first")
 
-for v in versions:
+_VERSION_GROUPS = (
+    ("mcsb_initiative", "🛡️ MCSB Initiatives"),
+    ("slz_initiative", "🏛️ SLZ Initiatives"),
+    ("comparison_union", "🎯 Full-Union Initiatives"),
+)
+
+
+def _source(v: dict) -> str:
+    return (v.get("metadata") or {}).get("source", "initiative")
+
+
+def _render_version(v: dict) -> None:
     vid = v.get("id")
-    number = v.get("version_number", "?")
+    semantic_version = v.get("semantic_version", "1.0.0")
     status = v.get("status", "—")
     parent = v.get("parent_version")
     src = v.get("sourceComparisonId")
     ts = v.get("timestamp", "")
+    metadata = v.get("metadata") or {}
+    policy_name = metadata.get("policy_name") or metadata.get("framework_name") or "Unnamed policy"
+    parent_semantic_version = metadata.get("reverted_from_semantic_version")
 
-    parent_txt = f" · reverted from v{parent}" if parent else ""
-    with st.expander(f"📦 Version {number} · `{status}`{parent_txt}", expanded=False):
+    parent_txt = (
+        f" · reverted from v{parent_semantic_version or parent}"
+        if parent
+        else ""
+    )
+    with st.expander(
+        f"📦 {policy_name} · v{semantic_version} · `{status}`{parent_txt}",
+        expanded=False,
+    ):
         meta_cols = st.columns(4)
-        meta_cols[0].metric("Version", number)
+        meta_cols[0].metric("Version", semantic_version)
         meta_cols[1].metric("Status", status)
-        meta_cols[2].metric("Parent", parent if parent is not None else "—")
+        meta_cols[2].metric("Parent", parent_semantic_version or "—")
         meta_cols[3].metric("Created", (ts or "—")[:19].replace("T", " "))
 
         if src:
             st.caption(f"Built from comparison `{src}`")
 
-        meta = v.get("metadata") or {}
-        if meta:
-            st.json(meta, expanded=False)
+        if metadata:
+            st.json(metadata, expanded=False)
 
         action_cols = st.columns([2, 2, 2])
 
@@ -111,14 +133,14 @@ for v in versions:
                 action_cols[1].download_button(
                     "⬇️ Download .zip",
                     _bundle_zip(payload),
-                    file_name=f"initiative_v{number}.zip",
+                    file_name=f"{policy_name.replace(' ', '_')}_v{semantic_version}.zip",
                     mime="application/zip",
                     key=f"zip_{vid}",
                 )
                 action_cols[2].download_button(
                     "⬇️ Download .json",
                     json.dumps(payload, indent=2).encode("utf-8"),
-                    file_name=f"initiative_v{number}.json",
+                    file_name=f"{policy_name.replace(' ', '_')}_v{semantic_version}.json",
                     mime="application/json",
                     key=f"json_{vid}",
                 )
@@ -133,16 +155,39 @@ for v in versions:
 
         # Revert — creates a new version copying this one's bundle.
         st.markdown("---")
-        if st.button(f"↩️ Revert to version {number}", key=f"revert_{vid}",
+        if st.button(f"↩️ Revert to v{semantic_version}", key=f"revert_{vid}",
                      help="Creates a new version that copies this bundle."):
             try:
                 new_v = api.revert_version(vid)
                 st.success(
-                    f"✅ Created version {new_v.get('version_number')} "
-                    f"from version {number}."
+                    f"✅ Created v{new_v.get('semantic_version', '—')} "
+                    f"from v{semantic_version}."
                 )
                 st.rerun()
             except Exception as exc:  # noqa: BLE001
                 st.error(f"Revert failed: {exc}")
+
+
+_grouped_versions = {
+    source: [version for version in versions if _source(version) == source]
+    for source, _ in _VERSION_GROUPS
+}
+_populated_groups = [
+    (source, label, _grouped_versions[source])
+    for source, label in _VERSION_GROUPS
+    if _grouped_versions[source]
+]
+_unknown_versions = [
+    version for version in versions
+    if _source(version) not in _grouped_versions
+]
+if _unknown_versions:
+    _populated_groups.append(("initiative", "📦 Other Initiatives", _unknown_versions))
+
+for source, label, grouped_versions in _populated_groups:
+    st.markdown(f"### {label}")
+    st.caption(f"{len(grouped_versions)} version(s) · newest first")
+    for version in grouped_versions:
+        _render_version(version)
 
 render_footer()

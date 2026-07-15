@@ -7,10 +7,9 @@ Resolution order:
   3. Anonymous / no-auth when ENABLE_AUTH != "true"
 """
 
-import hashlib
-import os
-from urllib.parse import quote, urlsplit
 from typing import Optional
+import os
+from urllib.parse import urlsplit
 
 import streamlit as st
 
@@ -38,13 +37,8 @@ class AuthUser:
 
 def _get_request_headers() -> dict[str, str]:
     """Return browser request headers visible to the current Streamlit session."""
-    try:
-        from streamlit.web.server.websocket_headers import _get_websocket_headers
-
-        headers = _get_websocket_headers() or {}
-        return {str(key).lower(): str(value) for key, value in headers.items()}
-    except Exception:
-        return {}
+    headers = st.context.headers
+    return {str(key).lower(): str(value) for key, value in headers.items()}
 
 
 def get_request_path() -> str:
@@ -84,66 +78,15 @@ def _claims_to_user(claims: dict[str, str], access_token: str = "") -> AuthUser:
     return AuthUser(name=name, email=email, oid=oid, access_token=access_token)
 
 
-def _get_auth_me_user(headers: dict[str, str]) -> Optional[AuthUser]:
-    """Query /.auth/me using the caller's session cookie when available."""
-    cookie = headers.get("cookie", "")
-    session_token = headers.get("x-zumo-auth", "")
-    if not cookie and not session_token:
-        return None
-
-    try:
-        import httpx
-
-        request_headers = {}
-        if cookie:
-            request_headers["Cookie"] = cookie
-        if session_token:
-            request_headers["X-ZUMO-AUTH"] = session_token
-
-        resp = httpx.get(
-            f"{_frontend_origin(headers)}/.auth/me",
-            headers=request_headers,
-            timeout=5,
-            follow_redirects=False,
-        )
-        if resp.status_code != 200:
-            return None
-
-        data = resp.json()
-        if not data:
-            return None
-
-        claims = {c["typ"]: c["val"] for c in data[0].get("user_claims", [])}
-        return _claims_to_user(claims, access_token=data[0].get("access_token", ""))
-    except Exception:
-        return None
-
-
 def _get_easy_auth_user() -> Optional[AuthUser]:
     """Resolve the current user from Container Apps Easy Auth."""
+    if "easy_auth_user" in st.session_state:
+        return st.session_state["easy_auth_user"]
+
     headers = _get_request_headers()
     principal_name = headers.get("x-ms-client-principal-name", "")
     principal_id = headers.get("x-ms-client-principal-id", "")
     access_token = headers.get("x-ms-token-aad-access-token", "")
-    cookie = headers.get("cookie", "")
-    session_token = headers.get("x-zumo-auth", "")
-    cached_user = st.session_state.get("easy_auth_user")
-    cached_context = st.session_state.get("_easy_auth_context")
-
-    if principal_name:
-        context = f"principal:{principal_id or principal_name.lower()}"
-    elif cookie or session_token:
-        context_value = f"{cookie}\0{session_token}".encode()
-        context = f"session:{hashlib.sha256(context_value).hexdigest()}"
-    else:
-        st.session_state.pop("easy_auth_user", None)
-        st.session_state.pop("_easy_auth_context", None)
-        return None
-
-    if cached_user and cached_context == context:
-        if access_token:
-            cached_user.access_token = access_token
-        return cached_user
 
     header_user = None
     if principal_name:
@@ -154,20 +97,9 @@ def _get_easy_auth_user() -> Optional[AuthUser]:
             access_token=access_token,
         )
 
-    auth_me_user = _get_auth_me_user(headers)
-    user = header_user or auth_me_user
-    if user and auth_me_user:
-        user.name = auth_me_user.name or user.name
-        user.email = auth_me_user.email or user.email
-        user.oid = auth_me_user.oid or user.oid
-        user.access_token = auth_me_user.access_token or user.access_token
-
-    if user:
-        st.session_state["easy_auth_user"] = user
-        st.session_state["_easy_auth_context"] = context
-        return user
-
-    return None
+    if header_user:
+        st.session_state["easy_auth_user"] = header_user
+    return header_user
 
 
 # ---------------------------------------------------------------------------
@@ -226,18 +158,6 @@ def _get_msal_user() -> Optional[AuthUser]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
-def _frontend_origin(headers: Optional[dict[str, str]] = None) -> str:
-    """Best-guess origin of the running Streamlit app."""
-    headers = headers or _get_request_headers()
-    forwarded_host = headers.get("x-forwarded-host", headers.get("host", ""))
-    if forwarded_host:
-        scheme = headers.get("x-forwarded-proto", "https").split(",")[0].strip() or "https"
-        host = forwarded_host.split(",")[0].strip()
-        if host:
-            return f"{scheme}://{host}"
-    return os.getenv("FRONTEND_URL", "http://localhost:8501")
-
 
 def get_current_user() -> Optional[AuthUser]:
     """Return the current user or None if unauthenticated.
@@ -305,18 +225,7 @@ def require_auth() -> AuthUser:
     st.stop()
 
 
-def get_login_url() -> str:
-    """Return the Container Apps Easy Auth Microsoft sign-in endpoint."""
-    redirect_path = quote(get_request_path() or "/", safe="/")
-    return f"/.auth/login/aad?post_login_redirect_uri={redirect_path}"
-
-
-def get_logout_url() -> str:
-    """Return the Container Apps Easy Auth endpoint that clears its session."""
-    return "/.auth/logout?post_logout_redirect_uri=/"
-
-
 def logout():
     """Clear cached auth state."""
-    for key in ("easy_auth_user", "_easy_auth_context", "msal_user"):
+    for key in ("easy_auth_user", "msal_user"):
         st.session_state.pop(key, None)

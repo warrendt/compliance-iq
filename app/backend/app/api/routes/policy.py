@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
-from app.services import activity_service
+from app.services import version_service
 from app.auth.azure_ad_auth import User, get_current_user
 from app.db import cosmos_client
 
@@ -21,20 +21,86 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
-def _artifact_envelope(files: List[dict]) -> str:
-    """Serialize a downloadable multi-file bundle for the user's workspace.
-
-    Stored as the export record's ``content`` so every format the user
-    generated (initiative JSON, Bicep, deployment scripts) can be re-downloaded
-    later from My Workspace — not just a single format.
-    """
-    clean = [f for f in files if f.get("content")]
-    return json.dumps({"files": clean}, indent=2)
-
-
 def _cosmos_ready() -> bool:
     """Check if Cosmos DB is initialized."""
     return bool(cosmos_client and cosmos_client.database)
+
+
+def _file_stem(value: str) -> str:
+    """Return a filesystem-safe artifact name while preserving readable labels."""
+    stem = "".join(char if char.isalnum() or char in "-_" else "_" for char in value)
+    return stem.strip("_") or "initiative"
+
+
+def _json_file(name: str, value: object) -> dict[str, str]:
+    """Build a formatted JSON artifact file."""
+    return {"name": name, "content": json.dumps(value, indent=2, default=str)}
+
+
+def _mcsb_version_payload(
+    request: PolicyGenerationRequest,
+    initiative_id: str,
+    initiative_json: dict,
+    bicep_template: str,
+    scripts: dict,
+) -> dict:
+    """Create a complete, immutable download bundle for an MCSB generation."""
+    stem = _file_stem(request.framework_name)
+    return {
+        "artifact_type": "mcsb_initiative",
+        "framework_name": request.framework_name,
+        "initiative_id": initiative_id,
+        "files": [
+            _json_file(f"{stem}_initiative.json", initiative_json),
+            {"name": f"{stem}_initiative.bicep", "content": bicep_template},
+            {
+                "name": f"Deploy-{stem}Initiative.ps1",
+                "content": scripts["powershell"],
+            },
+            {
+                "name": f"deploy-{stem}-initiative.sh",
+                "content": scripts.get("cli", ""),
+            },
+            _json_file(
+                f"{stem}_mappings.json",
+                [mapping.model_dump(mode="json") for mapping in request.mappings],
+            ),
+        ],
+        "omitted_files": [],
+    }
+
+
+def _slz_version_payload(
+    framework_name: str,
+    archetypes: dict,
+    allowed_locations: Optional[List[str]],
+) -> dict:
+    """Create a complete, immutable download bundle for an SLZ generation."""
+    artifact_map = archetypes.get("archetype_artifacts", archetypes)
+    files: list[dict[str, str]] = []
+
+    for archetype_name, artifact in sorted(artifact_map.items()):
+        stem = _file_stem(f"slz_{archetype_name}")
+        scripts = artifact.get("deployment_scripts") or artifact.get("scripts") or {}
+        files.extend(
+            [
+                _json_file(f"{stem}_initiative.json", artifact.get("initiative_json", {})),
+                {
+                    "name": f"{stem}_initiative.bicep",
+                    "content": artifact.get("bicep_template", artifact.get("bicep", "")),
+                },
+                {"name": f"deploy_{stem}.sh", "content": scripts.get("cli", "")},
+                {"name": f"Deploy-{stem}.ps1", "content": scripts.get("powershell", "")},
+            ]
+        )
+
+    return {
+        "artifact_type": "slz_initiative",
+        "framework_name": framework_name,
+        "allowed_locations": allowed_locations or [],
+        "files": files,
+        "omitted_files": [],
+    }
 
 
 async def _persist_artifact(artifact: dict) -> Optional[str]:
@@ -91,6 +157,28 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         result["powershell_script"] = scripts["powershell"]
         result["cli_script"] = scripts.get("cli", "")
 
+        version = await version_service.create_version(
+            user_id=user.email,
+            artifact_payload=_mcsb_version_payload(
+                request=request,
+                initiative_id=result["initiative_id"],
+                initiative_json=initiative_json,
+                bicep_template=bicep_template,
+                scripts=scripts,
+            ),
+            metadata={
+                "source": "mcsb_initiative",
+                "framework_name": request.framework_name,
+                "policy_name": request.framework_name,
+                "mappings_count": len(request.mappings),
+                "included_policies": response.included_policies,
+                "enforce_mode": request.enforce_mode,
+            },
+        )
+        result["version_id"] = version["id"]
+        result["version_number"] = version["version_number"]
+        result["semantic_version"] = version["semantic_version"]
+
         # Persist to Cosmos DB
         session_id = http_request.headers.get("X-Session-ID", "anonymous")
         artifact_id = str(uuid.uuid4())
@@ -114,59 +202,21 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         if persisted_id:
             result["artifact_id"] = persisted_id
 
-        # Record the generated initiative to the user's workspace + audit feed
-        # (server-side so it is reliably saved regardless of the frontend).
-        try:
-            base_name = request.framework_name.replace(" ", "_")
-            envelope = _artifact_envelope([
-                {
-                    "name": f"{base_name}_initiative.json",
-                    "mime": "application/json",
-                    "content": json.dumps(initiative_json, indent=2),
-                },
-                {
-                    "name": f"{base_name}.bicep",
-                    "mime": "text/plain",
-                    "content": bicep_template,
-                },
-                {
-                    "name": f"{base_name}_deploy.ps1",
-                    "mime": "text/plain",
-                    "content": scripts.get("powershell", ""),
-                },
-                {
-                    "name": f"{base_name}_deploy.sh",
-                    "mime": "text/plain",
-                    "content": scripts.get("cli", ""),
-                },
-            ])
-            await activity_service.record_export(
-                user,
-                framework=request.framework_name,
-                artifact_type="mcsb_initiative",
-                control_count=len(request.mappings),
-                file_name=f"{base_name}_initiative.json",
-                session_id=session_id,
-                content=envelope,
-                metadata={
-                    "initiativeId": result["initiative_id"],
-                    "enforceMode": request.enforce_mode,
-                    "includedPolicies": response.included_policies,
-                    "excludedPolicies": response.excluded_policies,
-                },
-            )
-        except Exception as rec_exc:  # noqa: BLE001
-            logger.warning(f"Failed to record MCSB initiative activity: {rec_exc}")
-
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate policy initiative: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/generate/json")
-async def generate_policy_json(request: PolicyGenerationRequest):
+async def generate_policy_json(
+    request: PolicyGenerationRequest,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+):
     """
     Generate Azure Policy initiative and return as JSON file.
 
@@ -176,11 +226,8 @@ async def generate_policy_json(request: PolicyGenerationRequest):
     logger.info(f"Generating policy JSON for {request.framework_name}")
 
     try:
-        policy_service = get_policy_service()
-        response = policy_service.generate_initiative(request)
-
-        # Export as JSON
-        json_content = policy_service.export_as_json(response.initiative, pretty=True)
+        result = await generate_policy_initiative(request, http_request, user)
+        json_content = json.dumps(result["initiative_json"], indent=2)
 
         # Create filename
         filename = f"{request.framework_name.replace(' ', '_')}_initiative.json"
@@ -193,13 +240,19 @@ async def generate_policy_json(request: PolicyGenerationRequest):
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate policy JSON: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/generate/bicep")
-async def generate_policy_bicep(request: PolicyGenerationRequest):
+async def generate_policy_bicep(
+    request: PolicyGenerationRequest,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+):
     """
     Generate Azure Policy initiative as Bicep template.
 
@@ -209,18 +262,11 @@ async def generate_policy_bicep(request: PolicyGenerationRequest):
     logger.info(f"Generating Bicep template for {request.framework_name}")
 
     try:
-        policy_service = get_policy_service()
-        response = policy_service.generate_initiative(request)
-
-        # Export as Bicep
-        initiative_name = request.framework_name.lower().replace(' ', '_')
-        bicep_content = policy_service.export_as_bicep(
-            response.initiative,
-            initiative_name
-        )
+        result = await generate_policy_initiative(request, http_request, user)
+        bicep_content = result["bicep_template"]
 
         # Create filename
-        filename = f"{initiative_name}_initiative.bicep"
+        filename = f"{_file_stem(request.framework_name)}_initiative.bicep"
 
         return Response(
             content=bicep_content,
@@ -230,13 +276,19 @@ async def generate_policy_bicep(request: PolicyGenerationRequest):
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate Bicep template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/generate/scripts")
-async def generate_deployment_scripts(request: PolicyGenerationRequest):
+async def generate_deployment_scripts(
+    request: PolicyGenerationRequest,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+):
     """
     Generate deployment scripts (Azure CLI and PowerShell).
 
@@ -246,23 +298,18 @@ async def generate_deployment_scripts(request: PolicyGenerationRequest):
     logger.info(f"Generating deployment scripts for {request.framework_name}")
 
     try:
-        policy_service = get_policy_service()
-        response = policy_service.generate_initiative(request)
-
-        # Generate scripts
-        initiative_name = request.framework_name.lower().replace(' ', '_')
-        scripts = policy_service.generate_deployment_script(
-            response.initiative,
-            initiative_name,
-            enforce_mode=request.enforce_mode,
-        )
+        result = await generate_policy_initiative(request, http_request, user)
 
         return {
-            "initiative_name": initiative_name,
-            "cli_script": scripts["cli"],
-            "powershell_script": scripts["powershell"]
+            "initiative_name": result["initiative_id"],
+            "cli_script": result["cli_script"],
+            "powershell_script": result["powershell_script"],
+            "version_id": result["version_id"],
+            "version_number": result["version_number"],
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate deployment scripts: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -276,7 +323,7 @@ class SLZGenerationRequest(BaseModel):
     mappings: List[ControlMapping] = Field(..., description="Control mappings with sovereignty data")
     allowed_locations: Optional[List[str]] = Field(
         default=None,
-        description="Allowed Azure regions for data residency (e.g. ['uaenorth','uaecentral'])"
+        description="Allowed Azure regions for data residency (e.g. ['southafricanorth','southafricawest'])"
     )
 
 
@@ -322,6 +369,28 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             "archetypes": result,
         }
 
+        version = await version_service.create_version(
+            user_id=user.email,
+            artifact_payload=_slz_version_payload(
+                framework_name=request.framework_name,
+                archetypes=result,
+                allowed_locations=request.allowed_locations,
+            ),
+            metadata={
+                "source": "slz_initiative",
+                "framework_name": request.framework_name,
+                "policy_name": f"{request.framework_name} SLZ",
+                "mappings_count": len(request.mappings),
+                "sovereignty_mappings_count": len(sov_mappings),
+                "archetype_count": len(
+                    result.get("archetype_artifacts", result)
+                ),
+            },
+        )
+        response_data["version_id"] = version["id"]
+        response_data["version_number"] = version["version_number"]
+        response_data["semantic_version"] = version["semantic_version"]
+
         # Persist to Cosmos DB
         session_id = http_request.headers.get("X-Session-ID", "anonymous")
         artifact_id = str(uuid.uuid4())
@@ -338,35 +407,6 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
         persisted_id = await _persist_artifact(artifact_doc)
         if persisted_id:
             response_data["artifact_id"] = persisted_id
-
-        # Record the generated SLZ initiative to the user's workspace + audit feed
-        # (server-side so it is reliably saved regardless of the frontend).
-        try:
-            archetype_count = len(result) if isinstance(result, dict) else 0
-            base_name = request.framework_name.replace(" ", "_")
-            envelope = _artifact_envelope([
-                {
-                    "name": f"{base_name}_slz_initiatives.json",
-                    "mime": "application/json",
-                    "content": json.dumps(result, indent=2),
-                },
-            ])
-            await activity_service.record_export(
-                user,
-                framework=request.framework_name,
-                artifact_type="slz_initiative",
-                control_count=len(sov_mappings),
-                file_name=f"{base_name}_slz_initiatives.json",
-                session_id=session_id,
-                content=envelope,
-                metadata={
-                    "archetypeCount": archetype_count,
-                    "sovereigntyMappings": len(sov_mappings),
-                    "totalMappings": len(request.mappings),
-                },
-            )
-        except Exception as rec_exc:  # noqa: BLE001
-            logger.warning(f"Failed to record SLZ initiative activity: {rec_exc}")
 
         return response_data
 

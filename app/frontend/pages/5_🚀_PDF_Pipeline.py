@@ -6,19 +6,32 @@ The user uploads a PDF, AI extracts the controls, user reviews/edits, then loads
 import os
 import time
 from typing import TypedDict
+import httpx
 import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import (
     init_session_state,
-    load_controls_state,
-    persist_session_state,
-    recover_session_state,
+    persist_workflow_state,
+    restore_workflow_state,
 )
-from utils.task_manager import register_task, update_task, has_active_task_of_type
+from utils.task_manager import (
+    cancel_task,
+    get_task,
+    get_tasks_by_type,
+    has_active_task_of_type,
+    register_task,
+    replace_task_job_id,
+    update_task,
+)
 from components.log_viewer import render_log_viewer
-from components.backend_log_viewer import render_backend_log_viewer
+from components.backend_log_viewer import (
+    render_backend_log_viewer,
+    render_pdf_backend_activity,
+)
+from components.pdf_progress import build_pdf_extraction_activity
+from components.pdf_upload_state import is_replacement_upload
 from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
@@ -30,7 +43,7 @@ st.set_page_config(
 inject_azure_theme()
 render_sidebar()
 init_session_state()
-recover_session_state(get_api_client())
+restore_workflow_state()
 render_task_status_bar()
 
 # ── Platform metadata helpers ─────────────────────────────────────────────
@@ -79,11 +92,175 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
 }
 
 _DEFAULT_PLATFORM = "azure_defender"
+_PDF_STATUS_POLL_INTERVAL = "2s"
 
 
 def _get_platform_meta(platform_id: str) -> _PlatformMeta:
     """Return metadata for the given platform ID, falling back to Azure Defender."""
     return _PLATFORM_META.get(platform_id, _PLATFORM_META[_DEFAULT_PLATFORM])
+
+
+def _render_pdf_extraction_progress(
+    task_id: str,
+    progress_slot,
+    activity_slot,
+    log_slot,
+) -> None:
+    """Refresh only the dynamic contents of the extraction card."""
+    task = get_task(task_id) or {}
+    progress = max(0, min(int(task.get("progress", 0)), 100))
+    activity = build_pdf_extraction_activity(progress, task.get("stage", ""))
+    state_icons = {
+        "complete": "✅",
+        "active": "🔄",
+        "pending": "○",
+    }
+
+    with progress_slot.container():
+        st.progress(
+            progress,
+            text=f"{progress}% complete — {activity[2]['label']}",
+        )
+    with activity_slot.container():
+        st.caption("Live activity from the extraction service")
+        for item in activity:
+            st.markdown(f"{state_icons[item['state']]} {item['label']}")
+    with log_slot.container():
+        st.markdown("**Recent backend events**")
+        render_pdf_backend_activity(task_id)
+
+
+def _render_active_pdf_extraction_shell(
+    task_id: str,
+    file_name: str,
+    api_url: str,
+) -> None:
+    """Keep a static extraction shell mounted around fragment-only live slots."""
+    with st.container(border=True):
+        st.markdown(f"#### 📄 Scanning {file_name}")
+        st.caption("Progress updates automatically while the document is scanned.")
+        progress_slot = st.empty()
+        st.markdown("**Live activity from the extraction service**")
+        activity_slot = st.empty()
+        st.markdown("**Recent backend events**")
+        log_slot = st.empty()
+    _render_active_pdf_extraction(
+        task_id,
+        api_url,
+        progress_slot,
+        activity_slot,
+        log_slot,
+    )
+
+
+def _apply_pdf_extraction_status(task_id: str, status: dict) -> str:
+    """Apply one backend status response and return its terminal state, if any."""
+    if status.get("status") == "completed":
+        result = status.get("extraction")
+        if not result:
+            raise RuntimeError("The extraction completed without a result. Please retry.")
+        st.session_state.pdf_extraction = result
+        st.session_state.pdf_extracting = False
+        st.session_state.pdf_extraction_error = None
+        update_task(
+            task_id,
+            status="completed",
+            progress=100,
+            stage="completed",
+            result={
+                "framework_name": result.get("framework_name"),
+                "total_controls": result.get("total_controls", 0),
+            },
+        )
+        return "completed"
+
+    if status.get("status") in {"failed", "cancelled"}:
+        st.session_state.pdf_extracting = False
+        error = status.get("error", "Unknown extraction error")
+        update_task(task_id, status="failed", stage="failed", error=error)
+        return "failed"
+
+    update_task(
+        task_id,
+        status="running",
+        progress=status.get("progress", 0),
+        stage=status.get("stage", "Extracting controls"),
+    )
+    return "running"
+
+
+@st.fragment(run_every=_PDF_STATUS_POLL_INTERVAL)
+def _render_active_pdf_extraction(
+    task_id: str,
+    api_url: str,
+    progress_slot,
+    activity_slot,
+    log_slot,
+) -> None:
+    """Poll and redraw only the dynamic contents of the extraction card."""
+    try:
+        status = APIClient(base_url=api_url).get_pipeline_status(task_id)
+        outcome = _apply_pdf_extraction_status(task_id, status)
+    except Exception as exc:
+        st.session_state.pdf_extracting = False
+        st.session_state.pdf_extraction_error = str(exc)
+        update_task(task_id, status="failed", stage="failed", error=str(exc))
+        st.rerun()
+        return
+
+    if outcome == "completed":
+        st.rerun()
+    if outcome == "failed":
+        task = get_task(task_id) or {}
+        st.session_state.pdf_extraction_error = task.get(
+            "error",
+            "Unknown extraction error",
+        )
+        st.rerun()
+        return
+
+    _render_pdf_extraction_progress(
+        task_id,
+        progress_slot,
+        activity_slot,
+        log_slot,
+    )
+
+
+def _clear_pdf_workflow() -> None:
+    """Cancel every active PDF job and clear all PDF-specific browser state."""
+    active_pdf_tasks = [
+        task
+        for task in get_tasks_by_type("pdf_extraction")
+        if task["status"] in {"pending", "running"}
+    ]
+    cancellation_errors = []
+    for task in active_pdf_tasks:
+        try:
+            APIClient(base_url=os.getenv("BACKEND_URL", "http://localhost:8000")).cancel_pipeline_job(
+                task["job_id"]
+            )
+        except Exception as exc:
+            cancellation_errors.append(str(exc))
+        finally:
+            cancel_task(
+                task["job_id"],
+                error="Cancelled when the user cleared the PDF workflow",
+            )
+    if cancellation_errors:
+        st.session_state.pdf_clear_warning = (
+            "The browser state was cleared, but one or more backend jobs could not "
+            f"be cancelled: {'; '.join(cancellation_errors)}"
+        )
+    st.session_state.pdf_extraction = None
+    st.session_state.pdf_extracting = False
+    st.session_state.pdf_extraction_error = None
+    st.session_state.pdf_extract_task_id = None
+    st.session_state.pdf_extraction_task_to_view = None
+    st.session_state.pdf_file_bytes = None
+    st.session_state.pdf_file_name = None
+    st.session_state.pdf_extraction_restore_disabled = True
+    st.session_state.pdf_upload_key += 1
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────
@@ -111,8 +288,64 @@ with st.sidebar:
         help="URL of the ComplianceIQ backend API",
     )
 
+# Restore completed results independently of the uploader. A View click selects
+# one exact task; the fallback supports completed tasks created before that key
+# was introduced.
+if not st.session_state.pdf_extraction:
+    selected_task_id = st.session_state.pdf_extraction_task_to_view
+    completed_extractions = [
+        task
+        for task in get_tasks_by_type("pdf_extraction")
+        if task["status"] == "completed"
+    ]
+    if selected_task_id:
+        candidate_task_ids = [selected_task_id]
+    elif st.session_state.pdf_extraction_restore_disabled:
+        candidate_task_ids = []
+    else:
+        candidate_task_ids = [
+            task["job_id"]
+            for task in sorted(
+                completed_extractions,
+                key=lambda task: task.get("completed_at") or task.get("started_at", ""),
+                reverse=True,
+            )
+        ]
+
+    for task_id in candidate_task_ids:
+        task = get_task(task_id)
+        result = task.get("result", {}) if task else {}
+        extraction = result.get("extraction")
+        if not extraction:
+            try:
+                status = APIClient(base_url=api_url).get_pipeline_status(task_id)
+            except httpx.HTTPError as exc:
+                if task_id == selected_task_id:
+                    st.error(f"Could not load the completed extraction: {exc}")
+                continue
+            extraction = status.get("extraction")
+            if status.get("status") == "completed" and extraction:
+                update_task(task_id, status="completed", progress=100, result=status)
+            elif task_id == selected_task_id:
+                st.error(
+                    "This completed extraction no longer has a recoverable result. "
+                    "Upload the PDF again and retry the extraction."
+                )
+                st.session_state.pdf_extraction_task_to_view = None
+
+        if extraction:
+            st.session_state.pdf_extraction = extraction
+            st.session_state.pdf_extracting = False
+            st.session_state.pdf_extract_task_id = task_id
+            st.session_state.pdf_extraction_task_to_view = None
+            st.session_state.pdf_extraction_restore_disabled = False
+            break
+
 # ── Main content ──────────────────────────────────────────────────────────
 st.title("📄 PDF Control Extraction")
+
+if notice := st.session_state.pop("workflow_restored_notice", None):
+    st.success(f"🔄 {notice}")
 
 # ── Platform banner ───────────────────────────────────────────────────────
 _selected_platform = st.session_state.get("selected_platform", _DEFAULT_PLATFORM)
@@ -137,12 +370,26 @@ uploaded_file = st.file_uploader(
     "Choose a compliance control PDF",
     type=["pdf"],
     help="Upload the regulatory framework PDF (e.g., SAMA, ADHICS, Oman CDC, NCA, CCC)",
+    key=f"pdf_uploader_{st.session_state.pdf_upload_key}",
 )
 
+if clear_warning := st.session_state.pop("pdf_clear_warning", None):
+    st.warning(clear_warning)
+
 if uploaded_file:
+    uploaded_bytes = uploaded_file.getvalue()
+    if is_replacement_upload(
+        st.session_state.pdf_file_bytes,
+        st.session_state.pdf_file_name,
+        uploaded_bytes,
+        uploaded_file.name,
+    ):
+        _clear_pdf_workflow()
+
     # Persist file bytes in session state so they survive page navigation
-    st.session_state.pdf_file_bytes = uploaded_file.getvalue()
+    st.session_state.pdf_file_bytes = uploaded_bytes
     st.session_state.pdf_file_name = uploaded_file.name
+    st.session_state.pdf_extraction_restore_disabled = False
 
 # Determine which file we're working with (freshly uploaded or persisted)
 file_bytes = st.session_state.pdf_file_bytes
@@ -155,58 +402,22 @@ if file_bytes:
     # ── Step 2: Extract controls ──────────────────────────────────────
     st.markdown("### 2️⃣ Extract Controls")
 
-    # Continue an in-progress extraction on rerun and keep task status in sync.
+    if st.session_state.pdf_extraction_error:
+        st.error(f"❌ Extraction failed: {st.session_state.pdf_extraction_error}")
+
+    # The backend owns extraction. A fragment redraws only this live region.
     if (
         st.session_state.pdf_extracting
         and not st.session_state.pdf_extraction
         and st.session_state.pdf_extract_task_id
     ):
-        task_id = st.session_state.pdf_extract_task_id
-        update_task(task_id, status="running", progress=10, stage="extracting")
-
-        with st.spinner("🤖 AI is reading the PDF and extracting controls... This may take a minute."):
-            try:
-                client = APIClient(base_url=api_url)
-                result = client.extract_controls_from_pdf(
-                    pdf_bytes=file_bytes,
-                    filename=file_name,
-                )
-                st.session_state.pdf_extraction = result
-                st.session_state.pdf_extracting = False
-                # Record the uploaded document (+ version) to the workspace.
-                try:
-                    client.record_upload(
-                        file_name=file_name,
-                        file_type="application/pdf",
-                        category="document",
-                        file_size=len(file_bytes) if file_bytes else 0,
-                        row_count=result.get("total_controls", 0),
-                        metadata={
-                            "framework": result.get("framework_name"),
-                            "source": "pdf_extraction",
-                        },
-                    )
-                except Exception:
-                    pass  # activity logging is best-effort
-                update_task(
-                    task_id,
-                    status="completed",
-                    progress=100,
-                    stage="completed",
-                    result={
-                        "framework_name": result.get("framework_name"),
-                        "total_controls": result.get("total_controls", 0),
-                    },
-                )
-                st.rerun()
-            except Exception as e:
-                st.session_state.pdf_extracting = False
-                update_task(task_id, status="failed", stage="failed", error=str(e))
-                st.error(f"❌ Extraction failed: {e}")
+        _render_active_pdf_extraction_shell(
+            st.session_state.pdf_extract_task_id,
+            file_name,
+            api_url,
+        )
 
     extraction_in_progress = st.session_state.pdf_extracting and has_active_task_of_type("pdf_extraction")
-    if extraction_in_progress:
-        st.info("⏳ PDF extraction is running in this session. Task status is tracked in the task bar.")
 
     extract_button = st.button(
         "🔍 Extract Controls from PDF",
@@ -223,6 +434,7 @@ if file_bytes:
         task_id = f"pdf_extract_{st.session_state['session_uuid']}_{int(time.time())}"
         st.session_state.pdf_extract_task_id = task_id
         st.session_state.pdf_extracting = True
+        st.session_state.pdf_extraction_error = None
         register_task(
             task_id,
             "pdf_extraction",
@@ -230,8 +442,28 @@ if file_bytes:
             page_origin="pdf_pipeline",
             poll_backend=False,
         )
-        update_task(task_id, status="running", progress=5, stage="queued")
-        st.rerun()
+        try:
+            job = APIClient(base_url=api_url).start_pdf_extraction(
+                pdf_bytes=file_bytes,
+                filename=file_name,
+            )
+            backend_job_id = job["job_id"]
+            if backend_job_id != task_id:
+                replace_task_job_id(task_id, backend_job_id)
+                st.session_state.pdf_extract_task_id = backend_job_id
+            update_task(
+                st.session_state.pdf_extract_task_id,
+                status="running",
+                progress=job.get("progress", 0),
+                stage=job.get("stage", "Queued"),
+            )
+        except Exception as e:
+            st.session_state.pdf_extracting = False
+            st.session_state.pdf_extraction_error = str(e)
+            update_task(task_id, status="failed", stage="failed", error=str(e))
+            st.error(f"❌ Could not submit PDF extraction: {e}")
+        else:
+            st.rerun()
 
 # ── Step 3: Preview & edit extracted controls ─────────────────────────────
 # Shown regardless of whether a file is currently in the uploader —
@@ -305,42 +537,21 @@ if extraction:
                         }
                         loaded_controls.append(control)
 
-                    load_controls_state(
-                        loaded_controls,
-                        framework_name,
-                        source="pdf",
-                    )
-                    if not persist_session_state(get_api_client()):
+                    # Save to session state — same format as CSV upload (Page 1)
+                    st.session_state.controls = loaded_controls
+                    st.session_state.framework_name = framework_name
+                    st.session_state.mappings = []  # Reset any previous mappings
+                    st.session_state.controls_loaded = True
+                    st.session_state.upload_source = "pdf"
+                    try:
+                        persist_workflow_state()
+                    except Exception as exc:
                         st.warning(
-                            "Controls are loaded locally, but could not be saved "
-                            "for recovery. Check the backend connection."
+                            f"Controls are loaded, but could not be saved for recovery: {exc}"
                         )
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
                     st.balloons()
-
-                    # Record the extracted control set to the user's workspace so
-                    # PDF control extraction lands in the per-tenant control library
-                    # + activity history (best-effort).
-                    try:
-                        get_api_client().record_upload(
-                            file_name=f"{framework_name}.csv",
-                            file_type="text/csv",
-                            category="controls",
-                            row_count=len(loaded_controls),
-                            column_names=[
-                                "control_id", "control_name", "description",
-                                "domain", "control_type",
-                            ],
-                            controls=loaded_controls,
-                            metadata={
-                                "framework": framework_name,
-                                "source": "pdf_extraction",
-                                "sourceDocument": st.session_state.get("pdf_file_name"),
-                            },
-                        )
-                    except Exception:
-                        pass  # activity logging is best-effort
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")
@@ -354,22 +565,18 @@ if extraction:
                     )
 
         with col_clear:
-            if st.button("🗑️ Clear & Start Over", use_container_width=True):
-                st.session_state.pdf_extraction = None
-                st.session_state.pdf_extracting = False
-                st.session_state.pdf_extract_task_id = None
-                st.session_state.pdf_file_bytes = None
-                st.session_state.pdf_file_name = None
-                st.rerun()
+            st.button(
+                "🗑️ Clear & Start Over",
+                use_container_width=True,
+                on_click=_clear_pdf_workflow,
+            )
     else:
         st.warning("No controls were extracted from the PDF. The document may not contain structured controls.")
-        if st.button("🗑️ Clear & Try Again", use_container_width=True):
-            st.session_state.pdf_extraction = None
-            st.session_state.pdf_extracting = False
-            st.session_state.pdf_extract_task_id = None
-            st.session_state.pdf_file_bytes = None
-            st.session_state.pdf_file_name = None
-            st.rerun()
+        st.button(
+            "🗑️ Clear & Try Again",
+            use_container_width=True,
+            on_click=_clear_pdf_workflow,
+        )
 
 elif not file_bytes:
     # ── Instructions when no file is uploaded ─────────────────────────

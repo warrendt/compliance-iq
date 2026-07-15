@@ -12,7 +12,11 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state, recover_session_state
+from utils.state_init import (
+    init_session_state,
+    persist_workflow_state,
+    restore_workflow_state,
+)
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
@@ -47,16 +51,19 @@ st.set_page_config(
 )
 
 inject_azure_theme()
-render_sidebar()
 init_session_state()
-api_client = get_api_client()
-recover_session_state(api_client)
+restore_workflow_state()
+render_sidebar()
 render_task_status_bar()
+
+if notice := st.session_state.pop("workflow_restored_notice", None):
+    st.success(notice)
 
 # --- Recent Generations (reload from Cosmos) ---
 if st.session_state.generated_policy is None:
     try:
-        recent = api_client.list_artifacts(
+        _client = get_api_client()
+        recent = _client.list_artifacts(
             artifact_type="mcsb_initiative",
             limit=5,
             session_id=st.session_state.session_uuid,
@@ -67,12 +74,13 @@ if st.session_state.generated_policy is None:
                 for art in artifacts:
                     label = f"{art.get('framework_name', 'Unknown')} — {art.get('created_at', '')[:19]}"
                     if st.button(f"🔄 {label}", key=f"reload_{art['id']}"):
-                        full = api_client.get_artifact(art["id"], session_id=st.session_state.session_uuid)
+                        full = _client.get_artifact(art["id"], session_id=st.session_state.session_uuid)
                         st.session_state.generated_policy = full
                         st.session_state.policy_generated = True
+                        persist_workflow_state()
                         st.rerun()
-    except Exception:
-        pass  # Cosmos may be unavailable — silently skip
+    except Exception as exc:
+        st.warning(f"Recent generated policies could not be restored: {exc}")
 
 # Header
 st.title("📦 Export Azure Policy Initiative")
@@ -90,6 +98,9 @@ if not st.session_state.mappings:
 # Determine sovereignty status
 sov_mappings = [m for m in st.session_state.mappings if m.get('sovereignty')]
 has_sovereignty = len(sov_mappings) > 0
+
+# Get API client (used by both MCSB and SLZ export)
+api_client = get_api_client()
 
 # Display mapping summary
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -199,7 +210,11 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
             
             st.session_state.generated_policy = result
             st.session_state.policy_generated = True
-            st.success("✅ Policy initiative generated successfully!")
+            persist_workflow_state()
+            st.success(
+                "✅ Policy initiative generated successfully and saved as "
+                f"Version {result.get('semantic_version', '—')}."
+            )
             st.balloons()
 
         except httpx.ConnectError:
@@ -462,7 +477,11 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
         _has_token = False
 
     if not _has_token:
-        st.warning("⚠️ Sign in with Entra ID to deploy policies to Azure.")
+        st.warning("⚠️ Your Entra session does not include an Azure Resource Manager token.")
+        st.info(
+            "Sign out, then sign in again to grant Azure policy access. "
+            "If this continues, ask an administrator to enable the application token store."
+        )
     else:
         # Fetch available scopes
         if "deploy_scopes" not in st.session_state:
@@ -553,8 +572,8 @@ else:
     with col_slz1:
         slz_allowed_locations = st.text_input(
             "Allowed Locations (comma-separated)",
-            value="uaenorth,uaecentral",
-            help="Azure regions for data-residency policies (e.g. uaenorth,uaecentral)"
+            value="southafricanorth,southafricawest",
+            help="Azure regions for data-residency policies (e.g. southafricanorth,southafricawest)"
         )
         locations_list = [loc.strip() for loc in slz_allowed_locations.split(",") if loc.strip()] if slz_allowed_locations else None
 
@@ -602,7 +621,10 @@ else:
                     session_id=st.session_state.session_uuid,
                 )
                 st.session_state.slz_generated = slz_result
-                st.success("✅ SLZ initiatives generated!")
+                st.success(
+                    "✅ SLZ initiatives generated and saved as "
+                    f"Version {slz_result.get('semantic_version', '—')}."
+                )
                 st.balloons()
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend.")

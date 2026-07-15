@@ -176,6 +176,8 @@ class PolicyVersionDocument(BaseDocument):
     """
     userId: str
     version_number: int
+    semantic_version: str = "1.0.0"
+    version_stream: str = "initiative:default"
     parent_version: Optional[int] = None
     artifact_payload: Dict[str, Any] = Field(default_factory=dict)
     status: str = "active"

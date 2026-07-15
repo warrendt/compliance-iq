@@ -462,7 +462,8 @@ if ($AssignAfterCreation) {{
         Args:
             mappings: List of control mappings (must include sovereignty field)
             framework_name: Name of the compliance framework
-            allowed_locations: Optional list of allowed Azure regions (e.g., ["uaecentral", "uaenorth"])
+            allowed_locations: Optional list of allowed Azure regions (e.g.,
+                ["southafricanorth", "southafricawest"])
 
         Returns:
             Dictionary with per-archetype initiative JSON, Bicep, and deployment scripts
