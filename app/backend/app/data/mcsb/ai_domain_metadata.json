@@ -1,0 +1,30 @@
+{
+  "AI-1": {
+    "control_name": "Ensure use of approved models",
+    "description": "Only deploy AI models that have been formally approved through a trusted verification process, ensuring they meet security, compliance, and operational requirements before production use."
+  },
+  "AI-2": {
+    "control_name": "Implement multi-layered content filtering",
+    "description": "Implement comprehensive content validation and filtering across all stages of AI interaction—including input prompts, internal processing, and model outputs—to detect and block malicious content, adversarial inputs, and harmful outputs before they impact users or systems."
+  },
+  "AI-3": {
+    "control_name": "Adopt safety meta-prompts",
+    "description": "Use safety meta-prompts or system instructions to guide AI models toward intended, secure, and ethical behavior while enhancing resistance to prompt injection attacks and other adversarial manipulations."
+  },
+  "AI-4": {
+    "control_name": "Apply least privilege for agent functions",
+    "description": "Restrict the capabilities and access permissions of agent functions or plugins to the minimum required for their intended purpose, reducing the attack surface and preventing unauthorized actions or data exposure."
+  },
+  "AI-5": {
+    "control_name": "Ensure human-in-the-loop",
+    "description": "Implement human review and approval for critical actions or decisions taken by the AI application, especially when interacting with external systems or sensitive data."
+  },
+  "AI-6": {
+    "control_name": "Establish monitoring and detection",
+    "description": "Implement robust monitoring solutions (e.g., Microsoft Defender for Cloud's threat protection for AI services) to detect suspicious activity, investigate risks, identify jailbreak attempts, and correlate findings with threat intelligence."
+  },
+  "AI-7": {
+    "control_name": "Perform continuous AI Red Teaming",
+    "description": "Proactively test AI systems using adversarial techniques to discover vulnerabilities, adversarial paths, and potential harmful outcomes (e.g., using tools like Python Risk Identification Tool for GenAI (PYRIT) or Azure AI Red Teaming Agent)."
+  }
+}

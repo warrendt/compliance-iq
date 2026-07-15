@@ -1,0 +1,3706 @@
+{
+  "generated_at": "2026-07-15T10:16:03.244438+00:00",
+  "source": "offline",
+  "count": 92,
+  "controls": [
+    {
+      "control_id": "NS-1",
+      "domain": "Network Security",
+      "control_name": "Establish network segmentation boundaries",
+      "description": "Ensure that your virtual network deployment aligns to your enterprise segmentation strategy defined in the GS-2 security control. Any workload that could incur higher risk for the organization should be in isolated virtual networks. \nExamples of high-risk workload include:\n- An application storing or processing highly sensitive data.\n- An external network-facing application accessible by the public or users outside of your organization.\n- An application using insecure architecture or containing vulnerabilities that cannot be easily remediated.\n\nTo enhance your enterprise segmentation strategy, restrict or monitor traffic between internal resources using network controls. For specific, well-defined applications (such as a 3-tier app), this can be a highly secure \"deny by default, permit by exception\" approach by restricting the ports, protocols, source, and destination IPs of the network traffic. If you have many applications and endpoints interacting with each other, blocking traffic may not scale well, and you may only be able to monitor traffic.",
+      "azure_policy_ids": [
+        "46238e2f-3f6f-4589-9f3f-77bed4116e67",
+        "9daedab3-fb2d-461e-b861-71790eead4f6",
+        "af99038c-02fd-4a2f-ac24-386b62bf32de",
+        "bb91dfba-c30d-4263-9add-9c2384e659a6",
+        "d416745a-506c-48b6-8ab1-83cb814bcaa3",
+        "e71308d3-144b-4262-b144-efdc3cc90517",
+        "f1776c76-f58c-4245-a8d0-2b207198dc8b",
+        "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c"
+      ],
+      "defender_recommendations": [
+        "Adaptive network hardening recommendations should be applied on internet facing virtual machines",
+        "All network ports should be restricted on network security groups associated to your virtual machine",
+        "Non-internet-facing virtual machines should be protected with network security groups",
+        "Subnets should be associated with a Network Security Group",
+        "Internet-facing virtual machines should be protected with Network Security Groups"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.2 - Ensure Only Approved Ports, Protocols and Services Are Running",
+          "9.4 - Apply Host-Based Firewalls or Port Filtering",
+          "12.3 - Deny Communications with Known Malicious IP Addresses",
+          "12.4 - Deny Communication over Unauthorized Ports",
+          "14.1 - Segment the Network Based on Sensitivity",
+          "14.2 - Enable Firewall Filtering Between VLANs"
+        ],
+        "CIS v8": [
+          "3.12 - Segment Data Processing and Storage Based on Sensitivity",
+          "13.4 - Perform Traffic Filtering Between Network Segments",
+          "4.4 - Implement and Manage a Firewall on Severs"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SC-2: APPLICATION PARTITIONING",
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-2",
+      "domain": "Network Security",
+      "control_name": "Secure cloud services with network controls",
+      "description": "Secure cloud services by establishing a private access point for the resources. You should also disable or restrict access from public network when possible.",
+      "azure_policy_ids": [
+        "0088bc63-6dee-4a9c-9d29-91cfdc848952",
+        "009a0c92-f5b4-4776-9b66-4ed2b4775563",
+        "037eea7a-bd0a-46c5-9a66-03aea78705d3",
+        "040732e8-d947-40b8-95d6-854c95024bf8",
+        "0564d078-92f5-4f97-8398-b9f58a51f70b",
+        "0602787f-9896-402a-a6e1-39ee63ee435e",
+        "0a1302fb-a631-4106-9753-f3d494733990",
+        "0c2b3618-68a8-4034-a150-ff4abc873462",
+        "0c4bd2e8-8872-4f37-a654-03f6f38ddc76",
+        "0d40b058-9f95-4a19-93e3-9b0330baa2a3",
+        "0e246bcf-5f6f-4f87-bc6f-775d4712c7ea",
+        "0e7849de-b939-4c50-ab48-fc6b0f5eeba2",
+        "0fc55270-f8bf-4feb-b7b8-5e7e7eacc6a6",
+        "0fdf0491-d080-4575-b627-ad0e843cba0f",
+        "11c82d0c-db9f-4d7b-97c5-f3f9aa957da2",
+        "11e3da8c-1d68-4392-badd-0ff3c43ab5b0",
+        "12e7176a-4919-47ef-922b-34eda4c7f0ce",
+        "1301a000-bc6b-4d90-8414-7091e3abdc40",
+        "1604f626-4d8d-4124-8bb8-b1e5f95562de",
+        "18ac0011-fb88-42b6-a025-b33b6f0d2cb3",
+        "19ea9d63-adee-4431-a95e-1913c6c1c75f",
+        "1adadefe-5f21-44f7-b931-a59b54ccdb45",
+        "1b5ef780-c53c-4a64-87f3-bb9c8c8094ba",
+        "1b8ca024-1d5c-4dec-8995-b1a932b41780",
+        "1bc02227-0cb6-4e11-8f53-eb0b22eab7e8",
+        "1c06e275-d63d-4540-b761-71f364c2111d",
+        "1cf164be-6819-4a50-b8fa-4bcaa4f98fb6",
+        "1d320205-c6a1-4ac6-873d-46224024e8e2",
+        "1ee56206-5dd1-42ab-b02d-8aae8b1634ce",
+        "1fec9658-933f-4b3e-bc95-913ed22d012b",
+        "2154edb9-244f-4741-9970-660785bccdaa",
+        "21a8cd35-125e-4d13-b82d-2e19b7208bb7",
+        "21a9766a-82a5-4747-abb5-650b6dbba6d0",
+        "2393d2cf-a342-44cd-a2e2-fe0188fd1234",
+        "24b7a1c6-44fe-40cc-a2e6-242d2ef70e98",
+        "258823f2-4595-4b52-b333-cc96192710d8",
+        "27d4c5ec-8820-443f-91fe-1215e96f64b2",
+        "2a1a9cdf-e04d-429a-8416-3bfb72a1b26f",
+        "2cc2c3b5-c2f8-45aa-a9e6-f90d85ae8352",
+        "2d048aca-6479-4923-88f5-e2ac295d9af3",
+        "2d21331d-a4c2-4def-a9ad-ee4e1e023beb",
+        "2d6830fb-07eb-48e7-8c4d-2a442b35f0fb",
+        "2d9dbfa3-927b-4cf0-9d0f-08747f971650",
+        "3375856c-3824-4e0e-ae6a-79e011dd4c47",
+        "3484ce98-c0c5-4c83-994b-c5ac24785218",
+        "34c877ad-507e-4c82-993e-3452a6e0ad3c",
+        "38d8df46-cf4e-4073-8e03-48c24b29de0d",
+        "3a003702-13d2-4679-941b-937e58c443f0",
+        "3a97e513-f75e-4230-8137-1efad4eadbbc",
+        "3c14b034-bcb6-4905-94e7-5b8e98a47b65",
+        "3d9f5e4c-9947-4579-9539-2a7695fbc187",
+        "405c5871-3e91-4644-8a63-58e19d68ff5b",
+        "438c38d2-3772-465a-a9cc-7a6666a275ce",
+        "43bc7be6-5e69-4b0d-a2bb-e815557ca673",
+        "45e05259-1eb5-4f70-9574-baf73e9d219b",
+        "464a1620-21b5-448d-8ce6-d4ac6d1bc49a",
+        "470baccb-7e51-4549-8b1a-3e5be069f663",
+        "4b90e17e-8448-49db-875e-bd83fb6f804f",
+        "4fa4b6c0-31ca-4c0d-b10d-24b96f62a751",
+        "510ec8b2-cb9e-461d-b7f3-6b8678c31182",
+        "51c1490f-3319-459c-bbbc-7f391bbed753",
+        "52152f42-0dda-40d9-976e-abb1acdd611e",
+        "546fe8d2-368d-4029-a418-6af48a7f61e5",
+        "55615ac9-af46-4a59-874e-391cc3dfb490",
+        "56fd377d-098c-4f02-8406-81eb055902b8",
+        "5747353b-1ca9-42c1-a4dd-b874b894f3d4",
+        "58440f8a-10c5-4151-bdce-dfbaad4a20b7",
+        "59fee2f4-d439-4f1b-9b9a-982e1474bfd8",
+        "5e1de0e3-42cb-4ebc-a86d-61d0c619ca48",
+        "5e7e928c-8693-4a23-9bf3-1c77b9a8fe97",
+        "5e8168db-69e3-4beb-9822-57cb59202a9d",
+        "60d21c4f-21a3-4d94-85f4-b924e6aeeda4",
+        "64528841-2f92-43f6-a137-d52e5c3dbeac",
+        "67dcad1a-ec60-45df-8fd0-14c9d29eeaa2",
+        "687aa49d-0982-40f8-bf6b-66d1da97a04b",
+        "6a92fe1f-0b86-44ae-843d-2db3d2b571ae",
+        "6c53d030-cc64-46f0-906d-2bc061cd1334",
+        "6ddb1705-c8cf-450e-aa4b-19ad6703c440",
+        "6edd7eda-6dd8-40f7-810d-67160c639cd9",
+        "701a595d-38fb-4a66-ae6d-fb3735217622",
+        "72d04c29-f87d-4575-9731-419ff16a2757",
+        "72d11df1-dd8a-41f7-8925-b05b960ebafc",
+        "74c5a0ae-5e48-4738-b093-65e23a060488",
+        "7595c971-233d-4bcf-bd18-596129188c49",
+        "7698e800-9299-47a6-b3b6-5a0fee576eed",
+        "7803067c-7d34-46e3-8c79-0ca68fc4036d",
+        "7804b5c7-01dc-4723-969b-ae300cc07ff1",
+        "7809fda1-ba27-48c1-9c63-1f5aee46ba89",
+        "783ea2a8-b8fd-46be-896a-9ae79643a0b1",
+        "797b37f7-06b8-444c-b1ad-fc62867f335a",
+        "7eab1da3-2bf0-4ff0-8303-1a4277c380e8",
+        "801543d1-1953-4a90-b8b0-8cf6d41473a5",
+        "82909236-25f3-46a6-841c-fe1020f95ae1",
+        "8405fdab-1faf-48aa-b702-999c9c172094",
+        "862e97cf-49fc-4a5c-9de4-40d4e2e7c8eb",
+        "87ac3038-c07a-4b92-860d-29e270a4f3cd",
+        "898f2439-3333-4713-af25-f1d78bc50556",
+        "89c8a434-18f0-402c-8147-630a8dea54e0",
+        "8af8f826-edcb-4178-b35f-851ea6fea615",
+        "8b0323be-cc25-4b61-935d-002c3798c6ea",
+        "8b346db6-85af-419b-8557-92cee2c0f9bb",
+        "9259053b-ddb8-40ab-842a-0aef19d0ade4",
+        "955a914f-bf86-4f0e-acd5-e0766b0efcb6",
+        "960e650e-9ce3-4316-9590-8ee2c016ca2f",
+        "969ac98b-88a8-449f-883c-2e9adb123127",
+        "9830b652-8523-49cc-b1b3-e17dce1127ca",
+        "9ace2dbc-4b71-48b6-b2a7-428b0b2e3944",
+        "9c25c9e4-ee12-4882-afd2-11fb9d87893f",
+        "9dfea752-dd46-4766-aed1-c355fa93fb91",
+        "9ebbbba3-4d65-4da9-bb67-b22cfaaff090",
+        "a049bf77-880b-470f-ba6d-9f21c530cf83",
+        "a22065a3-3b04-46ff-b84c-2d30e5c300d0",
+        "a499fed8-bcc8-4195-b154-641f14743757",
+        "a691eacb-474d-47e4-b287-b4813ca44222",
+        "a6abeaec-4d90-4a02-805f-6b26c4d3fbe9",
+        "ad5621d6-a877-4407-aa93-a950b428315e",
+        "ae5d2f14-d830-42b6-9899-df6cfe9c71a3",
+        "af35e2a4-ef96-44e7-a9ae-853dd97032c4",
+        "b2982f36-99f2-4db5-8eff-283140c09693",
+        "b52376f7-9612-48a1-81cd-1ffe4b61032c",
+        "b8564268-eb4a-4337-89be-a19db070c59d",
+        "bd560fc0-3c69-498a-ae9f-aa8eb7de0e13",
+        "bf45113f-264e-4a87-88f9-29ac8a0aca6a",
+        "c25dcf31-878f-4eba-98eb-0818fdc6a334",
+        "c4857be7-912a-4c75-87e6-e30292bcdf78",
+        "c5f34731-7ab9-42ff-922d-ef4920068b74",
+        "c8cc2f85-e019-4065-9fa3-5e6a2b2dde56",
+        "c9299215-ae47-4f50-9c54-8a392f68a052",
+        "c9d007d0-c057-4772-b18c-01e546713bcd",
+        "ca610c1d-041c-4332-9d88-7ed3094967c7",
+        "ca950cd7-02f7-422e-8c23-91ff40f169c1",
+        "cbd11fd3-3002-4907-b6c8-579f0e700e13",
+        "cd870362-211d-4cad-9ad9-11e5ea4ebbc1",
+        "cd8f7644-6fe8-4516-bded-0e465ead03ac",
+        "d074ddf8-01a5-4b5e-a2b8-964aed452c0a",
+        "d0793b48-0edc-4296-a390-4c75d1bdfd71",
+        "d63edb4a-c612-454d-b47d-191a724fcbf0",
+        "d6759c02-b87f-42b7-892e-71b3f471d782",
+        "d82101f3-f3ce-4fc5-8708-4c09f4009546",
+        "d9844e8a-1437-4aeb-a32c-0c992f056095",
+        "d9b2d63d-a233-4123-847a-7f7e5f5d7e7a",
+        "db4f9b05-5ffd-4b34-b714-3c710dbb3fd6",
+        "deeddb44-9f94-4903-9fa0-081d524406e3",
+        "df39c015-56a4-45de-b4a3-efe77bed320d",
+        "df73bd95-24da-4a4f-96b9-4e8b94b402bd",
+        "dfbd9a64-6114-48de-a47d-90574dc2e489",
+        "dfc212af-17ea-423a-9dcb-91e2cb2caa6b",
+        "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
+        "e8775d5a-73b7-4977-a39b-833ef0114628",
+        "e8eef0a8-67cf-4eb4-9386-14b0e78733d4",
+        "ea4d6841-2173-4317-9747-ff522a45120f",
+        "eb907f70-7514-460d-92b3-a5ae93b4f917",
+        "ed9bd083-7bfb-4fec-bbb4-12635e096a09",
+        "ee980b6d-0eca-4501-8d54-f6290fd512c3",
+        "ef619a2c-cc4d-4d03-b2ba-8c94a834d85b",
+        "efa3f296-ff2b-4f38-bc0d-5ef12c965b68",
+        "f0308946-498a-43fd-8d44-a75b47cd2aef",
+        "f39f5f49-4abf-44de-8c70-0756997bfb51",
+        "f5c0bfb3-acea-47b1-b477-b0edcdf6edc1",
+        "f7735886-8927-431f-b201-c953922512b8",
+        "f8f774be-6aee-492a-9e29-486ef81f3a68",
+        "fdccbe47-f3e3-4213-ad5d-ea459b2fa077"
+      ],
+      "defender_recommendations": [
+        "Cognitive Services accounts should restrict network access",
+        "Private endpoint should be enabled for PostgreSQL servers",
+        "Cognitive Services accounts should disable public network access",
+        "Private endpoint should be enabled for MariaDB servers",
+        "Authorized IP ranges should be defined on Kubernetes Services",
+        "Public network access on Azure SQL Database should be disabled",
+        "VM Image Builder templates should use private link",
+        "Storage accounts should restrict network access using virtual network rules",
+        "Storage accounts should restrict network access",
+        "Azure Machine Learning workspaces should use private link",
+        "Azure Event Grid topics should use private link",
+        "[Preview]: Storage account public access should be disallowed",
+        "Azure SignalR Service should use private link",
+        "[Preview]: Azure Key Vault should disable public network access",
+        "[Preview]: Private endpoint should be configured for Key Vault",
+        "Storage accounts should use private link",
+        "Private endpoint should be enabled for MySQL servers",
+        "Private endpoint connections on Azure SQL Database should be enabled",
+        "Azure Cache for Redis should reside within a virtual network",
+        "Azure Cosmos DB accounts should have firewall rules",
+        "Azure Event Grid domains should use private link",
+        "Azure Spring Cloud should use network injection",
+        "Public network access should be disabled for PostgreSQL servers",
+        "App Configuration should use private link",
+        "Container registries should not allow unrestricted network access",
+        "Public network access should be disabled for MySQL servers",
+        "Container registries should use private link",
+        "API Management services should use a virtual network",
+        "Public network access should be disabled for MariaDB servers"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.1 - Segment the Network Based on Sensitivity"
+        ],
+        "CIS v8": [
+          "3.12 - Segment Data Processing and Storage Based on Sensitivity",
+          "4.4 - Implement and Manage a Firewall on Servers"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SC-2: APPLICATION PARTITIONING",
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-3",
+      "domain": "Network Security",
+      "control_name": "Deploy firewall at the edge of enterprise network",
+      "description": "Deploy a firewall to perform advanced filtering on network traffic to and from external networks. You can also use firewalls between internal segments to support a segmentation strategy. If required, use custom routes for your subnet to override the system route when you need to force the network traffic to go through a network appliance for security control purpose.\n\nAt a minimum, block known bad IP addresses and high-risk protocols, such as remote management (for example, RDP and SSH) and intranet protocols (for example, SMB and Kerberos).",
+      "azure_policy_ids": [
+        "22730e10-96f6-4aac-ad84-9383d35b5917",
+        "b0f33259-77d7-4c9e-aac6-3aabcfae693c",
+        "bd352bd5-2853-4985-bf0d-73806b4a5744",
+        "fc5e4038-4584-4632-8c85-c0448d374b2c"
+      ],
+      "defender_recommendations": [
+        "Management ports should be closed on your virtual machines",
+        "Management ports of virtual machines should be protected with just-in-time network access control",
+        "IP Forwarding on your virtual machine should be disabled",
+        "[Preview]: All Internet traffic should be routed via your deployed Azure Firewall"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.2 - Ensure Only Approved Ports, Protocols and Services Are Running",
+          "9.4 - Apply Host-Based Firewalls or Port Filtering",
+          "12.3 - Deny Communications with Known Malicious IP Addresses",
+          "12.4 - Deny Communication over Unauthorized Ports",
+          "14.1 - Segment the Network Based on Sensitivity",
+          "14.2 - Enable Firewall Filtering Between VLANs"
+        ],
+        "CIS v8": [
+          "4.4 - Implement and Manage a Firewall on Servers",
+          "4.8 - Uninstall or Disable Unnecessary Services on Enterprise Assets and Software",
+          "13.10 Perform Application Layer Filtering"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SC-7: BOUNDARY PROTECTION",
+          "CM-7: LEAST FUNCTIONALITY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-4",
+      "domain": "Network Security",
+      "control_name": "Deploy intrusion detection/intrusion prevention systems (IDS/IPS)",
+      "description": "Use network intrusion detection and intrusion prevention systems (IDS/IPS) to inspect the network and payload traffic to or from your workload. Ensure that IDS/IPS is always tuned to provide high-quality alerts to your SIEM solution.\n\nFor more in-depth host level detection and prevention capability, use host-based IDS/IPS or a host-based endpoint detection and response (EDR) solution in conjunction with the network IDS/IPS.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "12.6 - Deploy Network-Based IDS Sensors",
+          "12.7 - Deploy Network-Based Intrusion Prevention Systems"
+        ],
+        "CIS v8": [
+          "13.2 Deploy a Host-Based Intrusion Detection Solution",
+          "13.3 - Deploy a Network Intrusion Detection Solution",
+          "13.7 Deploy a Host-Based Intrusion Prevention Solution",
+          "13.8 - Deploy a Network Intrusion Prevention Solution"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-7: BOUNDARY PROTECTION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "11.4"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-5",
+      "domain": "Network Security",
+      "control_name": "Deploy DDOS protection",
+      "description": "Deploy distributed denial of service (DDoS) protection to protect your network and applications from attacks.",
+      "azure_policy_ids": [
+        "94de2ad3-e0c1-4caf-ad78-5d47bbc83d3d",
+        "a7aca53f-2ed4-4466-a25e-0b45ade68efd",
+        "e52e8487-4a97-48ac-b3e6-1c3cef45d298"
+      ],
+      "defender_recommendations": [
+        "Azure DDoS Protection Standard should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.5 - Implement Application Firewalls",
+          "12.3 - Deny Communications with Known Malicious IP Addresses"
+        ],
+        "CIS v8": [
+          "13.10 - Perform Application Layer Filtering"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-5: DENIAL OF SERVICE PROTECTION",
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3",
+          "6.6"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-6",
+      "domain": "Network Security",
+      "control_name": "Deploy web application firewall",
+      "description": "Deploy a web application firewall (WAF) and configure the appropriate rules to protect your web applications and APIs from application-specific attacks.",
+      "azure_policy_ids": [
+        "055aa869-bc98-4af8-bafc-23f1ab6ffe2c",
+        "12430be1-6cc8-4527-a9a8-e3d38f250096",
+        "425bea59-a659-4cbb-8d31-34499bd030b8",
+        "4598f028-de1f-4694-8751-84dceb5f86b9",
+        "564feb30-bf6a-4854-b4bb-0d2d2d1e6c66",
+        "882e19a6-996f-400e-a30f-c090887254f4",
+        "ca85ef9a-741d-461d-8b7a-18c2da82c666",
+        "cd906338-3453-47ba-9334-2d654bf845af",
+        "e52e8487-4a97-48ac-b3e6-1c3cef45d298"
+      ],
+      "defender_recommendations": [
+        "Web Application Firewall (WAF) should be enabled for Azure Front Door Service service",
+        "Web Application Firewall (WAF) should be enabled for Application Gateway"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.5 - Implement Application Firewalls",
+          "12.3 - Deny Communications with Known Malicious IP Addresses",
+          "12.9 - Deploy Application Layer Filtering Proxy Server",
+          "18.10 - Deploy Web Application Firewalls (WAFs)"
+        ],
+        "CIS v8": [
+          "13.10 - Perform Application Layer Filtering"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3",
+          "6.6"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-7",
+      "domain": "Network Security",
+      "control_name": "Simplify network security configuration",
+      "description": "When managing a complex network environment, use tools to simplify, centralize and enhance the network security management.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "Adaptive network hardening recommendations should be applied on internet facing virtual machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.2 - Ensure Only Approved Ports, Protocols and Services Are Running"
+        ],
+        "CIS v8": [
+          "4.4 - Implement and Manage a Firewall on Severs",
+          "4.8 - Uninstall or Disable Unnecessary Services on Enterprise Assets and Software"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SC-2: APPLICATION PARTITIONING",
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-8",
+      "domain": "Network Security",
+      "control_name": "Detect and disable insecure services and  protocols",
+      "description": "Detect and disable insecure services and protocols at the OS, application, or software package layer. Deploy compensating controls if disabling insecure services and protocols are not possible.",
+      "azure_policy_ids": [
+        "e345b6c3-24bd-4c93-9bbb-7e5e49a17b78",
+        "f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
+        "f9d614c5-c173-4d56-95a7-b4437057d193"
+      ],
+      "defender_recommendations": [
+        "Latest TLS version should be used in your API App",
+        "Latest TLS version should be used in your Web App",
+        "Latest TLS version should be used in your Function App"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.2 - Ensure Only Approved Ports, Protocols and Services Are Running"
+        ],
+        "CIS v8": [
+          "4.4 - Implement and Manage a Firewall on Severs",
+          "4.8 - Uninstall or Disable Unnecessary Services on Enterprise Assets and Software"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "CM-7: LEAST FUNCTIONALITY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "4.1",
+          "A2.1",
+          "A2.2",
+          "A2.3"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-9",
+      "domain": "Network Security",
+      "control_name": "Connect on-premises or cloud network privately",
+      "description": "Use private connections for secure communication between different networks, such as cloud service provider datacenters and on-premises infrastructure in a colocation environment.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "12.7 - Ensure Remote Devices Utilize a VPN and are Connecting to",
+          "an Enterprise’s AAA Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CA-3: SYSTEM INTERCONNECTIONS",
+          "AC-17: REMOTE ACCESS",
+          "AC-4: INFORMATION FLOW ENFORCEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "NS-10",
+      "domain": "Network Security",
+      "control_name": "Ensure Domain Name System (DNS) security",
+      "description": "Ensure that Domain Name System (DNS) security configuration protects against known risks:\n- Use trusted authoritative and recursive DNS services across your cloud environment to ensure the client (such as operating systems and applications) receive the correct resolution result. \n- Separate the public and private DNS resolution so the DNS resolution process for the private network can be isolated from the public network.\n- Ensure your DNS security strategy also includes mitigations against common attacks, such as dangling DNS, DNS amplifications attacks, DNS poisoning and spoofing, and so on.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "[Preview]: Azure Defender for DNS should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "7.7 - Use of DNS Filtering Services"
+        ],
+        "CIS v8": [
+          "4.9 - Configure Trusted DNS Servers on Enterprise Assets",
+          "9.2 - Use DNS Filtering Services"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-20: SECURE NAME / ADDRESS RESOLUTION SERVICE (AUTHORITATIVE SOURCE)",
+          "SC-21: SECURE NAME / ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER)"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-1",
+      "domain": "Data Protection",
+      "control_name": "Discover, classify, and label sensitive data",
+      "description": "Establish and maintain an inventory of the sensitive data, based on the defined sensitive data scope. Use tools to discover, classify and label the in- scope sensitive data.",
+      "azure_policy_ids": [
+        "7926a6d1-b268-4586-8197-e8ae90c877d7"
+      ],
+      "defender_recommendations": [
+        "[Preview]: Sensitive data in your SQL databases should be classified"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "13.1 - \tMaintain an Inventory of Sensitive Information",
+          "14.5 - Utilize an Active Discovery Tool to Identify Sensitive Data"
+        ],
+        "CIS v8": [
+          "3.2 - Establish and Maintain a Data Inventory",
+          "3.7 - Establish and Maintain a Data Classification Scheme",
+          "3.13 - Deploy a Data Loss Prevention Solution"
+        ],
+        "NIST SP800-53 r4": [
+          "RA-2: SECURITY CATEGORIZATION",
+          "SC-28: PROTECTION OF INFORMATION AT REST"
+        ],
+        "PCI-DSS v3.2.1": [
+          "A3.2"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-2",
+      "domain": "Data Protection",
+      "control_name": "Monitor anomalies and threats targeting sensitive data",
+      "description": "Monitor for anomalies around sensitive data, such as unauthorized transfer of data to locations outside of enterprise visibility and control. This typically involves monitoring for anomalous activities (large or unusual transfers) that could indicate unauthorized data exfiltration.",
+      "azure_policy_ids": [
+        "0a9fbe0d-c5c4-4da8-87d8-f4fd77338835",
+        "640d2586-54d2-465f-877f-9ffc1d2109f4",
+        "6581d072-105e-4418-827f-bd446d56421b",
+        "7926a6d1-b268-4586-8197-e8ae90c877d7",
+        "7fe3b40f-802b-4cdd-8bd4-fd799c948cc2",
+        "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for open-source relational databases should be enabled",
+        "Azure Defender for Storage should be enabled",
+        "Azure Defender for SQL servers on machines should be enabled",
+        "Azure Defender for Azure SQL Database servers should be enabled",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "13.3 - Monitor and Block Unauthorized Network Traffic",
+          "14.7 - Enforce Access Control to Data through Automated Tools"
+        ],
+        "CIS v8": [
+          "3.13 - Deploy a Data Loss Prevention Solution"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "A3.2"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-3",
+      "domain": "Data Protection",
+      "control_name": "Encrypt sensitive data in transit",
+      "description": "Protect the data in transit against 'out of band' attacks (such as traffic capture) using encryption to ensure that attackers cannot easily read or modify the data. \n\nSet the network boundary and service scope where data in transit encryption is mandatory inside and outside of the network. While this is optional for traffic on private networks, this is critical for traffic on external and public networks.",
+      "azure_policy_ids": [
+        "0e80e269-43a4-4ae9-b5bc-178126b8a5cb",
+        "123aed70-491a-4f07-a569-e1f3a8dd651e",
+        "1760f9d4-7206-436e-a28f-d9f3a5c8a227",
+        "1a5b4dca-0b6f-4cf5-907c-56316bc1bf3d",
+        "22bee202-a82f-4305-9a2a-6d7f44d4dedb",
+        "32e6bbec-16b6-44c2-be37-c5b672d103cf",
+        "36f0d6bc-a253-4df8-b25b-c3a5023ff443",
+        "387140f1-6da9-4741-bcee-3b5edcdfd9ec",
+        "399b2637-a50f-4f95-96f8-3a145476eb15",
+        "404c3081-a854-4457-ae30-26a93ef643f9",
+        "4d24b6d4-5e53-4a4f-a7f4-618fa573ee4b",
+        "4ee5b817-627a-435a-8932-116193268172",
+        "50b83b09-03da-41c1-b656-c293c914862b",
+        "5752e6d6-1206-46d8-8ab1-ecc2f71a8112",
+        "5e5dbe3f-2702-4ffc-8b1e-0cae008a5c71",
+        "6164527b-e1ee-4882-8673-572f425f5e0a",
+        "679da822-78a7-4eff-8fff-a899454a9970",
+        "6d555dd1-86f2-4f1c-8ed7-5abae7c6cbab",
+        "817dcf37-e83d-4999-a472-644eada2ea1e",
+        "a43d5475-c569-45ce-a268-28fa79f4e87a",
+        "a4af4a39-4135-47fb-b175-47fbdf85311d",
+        "a8793640-60f7-487c-b5c3-1d37215905c4",
+        "ae1b9a8c-dfce-4605-bd91-69213b4a26fc",
+        "af1d7e88-c1c8-4ea8-be1f-87bff0df9101",
+        "cb3738a6-82a2-4a18-b87b-15217b9deff4",
+        "cbe0e5eb-fea9-491d-ab20-a62cf049c5ae",
+        "d158790f-bfb0-486c-8631-2dc6b4e8e6af",
+        "d6545c6b-dd9d-4265-91e6-0b451e2f1c50",
+        "d9da03a1-f3c3-412a-9709-947156872263",
+        "deb528de-8f89-4101-881c-595899253102",
+        "e802a67a-daf5-4436-9ea6-f6d821dd0c5d",
+        "ee7495e7-3ba7-40b6-bfee-c29e22cc75d4",
+        "f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
+        "f9d614c5-c173-4d56-95a7-b4437057d193",
+        "fb74e86f-d351-4b8d-b034-93da7391c01f",
+        "fe83a0eb-a853-422d-aac2-1bffd182c5d0"
+      ],
+      "defender_recommendations": [
+        "Kubernetes clusters should be accessible only over HTTPS",
+        "Only secure connections to your Azure Cache for Redis should be enabled",
+        "FTPS only should be required in your Function App",
+        "Secure transfer to storage accounts should be enabled",
+        "FTPS should be required in your Web App",
+        "Windows web servers should be configured to use secure communication protocols",
+        "Function App should only be accessible over HTTPS",
+        "Latest TLS version should be used in your API App",
+        "FTPS only should be required in your API App",
+        "Web Application should only be accessible over HTTPS",
+        "API App should only be accessible over HTTPS",
+        "Enforce SSL connection should be enabled for PostgreSQL database servers",
+        "Enforce SSL connection should be enabled for MySQL database servers",
+        "Latest TLS version should be used in your Web App",
+        "Latest TLS version should be used in your Function App"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.4 - Encrypt All Sensitive Information in Transit"
+        ],
+        "CIS v8": [
+          "3.10 - Encrypt Sensitive Data In Transit"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-8: TRANSMISSION CONFIDENTIALITY AND INTEGRITY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.5",
+          "3.6",
+          "4.1"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-4",
+      "domain": "Data Protection",
+      "control_name": "Enable data at rest encryption by default",
+      "description": "To complement access controls, data at rest should be protected against 'out of band' attacks (such as accessing underlying storage) using encryption. This helps ensure that attackers cannot easily read or modify the data.",
+      "azure_policy_ids": [
+        "08a6b96f-576e-47a2-8511-119a212d344d",
+        "146412e9-005c-472b-9e48-c87b72ac229e",
+        "17k78e20-9358-41c9-923c-fb736d382a12",
+        "1fd32ebd-e4c3-4e13-a54a-d7422d4d95f6",
+        "24fba194-95d6-48c0-aea7-f65bf859c598",
+        "3657f5a0-770e-44a3-b44e-9431ba1e9735",
+        "3a58212a-c829-4f13-9872-6371df2fd0b4",
+        "3dc5edcd-002d-444c-b216-e123bbfa37c0",
+        "40e85574-ef33-47e8-a854-7a65c7500560",
+        "41425d9f-d1a5-499a-9932-f8ed8453932c",
+        "46aa9b05-0e60-4eae-a88b-1e9d374fa515",
+        "4733ea7b-a883-42fe-8cac-97454c2a9e4a",
+        "617c02be-7f02-4efd-8836-3180d47b6c68",
+        "6599ab01-29bc-4852-a6f5-de9e2151714a",
+        "7c6c7139-7d8e-45d0-9d94-72386a61308b",
+        "836cd60e-87f3-4e6a-a27c-29d687f01a4c",
+        "b4ac1030-89c5-4697-8e00-28b5ba6a8811",
+        "c349d81b-9985-44ae-a8da-ff98d108ede8",
+        "ca88aadc-6e2b-416c-9de2-5a0f01d1693f",
+        "ca91455f-eace-4f96-be59-e6e2c35b4816",
+        "cfaf0007-99c7-4b01-b36b-4048872ac978",
+        "ddcf4b94-9dfa-4a80-aca6-22bb654fde72",
+        "ea0dfaed-95fb-448c-934e-d6e713ce393d",
+        "ebaf4f25-a4e8-415f-86a8-42d9155bef0b",
+        "ec068d99-e9c7-401f-8cef-5bdde4e6ccf1",
+        "f4b53539-8df9-40e4-86c6-6b607703bd4e",
+        "f87b2739-92be-4121-af7f-39c0a5a24f20",
+        "fc4d8e41-e223-45ea-9bf5-eada37891d87"
+      ],
+      "defender_recommendations": [
+        "Virtual machines should encrypt temp disks, caches, and data flows between Compute and Storage resources",
+        "Transparent Data Encryption on SQL databases should be enabled",
+        "Automation account variables should be encrypted",
+        "Service Fabric clusters should have the ClusterProtectionLevel property set to EncryptAndSign"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.8 - Encrypt Sensitive Information at Rest"
+        ],
+        "CIS v8": [
+          "3.11 - Encrypt Sensitive Data at Rest"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-28: PROTECTION OF INFORMATION AT REST"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.4",
+          "3.5"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-5",
+      "domain": "Data Protection",
+      "control_name": "Use customer-managed key option in data at rest encryption when required",
+      "description": "If required for regulatory compliance, define the use case and service scope where customer-managed key option is needed. Enable and implement data at rest encryption using customer-managed key in services.",
+      "azure_policy_ids": [
+        "051cba44-2429-45b9-9649-46cec11c7119",
+        "09aa11bb-87ec-409f-bf0b-49b7c1561a87",
+        "0a370ff3-6cab-4e85-8995-295fd854c5b8",
+        "0aa61e00-0a01-4a3c-9945-e93cffedf0e6",
+        "12c74c95-0efd-48da-b8d9-2a7d68470c92",
+        "14961b63-a1eb-4378-8725-7e84ca8db0e6",
+        "18adea5e-f416-4d0f-8aa8-d24321e3e274",
+        "1f68a601-6e6d-4e42-babf-3f643a047ea2",
+        "1f905d99-2ab7-462c-a6b0-f709acca6c8f",
+        "1fafeaf6-7927-4059-a50a-8eb2a7a6f2b5",
+        "295fc8b1-dc9f-4f53-9c61-3f313ceab40a",
+        "2cc2c3b5-c2f8-45aa-a9e6-f90d85ae8352",
+        "2e94d99a-8a36-4563-bc77-810d8893b671",
+        "413923f0-ff16-41ae-8583-90c5c5d9fa8f",
+        "43c323f6-0329-4f7c-a19a-6e5a5690d042",
+        "46388f67-373c-4018-98d3-2b83172dd13a",
+        "47031206-ce96-41f8-861b-6a915f3de284",
+        "4d080fa5-a6d2-4f98-ba9c-f482d0d335c0",
+        "4ec52d6d-beb7-40c4-9a9e-fe753254690e",
+        "51522a96-0869-4791-82f3-981000c2c67f",
+        "56a5ee18-2ae6-4810-86f7-18e39ce5629b",
+        "5b9159ae-1701-4a6f-9a7a-aa9c8ddd0580",
+        "64d314f6-6062-4780-a861-c23e8951bee5",
+        "65c4f833-1f2e-426c-8780-f6d7593bed7a",
+        "67121cc7-ff39-4ab8-b7e3-95b84dab487d",
+        "6fac406b-40ca-413b-bf8e-0bf964659c25",
+        "702dd420-7fcc-42c5-afe8-4026edd20fe0",
+        "7698f4ed-80ce-4e13-b408-ee135fa400a5",
+        "76a56461-9dc0-40f0-82f5-2453283afa2f",
+        "7c322315-e26d-4174-a99e-f49d351b4688",
+        "7d7be79c-23ba-4033-84dd-45e2a5ccdd67",
+        "7f40cee6-e933-4d0f-a782-b96615e0f4a6",
+        "81e74cea-30fd-40d5-802f-d72103c2aaaa",
+        "83cef61d-dbd1-4b20-a4fc-5fbc7da10833",
+        "86efb160-8de7-451d-bc08-5d475b0aadae",
+        "87ba29ef-1ab3-4d82-b763-87fcd4f531f7",
+        "967a4b4b-2da9-43c1-b7d0-f98d0d74d0b1",
+        "970f84d8-71b6-4091-9979-ace7e3fb6dbb",
+        "99e9ccd8-3db9-4592-b0d1-14b1715a4d8a",
+        "a1ad735a-e96f-45d2-a7b2-9a4932cab7ec",
+        "ac01ad65-10e5-46df-bdd9-6b0cad13e1d2",
+        "b5ec538c-daa0-4006-8596-35468b9148e8",
+        "ba769a63-b8cc-4b2d-abf6-ac33c7204be8",
+        "bfecdea6-31c4-4045-ad42-71b9dc87247d",
+        "c42dee8c-0202-4a12-bd8e-3e171cbf64dd",
+        "ca91455f-eace-4f96-be59-e6e2c35b4816",
+        "d461a302-a187-421a-89ac-84acdb4edc04",
+        "ee8ca833-1583-4d24-837e-96c2af9488a4",
+        "f0e5abd0-2554-4736-b7c0-4ffef23475ef",
+        "f5c8be13-ecfa-4ed7-beee-fcd8a6d9519d",
+        "f7d52b2d-e161-4dfa-a82b-55e564167385",
+        "fbb99e8e-e444-4da0-9ff1-75c92f5a85b2"
+      ],
+      "defender_recommendations": [
+        "SQL managed instances should use customer-managed keys to encrypt data at rest",
+        "SQL servers should use customer-managed keys to encrypt data at rest",
+        "PostgreSQL servers should use customer-managed keys to encrypt data at rest",
+        "Azure Cosmos DB accounts should use customer-managed keys to encrypt data at rest",
+        "Container registries should be encrypted with a customer-managed key",
+        "Cognitive Services accounts should enable data encryption with a customer-managed key",
+        "Storage accounts should use customer-managed key for encryption",
+        "MySQL servers should use customer-managed keys to encrypt data at rest",
+        "Azure Machine Learning workspaces should be encrypted with a customer-managed key"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.8 - Encrypt Sensitive Information at Rest"
+        ],
+        "CIS v8": [
+          "3.11 - Encrypt Sensitive Data at Rest"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-12: CRYPTOGRAPHIC KEY ESTABLISHMENT AND MANAGEMENT",
+          "SC-28: PROTECTION OF INFORMATION AT REST"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.4",
+          "3.5",
+          "3.6"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-6",
+      "domain": "Data Protection",
+      "control_name": "Use a secure key management process",
+      "description": "Document and implement an enterprise cryptographic key management standard, processes, and procedures to control your key lifecycle. When there is a need to use customer-managed key in the services, use a secured key vault service for key generation, distribution, and storage. Rotate and revoke your keys based on the defined schedule and when there is a key retirement or compromise.",
+      "azure_policy_ids": [
+        "044985bb-afe1-42cd-8a36-9d5d42424537",
+        "127ef6d7-242f-43b3-9eef-947faf1725d0",
+        "152b15f7-8e1f-4c1f-ab71-8c010ba5dbc0",
+        "1d478a74-21ba-4b9f-9d8f-8e6fced0eec5",
+        "342e8053-e12e-4c44-be01-c3c2f318400f",
+        "49a22571-d204-4c91-a7b6-09b1a586fbc9",
+        "587c79fe-dd04-4a5e-9d0b-f89598c7261b",
+        "5ff38825-c5d8-47c5-b70e-069a21955146",
+        "75c4f823-d65c-4f29-a733-01d0077fdbcb",
+        "82067dbb-e53b-4e06-b631-546d197452d9",
+        "86810a98-8e91-4a44-8386-ec66d0de5d57",
+        "98728c90-32c7-4049-8429-847dc0f4fe37",
+        "9d83ccb1-f313-46ce-9d39-a198bfdb51a0",
+        "ad27588c-0198-4c84-81ef-08efd0274653",
+        "b0eb591a-5e70-4534-a8bf-04b9c489584a",
+        "c26e4b24-cf98-4c67-b48b-5a25c4c69eb9",
+        "c39ba22d-4428-4149-b981-70acb31fc383",
+        "d8cf8476-a2ec-4916-896e-992351803c44",
+        "dbbdc317-9734-4dd8-9074-993b29c69008",
+        "e58fd0c1-feac-4d12-92db-0a7e9421f53e",
+        "e8d99835-8a06-45ae-a8e0-87a91941ccfe",
+        "f1cc7827-022c-473e-836e-5a51cae0b249",
+        "ff25f3c8-b739-4538-9d07-3d6d25cfb255"
+      ],
+      "defender_recommendations": [
+        "Key Vault keys should have an expiration date",
+        "Key Vault secrets should have an expiration date"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "SC-12: CRYPTOGRAPHIC KEY ESTABLISHMENT AND MANAGEMENT",
+          "SC-28: PROTECTION OF INFORMATION AT REST"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.6"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-7",
+      "domain": "Data Protection",
+      "control_name": "Use a secure certificate management process",
+      "description": "Document and implement an enterprise certificate management standard, processes and procedures which includes the certificate lifecycle control, and certificate policies (if a public key infrastructure is needed).\n\nEnsure certificates used by the critical services in your organization are inventoried, tracked, monitored, and renewed timely using automated mechanism to avoid service disruption.",
+      "azure_policy_ids": [
+        "0a075868-4c26-42ef-914c-5bc007359560",
+        "1151cede-290b-4ba0-8b38-0ad145ac888f",
+        "12ef42cb-9903-4e39-9c26-422d29570417",
+        "8e826246-c976-48f6-b03e-619bb92b3d82",
+        "a22f4a40-01d3-4c7d-8071-da157eeff341",
+        "bd78111f-4953-4367-9fd5-7e08808b54bf",
+        "cee51871-e572-4576-855c-047c820360f0",
+        "f772fb64-8e40-40ad-87bc-7706e1949427"
+      ],
+      "defender_recommendations": [
+        "[Preview]: Certificates should have the specified maximum validity period"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "SC-12: CRYPTOGRAPHIC KEY ESTABLISHMENT AND MANAGEMENT",
+          "SC-17: PUBLIC KEY INFRASTRUCTURE CERTIFICATES"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.6"
+        ]
+      }
+    },
+    {
+      "control_id": "DP-8",
+      "domain": "Data Protection",
+      "control_name": "Ensure security of key and certificate repository",
+      "description": "Ensure the security of the key vault service used for the cryptographic key and certificate lifecycle management. Harden your key vault service through access control, network security, logging and monitoring and backup to ensure keys and certificates are always protected using the maximum security.",
+      "azure_policy_ids": [
+        "0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+        "0e6763cc-5078-4e64-889d-ff4d9a839047",
+        "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
+        "55615ac9-af46-4a59-874e-391cc3dfb490",
+        "75262d3e-ba4a-4f43-85f8-9f72c090e5e3",
+        "a6abeaec-4d90-4a02-805f-6b26c4d3fbe9",
+        "cf820ca0-f99e-4f3e-84fb-66e913812d21"
+      ],
+      "defender_recommendations": [
+        "Key vaults should have purge protection enabled",
+        "Azure Defender for Key Vault should be enabled",
+        "Key vaults should have soft delete enabled",
+        "[Preview]: Azure Key Vault should disable public network access",
+        "[Preview]: Private endpoint should be configured for Key Vault",
+        "Resource logs in Key Vault should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "SC-12: CRYPTOGRAPHIC KEY ESTABLISHMENT AND MANAGEMENT",
+          "SC-17: PUBLIC KEY INFRASTRUCTURE CERTIFICATES"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.6"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-1",
+      "domain": "Identity Management",
+      "control_name": "Use centralized identity and authentication system",
+      "description": "Use a centralized identity and authentication system to govern your organization's identities and authentications for cloud and non-cloud resources.",
+      "azure_policy_ids": [
+        "05f95bb8-8ef8-4cef-8cad-5d30f9912850",
+        "0c28c3fb-c244-42d5-a9bf-f35f2999577b",
+        "199d5677-e4d9-4264-9465-efe1839c06bd",
+        "1f314764-cb73-4fc9-b863-8eca98ac36e9",
+        "2158ddbe-fefa-408e-b43f-d4faef8ff3b8",
+        "21a6bc25-125e-4d13-b82d-2e19b7208ab7",
+        "42781ec6-6127-4c30-bdfa-fb423a0047d3",
+        "450d2877-ebea-41e8-b00c-e286317d21bf",
+        "48c5f1cb-14ad-4797-8e3b-f78ab3f8d700",
+        "5450f5bd-9c72-4390-a9c4-a7aba4edfdd2",
+        "5d4e3c65-4873-47be-94f3-6f8b953a3598",
+        "6300012e-e9a4-4649-b41f-a85f5c43be91",
+        "6ea81a52-5ca7-4575-9669-eaa910b7edf8",
+        "71ef260a-8f18-47b7-abcb-62d0673d94dc",
+        "78215662-041e-49ed-a9dd-5385911b3a1f",
+        "8632b003-3545-4b29-85e6-b2b96773df1e",
+        "871b205b-57cf-4e1e-a234-492616998bf7",
+        "8bfadddb-ee1c-4639-8911-a38cb8e0b3bd",
+        "8c6a50c6-9ffd-4ae7-986f-5fa6111f9a54",
+        "95bccee9-a7f8-4bec-9ee9-62c3473701fc",
+        "993c2fcd-2b29-49d2-9eb0-df2c3a730c32",
+        "9f2dea28-e834-476c-99c5-3507b4728395",
+        "abda6d70-9778-44e7-84a8-06713e6db027",
+        "ae9fb87f-8a17-4428-94a4-8135d431055c",
+        "aede300b-d67f-480a-ae26-4b3dfb1a1fdc",
+        "b3a22bc9-66de-45fb-98fa-00f5df42f41a",
+        "b4dec045-250a-48c2-b5cc-e0c4eec8b5b4",
+        "b54ed75b-3e1a-44ac-a333-05ba39b99ff0",
+        "b66ab71c-582d-4330-adfd-ac162e78691e",
+        "c75248c1-ea1d-4a9c-8fc9-29a6aabd5da8",
+        "cfb11c26-f069-4c14-8e36-56c394dae5af",
+        "dc921057-6b28-4fbe-9b83-f7bec05db6c2",
+        "e15effd4-2278-4c65-a0da-4d6f6d1890e2",
+        "e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
+        "fa498b91-8a7e-4710-9578-da944c68d1fe",
+        "fd9903f1-38c2-4d36-8e44-5c1c20c561e8",
+        "ff05e24e-195c-447e-b322-5e90c9f9f366",
+        "ffea632e-4e3a-4424-bf78-10e179bb2e1a"
+      ],
+      "defender_recommendations": [
+        "An Azure Active Directory administrator should be provisioned for SQL servers",
+        "Service Fabric clusters should only use Azure Active Directory for client authentication"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "16.1 - Maintain an Inventory of",
+          "Authentication Systems",
+          "16.2 - Configure Centralized",
+          "Point of Authentication"
+        ],
+        "CIS v8": [
+          "6.7 - Centralize Access Control",
+          "12.5 - Centralize Network Authentication, Authorization, and Auditing (AAA)"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "IA-2: IDENTIFICATION AND AUTHENTICATION (ORGANIZATIONAL USERS)",
+          "IA-8: IDENTIFICATION AND AUTHENTICATION (NON-ORGANIZATIONAL USERS)"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.2",
+          "8.3"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-2",
+      "domain": "Identity Management",
+      "control_name": "Protect identity and authentication systems",
+      "description": "Secure your identity and authentication system as a high priority in your organization's cloud security practice. Common security controls include: \n- Restrict privileged roles and accounts\n- Require strong authentication for all privileged access\n- Monitor and audit high risk activities",
+      "azure_policy_ids": [
+        "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"
+      ],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.3 - Ensure the Use of Dedicated Administrative Accounts",
+          "4.5 - Use Multi-Factor Authentication for All Administrative Access"
+        ],
+        "CIS v8": [
+          "5.4 - Restrict Administrator Privileges to Dedicated Administrator Accounts",
+          "6.5 - Require MFA for Administrative Access"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "IA-2: IDENTIFICATION AND AUTHENTICATION (ORGANIZATIONAL USERS)",
+          "IA-8: IDENTIFICATION AND AUTHENTICATION (NON-ORGANIZATIONAL USERS)",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "8.2",
+          "8.3"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-3",
+      "domain": "Identity Management",
+      "control_name": "Manage application identities securely and automatically",
+      "description": "Use managed application identities instead of creating human accounts for applications to access resources and execute code. Managed application identities provide benefits such as reducing the exposure of credentials. Automate the rotation of credential to ensure the security of the identities.",
+      "azure_policy_ids": [
+        "09963c90-6ee7-4215-8d26-1cc660a1682f",
+        "0da106f2-4ca3-48e8-bc85-c638fe6aea8f",
+        "2571b7c3-3056-4a61-b00a-9bc5232234f5",
+        "2b9ad585-36bc-4615-b300-fd4435808332",
+        "4a15c15f-90d5-4a1f-8b63-2903944963fd",
+        "516187d4-ef64-4a1b-ad6b-a7348502976c",
+        "5f0c7d88-c7de-45b8-ac49-db49e72eaa78",
+        "ae62c456-33de-4dc8-b100-7ce9028a7d99",
+        "b874ab2d-72dd-47f1-8cb5-4a306478a4e7",
+        "bcff6755-335b-484d-b435-d1161db39cdc",
+        "d26f7642-7545-4e18-9b75-8c9bbdee3a9a",
+        "d367bd60-64ca-4364-98ea-276775bddd94",
+        "da6e2401-19da-4532-9141-fb8fbde08431",
+        "dea83a72-443c-4292-83d5-54a2f98749c0",
+        "e4953962-5ae4-43eb-bb92-d66fd5563487",
+        "ea6c4923-510a-4346-be26-1894919a5b97",
+        "f40c7c00-b4e3-4068-a315-5fe81347a904",
+        "f78ccdb4-7bf4-4106-8647-270491d2978a",
+        "fd1a8e20-2c4f-4a6c-9354-b58d786d9a1f",
+        "fe3fd216-4f83-4fc1-8984-2bbec80a3418"
+      ],
+      "defender_recommendations": [
+        "Managed identity should be used in your Function App",
+        "Managed identity should be used in your Web App",
+        "Service principals should be used to protect your subscriptions instead of management certificates",
+        "Managed identity should be used in your API App",
+        "Virtual machines' Guest Configuration extension should be deployed with system-assigned managed identity"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "IA-4: IDENTIFIER MANAGEMENT",
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "IA-9: SERVICE IDENTIFICATION AND AUTHENTICATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-4",
+      "domain": "Identity Management",
+      "control_name": "Authenticate server and services",
+      "description": "Authenticate remote servers and services from your client side to ensure you are connecting to trusted server and services. The most common server authentication protocol is Transport Layer Security (TLS), where the client-side (often a browser or client device) verifies the server by verifying the server’s certificate was issued by a trusted certificate authority.\n\nNote: Mutual authentication can be used when both the server and the client authenticate one-another.",
+      "azure_policy_ids": [
+        "32e6bbec-16b6-44c2-be37-c5b672d103cf",
+        "5b0bd968-5cb5-4513-8987-27786c6f0df8",
+        "8ac833bd-f505-48d5-887e-c993a1d3eea0",
+        "92bb331d-ac71-416a-8c91-02f2cb734ce4",
+        "c15dcc82-b93c-4dcb-9332-fbf121685b54"
+      ],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-9: SERVICE IDENTITIFICATION AND AUTHENTICATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-5",
+      "domain": "Identity Management",
+      "control_name": "Use single sign-on (SSO) for application access",
+      "description": "Use single sign-on (SSO) to simplify the user experience for authenticating to resources including applications and data across cloud services and on-premises environments.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "16.2 - Configure Centralized Point of Authentication"
+        ],
+        "CIS v8": [
+          "12.5 - Centralize Network Authentication, Authorization, and Auditing (AAA)"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-4: IDENTIFIER MANAGEMENT",
+          "IA-2: IDENTIFICATION AND AUTHENTICATION (ORGANIZATIONAL USERS)",
+          "IA-8: IDENTIFICATION AND AUTHENTICATION (NON-ORGANIZATIONAL USERS)"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-6",
+      "domain": "Identity Management",
+      "control_name": "Use strong authentication controls",
+      "description": "Enforce strong authentication controls (strong passwordless authentication or multi-factor authentication) with your centralized identity and authentication management system for all access to resources. Authentication based on password credentials alone is considered legacy, as it is insecure and does not stand up to popular attack methods. \n\nWhen deploying strong authentication, configure administrators and privileged users first, to ensure the highest level of the strong authentication method, quickly followed by rolling out the appropriate strong authentication policy to all users.\n\nNote: If legacy password-based authentication is required for legacy applications and scenarios, ensure password security best practices such as complexity requirements, are followed.",
+      "azure_policy_ids": [
+        "630c64f9-8b6b-4c64-b511-6544ceff6fd6"
+      ],
+      "defender_recommendations": [
+        "Authentication to Linux machines should require SSH keys",
+        "MFA should be enabled accounts with write permissions on your subscription",
+        "MFA should be enabled on accounts with owner permissions on your subscription",
+        "MFA should be enabled on accounts with read permissions on your subscription"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.2 - Change Default Passwords",
+          "4.5 - Use Multifactor Authentication For All Administrative Access",
+          "12.11 - Require All Remote Logins to Use Multi-Factor Authentication",
+          "16.3 - Require Multi-Factor Authentication"
+        ],
+        "CIS v8": [
+          "6.3 - Require MFA for Externally-Exposed Applications",
+          "6.4 - Require MFA for Administrative Access"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "IA-2: IDENTIFICATION AND AUTHENTICATION (ORGANIZATIONAL USERS)",
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "IA-8: IDENTIFICATION AND AUTHENTICATION (NON-ORGANIZATIONAL USERS)"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.2",
+          "8.2",
+          "8.3",
+          "8.4"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-7",
+      "domain": "Identity Management",
+      "control_name": "Restrict resource access based on  conditions",
+      "description": "Explicitly validate trusted signals to allow or deny user access to resources, as part of a zero-trust access model. Signals to validate should include strong authentication of user account, behavioral analytics of user account, device trustworthiness, user or group membership, locations and so on.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "12.11 - Require All Remote Logins to Use Multi-Factor Authentication",
+          "12.12 - Manage All Devices Remotely Logging Into Internal Network",
+          "14.6 - Protect Information Through Access Control Lists",
+          "16.3 - Require Multi-Factor Authentication"
+        ],
+        "CIS v8": [
+          "3.3 - Configure Data Access Control Lists",
+          "6.4 - Require MFA for Administrative Access",
+          "13.5 - Manage Access Control for Remote Assets"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.2"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-8",
+      "domain": "Identity Management",
+      "control_name": "Restrict the exposure of credential and secrets",
+      "description": "Ensure that application developers securely handle credentials and secrets:\n- Avoid embedding the credentials and secrets into the code and configuration files\n- Use key vault or a secure key store service to store the credentials and secrets\n- Scan for credentials in source code.  \n\nNote: This is often governed and enforced through a secure software development lifecycle (SDLC) and DevOps security process",
+      "azure_policy_ids": [
+        "3ac7c827-eea2-4bde-acc7-9568cd320efa",
+        "f1cc7827-022c-473e-836e-5a51cae0b249"
+      ],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "18.1 - Establish Secure Coding Practices",
+          "18.6 - Ensure Software Development Personnel Are Trained in Secure Coding",
+          "18.7 - Apply Static and Dynamic Code Analysis Tools"
+        ],
+        "CIS v8": [
+          "16.9 - Train Developers in Application Security Concepts and Secure Coding",
+          "16.12 - Implement Code-Level Security Checks"
+        ],
+        "NIST SP800-53 r4": [
+          "IA-5: AUTHENTICATOR MANAGEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.5",
+          "6.3",
+          "8.2"
+        ]
+      }
+    },
+    {
+      "control_id": "IM-9",
+      "domain": "Identity Management",
+      "control_name": "Secure user access to  existing applications",
+      "description": "In a hybrid environment, where you have on-premises applications or non-native cloud applications using legacy authentication, consider solutions such as cloud access security broker (CASB), application proxy, single sign-on (SSO)  to govern the access to these applications for the following benefits:\n- Enforce a centralized strong authentication\n- Monitor and control risky end-user activities \n- Monitor and remediate risky legacy applications activities\n- Detect and prevent sensitive data transmission",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "12.10 Decrypt Network Traffic at Proxy",
+          "16.2 Configure Centralized Point of Authentication"
+        ],
+        "CIS v8": [
+          "6.7 - Centralize Access Control",
+          "12.5 - Centralize Network Authentication, Authorization, and Auditing (AAA)"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "SC-11: TRUSTED PATH"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-1",
+      "domain": "Privileged Access",
+      "control_name": "Separate and limit highly privileged/administrative users",
+      "description": "Ensure you are identifying all high business impact accounts. Limit the number of privileged/administrative accounts in your cloud's control plane, management plane and data/workload plane.",
+      "azure_policy_ids": [
+        "09024ccc-0c5f-475e-9457-b7c0d9ed487b",
+        "0cfea604-3201-4e14-88fc-fae4c427a6c5",
+        "339353f6-2387-4a45-abe4-7f529d121046",
+        "4f11b553-d42e-4e3a-89be-32ca364cad4c",
+        "c7031eab-0fc0-4cd9-acd0-4497bd66d91a"
+      ],
+      "defender_recommendations": [
+        "There should be more than one owner assigned to your subscription",
+        "A maximum of 3 owners should be designated for your subscription",
+        "Deprecated accounts with owner permissions should be removed from your subscription",
+        "External accounts with owner permissions should be removed from your subscription"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.3 - Ensure the Use of Dedicated Administrative Accounts",
+          "14.6 - Protect Information Through Access Control Lists"
+        ],
+        "CIS v8": [
+          "5.4 - Restrict Administrator Privileges to Dedicated Administrator Accounts",
+          "6.8 - Define and Maintain Role-Based Access Control"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.1",
+          "7.2",
+          "8.1"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-2",
+      "domain": "Privileged Access",
+      "control_name": "Avoid standing access for user accounts and permissions",
+      "description": "Instead of creating standing privileges, use just-in-time (JIT) mechanism to assign privileged access to the different resource tiers.",
+      "azure_policy_ids": [
+        "b0f33259-77d7-4c9e-aac6-3aabcfae693c"
+      ],
+      "defender_recommendations": [
+        "Management ports of virtual machines should be protected with just-in-time network access control"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-3",
+      "domain": "Privileged Access",
+      "control_name": "Manage lifecycle of identities and entitlements",
+      "description": "Use an automated process or technical control to manage the identity and access lifecycle including the request, review, approval, provision, and deprovision.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "16.7 - Establish Process for Revoking Access"
+        ],
+        "CIS v8": [
+          "6.1 - Establish an Access Granting Process",
+          "6.2 - Establish an Access Revoking Process"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-5: SEPARATION OF DUTIES",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.1",
+          "7.2",
+          "8.1"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-4",
+      "domain": "Privileged Access",
+      "control_name": "Review and reconcile user access regularly",
+      "description": "Conduct regular review of privileged account entitlements. Ensure the access granted to the accounts are valid for administration of control plane, management plane, and workloads.",
+      "azure_policy_ids": [
+        "0cfea604-3201-4e14-88fc-fae4c427a6c5",
+        "339353f6-2387-4a45-abe4-7f529d121046",
+        "8d7e1fde-fe26-4b5f-8108-f8e432cbc2be",
+        "94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
+        "e9ac8f8e-ce22-4355-8f04-99b911d6be52"
+      ],
+      "defender_recommendations": [
+        "External accounts with write permissions should be removed from your subscription",
+        "External accounts with read permissions should be removed from your subscription",
+        "Deprecated accounts should be removed from your subscription",
+        "Deprecated accounts with owner permissions should be removed from your subscription",
+        "External accounts with owner permissions should be removed from your subscription"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.1 - Maintain Inventory of Administrative Accounts",
+          "16.6 - Maintain an Inventory of Accounts",
+          "16.8 - Disable Any Unassociated Accounts",
+          "Disable Dormant Accounts",
+          "16.9 - Disable Dormant Accounts"
+        ],
+        "CIS v8": [
+          "5.1 - Establish and Maintain an Inventory of Accounts",
+          "5.3 - Disable Dormant Accounts",
+          "5.5 - Establish and Maintain an Inventory of Service Accounts"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.1",
+          "7.2",
+          "8.1",
+          "A3.4"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-5",
+      "domain": "Privileged Access",
+      "control_name": "Set up emergency access",
+      "description": "Set up emergency access to ensure that you are not accidentally locked out of your critical cloud infrastructure (such as your identity and access management system) in an emergency. \n\nEmergency access accounts should be rarely used and can be highly damaging to the organization if compromised, but their availability to the organization is also critically important for the few scenarios when they are required.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-6",
+      "domain": "Privileged Access",
+      "control_name": "Use privileged access workstations",
+      "description": "Secured, isolated workstations are critically important for the security of sensitive roles like administrator, developer, and critical service operator.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.6 - Use Dedicated Workstations For All Administrative Tasks",
+          "11.6 - Use Dedicated Machines For All Network Administrative Tasks",
+          "12.12 - Manage All Devices Remotely Logging into Internal Network"
+        ],
+        "CIS v8": [
+          "12.8 - Establish and Maintain Dedicated Computing Resources for All Administrative Work",
+          "13.5 Manage Access Control for Remote Assets"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "SC-2 APPLICATION PARTITIONING",
+          "SC-7: BOUNDARY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-7",
+      "domain": "Privileged Access",
+      "control_name": "Follow just enough administration (least privilege) principle",
+      "description": "Follow the just enough administration (least privilege) principle to manage permissions at fine-grained level. Use features such as role-based access control (RBAC) to manage resource access through role assignments.",
+      "azure_policy_ids": [
+        "12d4fa5e-1f9f-4c21-97a9-b99b3c6611b5",
+        "3aa03346-d8c5-4994-a5bc-7652c2a2aef1",
+        "89f2d532-c53c-4f8f-9afa-4927b1114a0d",
+        "a1817ec0-a368-432a-8057-8371e17ac6ee",
+        "a3dc4946-dba6-43e6-950d-f96532848c9f",
+        "a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
+        "ac4a19c2-fa67-49b4-8ae5-0b2e78c49457",
+        "b278e460-7cfc-4451-8294-cccc40a940d7",
+        "ca8d5704-aa2b-40cf-b110-dc19052825ad",
+        "f4826e5f-6a27-407c-ae3e-9582eb39891d"
+      ],
+      "defender_recommendations": [
+        "Audit usage of custom RBAC rules",
+        "Role-Based Access Control (RBAC) should be used on Kubernetes Services"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.6 - Protect Information Through Access Control Lists"
+        ],
+        "CIS v8": [
+          "3.3 - Configure Data Access Control Lists",
+          "6.8 - Define and Maintain Role-Based Access Control"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.1",
+          "7.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PA-8",
+      "domain": "Privileged Access",
+      "control_name": "Determine access process for cloud provider support",
+      "description": "Establish an approval process and access path for requesting and approving vendor support request and temporary access to your data through a secure channel.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "16.7 - Establish Process for Revoking Access"
+        ],
+        "CIS v8": [
+          "6.1 - Establish an Access Granting Process",
+          "6.2 - Establish an Access Revoking Process"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-1",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Define and establish secure configurations",
+      "description": "Define the secure configuration baselines for different resource types in the cloud. Alternatively, use configuration management tools to establish the configuration baseline automatically before or during resource deployment so the environment can be compliant by default after the deployment.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.1 - Establish Secure Configurations",
+          "11.1 - Maintain Standard Security Configurations for Network Devices"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process",
+          "4.2 - Establish and Maintain a Secure Configuration Process for Network Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "2.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-2",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Audit and enforce secure configurations",
+      "description": "Continuously monitor and alert when there is a deviation from the defined configuration baseline. Enforce the desired configuration according to the baseline configuration by denying the non-compliant configuration or deploy a configuration.",
+      "azure_policy_ids": [
+        "021f8078-41a0-40e6-81b6-c6597da9f3ee",
+        "03a4ecdb-0684-4039-be91-2762979e1bc8",
+        "077f0ce1-86d6-4058-bc60-de05067e8622",
+        "0820b7b9-23aa-4725-a1ce-ae4558f718e5",
+        "098fc59e-46c7-4d99-9b16-64990e543d75",
+        "0a15ec92-a229-4763-bb14-0ea34a568f8d",
+        "0e60b895-3786-45da-8377-9c6b4b6ac5f9",
+        "16697877-1118-4fb1-9b65-9898ec2509ec",
+        "19dd1db6-f442-49cf-a838-b0786b4401ef",
+        "1c6e92c9-99f0-4e55-9cf2-0c234dc48f99",
+        "1dc2fc00-2245-4143-99f4-874c937f13ef",
+        "233a2a17-77ca-4fb1-9b6b-69223d272a44",
+        "34c88cd4-5d72-4dbb-bf77-12c3cafe8791",
+        "423dd1ba-798e-40e4-9c4d-b6902674b423",
+        "47a1ee2f-2a2a-4576-bf2a-e0e36709c2b8",
+        "496223c3-ad65-4ecd-878a-bae78737e9ed",
+        "4dcfb8b5-05cd-4090-a931-2ec29057e1fc",
+        "4f3823b6-6dac-4b5a-9c61-ce1afb829f17",
+        "50c83470-d2f0-4dda-a716-1938a4825f62",
+        "511f5417-5d12-434d-ab2e-816901e72a5e",
+        "524b0254-c285-4903-bee6-bb8126cde579",
+        "5345bb39-67dc-4960-a1bf-427e16b9a0bd",
+        "53a4a537-990c-495a-92e0-7c21a465442c",
+        "5485eac0-7e8f-4964-998b-a44f4f0c1e75",
+        "5744710e-cc2f-4ee8-8809-3b11e89f4bc9",
+        "5e5a0673-649e-4d50-bf9d-5a387a4e2081",
+        "65280eef-c8b4-425e-9aec-af55e55bf581",
+        "679ddf89-ab8f-48a5-9029-e76054077449",
+        "6b2122c1-8120-4ff5-801b-17625a355590",
+        "7008174a-fd10-4ef0-817e-fc820a951d73",
+        "7238174a-fd10-4ef0-817e-fc820a951d73",
+        "7261b898-8a84-4db8-9e04-18527132abb3",
+        "77d40665-3120-4348-b539-3192ec808307",
+        "82985f06-dc18-4a48-bc1c-b9f4f0098cfe",
+        "89691ef9-8c50-49a8-8950-9c7fba41699e",
+        "8c122334-9d20-4eb8-89ea-ac9a705b74ae",
+        "92a89a79-6c52-4a7e-a03f-61306fc49312",
+        "95edb821-ddaf-4404-9732-666045e056b4",
+        "975ce327-682c-4f2e-aa46-b9598289b86c",
+        "9c014953-ef68-4a98-82af-fd0f6b2306c8",
+        "9d0b6ea4-93e2-4578-bf2f-6bb17d22b4bc",
+        "9f061a12-e40d-4183-a00e-171812443373",
+        "a08ae1ab-8d1d-422b-a123-df82b307ba61",
+        "a1a22235-dd10-4062-bd55-7d62778f41b0",
+        "ab6a902f-9493-453b-928d-62c30b11b5a6",
+        "b0fdedee-7b9e-4a17-9f5d-5e8e912d2f01",
+        "b1a9997f-2883-4f12-bdff-2280f99b5915",
+        "b741306c-968e-4b67-b916-5675e5c709f4",
+        "c0e996f8-39cf-4af9-9f45-83fbde810432",
+        "c26596ff-4d70-4e6a-9a30-c2506bd2f80c",
+        "cae7c12e-764b-4c87-841a-fdc6675d196f",
+        "cb510bfd-1cba-4d9f-a230-cb0976f4bb71",
+        "cf426bb8-b320-4321-8545-1b784a5df3a4",
+        "d2e7ea85-6b44-4317-a0be-1b951587f626",
+        "d46c275d-1680-448d-b2ec-e495a3b6cc89",
+        "df49d893-a74c-421d-bc95-c663042e5b80",
+        "e1d1b522-02b0-4d18-a04f-5ab62d20445f",
+        "e1e6c427-07d9-46ab-9689-bfa85431e636",
+        "e24df237-32cb-4a6c-a2f6-85b499cda9f2",
+        "e2c1c086-2d84-4019-bff3-c44ccd95113c",
+        "e345eecc-fa47-480f-9e88-67dcc122b164",
+        "e413671a-dd10-4cc1-a943-45b598596cb7",
+        "f06ddb64-5fa3-4b77-b166-acb36f7f6042",
+        "f110a506-2dcb-422e-bcea-d533fc8c35e2",
+        "f466b2a6-823d-470d-8ea5-b031e72d79ae",
+        "f85eb0dd-92ee-40e9-8a76-db25a507d6d3",
+        "fa98f1b1-1f56-4179-9faf-93ad82f3458f",
+        "fb97d6e1-5c98-4743-a439-23e0977bad9e",
+        "fd4726f4-a5fc-4540-912d-67c96fc992d5",
+        "febd0533-8e55-448f-b837-bd0e06f16469"
+      ],
+      "defender_recommendations": [
+        "CORS should not allow every resource to access your Function Apps",
+        "Kubernetes cluster pod hostPath volumes should only use allowed host paths",
+        "Azure Policy Add-on for Kubernetes service (AKS) should be installed and enabled on your clusters",
+        "Ensure API app has 'Client Certificates (Incoming client certificates)' set to 'On'",
+        "Remote debugging should be turned off for Function Apps",
+        "Kubernetes clusters should not allow container privilege escalation",
+        "Kubernetes cluster services should listen only on allowed ports",
+        "CORS should not allow every resource to access your API App",
+        "[Preview]: Kubernetes clusters should disable automounting API credentials",
+        "Kubernetes cluster containers should only listen on allowed ports",
+        "Kubernetes cluster containers should not share host process ID or host IPC namespace",
+        "Kubernetes cluster containers should only use allowed AppArmor profiles",
+        "CORS should not allow every resource to access your Web Applications",
+        "Operating system version should be the most current version for your cloud service roles",
+        "Ensure WEB app has 'Client Certificates (Incoming client certificates)' set to 'On'",
+        "Kubernetes cluster pods should only use approved host network and port range",
+        "Kubernetes cluster should not allow privileged containers",
+        "[Preview]: Kubernetes clusters should not use the default namespace",
+        "Kubernetes cluster containers should only use allowed capabilities",
+        "Remote debugging should be turned off for Web Applications",
+        "[Preview]: Kubernetes clusters should not grant CAP_SYS_ADMIN security capabilities",
+        "Kubernetes cluster containers should run with a read only root file system",
+        "Kubernetes cluster containers CPU and memory resource limits should not exceed the specified limits",
+        "Remote debugging should be turned off for API Apps",
+        "Function apps should have 'Client Certificates (Incoming client certificates)' enabled",
+        "Kubernetes cluster pods and containers should only run with approved user and group IDs",
+        "Kubernetes cluster containers should only use allowed images",
+        "Kubernetes clusters should gate deployment of vulnerable images"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.4 - Deploy System Configuration Management Tools",
+          "5.5 - Implement Automated Configuration Monitoring Systems",
+          "11.3 - Use Automated Tools to Verify Standard Device Configurations and Detect Changes"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process",
+          "4.2 - Establish and Maintain a Secure Configuration Process for Network Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-3",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Define and establish secure configurations for compute resources",
+      "description": "Define the secure configuration baselines for your compute resources, such as VMs and containers. Use configuration management tools to establish the configuration baseline automatically before or during the compute resource deployment so the environment can be compliant by default after the deployment. Alternatively, use a pre-configured image to build the desired configuration baseline into the compute resource image template.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.1 - Establish Secure Configurations",
+          "5.5 - Implement Automated Configuration Monitoring Systems"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.2",
+          "11.5"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-4",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Audit and enforce secure configurations for compute resources",
+      "description": "Continuously monitor and alert when there is a deviation from the defined configuration baseline in your compute resources. Enforce the desired configuration according to the baseline configuration by denying the non-compliant configuration or deploy a configuration in compute resources.",
+      "azure_policy_ids": [
+        "12017595-5a75-4bb1-9d97-4c2c939ea3c3",
+        "1221c620-d201-468c-81e7-2817e6107e84",
+        "13a6c84f-49a5-410a-b5df-5b880c3fe009",
+        "19be9779-c776-4dfa-8a15-a2fd5dc843d6",
+        "1c30f9cd-b84c-49cc-aa2c-9288447cc3b3",
+        "1cb4d9c2-f88f-4069-bee0-dba239a57b09",
+        "237b38db-ca4d-4259-9e47-7882441ca2c0",
+        "2a7a701e-dff3-4da9-9ec5-42cb98594c0b",
+        "2f262ace-812a-4fd0-b731-b38ba9e9708d",
+        "33936777-f2ac-45aa-82ec-07958ec9ade4",
+        "35781875-8026-4628-b19b-f6efb4d88a1d",
+        "35d9882c-993d-44e6-87d2-db66ce21b636",
+        "3aa2661b-02d7-4ba6-99bc-dc36b10489fd",
+        "3ff60f98-7fa4-410a-9f7f-0b00f5afdbdd",
+        "43bb60fe-1d7e-4b82-9e93-496bfc99e7d5",
+        "492a29ed-d143-4f03-b6a4-705ce081b463",
+        "4ceb8dc2-559c-478b-a15b-733fbf1e3738",
+        "58383b73-94a9-4414-b382-4146eb02611b",
+        "5b054a0d-39e2-4d53-bea3-9734cad2c69b",
+        "5e6bf724-0154-49bc-985f-27b2e07e636b",
+        "672fe5a1-2fcd-42d7-b85d-902b6e28c6ff",
+        "67e010c1-640d-438e-a3a5-feaccb533a98",
+        "72650e9f-97bc-4b2a-ab5f-9781a9fcecbc",
+        "8316fa92-d69c-4810-8124-62414f560dcf",
+        "8537fe96-8cbe-43de-b0ef-131bc72bc22a",
+        "87845465-c458-45f3-af66-dcd62176f397",
+        "8794ff4f-1a35-4e18-938f-0b22055067cd",
+        "94d9aca8-3757-46df-aa51-f218c5f11954",
+        "968410dc-5ca0-4518-8a5b-7b55f0530ea9",
+        "97566dd7-78ae-4997-8b36-1c7bfe0d8121",
+        "a0c11ca4-5828-4384-a2f2-fd7444dd5b4d",
+        "a21f8c92-9e22-4f09-b759-50500d1d2dda",
+        "a2d0e922-65d0-40c4-8f87-ea6da2d307a2",
+        "ae89ebca-1c92-4898-ac2c-9f63decb045c",
+        "b03bb370-5249-4ea4-9fce-2552e87e45fa",
+        "b3248a42-b1c1-41a4-87bc-8bad3d845589",
+        "b4a4d1eb-0263-441b-84cb-a44073d8372d",
+        "bf16e0bb-31e1-4646-8202-60a235cc7e74",
+        "c95b54ad-0614-4633-ab29-104b01235cbf",
+        "caf2d518-f029-4f6b-833b-d7081702f253",
+        "d26f7642-7545-4e18-9b75-8c9bbdee3a9a",
+        "d472d2c9-d6a3-4500-9f5f-b15f123005aa",
+        "d6c69680-54f0-4349-af10-94dd05f4225e",
+        "d96163de-dbe0-45ac-b803-0e9ca0f5764e",
+        "da0f98fe-a24b-4ad5-af69-bd0400233661",
+        "dad3a6b9-4451-492f-a95c-69efc6f3fada",
+        "e068b215-0026-4354-b347-8fb2766f73a2",
+        "e0a7e899-2ce2-4253-8a13-d808fdeb75af",
+        "e6955644-301c-44b5-a4c4-528577de6861",
+        "ea53dbee-c6c9-4f0e-9f9e-de0039b78023",
+        "ee984370-154a-4ee8-9726-19d900e56fc0",
+        "f2143251-70de-4e81-87a8-36cee5a2f29d",
+        "f655e522-adff-494d-95c2-52d4f6d56a42",
+        "f6ec09a3-78bf-4f8f-99dc-6c77182d0f99",
+        "f71be03e-e25b-4d0f-b8bc-9b3e309b66c0",
+        "fc9b3da7-8347-4380-8e70-0a0361d8dedd"
+      ],
+      "defender_recommendations": [
+        "[Preview]: vTPM should be enabled on supported virtual machines",
+        "[Preview]: Guest Attestation extension should be installed on supported Windows virtual machines",
+        "[Preview]: Guest Attestation extension should be installed on supported Linux virtual machines",
+        "[Preview]: Windows machines should meet requirements of the Azure compute security baseline",
+        "[Preview]: Secure Boot should be enabled on supported Windows virtual machines",
+        "[Preview]: Guest Attestation extension should be installed on supported Linux virtual machines scale sets",
+        "Guest Configuration extension should be installed on your machines",
+        "Virtual machines' Guest Configuration extension should be deployed with system-assigned managed identity",
+        "[Preview]: Guest Attestation extension should be installed on supported Windows virtual machines scale sets",
+        "[Preview]: Linux machines should meet requirements for the Azure compute security baseline"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.4 - Deploy System Configuration Management Tools",
+          "5.5 - Implement Automated Configuration Monitoring Systems",
+          "11.3 - Use Automated Tools to Verify Standard Device Configurations and Detect Changes"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-5",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Perform vulnerability assessments",
+      "description": "Perform vulnerabilities assessment for your cloud resources at all tiers in a fixed schedule or on-demand. Track and compare the scan results to verify the vulnerabilities are remediated. The assessment should include all type of vulnerabilities, such as vulnerabilities in Azure services, network, web, operating systems, misconfigurations, and so on.\n\nBe aware of the potential risks associated with the privileged access used by the vulnerability scanners. Follow the privileged access security best practice to secure any administrative accounts used for the scanning.",
+      "azure_policy_ids": [
+        "0049a6b3-a662-4f3e-8635-39cf44ace45a",
+        "1b7aa243-30e4-4c9e-bca8-d0d3022b634a",
+        "3ac7c827-eea2-4bde-acc7-9568cd320efa",
+        "501541f7-f7e7-4cd6-868c-4190fdad3ac9",
+        "ef2a8f2a-b3d9-49cd-a8a8-9a3aaaf647d9"
+      ],
+      "defender_recommendations": [
+        "Vulnerability assessment should be enabled on SQL Managed Instance",
+        "A vulnerability assessment solution should be enabled on your virtual machines",
+        "Vulnerability assessment should be enabled on your SQL servers"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "3.1 - Run Automated Vulnerability Scanning Tools",
+          "3.3 - Protect Dedicated Assessment Accounts",
+          "3.6 - Compare Back-to-back Vulnerability Scans"
+        ],
+        "CIS v8": [
+          "5.5 - Establish and Maintain an Inventory of Service Accounts",
+          "7.1 - Establish and Maintain a Vulnerability Management Process",
+          "7.5 - Perform Automated Vulnerability Scans of Internal Enterprise Assets",
+          "7.6 - Perform Automated Vulnerability Scans of Externally-Exposed Enterprise Assets"
+        ],
+        "NIST SP800-53 r4": [
+          "RA-3: RISK ASSESSMENT",
+          "RA-5: VULNERABILITY SCANNING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.1",
+          "6.2",
+          "6.6",
+          "11.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-6",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Rapidly and automatically remediate vulnerabilities",
+      "description": "Rapidly and automatically deploy patches and updates to remediate vulnerabilities in your cloud resources. Use the appropriate risk-based approach to prioritize the remediation of the vulnerabilities. For example, more severe vulnerabilities in a higher value asset should be addressed as a higher priority.",
+      "azure_policy_ids": [
+        "090c7b07-b4ed-4561-ad20-e9075f3ccaff",
+        "17f4b1cc-c55c-4d94-b1f9-2978f6ac2957",
+        "4df26ba8-026d-45b0-9521-bffa44d741d2",
+        "6ba6d016-e7c3-4842-b8f2-4992ebc0d72d",
+        "6d02d2f7-e38b-4bdc-96f3-adc0a8726abc",
+        "bd876905-5b84-4f73-ab2d-2e7a7c4568d9",
+        "f85bf3e0-d513-442e-89c3-1784ad63382b",
+        "fb893a29-21bb-418c-a157-e99480ec364c",
+        "feedbf84-6b99-488c-acc2-71c829aa5ffc"
+      ],
+      "defender_recommendations": [
+        "Ensure that 'PHP version' is the latest, if used as a part of the Api app",
+        "Ensure that 'PHP version' is the latest, if used as a part of the API app",
+        "Vulnerabilities in security configuration on your virtual machine scale sets should be remediated",
+        "Ensure that 'Java version' is the latest, if used as a part of the Web app",
+        "Ensure that 'Java version' is the latest, if used as a part of the Web app",
+        "Vulnerabilities in Azure Container Registry images should be remediated",
+        "SQL servers on machines should have vulnerability findings resolved",
+        "Ensure that 'Python version' is the latest, if used as a part of the Web app",
+        "Ensure that 'Python version' is the latest, if used as a part of the Web app",
+        "Ensure that 'Python version' is the latest, if used as a part of the Function app",
+        "Ensure that 'Python version' is the latest, if used as a part of the Function app",
+        "Ensure that 'PHP version' is the latest, if used as a part of the WEB app",
+        "Ensure that 'PHP version' is the latest, if used as a part of the WEB app",
+        "Ensure that 'Python version' is the latest, if used as a part of the Api app",
+        "Ensure that 'Python version' is the latest, if used as a part of the API app",
+        "Vulnerabilities should be remediated by a Vulnerability Assessment solution",
+        "System updates should be installed on your machines",
+        "Ensure that 'Java version' is the latest, if used as a part of the Api app",
+        "Ensure that 'Java version' is the latest, if used as a part of the API app",
+        "Ensure that 'Java version' is the latest, if used as a part of the Function app",
+        "Ensure that 'Java version' is the latest, if used as a part of the Function app",
+        "System updates on virtual machine scale sets should be installed",
+        "Vulnerabilities in security configuration on your machines should be remediated",
+        "Vulnerabilities in container security configurations should be remediated",
+        "[Preview]: Kubernetes Services should be upgraded to a non-vulnerable Kubernetes version",
+        "SQL databases should have vulnerability findings resolved"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "3.4 - Deploy Automated Operating System Patch Management Tools",
+          "3.5 - Deploy Automated Software Patch Management Tools",
+          "3.7 - Utilize a Risk-rating Process"
+        ],
+        "CIS v8": [
+          "7.2 - Establish and Maintain a Remediation Process",
+          "7.3 - Perform Automated Operating System Patch Management",
+          "7.4 - Perform Automated Application Patch Management",
+          "7.7 - Remediate Detected Vulnerabilities"
+        ],
+        "NIST SP800-53 r4": [
+          "RA-3: RISK ASSESSMENT",
+          "RA-5: VULNERABILITY SCANNING",
+          "SI-2: FLAW REMEDIATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.1",
+          "6.2",
+          "6.5",
+          "11.2"
+        ]
+      }
+    },
+    {
+      "control_id": "PV-7",
+      "domain": "Posture and Vulnerability Management",
+      "control_name": "Conduct regular red team operations",
+      "description": "Simulate real-world attacks to provide a more complete view of your organization's vulnerability. Red team operations and penetration testing complement the traditional vulnerability scanning approach to discover risks. \n\nFollow industry best practices to design, prepare and conduct this kind of testing to ensure it will not cause damage or disruption to your environment. This should always include discussing testing scope and constraints with relevant stakeholders and resource owners.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "20.1 - Establish a Penetration Testing Program",
+          "20.2 - Conduct Regular External and Internal Penetration Tests",
+          "20.3 - Perform Periodic Red Team Exercises"
+        ],
+        "CIS v8": [
+          "18.1 - Establish and Maintain a Penetration Testing Program",
+          "18.2 - Perform Periodic External Penetration Tests",
+          "18.3 - Remediate Penetration Test Findings",
+          "18.4 - Validate Security Measures",
+          "18.5 - Perform Periodic Internal Penetration Tests"
+        ],
+        "NIST SP800-53 r4": [
+          "CA-8: PENETRATION TESTING",
+          "RA-5: VULNERABILITY SCANNING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.6",
+          "11.2",
+          "11.3"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-1",
+      "domain": "Logging and threat detection",
+      "control_name": "Enable threat detection capabilities",
+      "description": "To support threat detection scenarios, monitor all known resource types for known and expected threats and anomalies. Configure your alert filtering and analytics rules to extract high-quality alerts from log data, agents, or other data sources to reduce false positives.",
+      "azure_policy_ids": [
+        "0a9fbe0d-c5c4-4da8-87d8-f4fd77338835",
+        "0e6763cc-5078-4e64-889d-ff4d9a839047",
+        "1c988dd6-ade4-430f-a608-2a3e5b0a6d38",
+        "1f90fc71-a595-4066-8974-d4d0802e8ef0",
+        "221aac80-54d8-484b-83d7-24f4feac2ce0",
+        "2913021d-f2fd-4f3d-b958-22354e2bdbcb",
+        "3bc8a0d5-38e0-4a3d-a657-2cb64468fc34",
+        "4bb303db-d051-4099-95d2-e3e1428a4d00",
+        "4da35fc9-c9e7-4960-aec9-797fe7d9051d",
+        "640d2586-54d2-465f-877f-9ffc1d2109f4",
+        "6581d072-105e-4418-827f-bd446d56421b",
+        "7926a6d1-b268-4586-8197-e8ae90c877d7",
+        "7fe3b40f-802b-4cdd-8bd4-fd799c948cc2",
+        "8893442c-e7cb-4637-bab8-299a5d4ed96a",
+        "8dfab9c4-fe7b-49ad-85e4-1e9be085358f",
+        "a1181c5f-672a-477a-979a-7d58aa086233",
+        "a1840de2-8088-4ea8-b153-b4c723e9cb01",
+        "a7f5e735-d212-4c32-9229-d12bffbc7e00",
+        "abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
+        "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
+        "adbe85b5-83e6-4350-ab58-bf3a4f736e5e",
+        "bed48b13-6647-468e-aa2f-1af1d3f4dd40",
+        "c3d20c29-b36d-48fe-808b-99a87530ad99",
+        "c6283572-73bb-4deb-bf2c-7a2b8f7462cb",
+        "d31e5c31-63b2-4f12-887b-e49456834fa1",
+        "d38668f5-d155-42c7-ab3d-9b57b50f8fbf",
+        "e71c1e29-9c76-4532-8c4b-cb0573b0014c",
+        "fc47609f-4d9b-4aed-806b-446816cc63a3"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for open-source relational databases should be enabled",
+        "Azure Defender for Key Vault should be enabled",
+        "Azure Defender for App Service should be enabled",
+        "Azure Defender for Storage should be enabled",
+        "Azure Defender for servers should be enabled",
+        "Azure Defender for Kubernetes should be enabled",
+        "Azure Defender for SQL servers on machines should be enabled",
+        "Azure Defender for Azure SQL Database servers should be enabled",
+        "[Preview]: Azure Arc enabled Kubernetes clusters should have Azure Defender's extension installed",
+        "[Preview]: Azure Kubernetes Service clusters should have Azure Defender profile enabled",
+        "Azure Defender for SQL should be enabled for unprotected Azure SQL servers",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances",
+        "[Preview]: Azure Defender for DNS should be enabled",
+        "Windows Defender Exploit Guard should be enabled on your machines",
+        "Azure Defender for container registries should be enabled",
+        "Azure Defender for Resource Manager should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.7 - Regularly Review Logs"
+        ],
+        "CIS v8": [
+          "8.11 - Conduct Audit Log Reviews"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.6",
+          "10.8",
+          "A3.5"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-2",
+      "domain": "Logging and threat detection",
+      "control_name": "Enable threat detection for  identity and access management",
+      "description": "Detect threats for identities and access management by monitoring the user and application sign-in and access anomalies. Behavioral patterns such as excessive number of failed login attempts, and deprecated accounts in the subscription, should be alerted.",
+      "azure_policy_ids": [
+        "0a9fbe0d-c5c4-4da8-87d8-f4fd77338835",
+        "0e6763cc-5078-4e64-889d-ff4d9a839047",
+        "1c988dd6-ade4-430f-a608-2a3e5b0a6d38",
+        "1f90fc71-a595-4066-8974-d4d0802e8ef0",
+        "2913021d-f2fd-4f3d-b958-22354e2bdbcb",
+        "3bc8a0d5-38e0-4a3d-a657-2cb64468fc34",
+        "4da35fc9-c9e7-4960-aec9-797fe7d9051d",
+        "640d2586-54d2-465f-877f-9ffc1d2109f4",
+        "6581d072-105e-4418-827f-bd446d56421b",
+        "7fe3b40f-802b-4cdd-8bd4-fd799c948cc2",
+        "8dfab9c4-fe7b-49ad-85e4-1e9be085358f",
+        "a1840de2-8088-4ea8-b153-b4c723e9cb01",
+        "abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
+        "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
+        "bed48b13-6647-468e-aa2f-1af1d3f4dd40",
+        "c3d20c29-b36d-48fe-808b-99a87530ad99",
+        "c6283572-73bb-4deb-bf2c-7a2b8f7462cb",
+        "d31e5c31-63b2-4f12-887b-e49456834fa1",
+        "d38668f5-d155-42c7-ab3d-9b57b50f8fbf"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for open-source relational databases should be enabled",
+        "Azure Defender for Key Vault should be enabled",
+        "Azure Defender for App Service should be enabled",
+        "Azure Defender for Storage should be enabled",
+        "Azure Defender for servers should be enabled",
+        "Azure Defender for Kubernetes should be enabled",
+        "Azure Defender for SQL servers on machines should be enabled",
+        "Azure Defender for Azure SQL Database servers should be enabled",
+        "[Preview]: Azure Arc enabled Kubernetes clusters should have Azure Defender's extension installed",
+        "[Preview]: Azure Kubernetes Service clusters should have Azure Defender profile enabled",
+        "Azure Defender for SQL should be enabled for unprotected Azure SQL servers",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances",
+        "[Preview]: Azure Defender for DNS should be enabled",
+        "Windows Defender Exploit Guard should be enabled on your machines",
+        "Azure Defender for container registries should be enabled",
+        "Azure Defender for Resource Manager should be enabled",
+        "Resource logs in Azure Kubernetes Service should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.9 - Log and Alert on Unsuccessful Administrative Account Login",
+          "6.7 - Regularly Review Logs",
+          "16.13 - Alert on Account Login Behavior Deviation"
+        ],
+        "CIS v8": [
+          "8.11 - Conduct Audit Log Reviews"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.6",
+          "10.8",
+          "A3.5"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-3",
+      "domain": "Logging and threat detection",
+      "control_name": "Enable logging for security investigation",
+      "description": "Enable logging for your cloud resources to meet the requirements for security incident investigations and security response and compliance purposes.",
+      "azure_policy_ids": [
+        "057ef27e-665e-4328-8ea3-04b3122bd9fb",
+        "138ff14d-b687-4faa-a81c-898c91a87fa2",
+        "1a4e592a-6a6e-44a5-9814-e36264ca96e7",
+        "1b4d1c4e-934c-4703-944c-27c82c06bebb",
+        "245fc9df-fa96-4414-9a0b-3738c2f7341c",
+        "34f95f76-5386-4de7-b824-0d8478470c9d",
+        "383856f8-de7f-44a2-81fc-e5135b5c2aa4",
+        "3b980d31-7904-4bb7-8575-5665739a8052",
+        "3e596b57-105f-48a6-be97-03e9243bad6e",
+        "41388f1c-2db0-4c25-95b2-35d7f5ccbfa9",
+        "428256e6-1fac-4f48-a757-df34c2b3336d",
+        "7796937f-307b-4598-941c-67d3a05ebfe7",
+        "83a214f7-d01a-484b-91a9-ed54470c9a6a",
+        "8a04f872-51e9-4313-97fb-fc1c3543011c",
+        "8a04f872-51e9-4313-97fb-fc1c35430fd8",
+        "91a78b24-f231-4a8a-8da9-02c35b2b6510",
+        "98903777-a9f6-47f5-90a9-acaf62ab01a8",
+        "a2a5b911-5617-447e-a49e-59dbe0e0434b",
+        "a6fb4358-5bf4-4ad7-ba82-2cd2f41ce5e9",
+        "afe0c3be-ba3b-4544-ba52-0c99672a8ad6",
+        "b02aacc0-b073-424e-8298-42b22829ee0a",
+        "b4330a05-a843-4bc8-bf9a-cacce50c67f4",
+        "b954148f-4c11-4c38-8221-be76711e194a",
+        "c5447c04-a4d7-4ba8-a263-c9ee321a6858",
+        "c95c74d9-38fe-4f0d-af86-0c7d626a315c",
+        "cf820ca0-f99e-4f3e-84fb-66e913812d21",
+        "d550e854-df1a-4de9-bf44-cd894b39a95e",
+        "d639b3af-a535-4bef-8dcf-15078cddf5e2",
+        "d9f1f9a9-8795-49f9-9e7b-e11db14caeb2",
+        "ee8a7be2-e9b5-47b9-9d37-d9b141ea78a4",
+        "f8d36e2f-389b-4ee4-898d-21aeb69a0f45",
+        "f9be5368-9bf5-4b84-9e0a-7850da98bb46"
+      ],
+      "defender_recommendations": [
+        "Resource logs in Azure Data Lake Store should be enabled",
+        "Resource logs in Logic Apps should be enabled",
+        "Resource logs in IoT Hub should be enabled",
+        "Resource logs in Batch accounts should be enabled",
+        "Resource logs in Virtual Machine Scale Sets should be enabled",
+        "Resource logs in Event Hub should be enabled",
+        "Auditing on SQL server should be enabled",
+        "Resource logs in Search services should be enabled",
+        "Diagnostic logs in App Services should be enabled",
+        "Resource logs in Data Lake Analytics should be enabled",
+        "Resource logs in Key Vault should be enabled",
+        "Resource logs in Service Bus should be enabled",
+        "Resource logs in Azure Stream Analytics should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.2 - Activate Audit Logging",
+          "6.3 - Enable Detailed Logging",
+          "8.8 - Enable Command-Line Audit Logging"
+        ],
+        "CIS v8": [
+          "8.2 - Collect Audit Logs",
+          "8.5 - Collect Detailed Audit Logs",
+          "8.12 - Collect Service Provider Logs"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.1",
+          "10.2",
+          "10.3"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-4",
+      "domain": "Logging and threat detection",
+      "control_name": "Enable network logging for security investigation",
+      "description": "Enable logging for your network services to support network-related incident investigations, threat hunting, and security alert generation. The network logs may include logs from network services such as IP filtering, network and application firewall, DNS, flow monitoring and so on.",
+      "azure_policy_ids": [
+        "00ec9865-beb6-4cfd-82ed-bd8f50756acd",
+        "0120ef84-66e7-4faf-aad8-14c36389697e",
+        "0ebe872d-7029-4292-88bc-ad3e2cf3772f",
+        "0fdc6116-c747-449c-b9cc-330fcd4c5c9c",
+        "1118afbc-c48d-43ae-931a-87b38956d40b",
+        "11638078-a29c-4cf3-ad7f-775f78327425",
+        "14681907-c749-4d60-8eae-1038537fb8a3",
+        "1513498c-3091-461a-b321-e9b433218d28",
+        "20a921eb-1c4b-4bb7-a78f-6653ad293dba",
+        "23673f24-2594-43e9-9983-60a0be21bd76",
+        "27960feb-a23c-4577-8d36-ef8b5f35e0be",
+        "28e2d787-b5f4-43cf-8cb7-11b54773d379",
+        "2cb215be-a09b-4623-ac2f-dfc5012b1a5b",
+        "2cc39a57-5106-4d41-b872-55c2b9d7b729",
+        "2db34cad-25ef-48e3-a787-c2cd36434cd7",
+        "2f080164-9f4d-497e-9db6-416dc9f7b48a",
+        "2fbd2ca9-e7b2-47a0-a8b2-575f3f7607d4",
+        "3234ff41-8bec-40a3-b5cb-109c95f1c8ce",
+        "339855ce-39c1-4a70-adc9-103ea7aac99f",
+        "37d5d366-8544-498a-9106-00185b29a9e3",
+        "39aa567d-69c2-4cc0-aaa9-76c6d4006b14",
+        "3ca36b5c-2f29-41a0-9b1d-80e2cdf2d947",
+        "40ce1496-89c2-40cf-80e5-3c4687d2ee4b",
+        "4c3c6c5f-0d47-4402-99b8-aa543dd8bcee",
+        "4ce6d386-fc8e-4ac4-9bff-e5859625cea4",
+        "4d46b9c1-0a86-41bf-aaf2-74d0ebf8ce66",
+        "50bdafe5-c7b6-4812-af5f-75dc00561aed",
+        "50d96640-65c9-42de-b79a-95c1890c6ec8",
+        "5fcf46f9-194c-47ff-8889-380f57ae4617",
+        "601e350d-405c-41d0-a886-72c283f8fab2",
+        "60579569-3633-42cb-ae6a-195080bf310d",
+        "6201aeb7-2b5c-4671-8ab4-5d3ba4d77f3b",
+        "6b2899d8-5fdf-4ade-ba59-f1f82664877b",
+        "6ccd32f6-0a9a-40cf-9c5b-6cfd6aba33e9",
+        "6ee1c58c-a123-4cd6-8643-48b2f7ffb3e1",
+        "752154a7-1e0f-45c6-a880-ac75a7e4f648",
+        "76539a09-021e-4300-953b-4c6018ac26dc",
+        "82333640-495e-4249-92bb-2a5e2d07b964",
+        "83089e56-9675-4bc8-ae7d-ca4547dc764b",
+        "887d1795-3d3d-4859-9ef4-9447392db2ea",
+        "889bfebf-7428-426e-a86f-79e2a7de2f71",
+        "8d0e693f-1b54-41d1-880e-199c3caed23f",
+        "92012204-a7e4-4a95-bbe5-90d0d3e12735",
+        "93319447-e347-406b-953f-618c3b599554",
+        "9f4e810a-899e-4e5e-8174-abfcf15739a3",
+        "a08af17e-c2a3-478e-a819-94839ef02b32",
+        "a2361fd4-721d-4be2-9910-53be250b99ad",
+        "a4490248-cb97-4504-b7fb-f906afdb7437",
+        "a6dd4d00-283d-4765-b3d1-44ace2ccacda",
+        "b4a9c220-1d62-4163-a17b-30db7d5b7278",
+        "b55f2e8e-dc76-4262-a0e3-45f02200ff0e",
+        "b79bf56e-c296-4829-afea-6ac9263e7687",
+        "b9b976cc-59ef-468a-807e-19afa2ebfd52",
+        "ba0ba89c-1137-407f-ae7a-19152ea7ae82",
+        "baa4c6de-b7cf-4b12-b436-6e40ef44c8cb",
+        "be9259e2-a221-4411-84fd-dd22c6691653",
+        "c251913d-7d24-4958-af87-478ed3b9ba41",
+        "c29fe1b2-c0b0-4d92-a988-84b484801707",
+        "c5ecf495-6caa-445c-b431-04fda56c555a",
+        "ca09affa-60d6-4cef-9037-b7372e1ac44f",
+        "cac9e1c5-c3cb-47fa-8d4c-88b8559262d2",
+        "d147ba9f-3e17-40b1-9c23-3bca478ba804",
+        "d8624de8-47fe-47c0-bea0-2d8329b628fe",
+        "dc1b5908-da05-4eed-a988-c5e32fdb682d",
+        "e0f5ec01-8979-49bf-9fd7-2a4eff9fa8e0",
+        "e74570cf-1b7d-4bed-b79e-d1fd1117a39a",
+        "e9c56c41-d453-4a80-af93-2331afeb3d82",
+        "eb5a4c26-04cb-4ab1-81cb-726dc58df772",
+        "ed6ae75a-828f-4fea-88fd-dead1145f1dd",
+        "ee64264d-f9e3-4a0e-bbe2-db4319aeaf42",
+        "f8352124-56fa-4f94-9441-425109cdc14b",
+        "fc602c00-2ce3-4556-b615-fa4159517103"
+      ],
+      "defender_recommendations": [
+        "[Preview]: Network traffic data collection agent should be installed on Linux virtual machines",
+        "[Preview]: Network traffic data collection agent should be installed on Windows virtual machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.2 - Activate Audit Logging",
+          "6.3 - Enable Detailed Logging",
+          "7.6 - Log All URL Requests",
+          "8.7 - Enable DNS Query Logging",
+          "12.8 - Deploy NetFlow Collection on Networking Boundary Devices"
+        ],
+        "CIS v8": [
+          "8.2 - Collect Audit Logs",
+          "8.5 - Collect Detailed Audit Logs",
+          "8.6 - Collect DNS Query Audit Logs",
+          "8.7 - Collect URL Request Audit Logs",
+          "13.6 - Collect Network Traffic Flow Logs"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.8"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-5",
+      "domain": "Logging and threat detection",
+      "control_name": "Centralize security log management and analysis",
+      "description": "Centralize logging storage and analysis to enable correlation across log data. For each log source, ensure that you have assigned a data owner, access guidance, storage location, what tools are used to process and access the data, and data retention requirements.",
+      "azure_policy_ids": [
+        "15fdbc87-8a47-4ee9-a2aa-9a2ea1f37554",
+        "1afdc4b6-581a-45fb-b630-f1e6051e3e7a",
+        "32ade945-311e-4249-b8a4-a549924234d7",
+        "3672e6f7-a74d-4763-b138-fcf332042f8f",
+        "c02729e5-e5e7-4458-97fa-2b5ad0661f28",
+        "ec621e21-8b48-403d-a549-fc9023d4747f",
+        "f17d891d-ff20-46f2-bad3-9e0a5403a4d3",
+        "fa298e57-9444-42ba-bf04-86e8470e32c7"
+      ],
+      "defender_recommendations": [
+        "Auto provisioning of the Log Analytics agent should be enabled on your subscription",
+        "[Preview]: Log Analytics agent should be installed on your Linux Azure Arc machines",
+        "Log Analytics agent should be installed on your virtual machine scale sets for Azure Security Center monitoring",
+        "Log Analytics agent should be installed on your virtual machine for Azure Security Center monitoring",
+        "Log Analytics agent health issues should be resolved on your machines",
+        "[Preview]: Log Analytics agent should be installed on your Windows Azure Arc machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.5 - Central Log Management",
+          "6.6 - Deploy SIEM or Log Analytic tool",
+          "6.7 - Regularly Review Logs",
+          "8.6 - Centralize Anti-Malware Logging"
+        ],
+        "CIS v8": [
+          "8.9 - Centralize Audit Logs",
+          "8.11 - Conduct Audit Log Reviews",
+          "13.1 - Centralize Security Event Alerting"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-6",
+      "domain": "Logging and threat detection",
+      "control_name": "Configure log storage retention",
+      "description": "Plan your log retention strategy according to your compliance, regulation, and business requirements. Configure the log retention policy at the individual logging services to ensure the logs are archived appropriately.",
+      "azure_policy_ids": [
+        "89099bee-89e0-4b26-a5f4-165451757743"
+      ],
+      "defender_recommendations": [
+        "SQL servers with auditing to storage account destination should be configured with 90 days retention or higher"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.4 - Ensure Adequate Storage for Logs"
+        ],
+        "CIS v8": [
+          "8.3 - Ensure Adequate Audit Log Storage",
+          "8.10 - Retain Audit Logs"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-11: AUDIT RECORD RETENTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.5",
+          "10.7"
+        ]
+      }
+    },
+    {
+      "control_id": "LT-7",
+      "domain": "Logging and threat detection",
+      "control_name": "Use approved time synchronization sources",
+      "description": "Use approved time synchronization sources for your logging time stamp which include date, time and time zone information.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.1 - Utilize Three Synchronized Time Sources"
+        ],
+        "CIS v8": [
+          "8.4 - Standardize Time Synchronization"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-8: TIME STAMPS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.4"
+        ]
+      }
+    },
+    {
+      "control_id": "AM-1",
+      "domain": "Asset Management",
+      "control_name": "Track asset inventory and their risks",
+      "description": "Track your asset inventory by query and discover all your cloud resources. Logically organize your assets by tagging and grouping your assets based on their service nature, location, or other characteristics. Ensure your security organization has access to a continuously updated inventory of assets.\n\nEnsure your security organization can monitor the risks of the cloud assets by always having security insights and risks aggregated centrally",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "1.1 - Utilize an Active Discovery Tool",
+          "1.2 - Use a Passive Asset Discovery Tool",
+          "1.4 - Maintain Detailed Asset Inventory",
+          "1.5 - Maintain Asset Inventory Information",
+          "2.1 - Maintain Inventory of Authorized Software"
+        ],
+        "CIS v8": [
+          "1.1 - Establish and Maintain Detailed Enterprise Asset Inventory",
+          "1.5 - Use a Passive Asset Discovery Tool",
+          "2.1 - Establish and Maintain a Software Inventory",
+          "2.4 - Utilize Automated Software Inventory Tools"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-8: INFORMATION SYSTEM COMPONENT INVENTORY",
+          "PM-5: INFORMATION SYSTEM INVENTORY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.4"
+        ]
+      }
+    },
+    {
+      "control_id": "AM-2",
+      "domain": "Asset Management",
+      "control_name": "Use only approved services",
+      "description": "Ensure that only approved cloud services can be used, by auditing and restricting which services users can provision in the environment.",
+      "azure_policy_ids": [
+        "1d84d5fb-01f6-4d12-ba4f-4a26081d403d",
+        "1dc2fc00-2245-4143-99f4-874c937f13ef",
+        "37e0d2fe-28a5-43d6-a273-67d37d1f5606"
+      ],
+      "defender_recommendations": [
+        "Virtual machines should be migrated to new Azure Resource Manager resources",
+        "Storage accounts should be migrated to new Azure Resource Manager resources"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "2.7 - Utilize Application Whitelisting",
+          "2.8 - Implement Application Whitelisting of Libraries",
+          "2.9 - Implement Application Whitelisting of Scripts",
+          "9.2 - Ensure Only Approved Ports, Protocols, and Services Are Running"
+        ],
+        "CIS v8": [
+          "2.5 - Allowlist Authorized Software",
+          "2.6 - Allowlist Authorized Libraries",
+          "2.7 - Allowlist Authorized Scripts",
+          "4.8 - Uninstall or Disable Unnecessary Services on Enterprise Assets and Software"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-8: INFORMATION SYSTEM COMPONENT INVENTORY",
+          "PM-5: INFORMATION SYSTEM INVENTORY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.3"
+        ]
+      }
+    },
+    {
+      "control_id": "AM-3",
+      "domain": "Asset Management",
+      "control_name": "Ensure security of asset lifecycle management",
+      "description": "Ensure security attributes or configurations of the assets are always updated during the asset lifecycle.",
+      "azure_policy_ids": [
+        "c8acafaf-3d23-44d1-9624-978ef0f8652c"
+      ],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "1.4 - Maintain Detailed Asset Inventory",
+          "1.5 - Maintain Asset Inventory Information",
+          "2.1 - Maintain Inventory of Authorized Software",
+          "2.4 - Track Software Inventory Information"
+        ],
+        "CIS v8": [
+          "1.1 - Establish and Maintain Detailed Enterprise Asset Inventory",
+          "2.1 - Establish and Maintain a Software Inventory"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-8: INFORMATION SYSTEM COMPONENT INVENTORY",
+          "CM-7: LEAST FUNCTIONALITY"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.4"
+        ]
+      }
+    },
+    {
+      "control_id": "AM-4",
+      "domain": "Asset Management",
+      "control_name": "Limit access to asset management",
+      "description": "Limit users' access to asset management features, to avoid accidental or malicious modification of the assets in your cloud.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.6 - Protect Information Through Access Control Lists"
+        ],
+        "CIS v8": [
+          "3.3 - Configure Data Access Control Lists"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-3: ACCESS ENFORCEMENT"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "AM-5",
+      "domain": "Asset Management",
+      "control_name": "Use only approved applications in virtual machine",
+      "description": "Ensure that only authorized software executes by creating an allow list and block the unauthorized software from executing in your environment.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "Allowlist rules in your adaptive application control policy should be updated",
+        "Adaptive application controls for defining safe applications should be enabled on your machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "2.7 - Utilize Application Whitelisting",
+          "2.8 - Implement Application Whitelisting of Libraries",
+          "2.9 - Implement Application Whitelisting of Scripts",
+          "9.2 - Ensure Only Approved Ports, Protocols, and Services Are Running"
+        ],
+        "CIS v8": [
+          "2.5 - Allowlist Authorized Software",
+          "2.6 - Allowlist Authorized Libraries",
+          "2.7 - Allowlist Authorized Scripts",
+          "4.8 - Uninstall or Disable Unnecessary Services on Enterprise Assets and Software"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-8: INFORMATION SYSTEM COMPONENT INVENTORY",
+          "CM-7: LEAST FUNCTIONALITY",
+          "CM-10: SOFTWARE USAGE RESTRICTIONS",
+          "CM-11: USER-INSTALLED SOFTWARE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.3"
+        ]
+      }
+    },
+    {
+      "control_id": "ES-1",
+      "domain": "Endpoint security",
+      "control_name": "Use Endpoint Detection and Response (EDR)",
+      "description": "Enable Endpoint Detection and Response (EDR) capabilities for VMs and integrate with SIEM and security operations processes.",
+      "azure_policy_ids": [
+        "1ec9c2c2-6d64-656d-6465-3ec3309b8579",
+        "37c043a6-6d64-656d-6465-b362dfeb354a",
+        "4da35fc9-c9e7-4960-aec9-797fe7d9051d",
+        "4eb909e7-6d64-656d-6465-2eeb297a1625",
+        "d30025d0-6d64-656d-6465-67688881b632"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for servers should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "9.4 - Apply Host-Based Firewalls or Port Filtering"
+        ],
+        "CIS v8": [
+          "13.7 - Deploy a Host-Based Intrusion Prevention Solution"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-3: SECURITY FUNCTION ISOLATION",
+          "SI-2: FLAW REMEDIATION",
+          "SI-3: MALICIOUS CODE PROTECTION",
+          "SI-16 MEMORY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "11.5"
+        ]
+      }
+    },
+    {
+      "control_id": "ES-2",
+      "domain": "Endpoint security",
+      "control_name": "Use modern anti-malware software",
+      "description": "Use anti-malware solutions capable of real-time protection and periodic scanning.",
+      "azure_policy_ids": [
+        "9b597639-28e4-48eb-b506-56b05d366257",
+        "bed48b13-6647-468e-aa2f-1af1d3f4dd40",
+        "c43e4a30-77cb-48ab-a4dd-93f175c63b57"
+      ],
+      "defender_recommendations": [
+        "Endpoint protection should be installed on your machines",
+        "Endpoint protection solution should be installed on virtual machine scale sets",
+        "Endpoint protection health issues should be resolved on your machines",
+        "Monitor missing Endpoint Protection in Azure Security Center",
+        "Windows Defender Exploit Guard should be enabled on your machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "8.1 - Utilize Centrally Managed Anti-malware Software"
+        ],
+        "CIS v8": [
+          "10.1 - Deploy and Maintain Anti-Malware Software"
+        ],
+        "NIST SP800-53 r4": [
+          "SC-3: SECURITY FUNCTION ISOLATION",
+          "SI-2: FLAW REMEDIATION",
+          "SI-3: MALICIOUS CODE PROTECTION",
+          "SI-16 MEMORY PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "5.1"
+        ]
+      }
+    },
+    {
+      "control_id": "ES-3",
+      "domain": "Endpoint security",
+      "control_name": "Ensure anti-malware software and signatures are updated",
+      "description": "Ensure anti-malware signatures are updated rapidly and consistently for the anti-malware solution.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "Endpoint protection health issues should be resolved on your machines"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "8.2 - Ensure Anti-Malware Software and Signatures are Updated"
+        ],
+        "CIS v8": [
+          "10.2 - Configure Automatic Anti-Malware Signature Updates"
+        ],
+        "NIST SP800-53 r4": [
+          "SI-2: FLAW REMEDIATION",
+          "SI-3: MALICIOUS CODE PROTECTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "5.2",
+          "5.3"
+        ]
+      }
+    },
+    {
+      "control_id": "BR-1",
+      "domain": "Backup and recovery",
+      "control_name": "Ensure regular automated backups",
+      "description": "Ensure backup of business-critical resources, either during resource creation or enforced through policy for existing resources.",
+      "azure_policy_ids": [
+        "013e242c-8828-4970-87b3-ab247555486d",
+        "09ce66bc-1220-4153-8104-e3f51c936913",
+        "0ec47710-77ff-4a3d-9181-6aa50af424d0",
+        "48af4db5-9b8b-401c-8e74-076be876a430",
+        "82339799-d096-41ae-8538-b108becf0970",
+        "98d0b9f8-fd90-49c9-88e2-d3baf3b0dd86",
+        "bf045164-79ba-4215-8f95-f8048dc1780b",
+        "c58e083e-7982-4e24-afdc-be14d312389e",
+        "d38fc420-0735-4ef3-ac11-c806f651a570"
+      ],
+      "defender_recommendations": [
+        "Azure Backup should be enabled for Virtual Machines",
+        "Geo-redundant backup should be enabled for Azure Database for MariaDB",
+        "Geo-redundant backup should be enabled for Azure Database for PostgreSQL",
+        "Geo-redundant backup should be enabled for Azure Database for MySQL"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "10.1 - Ensure Regular Automated Backups"
+        ],
+        "CIS v8": [
+          "11.2 - Perform Automated Backups"
+        ],
+        "NIST SP800-53 r4": [
+          "CP-2: CONTINGENCY PLAN",
+          "CP-4: CONTINGENCY PLAN TESTING",
+          "CP-9: INFORMATION SYSTEM BACKUP"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "BR-2",
+      "domain": "Backup and recovery",
+      "control_name": "Protect backup and recovery data",
+      "description": "Ensure backup data and operations are protected from data exfiltration, data compromise, ransomware/malware and malicious insiders. The security controls that should be applied include user and network access control, data encryption at-rest and in-transit.",
+      "azure_policy_ids": [
+        "013e242c-8828-4970-87b3-ab247555486d",
+        "0ec47710-77ff-4a3d-9181-6aa50af424d0",
+        "2514263b-bc0d-4b06-ac3e-f262c0979018",
+        "31b8092a-36b8-434b-9af7-5ec844364148",
+        "48af4db5-9b8b-401c-8e74-076be876a430",
+        "82339799-d096-41ae-8538-b108becf0970",
+        "9798d31d-6028-4dee-8643-46102185c016",
+        "d6f6f560-14b7-49a4-9fc8-d2c3a9807868"
+      ],
+      "defender_recommendations": [
+        "Azure Backup should be enabled for Virtual Machines",
+        "Geo-redundant backup should be enabled for Azure Database for MariaDB",
+        "Geo-redundant backup should be enabled for Azure Database for PostgreSQL",
+        "Geo-redundant backup should be enabled for Azure Database for MySQL"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "10.4 - Ensure Protection of Backups"
+        ],
+        "CIS v8": [
+          "11.3 - Protect Recovery Data"
+        ],
+        "NIST SP800-53 r4": [
+          "CP-6: ALTERNATE STORAGE SITE",
+          "CP-9: INFORMATION SYSTEM BACKUP"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.4"
+        ]
+      }
+    },
+    {
+      "control_id": "BR-3",
+      "domain": "Backup and recovery",
+      "control_name": "Monitor backups",
+      "description": "Ensure all business-critical protectable resources are compliant with the defined backup policy and standard.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "10.4 - Ensure Protection of Backups"
+        ],
+        "CIS v8": [
+          "11.3 - Protect Recovery Data"
+        ],
+        "NIST SP800-53 r4": [
+          "CP-9: INFORMATION SYSTEM BACKUP"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "BR-4",
+      "domain": "Backup and recovery",
+      "control_name": "Regularly test backup",
+      "description": "Periodically perform data recovery tests of your backup to verify that the backup configurations and availability of the backup data meets the recovery needs as per defined in the RTO (Recovery Time Objective) and RPO (Recovery Point Objective).",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "10.3 - Test Data on Backup Media"
+        ],
+        "CIS v8": [
+          "11.5 - Test Data Recovery"
+        ],
+        "NIST SP800-53 r4": [
+          "CP-4: CONTINGENCY PLAN TESTING",
+          "CP-9: INFORMATION SYSTEM BACKUP"
+        ],
+        "PCI-DSS v3.2.1": [
+          "N/A"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-1",
+      "domain": "Incident Response",
+      "control_name": "Preparation - update incident response plan and handling process",
+      "description": "Ensure your organization follows industry best practice to develop processes and plans to respond to security incidents on the cloud platforms. Be mindful about the shared responsibility model and the variances across IaaS, PaaS and SaaS services. This will have a direct impact to how you collaborate with your cloud provider in incident response and handling activities, such as incident notification and triage, evidence collection, investigation, eradication and recovery.\n\nRegularly test the incident response plan and handling process to ensure they're up to date.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "19.1 - Document Incident Response Procedures",
+          "19.7 - Conduct Periodic Incident Scenario Sessions for Personnel"
+        ],
+        "CIS v8": [
+          "17.4 - Establish and Maintain an Incident Response Process",
+          "17.7 - Conduct Routine Incident Response Exercises"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING",
+          "IR-8: INCIDENT RESPONSE PLAN"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.8"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-2",
+      "domain": "Incident Response",
+      "control_name": "Preparation - setup incident notification",
+      "description": "Ensure the security alerts and incident notification from the cloud service provider's platform and your environments can be received by correct contact in your incident response organization.",
+      "azure_policy_ids": [
+        "0b15565f-aa9e-48ba-8619-45960f2c314d",
+        "4f4f78b8-e367-4b10-a341-d9a4ad5cf1c7",
+        "6e2593d9-add6-4083-9c9b-4b7d2188c899"
+      ],
+      "defender_recommendations": [
+        "Email notification to subscription owner for high severity alerts should be enabled",
+        "Subscriptions should have a contact email address for security issues",
+        "Email notification for high severity alerts should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "19.2 - Assign Job Titles and Duties for Incident Response",
+          "19.3 - Designate Management Personnel to Support Incident Handling",
+          "19.4 - Devise Organization-wide Standards for Reporting Incidents",
+          "19.5 - Maintain Contact Information For Reporting Security Incidents"
+        ],
+        "CIS v8": [
+          "17.1 - Designate Personnel to Manage Incident Handling",
+          "17.3 - Establish and Maintain an Enterprise Process for Reporting Incidents",
+          "17.6 - Define Mechanisms for Communicating During Incident Response"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING",
+          "IR-8: INCIDENT RESPONSE PLAN",
+          "IR-5: INCIDENT MONITORING",
+          "IR-6: INCIDENT REPORTING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.10"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-3",
+      "domain": "Incident Response",
+      "control_name": "Detection and analysis - create incidents based on high-quality alerts",
+      "description": "Ensure you have a process to create high-quality alerts and measure the quality of alerts. This allows you to learn lessons from past incidents and prioritize alerts for analysts, so they don't waste time on false positives.\n\nHigh-quality alerts can be built based on experience from past incidents, validated community sources, and tools designed to generate and clean up alerts by fusing and correlating diverse signal sources.",
+      "azure_policy_ids": [
+        "0a9fbe0d-c5c4-4da8-87d8-f4fd77338835",
+        "0e6763cc-5078-4e64-889d-ff4d9a839047",
+        "1c988dd6-ade4-430f-a608-2a3e5b0a6d38",
+        "1f90fc71-a595-4066-8974-d4d0802e8ef0",
+        "2913021d-f2fd-4f3d-b958-22354e2bdbcb",
+        "3bc8a0d5-38e0-4a3d-a657-2cb64468fc34",
+        "4da35fc9-c9e7-4960-aec9-797fe7d9051d",
+        "640d2586-54d2-465f-877f-9ffc1d2109f4",
+        "6581d072-105e-4418-827f-bd446d56421b",
+        "7926a6d1-b268-4586-8197-e8ae90c877d7",
+        "7fe3b40f-802b-4cdd-8bd4-fd799c948cc2",
+        "abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
+        "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
+        "c3d20c29-b36d-48fe-808b-99a87530ad99",
+        "c6283572-73bb-4deb-bf2c-7a2b8f7462cb",
+        "d31e5c31-63b2-4f12-887b-e49456834fa1",
+        "d38668f5-d155-42c7-ab3d-9b57b50f8fbf"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for open-source relational databases should be enabled",
+        "Azure Defender for Key Vault should be enabled",
+        "Azure Defender for App Service should be enabled",
+        "Azure Defender for Storage should be enabled",
+        "Azure Defender for servers should be enabled",
+        "Azure Defender for Kubernetes should be enabled",
+        "Azure Defender for SQL servers on machines should be enabled",
+        "Azure Defender for Azure SQL Database servers should be enabled",
+        "Azure Defender for SQL should be enabled for unprotected Azure SQL servers",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances",
+        "[Preview]: Azure Defender for DNS should be enabled",
+        "Azure Defender for container registries should be enabled",
+        "Azure Defender for Resource Manager should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "19.8 - Create Incident Scoring and Prioritization Schema"
+        ],
+        "CIS v8": [
+          "17.9 - Establish and Maintain Security Incident Thresholds"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING",
+          "IR-5: INCIDENT MONITORING",
+          "IR-7 INCIDENT RESPONSE ASSISTANCE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.8"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-4",
+      "domain": "Incident Response",
+      "control_name": "Detection and analysis - investigate an incident",
+      "description": "Ensure security operation team can query and use diverse data sources as they investigate potential incidents, to build a full view of what happened. Diverse logs should be collected to track the activities of a potential attacker across the kill chain to avoid blind spots. You should also ensure insights and learnings are captured for other analysts and for future historical reference.",
+      "azure_policy_ids": [
+        "b6e2945c-0b7b-40f5-9233-7a5323b5cdc6"
+      ],
+      "defender_recommendations": [
+        "Network Watcher should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.10"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-5",
+      "domain": "Incident Response",
+      "control_name": "Detection and analysis - prioritize incidents",
+      "description": "Provide context to security operations teams to help them determine which incidents ought to first be focused on, based on alert severity and asset sensitivity defined in your organization’s incident response plan.",
+      "azure_policy_ids": [
+        "0a9fbe0d-c5c4-4da8-87d8-f4fd77338835",
+        "0e6763cc-5078-4e64-889d-ff4d9a839047",
+        "1c988dd6-ade4-430f-a608-2a3e5b0a6d38",
+        "1f90fc71-a595-4066-8974-d4d0802e8ef0",
+        "2913021d-f2fd-4f3d-b958-22354e2bdbcb",
+        "3bc8a0d5-38e0-4a3d-a657-2cb64468fc34",
+        "4da35fc9-c9e7-4960-aec9-797fe7d9051d",
+        "640d2586-54d2-465f-877f-9ffc1d2109f4",
+        "6581d072-105e-4418-827f-bd446d56421b",
+        "7926a6d1-b268-4586-8197-e8ae90c877d7",
+        "7fe3b40f-802b-4cdd-8bd4-fd799c948cc2",
+        "abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
+        "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
+        "c3d20c29-b36d-48fe-808b-99a87530ad99",
+        "c6283572-73bb-4deb-bf2c-7a2b8f7462cb",
+        "d31e5c31-63b2-4f12-887b-e49456834fa1",
+        "d38668f5-d155-42c7-ab3d-9b57b50f8fbf"
+      ],
+      "defender_recommendations": [
+        "Azure Defender for open-source relational databases should be enabled",
+        "Azure Defender for Key Vault should be enabled",
+        "Azure Defender for App Service should be enabled",
+        "Azure Defender for Storage should be enabled",
+        "Azure Defender for servers should be enabled",
+        "Azure Defender for Kubernetes should be enabled",
+        "Azure Defender for SQL servers on machines should be enabled",
+        "Azure Defender for Azure SQL Database servers should be enabled",
+        "Azure Defender for SQL should be enabled for unprotected Azure SQL servers",
+        "Azure Defender for SQL should be enabled for unprotected SQL Managed Instances",
+        "[Preview]: Azure Defender for DNS should be enabled",
+        "Azure Defender for container registries should be enabled",
+        "Azure Defender for Resource Manager should be enabled"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "19.8 - Create Incident Scoring and Prioritization Schema"
+        ],
+        "CIS v8": [
+          "17.4 - Establish and Maintain an Incident Response Process",
+          "17.9 - Establish and Maintain Security Incident Thresholds"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.10"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-6",
+      "domain": "Incident Response",
+      "control_name": "Containment, eradication and recovery - automate the incident handling",
+      "description": "Automate the manual, repetitive tasks to speed up response time and reduce the burden on analysts. Manual tasks take longer to execute, slowing each incident and reducing how many incidents an analyst can handle. Manual tasks also increase analyst fatigue, which increases the risk of human error that causes delays and degrades the ability of analysts to focus effectively on complex tasks.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "N/A"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4: INCIDENT HANDLING",
+          "IR-5: INCIDENT MONITORING",
+          "IR-6: INCIDENT REPORTING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.10"
+        ]
+      }
+    },
+    {
+      "control_id": "IR-7",
+      "domain": "Incident Response",
+      "control_name": "Post-incident activity - conduct lesson learned and retain evidence",
+      "description": "Conduct lesson learned in your organization periodically and/or after major incidents, to improve your future capability in incident response and handling. \n\nBased on the nature of the incident, retain the evidence related to the incident for the period defined in the incident handling standard for further analysis or legal actions.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "17.8 - Conduct Post-Incident Reviews"
+        ],
+        "NIST SP800-53 r4": [
+          "IR-4 INCIDENT HANDLING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.10"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-1",
+      "domain": "DevOps Security",
+      "control_name": "Conduct threat modeling",
+      "description": "Perform threat modeling to identify the potential threats and enumerate the mitigating controls. Ensure your threat modeling serves the following purposes:\n- Secure your applications and services in the production run-time stage. \n- Secure the artifacts, underlying CI/CD pipeline and other tooling environment used for build, test, and deployment. \nThe threat modeling at least should include the following aspects:\n- Define the security requirements of the application. Ensure these requirements are adequately addressed in the threat modeling.\n- Analyze application components, data connections and their relationship. Ensure this analysis also includes the upstream and downstream connections outside of your application scope.\n- List the potential threats and attack vectors that your application components, data connections and upstream and downstream services may be exposed to. \n- Identify the applicable security controls that can be used to mitigate the threats enumerated and identify any controls gaps (e.g., security vulnerabilities) that may require additional treatment plans.\n- Enumerate and design the controls that can mitigate the vulnerabilities identified.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "N/A"
+        ],
+        "CIS v8": [
+          "16.10 - Apply Secure Design Principles in Application Architectures",
+          "16.14 - Conduct Threat Modeling"
+        ],
+        "NIST SP800-53 r4": [
+          "SA-15: DEVELOPMENT PROCESS, STANDARDS, AND TOOLS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.5",
+          "12.2"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-2",
+      "domain": "DevOps Security",
+      "control_name": "Ensure software supply chain security",
+      "description": "Ensure your enterprise’s SDLC (Software Development Lifecycle) or process include a set of security controls to govern the in-house and third-party software components (including both proprietary and open-source software) where your applications have dependencies. Define gating criteria to prevent vulnerable or malicious components being integrated and deployed into the environment. \n\nThe software supply chain security controls at least should include following aspects:\n- Identify the upstream dependencies required at the development, build, integration and deployment phase.\n- Inventory and track the in-house and third-party software components for known vulnerability when there is a fix available in the upstream.\n- Assess the vulnerabilities and malware in the software components using static and dynamic application testing for unknown vulnerabilities.\n- Ensure the vulnerabilities and malware are mitigated using the appropriate approach. This may include source code local or upstream fix, feature exclusion and/or applying compensating controls if the direct mitigation is not available. \n\nIf closed source third-party components are used in your production environment, you may have limited visibility to its security posture. You should consider additional controls such as access control, network isolation and endpoint security to minimize the impact if there is a malicious activity or vulnerability associated with the component.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "18.3 - Verify That Acquired Software is Still Supported",
+          "18.4 - Only Use Up-to-Date And Trusted Third-Party Components",
+          "18.8 - Establish a Process to Accept and Address Reports of Software Vulnerabilities"
+        ],
+        "CIS v8": [
+          "16.4 - Establish and Manage an Inventory of Third-Party Software Components",
+          "16.6 - Establish and Maintain a Severity Rating System and Process for Application Vulnerabilities",
+          "16.11 - Leverage Vetted Modules or Services for Application Security Components"
+        ],
+        "NIST SP800-53 r4": [
+          "SA-12: SUPPLY CHAIN PROTECTION",
+          "SA-15: DEVELOPMENT PROCESS, STANDARDS, AND TOOLS"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.3",
+          "6.5"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-3",
+      "domain": "DevOps Security",
+      "control_name": "Secure DevOps infrastructure",
+      "description": "Ensure the DevOps infrastructure and pipeline follow security best practices across environments including your build, test, and production stages. This typically includes the security controls for following scope:\n- Artifact repositories that store source code, built packages and images, project artifacts and business data.\n- Servers, services, and tooling that hosting CI/CD pipelines.\n- CI/CD pipeline configuration.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "18.11 - Use Standard Hardening Configuration Templates for Databases"
+        ],
+        "CIS v8": [
+          "16.7 - Use Standard Hardening Configuration Templates for Application Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.2",
+          "6.3",
+          "7.1"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-4",
+      "domain": "DevOps Security",
+      "control_name": "Integrate static application security testing into DevOps pipeline",
+      "description": "Ensure static application security testing (SAST) are part of the gating controls in the CI/CD workflow. The gating can be set based on the testing results to prevent vulnerable packages from committing into the repository, building into the packages, or deploying into the production.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "18.7 - Apply Static and Dynamic Code Analysis Tools"
+        ],
+        "CIS v8": [
+          "16.12 - Implement Code-Level Security Checks"
+        ],
+        "NIST SP800-53 r4": [
+          "SA-11: DEVELOPER TESTING AND EVALUATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.3",
+          "6.5"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-5",
+      "domain": "DevOps Security",
+      "control_name": "Integrate dynamic application security testing into DevOps pipeline",
+      "description": "Ensure dynamic application security testing (DAST) are part of the gating controls in the CI/CD workflow. The gating can be set based on the testing results to prevent vulnerability from building into the packages or deploying into the production.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "18.7 - Apply Static and Dynamic Code Analysis Tools"
+        ],
+        "CIS v8": [
+          "16.12 - Implement Code-Level Security Checks"
+        ],
+        "NIST SP800-53 r4": [
+          "SA-11: DEVELOPER TESTING AND EVALUATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.3",
+          "6.5"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-6",
+      "domain": "DevOps Security",
+      "control_name": "Enforce security of workload throughout DevOps lifecycle",
+      "description": "Ensure the workload is secured throughout the entire lifecycle in development, testing, and deployment stage. Use Azure Security Benchmark to evaluate the controls (such as network security, identity management, privileged access and so on) that can be set as guardrails by default or shift left prior to the deployment stage. In particular, ensure the following controls are in place in your DevOps process: \n- Automate the deployment by using Azure or third-party tooling in the CI/CD workflow, infrastructure management (infrastructure as code), and testing to reduce human error and attack surface. \n- Ensure VMs, container images and other artifacts are secure from malicious manipulation. \n- Scan the workload artifacts (in other words, container images, dependencies, SAST and DAST scans) prior to the deployment in the CI/CD workflow\n- Deploy vulnerability assessment and threat detection capability into the production environment and continuously use these capabilities in the run-time.",
+      "azure_policy_ids": [
+        "090c7b07-b4ed-4561-ad20-e9075f3ccaff",
+        "17f4b1cc-c55c-4d94-b1f9-2978f6ac2957"
+      ],
+      "defender_recommendations": [
+        "Vulnerabilities in Azure Container Registry images should be remediated",
+        "Vulnerabilities in container security configurations should be remediated"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.2 - Deploy System Configuration Management Tools",
+          "5.3 - Securely Store Master Images",
+          "5.4 - Deploy System Configuration Management Tools",
+          "5.5 - Implement Automated Configuration Monitoring Systems",
+          "18.1 - Establish Secure Coding Practices"
+        ],
+        "CIS v8": [
+          "7.5 - Perform Automated Vulnerability Scans of Internal Enterprise Assets",
+          "7.6 - Perform Automated Vulnerability Scans of Externally-Exposed Enterprise Assets",
+          "7.7 - Remediate Detected Vulnerabilities",
+          "16.1 - Establish and Maintain a Secure Application Development Process",
+          "16.7 - Use Standard Hardening Configuration Templates for Application Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-6: LEAST PRIVILEGE"
+        ],
+        "PCI-DSS v3.2.1": [
+          "6.1",
+          "6.2",
+          "6.3"
+        ]
+      }
+    },
+    {
+      "control_id": "DS-7",
+      "domain": "DevOps Security",
+      "control_name": "Enable logging and monitoring in DevOps",
+      "description": "Ensure your logging and monitoring scope includes non-production environments and CI/CD workflow elements used in DevOps (and any other development processes). The vulnerabilities and threats targeting these environments can introduce significant risks to your production environment if they are not monitored properly. The events from the CI/CD build, test and deployment workflow should also be monitored to identify any deviations in the CI/CD workflow jobs.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.2 - Activate audit logging",
+          "6.3 - Enable Detailed Logging",
+          "6.5 - Central Log Management",
+          "6.6 - Deploy SIEM or Log Analytic tool",
+          "6.7 - Regularly Review Logs",
+          "6.8 - Regularly Tune SIEM"
+        ],
+        "CIS v8": [
+          "8.2 Collect Audit Logs",
+          "8.5 Collect Detailed Audit Logs",
+          "8.9 Centralize Audit Logs",
+          "8.11 Conduct Audit Log Reviews"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-3: CONTENT OF AUDIT RECORDS",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.1",
+          "10.2",
+          "10.3",
+          "10.6"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-1",
+      "domain": "Governance and Strategy",
+      "control_name": "Align organization roles, responsibilities and accountabilities",
+      "description": "Ensure that you define and communicate a clear strategy for roles and responsibilities in your security organization. Prioritize providing clear accountability for security decisions, educating everyone on the shared responsibility model, and educate technical teams on technology to secure the cloud.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "17.2 - Deliver Training to Fill the Skills Gap"
+        ],
+        "CIS v8": [
+          "14.9 - Conduct Role-Specific Security Awareness and Skills Training"
+        ],
+        "NIST SP800-53 r4": [
+          "PL-9: CENTRAL MANAGEMENT",
+          "PM-10: SECURITY AUTHORIZATION PROCESS",
+          "PM-13: INFORMATION SECURITY WORKFORCE",
+          "AT-1: SECURITY AWARENESS AND TRAINING POLICY AND PROCEDURES",
+          "AT-3: ROLE-BASED SECURITY TRAINING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "12.4"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-2",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement enterprise segmentation/separation of duties strategy",
+      "description": "Establish an enterprise-wide strategy to segment access to assets using a combination of identity, network, application, subscription, management group, and other controls.\n\nCarefully balance the need for security separation with the need to enable daily operation of the systems that need to communicate with each other and access data.\n\nEnsure that the segmentation strategy is implemented consistently in the workload, including network security, identity and access models, and application permission/access models, and human process controls.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "2.10 - Physically or Logically Segregate High Risk Applications",
+          "14.1 - Segment the Network Based on Sensitivity"
+        ],
+        "CIS v8": [
+          "3.12 - Segment Data Processing and Storage Based on Sensitivity"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SC-7: BOUNDARY PROTECTION",
+          "SC-2: APPLICATION PARTITIONING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.2",
+          "6.4"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-3",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement data protection strategy",
+      "description": "Establish an enterprise-wide strategy for data protection in Azure:\n- Define and apply the data classification and protection standard in accordance with the enterprise data management standard and regulatory compliance to dictate the security controls required for each level of the data classification. \n- Set up your cloud resource management hierarchy aligned to the enterprise segmentation strategy. The enterprise segmentation strategy should also be informed by the location of sensitive or business critical data and systems. \n- Define and apply the applicable zero-trust principles in your cloud environment to avoid implementing trust based on network location within a perimeter. Instead, use device and user trust claims to gate access to data and resources.\n- Track and minimize the sensitive data footprint (storage, transmission and processing) across the enterprise to reduce the attack surface and data protection cost. Consider techniques such as one-way hashing, truncation, and tokenization in the workload where possible, to avoid storing and transmitting sensitive data in its original form. \n- Ensure you have a full lifecycle control strategy to provide security assurance of the data and access keys.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "14.1 - Segment the Network Based on Sensitivity"
+        ],
+        "CIS v8": [
+          "3.1 - Establish and Maintain a Data Management Process",
+          "3.7 - Establish and Maintain a Data Classification Scheme",
+          "3.12 - Segment Data Processing and Storage Based on Sensitivity"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "SI-4: INFORMATION SYSTEM MONITORING",
+          "SC-8: TRANSMISSION CONFIDENTIALITY AND INTEGRITY",
+          "SC-12: CRYPTOGRAPHIC KEY ESTABLISHMENT AND MANAGEMENT",
+          "SC-17: PUBLIC KEY INFRASTRUCTURE CERTIFICATES",
+          "SC-28: PROTECTION OF INFORMATION AT REST",
+          "RA-2: SECURITY CATEGORIZATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.1",
+          "3.2",
+          "3.3",
+          "3.4",
+          "3.5",
+          "3.6",
+          "3.7",
+          "4.1",
+          "A3.2"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-4",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement network security strategy",
+      "description": "Establish an Azure network security strategy as part of your organization’s overall security strategy for access control. This strategy should include documented guidance, policy, and standards for the following elements:\n- Design a centralized/decentralized network management and security responsibility model to deploy and maintain network resources.\n- A virtual network segmentation model aligned with the enterprise segmentation strategy.\n- An Internet edge and ingress and egress strategy.\n- A hybrid cloud and on-premises interconnectivity strategy.\n- A network monitoring and logging strategy.\n- An up-to-date network security artifacts (such as network diagrams, reference network architecture).",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "12.1 - Maintain an Inventory of Network Boundaries"
+        ],
+        "CIS v8": [
+          "12.2 - Establish and Maintain a Secure Network Infrastructure",
+          "12.4 - Establish and Maintain Architecture Diagram(s)"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "AC-17: REMOTE ACCESS",
+          "CA-3: SYSTEM INTERCONNECTIONS",
+          "CM-1: CONFIGURATION MANAGEMENT POLICY AND PROCEDURES",
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "CM-7: LEAST FUNCTIONALITY",
+          "SC-1: SYSTEM AND COMMUNICATIONS PROTECTION POLICY AND PROCEDURES",
+          "SC-2: APPLICATION PARTITIONING",
+          "SC-5: DENIAL OF SERVICE PROTECTION",
+          "SC-7: BOUNDARY PROTECTION",
+          "SC-20: SECURE NAME / ADDRESS RESOLUTION SERVICE (AUTHORITATIVE SOURCE)",
+          "SC-21: SECURE NAME / ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER)",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "1.3",
+          "1.5",
+          "4.1",
+          "6.6",
+          "11.4",
+          "A2.1",
+          "A2.2",
+          "A2.3",
+          "A3.2"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-5",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement security posture management strategy",
+      "description": "Establish a policy, procedure and standard to ensure the security configuration management and vulnerability management are in place in your cloud security mandate.\n\nThe security configuration management in Azure should include the following areas:\n- Define the secure configuration baselines for different resource types in the cloud, such as the Azure portal, management and control plane, and resources running in the IaaS, PaaS and SaaS services.\n- Ensure the security baselines address the risks in different control areas such as network security, identity management, privileged access, data protection and so on. \n- Use tools to continuously measure, audit, and enforce the configuration to prevent configuration deviating from the baseline.\n- Develop a cadence to stay update with Azure security features, for instance, subscribe to the service updates. \n- Utilize Secure Score in Microsoft Defender for Cloud to regularly review Azure’s security configuration posture and remediate the gaps identified.\n\nThe vulnerability management in Azure should include the following security aspects:\n- Regularly assess and remediate vulnerabilities in all cloud resource types, such as Azure native services, operating systems, and application components. \n- Use a risk-based approach to prioritize assessment and remediation. \n- Subscribe to the relevant Microsoft / Azure security advisory notices and blogs to receive the latest security updates about Azure. \n- Ensure the vulnerability assessment and remediation (such as schedule, scope, and techniques) meet the regularly compliance requirements for your organization.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.1 - Establish Secure Configurations"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process",
+          "4.2 - Establish and Maintain a Secure Configuration Process for Network Infrastructure"
+        ],
+        "NIST SP800-53 r4": [
+          "CA-1: SECURITY ASSESSMENT AND AUTHORIZATION POLICY AND PROCEDURES",
+          "CA-8: PENETRATION TESTING",
+          "CM-1: CONFIGURATION MANAGEMENT POLICY AND PROCEDURES",
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "RA-1: RISK ASSESSMENT POLICY AND PROCEDURES",
+          "RA-3: RISK ASSESSMENT",
+          "RA-5: VULNERABILITY SCANNING",
+          "SI-1: SYSTEM AND INFORMATION INTEGRITY POLICY AND PROCEDURES",
+          "SI-2: FLAW REMEDIATION",
+          "SI-5: SECURITY ALERTS, ADVISORIES, AND DIRECTIVES"
+        ],
+        "PCI-DSS v3.2.1": [
+          "1.1",
+          "1.2",
+          "2.2",
+          "6.1",
+          "6.2",
+          "6.5",
+          "6.6",
+          "11.2",
+          "11.3",
+          "11.5"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-6",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement identity and privileged access strategy",
+      "description": "Establish an Azure identity and privileged access approach as part of your organization’s overall security access control strategy. This strategy should include documented guidance, policy, and standards for the following aspects:\n- Centralized identity and authentication system (Azure AD) and its interconnectivity with other internal and external identity systems\n- Privileged identity and access governance (such as access request, review and approval)\n- Privileged accounts in emergency (break-glass) situation\n- Strong authentication (passwordless authentication and multifactor authentication) methods in different use cases and conditions \n- Secure access by administrative operations through Azure portal, CLI and API.\n\nFor exception cases, where an enterprise system isn’t used, ensure adequate security controls are in place for identity, authentication and access management, and governed. These exceptions should be approved and periodically reviewed by the enterprise team. These exceptions are typically in cases such as:\n- Use of a non-enterprise designated identity and authentication system, such as cloud-based third-party systems (may introduce unknown risks) \n- Privileged users authenticated locally and/or use non-strong authentication methods",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "4.5 - Use Multifactor Authentication For All Administrative Access",
+          "16.2 - Configure Centralized Point of Authentication"
+        ],
+        "CIS v8": [
+          "5.6 - Centralize Account Management",
+          "6.5 - Require MFA for Administrative Access",
+          "6.7 - Centralize Access Control"
+        ],
+        "NIST SP800-53 r4": [
+          "AC-1: ACCESS CONTROL POLICY AND PROCEDURES",
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-4: INFORMATION FLOW ENFORCEMENT",
+          "AC-5: SEPARATION OF DUTIES",
+          "AC-6: LEAST PRIVILEGE",
+          "IA-1: IDENTIFICATION AND AUTHENTICATION POLICY AND PROCEDURES",
+          "IA-2: IDENTIFICATION AND AUTHENTICATION (ORGANIZATIONAL USERS)",
+          "IA-4: IDENTIFIER MANAGEMENT",
+          "IA-5: AUTHENTICATOR MANAGEMENT",
+          "IA-8: IDENTIFICATION AND AUTHENTICATION (NON-ORGANIZATIONAL USERS)",
+          "IA-9: SERVICE IDENTIFICATION AND AUTHENTICATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "7.1",
+          "7.2",
+          "7.3",
+          "8.1",
+          "8.2",
+          "8.3",
+          "8.4",
+          "8.5",
+          "8.6",
+          "8.7",
+          "8.8",
+          "A3.4"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-7",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement logging, threat detection and incident response strategy",
+      "description": "Establish a logging, threat detection and incident response strategy to rapidly detect and remediate threats and meeting compliance requirements. Security operations (SecOps / SOC) team should prioritize high quality alerts and seamless experiences so that they can focus on threats rather than log integration and manual steps.\n\nThis strategy should include documented policy, procedure and standards for the following aspects:\n- The security operations (SecOps) organization's role and responsibilities\n- A well-defined and regularly tested incident response plan and handling process aligning with NIST or other industry frameworks.\n- Communication and notification plan with your customers, suppliers, and public parties of interest.\n- Preference of using extended detection and response (XDR) capabilities like Azure Defender capabilities to detect threats in the various areas. \n- Use of Azure native capability (e.g., as Microsoft Defender for Cloud) and third-party platforms for incident handling, such as logging and threat detection, forensics, and attack remediation and eradication. \n- Define key scenarios (such as threat detection, incident response, and compliance) and set up log capture and retention to meet the scenario requirements. \n- Centralized visibility of and correlation information about threats, using SIEM, native Azure threat detection capability, and other sources.\n- Post-incident activities, such as lessons learned and evidence retention.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "6.2 -Activate audit logging",
+          "6.3 - Enable Detailed Logging",
+          "6.6 - Deploy SIEM or Log Analytic tool",
+          "6.7 - Regularly Review Logs",
+          "19.1 - Document Incident Response Procedures",
+          "19.5 - Maintain Contact Information For Reporting Security Incidents",
+          "19.7 - Conduct Periodic Incident Scenario Sessions for Personnel"
+        ],
+        "CIS v8": [
+          "8.1 - Establish and Maintain an Audit Log Management Process",
+          "13.1 - Centralize Security Event Alerting",
+          "17.2 - Establish and Maintain Contact Information for Reporting Security Incidents",
+          "17.4 - Establish and Maintain an Incident Response Process",
+          "17.7 - Conduct Routine Incident Response Exercises"
+        ],
+        "NIST SP800-53 r4": [
+          "AU-1: AUDIT AND ACCOUNTABILITY POLICY AND PROCEDURES",
+          "IR-1: INCIDENT RESPONSE POLICY AND PROCEDURES",
+          "IR-2: INCIDENT RESPONSE TRAINING",
+          "IR-10: INTEGRATED INFORMATION SECURITY ANALYSIS TEAM",
+          "SI-1: SYSTEM AND INFORMATION INTEGRITY POLICY AND PROCEDURES",
+          "SI-5: SECURITY ALERTS, ADVISORIES, AND DIRECTIVES"
+        ],
+        "PCI-DSS v3.2.1": [
+          "10.1",
+          "10.2",
+          "10.3",
+          "10.4",
+          "10.5",
+          "10.6",
+          "10.7",
+          "10.8",
+          "10.9",
+          "12.10",
+          "A3.5"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-8",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement backup and recovery strategy",
+      "description": "Establish an Azure backup and recovery strategy for your organization. This strategy should include documented guidance, policy, and standards in the following aspects:\n- Recovery time objective (RTO) and recovery point objective (RPO) definitions in accordance with your business resiliency objectives, and regulatory compliance requirements. \n- Redundancy design (including backup, restore and replication) in your applications and infrastructure for both in cloud and on-premises. Consider regional, region-pairs, cross-regional recovery and off-site storage location as part of your strategy.\n- Protection of backup from unauthorized access and tempering using controls such as data access control, encryption and network security.\n- Use of backup and recovery to mitigate the risks from emerging threats, such as ransomware attack. And also secure the backup and recovery data itself from these attacks. \n- Monitoring the backup and recovery data and operations for audit and alerting purposes.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "10.1 - Ensure Regular Automated Backups"
+        ],
+        "CIS v8": [
+          "11.1 - Establish and Maintain a Data Recovery Process"
+        ],
+        "NIST SP800-53 r4": [
+          "CP-1: CONTINGENCY PLANNING POLICY AND PROCEDURES",
+          "CP-9: INFORMATION SYSTEM BACKUP",
+          "CP-10: INFORMATION SYSTEM RECOVERY AND RECONSTITUTION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "3.4"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-9",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement endpoint security strategy",
+      "description": "Establish a cloud endpoint security strategy which includes the following aspects: \n- Deploy the endpoint detection and response and antimalware capability into your endpoint and integrate with the threat detection and SIEM solution and security operations process.\n- Follow Azure Security Benchmark to ensure endpoint related security settings in other respective areas (such as network security, posture vulnerability management, identity and privileged access, and logging and threat detections) are also in place to provide a defense-in-depth protection for your endpoint. \n- Prioritize the endpoint security in your production environment, but ensure the non-production environments (such as test and build environment used in the DevOps process) are also secured and monitored, as these environment can also be used to introduce the malware and vulnerabilities into the production.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "8.1 - Utilize Centrally Managed Anti-malware Software",
+          "9.4 - Apply Host-Based Firewalls or Port-Filtering"
+        ],
+        "CIS v8": [
+          "4.4 - Implement and Manage a Firewall on Servers",
+          "10.1 - Deploy and Maintain Anti-Malware Software"
+        ],
+        "NIST SP800-53 r4": [
+          "SI-2: FLAW REMEDIATION",
+          "SI-3: MALICIOUS CODE PROTECTION",
+          "SC-3: SECURITY FUNCTION ISOLATION"
+        ],
+        "PCI-DSS v3.2.1": [
+          "5.1",
+          "5.2",
+          "5.3",
+          "5.4",
+          "11.5"
+        ]
+      }
+    },
+    {
+      "control_id": "GS-10",
+      "domain": "Governance and Strategy",
+      "control_name": "Define and implement DevOps security strategy",
+      "description": "Mandate the security controls as part of the organization’s DevOps engineering and operation standard. Define the security objectives, control requirements, and tooling specifications in accordance with enterprise and cloud security standards in your organization. \n\nEncourage the use of DevOps as an essential operating model in your organization for its benefits in rapidly identifying and remediating vulnerabilities using different type of automations (such as infrastructure as code provision, and automated SAST and DAST scan) throughout the CI/CD workflow. This ‘shift left’ approach also increases visibility and ability to enforce consistent security checks in your deployment pipeline, effectively deploying security guardrails into the environment ahead of time to avoid last minute security surprises when deploying a workload into production.\n\nWhen shifting security controls left into the pre-deployment phases, implement security guardrails to ensure the controls are deployed and enforced throughout your DevOps process. This technology could include Azure ARM templates to define guardrails in the IaC (infrastructure as code), resource provisioning and Azure Policy to audit and restrict which services or configurations can be provisioned into the environment.\n\nFor the run-time security controls of your workload, follow the Azure Security Benchmark to design and implement effective the controls, such as identity and privileged access, network security, endpoint security, and data protection inside your workload applications and services.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [
+        "No applicable policy"
+      ],
+      "related_frameworks": {
+        "CIS v7.1": [
+          "5.1 - Establish Secure Configurations",
+          "18.1 - Establish Secure Coding Practices",
+          "18.8 - Establish a Process to Accept and Address Reports of Software Vulnerabilities"
+        ],
+        "CIS v8": [
+          "4.1 - Establish and Maintain a Secure Configuration Process",
+          "4.2 - Establish and Maintain a Secure Configuration Process for Network Infrastructure",
+          "16.1 - Establish and Maintain a Secure Application Development Process",
+          "16.2 - Establish and Maintain a Process to Accept and Address Software Vulnerabilities"
+        ],
+        "NIST SP800-53 r4": [
+          "SA-12: SUPPLY CHAIN PROTECTION",
+          "SA-15: DEVELOPMENT PROCESS, STANDARDS, AND TOOLS",
+          "CM-1: CONFIGURATION MANAGEMENT POLICY AND PROCEDURES",
+          "CM-2: BASELINE CONFIGURATION",
+          "CM-6: CONFIGURATION SETTINGS",
+          "AC-2: ACCOUNT MANAGEMENT",
+          "AC-3: ACCESS ENFORCEMENT",
+          "AC-6: LEAST PRIVILEGE",
+          "SA-11: DEVELOPER TESTING AND EVALUATION",
+          "AU-6: AUDIT REVIEW, ANALYSIS, AND REPORTING",
+          "AU-12: AUDIT GENERATION",
+          "SI-4: INFORMATION SYSTEM MONITORING"
+        ],
+        "PCI-DSS v3.2.1": [
+          "2.2",
+          "6.1",
+          "6.2",
+          "6.3",
+          "6.5",
+          "7.1",
+          "10.1",
+          "10.2",
+          "10.3",
+          "10.6",
+          "12.2"
+        ]
+      }
+    },
+    {
+      "control_id": "AI-1",
+      "domain": "AI Security",
+      "control_name": "Ensure use of approved models",
+      "description": "Only deploy AI models that have been formally approved through a trusted verification process, ensuring they meet security, compliance, and operational requirements before production use.",
+      "azure_policy_ids": [
+        "12e5dd16-d201-47ff-849b-8454061c293d",
+        "930f48f9-f07e-427c-9494-52603581c6a9",
+        "af253d37-136a-42f8-a1fc-30010c083d41",
+        "c1ad46c6-37f8-4af0-9c71-c208375c87dd",
+        "f3a9c2e0-7b4d-4d8f-9c3a-2e1f6b9a8d4e"
+      ],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-2",
+      "domain": "AI Security",
+      "control_name": "Implement multi-layered content filtering",
+      "description": "Implement comprehensive content validation and filtering across all stages of AI interaction—including input prompts, internal processing, and model outputs—to detect and block malicious content, adversarial inputs, and harmful outputs before they impact users or systems.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-3",
+      "domain": "AI Security",
+      "control_name": "Adopt safety meta-prompts",
+      "description": "Use safety meta-prompts or system instructions to guide AI models toward intended, secure, and ethical behavior while enhancing resistance to prompt injection attacks and other adversarial manipulations.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-4",
+      "domain": "AI Security",
+      "control_name": "Apply least privilege for agent functions",
+      "description": "Restrict the capabilities and access permissions of agent functions or plugins to the minimum required for their intended purpose, reducing the attack surface and preventing unauthorized actions or data exposure.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-5",
+      "domain": "AI Security",
+      "control_name": "Ensure human-in-the-loop",
+      "description": "Implement human review and approval for critical actions or decisions taken by the AI application, especially when interacting with external systems or sensitive data.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-6",
+      "domain": "AI Security",
+      "control_name": "Establish monitoring and detection",
+      "description": "Implement robust monitoring solutions (e.g., Microsoft Defender for Cloud's threat protection for AI services) to detect suspicious activity, investigate risks, identify jailbreak attempts, and correlate findings with threat intelligence.",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    },
+    {
+      "control_id": "AI-7",
+      "domain": "AI Security",
+      "control_name": "Perform continuous AI Red Teaming",
+      "description": "Proactively test AI systems using adversarial techniques to discover vulnerabilities, adversarial paths, and potential harmful outcomes (e.g., using tools like Python Risk Identification Tool for GenAI (PYRIT) or Azure AI Red Teaming Agent).",
+      "azure_policy_ids": [],
+      "defender_recommendations": [],
+      "related_frameworks": {}
+    }
+  ]
+}

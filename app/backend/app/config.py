@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.3  # Lower for consistency
     ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
+    # Max characters of each MCSB control description included in the mapping
+    # prompt. 0 means no truncation (send the full description).
+    mcsb_description_max_chars: int = 600
 
     model_config = SettingsConfigDict(
         env_file=".env",

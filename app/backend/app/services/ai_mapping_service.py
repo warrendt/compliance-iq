@@ -309,13 +309,17 @@ Consider general security policies or provide custom policy recommendations base
             Formatted prompt string
         """
         # Prepare MCSB controls context
+        max_chars = settings.mcsb_description_max_chars
         mcsb_context = []
         for ctrl in mcsb_controls:
+            description = ctrl.description
+            if max_chars and len(description) > max_chars:
+                description = description[:max_chars].rstrip() + "…"
             mcsb_context.append({
                 "control_id": ctrl.control_id,
                 "domain": ctrl.domain,
                 "control_name": ctrl.control_name,
-                "description": ctrl.description[:200],  # Truncate for token efficiency
+                "description": description,
                 "azure_policy_ids": ctrl.azure_policy_ids
             })
 

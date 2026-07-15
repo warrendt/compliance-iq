@@ -24,9 +24,14 @@ class MCSBService:
         Initialize MCSB service.
 
         Args:
-            data_path: Path to MCSB controls JSON file
+            data_path: Path to the MCSB controls JSON file. A relative path is
+                resolved against the backend package directory so the dataset
+                loads regardless of the process working directory.
         """
-        self.data_path = data_path or settings.mcsb_data_path
+        raw_path = Path(data_path or settings.mcsb_data_path)
+        if not raw_path.is_absolute():
+            raw_path = Path(__file__).resolve().parent.parent / raw_path
+        self.data_path = str(raw_path)
         self._controls: List[MCSBControl] = []
         self._controls_by_id: Dict[str, MCSBControl] = {}
         self._controls_by_domain: Dict[str, List[MCSBControl]] = {}
@@ -42,9 +47,13 @@ class MCSBService:
             file_path = Path(self.data_path)
 
             if not file_path.exists():
-                logger.warning(f"MCSB data file not found: {file_path}")
-                # Load from existing ComplianceIQ catalogs as fallback
-                self._load_from_existing_catalogs()
+                logger.error(
+                    "MCSB dataset not found at %s; falling back to a minimal "
+                    "built-in control set. Run scripts/generate_mcsb_dataset.py "
+                    "to produce the full 92-control dataset.",
+                    file_path,
+                )
+                self._create_default_controls()
                 return
 
             logger.info(f"Loading MCSB controls from {file_path}")
@@ -69,45 +78,25 @@ class MCSBService:
             logger.info(f"Successfully loaded {len(self._controls)} MCSB controls")
 
         except Exception as e:
-            logger.error(f"Failed to load MCSB controls: {e}")
-            # Load from existing catalogs as fallback
-            self._load_from_existing_catalogs()
-
-    def _load_from_existing_catalogs(self) -> None:
-        """
-        Load MCSB-like structure from existing ComplianceIQ catalogs.
-        This provides a fallback if the MCSB JSON file doesn't exist.
-        """
-        logger.info("Loading MCSB data from existing ComplianceIQ catalogs")
-
-        try:
-            import pandas as pd
-
-            # Load existing SAMA catalog as reference (bundled into the image
-            # under app/data/catalogues/; resolved robustly relative to this file).
-            catalog_path = (
-                Path(__file__).resolve().parent.parent
-                / "data" / "catalogues" / "SAMA_Catalog_Azure_Mappings.csv"
+            logger.error(
+                "Failed to load MCSB controls from %s: %s; falling back to a "
+                "minimal built-in control set.", self.data_path, e,
             )
-
-            if not catalog_path.exists():
-                logger.warning("No existing catalogs found, creating default controls")
-                self._create_default_controls()
-                return
-
-            df = pd.read_csv(catalog_path)
-
-            # Extract unique MCSB-like controls from mappings
-            # This is simplified - in reality you'd parse the actual MCSB structure
-            self._create_default_controls()
-
-        except Exception as e:
-            logger.error(f"Failed to load from existing catalogs: {e}")
             self._create_default_controls()
 
     def _create_default_controls(self) -> None:
-        """Create default MCSB controls for demonstration."""
-        logger.info("Creating default MCSB control set")
+        """Populate a minimal built-in control set as a last-resort fallback.
+
+        This is a degraded mode: it contains only a small set of representative
+        controls and exists so the service still responds if the generated
+        dataset is missing. It is never the intended runtime source - generate
+        the full 92-control dataset with ``scripts/generate_mcsb_dataset.py``.
+        """
+        logger.error(
+            "Using the minimal built-in MCSB fallback set - mapping accuracy "
+            "will be degraded. Generate the full dataset with "
+            "scripts/generate_mcsb_dataset.py."
+        )
 
         default_controls = [
             {
@@ -206,7 +195,9 @@ class MCSBService:
         self._build_indexes()
         self._loaded = True
 
-        logger.info(f"Created {len(self._controls)} default MCSB controls")
+        logger.warning(
+            "Created %s fallback MCSB controls (degraded mode)", len(self._controls)
+        )
 
     def _build_indexes(self) -> None:
         """Build lookup indexes for faster searching."""

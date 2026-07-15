@@ -1,0 +1,72 @@
+name: Refresh MCSB dataset
+
+# Regenerates app/backend/app/data/mcsb from authoritative sources and opens a PR
+# when anything changed. Runs weekly and on demand. The --source arm path refreshes
+# control titles/descriptions/domains from ARM policyMetadata using a delegated
+# token obtained via the existing OIDC federated credential.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Metadata source (offline = xlsx + AI overlay; arm = refresh text from ARM policyMetadata)"
+        type: choice
+        options: ["arm", "offline"]
+        default: "arm"
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  refresh:
+    name: Regenerate MCSB dataset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: app/backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r app/backend/requirements.txt
+
+      - name: Azure login (federated)
+        if: ${{ (github.event.inputs.source || 'arm') == 'arm' }}
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Acquire ARM access token
+        if: ${{ (github.event.inputs.source || 'arm') == 'arm' }}
+        run: |
+          echo "ARM_ACCESS_TOKEN=$(az account get-access-token \
+            --resource https://management.azure.com \
+            --query accessToken -o tsv)" >> "$GITHUB_ENV"
+
+      - name: Generate dataset
+        working-directory: app/backend
+        run: |
+          python -m scripts.generate_mcsb_dataset \
+            --source "${{ github.event.inputs.source || 'arm' }}"
+
+      - name: Open pull request on change
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(mcsb): refresh MCSB control dataset"
+          title: "chore(mcsb): refresh MCSB control dataset"
+          body: |
+            Automated refresh of the Microsoft Cloud Security Benchmark dataset
+            from authoritative sources (initiative GUIDs + ASB v3 + ARM
+            policyMetadata). Review the diff before merging.
+          branch: automation/refresh-mcsb
+          add-paths: app/backend/app/data/mcsb/*.json
