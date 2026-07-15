@@ -8,6 +8,8 @@ import logging
 import json
 import inspect
 from typing import List, Optional
+
+import openai
 from pydantic import ValidationError
 
 from app.models import ExternalControl, MCSBControl, ControlMapping, MappingBatch
@@ -20,6 +22,19 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+def _is_temperature_error(error: openai.BadRequestError) -> bool:
+    """True when a BadRequestError was caused by an unsupported ``temperature``.
+
+    Reasoning-model deployments (o1/o3/o4-mini, per Azure OpenAI docs) reject
+    ``temperature`` with an HTTP 400. Azure surfaces this either via the
+    ``param`` field or a message mentioning temperature.
+    """
+    if getattr(error, "param", None) == "temperature":
+        return True
+    message = str(getattr(error, "message", "") or error)
+    return "temperature" in message.lower()
 
 
 # System prompt for AI mapping
@@ -90,6 +105,40 @@ class AIMappingService:
         self.mcsb_service = get_mcsb_service()
         self.sovereignty_service = get_sovereignty_service()
         self.model = settings.azure_openai_deployment_name
+        # Reasoning-model deployments reject `temperature`; once we learn a
+        # deployment does, we stop sending it for the rest of this session.
+        self._temperature_supported = True
+
+    def _parse_mapping_completion(self, messages: List[dict]):
+        """Call the model for a structured ``ControlMapping``.
+
+        Applies ``settings.ai_temperature`` when the deployment supports it. On
+        the first temperature rejection (reasoning models) it logs once, retries
+        without temperature, and suppresses the parameter for later calls.
+        """
+        base_kwargs = dict(
+            model=self.model,
+            messages=messages,
+            response_format=ControlMapping,
+            max_completion_tokens=settings.ai_max_tokens,
+        )
+        if self._temperature_supported:
+            try:
+                return self.client.beta.chat.completions.parse(
+                    **base_kwargs, temperature=settings.ai_temperature
+                )
+            except openai.BadRequestError as error:
+                if not _is_temperature_error(error):
+                    raise
+                logger.warning(
+                    "Deployment '%s' rejected temperature=%s; retrying without it "
+                    "(reasoning models ignore temperature). Suppressing the "
+                    "parameter for the rest of this session.",
+                    self.model,
+                    settings.ai_temperature,
+                )
+                self._temperature_supported = False
+        return self.client.beta.chat.completions.parse(**base_kwargs)
 
     async def map_control(
         self,
@@ -138,17 +187,13 @@ class AIMappingService:
         logger.debug(f"Prompt preview: {user_prompt[:300]}...")
 
         try:
-            # Call Azure OpenAI with structured output
-            # Note: Using gpt-4.1 primary model with max_completion_tokens
-            # and uses max_completion_tokens instead of max_tokens
-            completion = self.client.beta.chat.completions.parse(
-                model=self.model,
+            # Call Azure OpenAI with structured output. Temperature is applied
+            # when the deployment supports it (see _parse_mapping_completion).
+            completion = self._parse_mapping_completion(
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt}
-                ],
-                response_format=ControlMapping,
-                max_completion_tokens=settings.ai_max_tokens
+                    {"role": "user", "content": user_prompt},
+                ]
             )
 
             # Extract parsed response
