@@ -5,9 +5,11 @@ Uses Azure OpenAI with structured outputs to extract compliance controls from ra
 
 import logging
 import time
-from typing import Optional
+from copy import deepcopy
+from typing import Callable, Optional
 
 import openai
+from pydantic import BaseModel, ValidationError
 
 from .models import ControlExtractionResult, ExtractedControl
 from .config import PipelineConfig
@@ -68,15 +70,17 @@ Your task is to analyze the raw text extracted from a compliance control documen
 
 
 def get_openai_client(config: PipelineConfig):
-    """Get Azure OpenAI client — delegates to the central auth module."""
-    from app.auth.azure_auth import get_azure_openai_client
-    return get_azure_openai_client()
+    """Get the Azure OpenAI Responses API client used by GPT-5.6 deployments."""
+    from app.auth.azure_auth import get_azure_openai_responses_client
+
+    return get_azure_openai_responses_client()
 
 
 def extract_controls_from_text(
     pdf_text: str,
     config: PipelineConfig,
     pdf_metadata: Optional[dict] = None,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> ControlExtractionResult:
     """
     Use Azure OpenAI to extract structured controls from raw PDF text.
@@ -119,10 +123,14 @@ def extract_controls_from_text(
                 "Single-chunk extraction hit output length limit. "
                 f"Retrying with {len(retry_chunks)} chunks (max_chars={fallback_chunk_chars})."
             )
-            return _extract_multi_chunk(client, config, retry_chunks, metadata_context)
+            return _extract_multi_chunk(
+                client, config, retry_chunks, metadata_context, progress_callback
+            )
     else:
         logger.info(f"Document split into {len(chunks)} chunks for extraction")
-        return _extract_multi_chunk(client, config, chunks, metadata_context)
+        return _extract_multi_chunk(
+            client, config, chunks, metadata_context, progress_callback
+        )
 
 
 def _get_retry_after(exc: openai.RateLimitError, default: float) -> float:
@@ -138,14 +146,34 @@ def _get_retry_after(exc: openai.RateLimitError, default: float) -> float:
     return default
 
 
+def _strict_response_schema(response_format: type[BaseModel]) -> dict:
+    """Adapt Pydantic JSON Schema to Azure OpenAI strict structured-output rules."""
+    schema = deepcopy(response_format.model_json_schema())
+
+    def make_objects_strict(value: object) -> None:
+        if isinstance(value, dict):
+            properties = value.get("properties")
+            if isinstance(properties, dict):
+                value["additionalProperties"] = False
+                value["required"] = list(properties)
+            for child in value.values():
+                make_objects_strict(child)
+        elif isinstance(value, list):
+            for child in value:
+                make_objects_strict(child)
+
+    make_objects_strict(schema)
+    return schema
+
+
 def _parse_with_retry(
     client,
     config: PipelineConfig,
     messages: list[dict],
-    response_format,
+    response_format: type[BaseModel],
     max_retries: int = 3,
-):
-    """Call client.beta.chat.completions.parse with retry + model fallback on 429."""
+) -> BaseModel:
+    """Use Responses API JSON schema output with bounded retries and fallback."""
     models = [config.azure_openai_deployment]
     if config.azure_openai_fallback_model and config.azure_openai_fallback_model != config.azure_openai_deployment:
         models.append(config.azure_openai_fallback_model)
@@ -153,12 +181,20 @@ def _parse_with_retry(
     for model in models:
         for attempt in range(1, max_retries + 1):
             try:
-                return client.beta.chat.completions.parse(
+                response = client.responses.create(
                     model=model,
-                    messages=messages,
-                    response_format=response_format,
-                    max_completion_tokens=config.max_tokens,
+                    input=messages,
+                    text={
+                        "format": {
+                            "type": "json_schema",
+                            "name": "control_extraction",
+                            "schema": _strict_response_schema(response_format),
+                            "strict": True,
+                        }
+                    },
+                    max_output_tokens=config.max_tokens,
                 )
+                return response_format.model_validate_json(response.output_text)
             except openai.RateLimitError as e:
                 retry_after = _get_retry_after(e, default=30.0 * attempt)
                 if attempt < max_retries:
@@ -172,10 +208,36 @@ def _parse_with_retry(
                         f"Rate limited on {model} after {max_retries} attempts. "
                         f"{'Falling back to next model...' if model != models[-1] else 'No more models to try.'}"
                     )
-    raise openai.RateLimitError(
-        message="All models exhausted after retries",
-        response=None,
-        body=None,
+            except (openai.APITimeoutError, openai.APIConnectionError) as exc:
+                logger.warning(
+                    "%s did not respond on attempt %s/%s: %s. "
+                    "%s",
+                    model,
+                    attempt,
+                    max_retries,
+                    exc,
+                    "Retrying..." if attempt < max_retries else "Falling back to next model...",
+                )
+            except (openai.AuthenticationError, openai.PermissionDeniedError):
+                raise
+            except openai.APIStatusError as exc:
+                logger.warning(
+                    "%s is unavailable for extraction: %s. Falling back to next model...",
+                    model,
+                    exc,
+                )
+                break
+            except ValidationError as exc:
+                logger.warning(
+                    "%s returned an invalid extraction result on attempt %s/%s: %s. %s",
+                    model,
+                    attempt,
+                    max_retries,
+                    exc,
+                    "Retrying..." if attempt < max_retries else "Falling back to next model...",
+                )
+    raise RuntimeError(
+        "Azure OpenAI extraction failed after exhausting the configured primary and fallback models"
     )
 
 
@@ -210,15 +272,10 @@ Return the structured result with framework metadata and a complete list of cont
         response_format=ControlExtractionResult,
     )
 
-    result = completion.choices[0].message.parsed
-
-    if not result:
-        raise ValueError("LLM returned empty extraction result")
-
     logger.info(
-        f"Extracted {len(result.controls)} controls from '{result.framework_name}'"
+        f"Extracted {len(completion.controls)} controls from '{completion.framework_name}'"
     )
-    return result
+    return completion
 
 
 def _extract_multi_chunk(
@@ -226,6 +283,7 @@ def _extract_multi_chunk(
     config: PipelineConfig,
     chunks: list[str],
     metadata_context: str,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> ControlExtractionResult:
     """Extract controls from multiple chunks and merge results."""
 
@@ -262,10 +320,7 @@ Be thorough — capture every control, requirement, and sub-requirement found in
             response_format=ControlExtractionResult,
         )
 
-        result = completion.choices[0].message.parsed
-        if not result:
-            logger.warning(f"Chunk {i + 1} returned empty result")
-            continue
+        result = completion
 
         # Take metadata from first chunk
         if i == 0:
@@ -284,6 +339,8 @@ Be thorough — capture every control, requirement, and sub-requirement found in
                 logger.debug(f"Skipping duplicate control: {ctrl.control_id}")
 
         logger.info(f"Chunk {i + 1}: found {len(result.controls)} controls ({len(all_controls)} total unique)")
+        if progress_callback:
+            progress_callback(i + 1, len(chunks))
 
     return ControlExtractionResult(
         framework_name=framework_name,

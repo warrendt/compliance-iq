@@ -14,7 +14,8 @@ internal control). The ``extra`` bucket is computed deterministically afterwards
 from the external controls that no match referenced.
 
 The model is read from ``PipelineConfig.from_env()`` (``AZURE_OPENAI_DEPLOYMENT_NAME``)
-— never hardcoded — so the live deployment's model (e.g. gpt-5.2) is honoured.
+— never hardcoded — so the live deployment's model (for example,
+``gpt-5.6-sol``) is honoured.
 """
 
 import asyncio
@@ -222,7 +223,7 @@ def _compare_batch(config, internal_batch: List[Dict[str, str]],
         f"Classify every internal control above. Return exactly one row per internal control."
     )
 
-    completion = _parse_with_retry(
+    return _parse_with_retry(
         client,
         config,
         messages=[
@@ -231,8 +232,6 @@ def _compare_batch(config, internal_batch: List[Dict[str, str]],
         ],
         response_format=ComparisonResult,
     )
-    parsed = completion.choices[0].message.parsed
-    return parsed or ComparisonResult(matches=[], summary="")
 
 
 async def compare_controls(

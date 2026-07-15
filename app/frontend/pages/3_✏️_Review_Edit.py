@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.state_init import init_session_state, recover_session_state
+from utils.state_init import init_session_state, restore_workflow_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
@@ -18,10 +18,9 @@ st.set_page_config(
 )
 
 inject_azure_theme()
-render_sidebar()
 init_session_state()
-api_client = get_api_client()
-recover_session_state(api_client)
+restore_workflow_state()
+render_sidebar()
 render_task_status_bar()
 
 # Header
@@ -36,6 +35,9 @@ if not st.session_state.mappings:
     if st.button("Go to AI Mapping"):
         st.switch_page("pages/2_🤖_AI_Mapping.py")
     st.stop()
+
+# Get API client
+api_client = get_api_client()
 
 # Load MCSB controls for reference (cached)
 # Fix stale cache: force refetch if data is not a list-of-dicts
@@ -309,21 +311,6 @@ if changes_made:
     except Exception:
         pass  # session save is best-effort
 
-    # Record the edit to the user's workspace activity feed (best-effort).
-    try:
-        api_client.record_activity(
-            action="mapping.edited",
-            resource_type="edit",
-            summary=(
-                f"Edited mappings for '{st.session_state.get('framework_name', '')}'"
-            ),
-            metadata={
-                "framework": st.session_state.get("framework_name", ""),
-                "mappingCount": len(st.session_state.mappings),
-            },
-        )
-    except Exception:
-        pass  # activity logging is best-effort
 # Export statistics
 st.markdown("---")
 st.markdown("### 📊 Mapping Statistics")

@@ -36,8 +36,11 @@ except Exception:
     _has_token = False
 
 if not _has_token:
-    st.warning("⚠️ Sign in with Entra ID to browse your Azure policies.")
-    st.info("Use the **Sign In** button in the sidebar to authenticate.")
+    st.warning("⚠️ Your Entra session does not include an Azure Resource Manager token.")
+    st.info(
+        "Sign out, then sign in again to grant Azure policy access. "
+        "If this continues, ask an administrator to enable the application token store."
+    )
     st.stop()
 
 api_client = get_api_client()

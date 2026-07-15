@@ -38,8 +38,29 @@ class SessionSaveRequest(BaseModel):
     generated_policy: Optional[Dict[str, Any]] = None
     selected_platform: str = "azure_defender"
     platform_display_name: str = "Microsoft Defender for Cloud"
-    mapping_job_id: Optional[str] = None
-    mapping_in_progress: bool = False
+
+
+def _session_response(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the browser-safe workflow fields from a session document."""
+    return {
+        "session_id": doc.get("session_id"),
+        "userId": doc.get("userId"),
+        "controls": doc.get("controls", []),
+        "mappings": doc.get("mappings", []),
+        "framework_name": doc.get("framework_name", ""),
+        "policy_decisions": doc.get("policy_decisions", {}),
+        "generated_policy": doc.get("generated_policy"),
+        "selected_platform": doc.get("selected_platform", "azure_defender"),
+        "platform_display_name": doc.get("platform_display_name", "Microsoft Defender for Cloud"),
+        "saved_at": doc.get("saved_at"),
+    }
+
+
+def _latest_session(documents: list[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Return the newest session document, if the user has any."""
+    if not documents:
+        return None
+    return max(documents, key=lambda doc: doc.get("saved_at", ""))
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
@@ -77,8 +98,6 @@ async def save_session(req: SessionSaveRequest, user: User = Depends(get_current
         "generated_policy": req.generated_policy,
         "selected_platform": req.selected_platform,
         "platform_display_name": req.platform_display_name,
-        "mapping_job_id": req.mapping_job_id,
-        "mapping_in_progress": req.mapping_in_progress,
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -110,28 +129,9 @@ async def save_session(req: SessionSaveRequest, user: User = Depends(get_current
     }
 
 
-def _session_response(doc: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "session_id": doc.get("session_id"),
-        "userId": doc.get("userId"),
-        "controls": doc.get("controls", []),
-        "mappings": doc.get("mappings", []),
-        "framework_name": doc.get("framework_name", ""),
-        "policy_decisions": doc.get("policy_decisions", {}),
-        "generated_policy": doc.get("generated_policy"),
-        "selected_platform": doc.get("selected_platform", "azure_defender"),
-        "platform_display_name": doc.get(
-            "platform_display_name", "Microsoft Defender for Cloud"
-        ),
-        "mapping_job_id": doc.get("mapping_job_id"),
-        "mapping_in_progress": doc.get("mapping_in_progress", False),
-        "saved_at": doc.get("saved_at"),
-    }
-
-
 @router.get("/latest")
 async def load_latest_session(user: User = Depends(get_current_user)):
-    """Restore the current user's most recently saved workflow session."""
+    """Restore the caller's most recently saved workflow after a UI restart."""
     if not cosmos_client.database:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -142,15 +142,14 @@ async def load_latest_session(user: User = Depends(get_current_user)):
     )
     documents = await cosmos_client.query_documents(
         CONTAINER_NAME,
-        query=(
-            "SELECT TOP 1 * FROM c WHERE c.userId = @userId "
-            "ORDER BY c.saved_at DESC"
-        ),
-        parameters=[{"name": "@userId", "value": user.email}],
+        "SELECT * FROM c WHERE c.userId = @user_id",
+        parameters=[{"name": "@user_id", "value": user.email}],
     )
-    if not documents:
+    latest = _latest_session(documents)
+    if latest is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    return _session_response(documents[0])
+
+    return _session_response(latest)
 
 
 @router.get("/{session_id}")

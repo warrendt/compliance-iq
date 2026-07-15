@@ -4,10 +4,12 @@ Maps external framework controls to MCSB controls.
 Enhanced with Microsoft Learn MCP server for Azure Policy discovery.
 """
 
+import asyncio
 import logging
 import json
 import inspect
 from typing import List, Optional
+import openai
 from pydantic import ValidationError
 
 from app.models import ExternalControl, MCSBControl, ControlMapping, MappingBatch
@@ -136,21 +138,11 @@ class AIMappingService:
         logger.debug(f"Prompt preview: {user_prompt[:300]}...")
 
         try:
-            # Call Azure OpenAI with structured output
-            # Note: Using gpt-4.1 primary model with max_completion_tokens
-            # and uses max_completion_tokens instead of max_tokens
-            completion = self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt}
-                ],
-                response_format=ControlMapping,
-                max_completion_tokens=settings.ai_max_tokens
+            mapping = await asyncio.to_thread(
+                self._request_mapping,
+                external_control,
+                user_prompt,
             )
-
-            # Extract parsed response
-            mapping = completion.choices[0].message.parsed
             
             # Validate that mapping has required fields
             if not mapping:
@@ -184,10 +176,56 @@ class AIMappingService:
             # Return a default mapping instead of failing
             return self._create_fallback_mapping(external_control, str(e))
 
+    def _request_mapping(
+        self,
+        external_control: ExternalControl,
+        user_prompt: str,
+    ) -> ControlMapping:
+        """Run the blocking model request without blocking other mapping workers."""
+        models = [self.model]
+        if (
+            settings.azure_openai_fallback_model
+            and settings.azure_openai_fallback_model != self.model
+        ):
+            models.append(settings.azure_openai_fallback_model)
+
+        for model in models:
+            try:
+                completion = self.client.beta.chat.completions.parse(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format=ControlMapping,
+                    max_completion_tokens=settings.ai_max_tokens,
+                )
+                mapping = completion.choices[0].message.parsed
+                if not mapping:
+                    raise ValueError("AI returned empty mapping")
+                if model != self.model:
+                    logger.warning(
+                        "Mapped %s with fallback model %s after primary model failure",
+                        external_control.control_id,
+                        model,
+                    )
+                return mapping
+            except (openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError) as exc:
+                logger.warning(
+                    "Azure OpenAI %s failed for %s: %s. %s",
+                    model,
+                    external_control.control_id,
+                    exc,
+                    "Trying fallback model." if model != models[-1] else "No fallback remains.",
+                )
+
+        raise RuntimeError("Azure OpenAI did not return a mapping from any configured model")
+
     async def map_controls_batch(
         self,
         external_controls: List[ExternalControl],
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        concurrency: int = 1,
     ) -> MappingBatch:
         """Map multiple controls in batch (async-safe).
 
@@ -196,23 +234,34 @@ class AIMappingService:
         """
         logger.info(f"Starting batch mapping for {len(external_controls)} controls")
 
-        mappings: List[ControlMapping] = []
-        unmapped_controls: List[str] = []
         total_controls = len(external_controls)
+        semaphore = asyncio.Semaphore(max(1, concurrency))
+        completed = 0
 
-        for idx, control in enumerate(external_controls):
-            try:
-                mapping = await self.map_control(control)
+        async def map_one(control: ExternalControl) -> tuple[str, Optional[ControlMapping]]:
+            nonlocal completed
+            async with semaphore:
+                try:
+                    mapping = await self.map_control(control)
+                except Exception as exc:
+                    logger.error(f"Failed to map {control.control_id}: {exc}")
+                    mapping = None
+                completed += 1
+                if progress_callback:
+                    if inspect.iscoroutinefunction(progress_callback):
+                        await progress_callback(completed, total_controls)
+                    else:
+                        progress_callback(completed, total_controls)
+                return control.control_id, mapping
+
+        results = await asyncio.gather(*(map_one(control) for control in external_controls))
+        mappings = []
+        unmapped_controls = []
+        for control_id, mapping in results:
+            if mapping is None:
+                unmapped_controls.append(control_id)
+            else:
                 mappings.append(mapping)
-            except Exception as e:
-                logger.error(f"Failed to map {control.control_id}: {e}")
-                unmapped_controls.append(control.control_id)
-
-            if progress_callback:
-                if inspect.iscoroutinefunction(progress_callback):
-                    await progress_callback(idx + 1, total_controls)
-                else:
-                    progress_callback(idx + 1, total_controls)
 
         mapped_count = len(mappings)
         avg_confidence = (

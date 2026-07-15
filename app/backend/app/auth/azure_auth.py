@@ -4,7 +4,7 @@ Supports both local development (Azure CLI) and Azure deployment (Managed Identi
 """
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 from functools import lru_cache
 import logging
 
@@ -78,6 +78,29 @@ def get_azure_openai_client() -> AzureOpenAI:
 
     logger.info(f"Azure OpenAI client initialized for endpoint: {settings.azure_openai_endpoint}")
     return client
+
+
+@lru_cache
+def get_azure_openai_responses_client() -> OpenAI:
+    """Create a v1 Responses API client for GPT-5.6 model deployments."""
+    logger.info("Initializing Azure OpenAI Responses API client")
+    base_url = f"{settings.azure_openai_endpoint.rstrip('/')}/openai/v1/"
+
+    if settings.azure_openai_api_key:
+        api_key = settings.azure_openai_api_key
+    else:
+        credential = get_azure_credential()
+        api_key = get_bearer_token_provider(
+            credential,
+            "https://ai.azure.com/.default",
+        )
+
+    return OpenAI(
+        base_url=base_url,
+        api_key=api_key,
+        timeout=settings.azure_openai_request_timeout_seconds,
+        max_retries=0,
+    )
 
 
 def test_azure_openai_connection() -> bool:

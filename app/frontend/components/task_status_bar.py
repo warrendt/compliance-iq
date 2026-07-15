@@ -1,6 +1,5 @@
 """
-Task Status Bar component — renders an always-visible compact bar showing
-active background tasks and allows expanding into a full task list.
+Task Status Bar component — renders active work and a task notification bell.
 
 Usage:
     from components.task_status_bar import render_task_status_bar
@@ -9,17 +8,16 @@ Usage:
 
 from __future__ import annotations
 
-import time
-
 import streamlit as st
 
 from utils.task_manager import (
+    dismiss_all_task_notifications,
+    dismiss_task_notification,
     get_active_tasks,
-    get_all_tasks,
+    get_task,
+    get_task_notifications,
     poll_active_tasks,
-    remove_task,
 )
-from utils.state_init import apply_mapping_result
 
 
 _TYPE_LABELS = {
@@ -44,35 +42,23 @@ _PAGE_MAP = {
     "policy_generation": "pages/4_📦_Export_Policy.py",
 }
 
-_DEFAULT_POLL_SECONDS = 2.0
+_ORIGIN_LABELS = {
+    "pdf_pipeline": "PDF Extraction",
+    "pages/2_🤖_AI_Mapping.py": "AI Mapping",
+}
+
+_NOTIFICATION_COLUMN_WIDTHS = [5, 1.5, 0.75]
 
 
 def render_task_status_bar() -> None:
-    """Render a compact task status indicator and an expandable task list.
+    """Render active task progress and a dismissible task notification bell.
 
     Call this near the top of every page *after* ``render_sidebar()``.
-    When there are active tasks it polls the backend for updates and
-    schedules a rerun after a short interval.
+    When there are active tasks it polls the backend for updates. Individual
+    workflow pages own their refresh loop so this shared component never
+    interrupts page-local progress rendering.
     """
-    save_error = st.session_state.get("session_save_error")
-    if save_error:
-        st.warning(
-            "Your latest workflow changes are available in this browser but "
-            "could not be saved for recovery."
-        )
-    recovery_error = st.session_state.get("session_recovery_error")
-    if recovery_error:
-        st.warning("Your saved workflow could not be restored from the backend.")
-        if st.button("Retry session recovery", key="retry_session_recovery"):
-            st.session_state["_session_recovery_checked"] = False
-            st.session_state["session_recovery_error"] = None
-            st.rerun()
-
-    all_tasks = get_all_tasks()
     active_tasks = get_active_tasks()
-
-    if not all_tasks:
-        return  # nothing to show
 
     # ── Poll active tasks ────────────────────────────────────────────
     if active_tasks:
@@ -85,7 +71,7 @@ def render_task_status_bar() -> None:
         except Exception:
             pass  # backend may be unavailable
 
-    auto_refresh_tasks = [t for t in active_tasks if t.get("poll_backend", True)]
+    notifications = get_task_notifications()
 
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
@@ -99,86 +85,65 @@ def render_task_status_bar() -> None:
         banner_text = f"⏳ **{active_count} active task{'s' if active_count != 1 else ''}:** {' · '.join(summaries)}"
         st.info(banner_text)
 
-    # ── Expandable task list ──────────────────────────────────────────
-    completed_count = sum(1 for t in all_tasks if t["status"] == "completed")
-    failed_count = sum(1 for t in all_tasks if t["status"] == "failed")
-    header = f"📋 Tasks ({active_count} active, {completed_count} done, {failed_count} failed)"
+    # ── Notification bell ─────────────────────────────────────────────
+    _, bell_column = st.columns([6, 1])
+    with bell_column:
+        with st.popover(_notification_bell_label(len(notifications))):
+            st.markdown("#### Task notifications")
+            if notifications:
+                for notification in notifications:
+                    _render_notification(notification)
+                if st.button("Dismiss all", key="dismiss_all_task_notifications"):
+                    dismiss_all_task_notifications()
+                    st.rerun()
+            else:
+                st.caption("No task notifications yet.")
 
-    with st.expander(header, expanded=False):
-        if not all_tasks:
-            st.caption("No tasks recorded yet.")
-            return
-
-        for task in all_tasks:
-            _render_task_row(task)
-
-        # Bulk clear completed / failed
-        col_clear, _ = st.columns([1, 3])
-        with col_clear:
-            if st.button("🗑️ Clear finished tasks", key="clear_finished_tasks"):
-                for t in list(all_tasks):
-                    if t["status"] in ("completed", "failed", "cancelled"):
-                        remove_task(t["job_id"])
-                st.rerun()
-
-    # ── Hint the user to refresh while tasks are active ──────────────
-    # Only auto-rerun for backend-polled tasks. Frontend-managed tasks
-    # (poll_backend=False, e.g. PDF extraction) execute synchronously in
-    # their own page block — auto-rerunning here would starve that block
-    # and the request would never be issued.
+    # ── Active task hint ─────────────────────────────────────────────
+    # Do not sleep or rerun here. A shared-header rerun aborts the current
+    # page before it can render its own progress card and detailed job events.
     backend_polled_active = [t for t in active_tasks if t.get("poll_backend", True)]
     if backend_polled_active:
-        st.caption("🔄 Active tasks detected — auto-refresh is enabled while jobs are running.")
+        st.caption("🔄 Active tasks are updating on their workflow page.")
 
-        if auto_refresh_tasks:
-            # Keep backend-polled task progress moving even when the user is idle on a page.
-            poll_seconds = float(st.session_state.get("task_poll_interval_seconds", _DEFAULT_POLL_SECONDS))
-            time.sleep(max(0.5, poll_seconds))
+
+def _notification_bell_label(notification_count: int) -> str:
+    """Return an Azure-style bell label with the retained event count."""
+    return "🔔" if notification_count == 0 else f"🔔 {notification_count}"
+
+
+def _render_notification(notification: dict) -> None:
+    """Render one retained lifecycle event inside the notification popover."""
+    task = get_task(notification["job_id"])
+    event = notification["event"]
+    icon = _STATUS_ICONS.get(notification["status"], "🔔")
+    label = _TYPE_LABELS.get(notification["type"], notification["type"])
+    description = notification["description"] or label
+    source = _ORIGIN_LABELS.get(notification["page_origin"], notification["page_origin"] or "this session")
+
+    content_column, view_column, dismiss_column = st.columns(_NOTIFICATION_COLUMN_WIDTHS)
+    with content_column:
+        st.markdown(f"{icon} **{description}**")
+        st.caption(f"{event.capitalize()} · Started on {source} · {notification['occurred_at'][:19]}")
+    with view_column:
+        page = _PAGE_MAP.get(notification["type"])
+        if event == "completed" and task and page:
+            if st.button(
+                "View",
+                key=f"view_notification_{notification['id']}",
+                use_container_width=True,
+            ):
+                _view_task(task, page)
+    with dismiss_column:
+        if st.button("✕", key=f"dismiss_notification_{notification['id']}"):
+            dismiss_task_notification(notification["id"])
             st.rerun()
 
 
-def _render_task_row(task: dict) -> None:
-    """Render a single task entry inside the expander."""
-    icon = _STATUS_ICONS.get(task["status"], "❓")
-    label = _TYPE_LABELS.get(task["type"], task["type"])
-    pct = task.get("progress", 0)
-    stage = task.get("stage", "")
-    desc = task.get("description", "")
-
-    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
-
-    with col1:
-        title = f"{icon} **{label}**"
-        if desc:
-            title += f" — {desc}"
-        st.markdown(title)
-
-    with col2:
-        if task["status"] in ("pending", "running"):
-            st.progress(pct / 100, text=f"{pct}%")
-        elif task["status"] == "completed":
-            st.caption("✅ Done")
-        elif task["status"] == "failed":
-            err = task.get("error", "Unknown error")
-            st.caption(f"❌ {err[:60]}")
-        else:
-            st.caption(task["status"])
-
-    with col3:
-        if stage and task["status"] == "running":
-            st.caption(f"Stage: {stage}")
-        started = task.get("started_at", "")
-        if started:
-            st.caption(f"Started: {started[:19]}")
-
-    with col4:
-        page = _PAGE_MAP.get(task["type"])
-        if task["status"] == "completed" and page:
-            if st.button("View", key=f"view_{task['job_id']}"):
-                if task["type"] == "ai_mapping" and task.get("result"):
-                    apply_mapping_result(task["result"])
-                st.switch_page(page)
-        elif task["status"] in ("completed", "failed", "cancelled"):
-            if st.button("✕", key=f"rm_{task['job_id']}"):
-                remove_task(task["job_id"])
-                st.rerun()
+def _view_task(task: dict, page: str) -> None:
+    """Open a completed task result, including PDF extraction restoration."""
+    if task["type"] == "pdf_extraction":
+        st.session_state["pdf_extraction_task_to_view"] = task["job_id"]
+    st.switch_page(page)
+    # switch_page is a no-op when View is clicked from the current PDF page.
+    st.rerun()

@@ -8,16 +8,13 @@ import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import (
-    clear_workflow_state,
     init_session_state,
-    load_controls_state,
-    persist_session_state,
-    recover_session_state,
+    persist_workflow_state,
+    restore_workflow_state,
 )
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
-from utils.api_client import get_api_client
 
 st.set_page_config(
     page_title="Upload Controls | ComplianceIQ",
@@ -28,8 +25,7 @@ st.set_page_config(
 inject_azure_theme()
 render_sidebar()
 init_session_state()
-api_client = get_api_client()
-recover_session_state(api_client)
+restore_workflow_state()
 render_task_status_bar()
 for key in ["control_id_col", "control_name_col", "description_col", "domain_col"]:
     if key not in st.session_state:
@@ -40,6 +36,9 @@ st.title("📁 Upload Framework Controls")
 st.markdown("Import your compliance framework controls from CSV or Excel files.")
 
 st.markdown("---")
+
+if notice := st.session_state.pop("workflow_restored_notice", None):
+    st.success(f"🔄 {notice}")
 
 # Instructions
 with st.expander("📋 File Format Requirements", expanded=True):
@@ -57,12 +56,27 @@ with st.expander("📋 File Format Requirements", expanded=True):
     - Excel (.xlsx, .xls)
     
     ### Example Structure
-    
-    | Control ID | Control Name | Description | Domain |
-    |------------|--------------|-------------|---------|
-    | SAMA-AC-01 | Multi-Factor Authentication | Enforce MFA for all users | Access Control |
-    | SAMA-NS-01 | Network Segmentation | Implement network segmentation | Network Security |
     """)
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Control ID": "SAMA-AC-01",
+                    "Control Name": "Multi-Factor Authentication",
+                    "Description": "Enforce MFA for all users",
+                    "Domain": "Access Control",
+                },
+                {
+                    "Control ID": "SAMA-NS-01",
+                    "Control Name": "Network Segmentation",
+                    "Description": "Implement network segmentation",
+                    "Domain": "Network Security",
+                },
+            ]
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 # File upload section
 st.markdown("### 1️⃣ Upload Your File")
@@ -234,43 +248,32 @@ if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
                             else:
                                 control['domain'] = None
                             controls.append(control)
-                        
-                        load_controls_state(
-                            controls,
-                            framework_name,
-                            source="spreadsheet",
-                        )
-                        if not persist_session_state(api_client):
+
+                        # Save to session state
+                        st.session_state.controls = controls
+                        st.session_state.framework_name = framework_name
+                        st.session_state.mappings = []  # Reset mappings
+
+                        st.session_state.controls_loaded = True
+                        try:
+                            persist_workflow_state()
+                        except Exception as exc:
                             st.warning(
-                                "Controls are loaded locally, but could not be saved "
-                                "for recovery. Check the backend connection."
+                                f"Controls are loaded, but could not be saved for recovery: {exc}"
                             )
                         st.success(f"✅ Loaded {len(controls)} controls from **{framework_name}**")
                         st.balloons()
-
-                        # Record the loaded control set to the user's workspace
-                        # (best-effort; keeps the per-tenant control library + audit).
-                        try:
-                            get_api_client().record_upload(
-                                file_name=(
-                                    uploaded_file.name
-                                    if uploaded_file is not None
-                                    else f"{framework_name}.csv"
-                                ),
-                                file_type="text/csv",
-                                category="controls",
-                                row_count=len(controls),
-                                column_names=list(df.columns.astype(str)),
-                                controls=controls,
-                                metadata={"framework": framework_name},
-                            )
-                        except Exception:
-                            pass  # activity logging is best-effort
             
             with col_clear:
                 if st.button("🗑️ Clear Upload", use_container_width=True):
                     st.session_state.uploaded_df = None
-                    clear_workflow_state()
+                    st.session_state.controls = []
+                    st.session_state.controls_loaded = False
+                    st.session_state.framework_name = ""
+                    try:
+                        persist_workflow_state()
+                    except Exception:
+                        pass
                     st.rerun()
             
             # Show navigation after controls are loaded (persists across reruns)

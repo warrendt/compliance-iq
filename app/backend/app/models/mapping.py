@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from app.models.sovereignty import SovereigntyMapping
 from app.models.control import ExternalControl
 
+_MAX_ACTIVITY_ENTRIES = 50
+
 
 class ControlMapping(BaseModel):
     """AI-generated mapping between external control and MCSB control."""
@@ -106,6 +108,10 @@ class MappingJob(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     result: Optional[MappingBatch] = None
+    activity: List[dict[str, str]] = Field(
+        default_factory=list,
+        description="Bounded, user-safe execution events for this mapping job",
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -120,12 +126,34 @@ class MappingJob(BaseModel):
     })
 
 
+def record_mapping_activity(
+    job: MappingJob,
+    message: str,
+    level: str = "INFO",
+) -> None:
+    """Append a bounded, user-safe execution event to a mapping job."""
+    job.activity.append(
+        {
+            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "level": level,
+            "message": message,
+        }
+    )
+    job.activity = job.activity[-_MAX_ACTIVITY_ENTRIES:]
+
+
 class MappingRequest(BaseModel):
     """Request model for initiating control mapping."""
 
     framework_name: str = Field(..., description="Name of framework")
     controls: List[ExternalControl] = Field(..., description="Controls to map")
     batch_mode: bool = Field(True, description="Process in batch mode")
+    concurrency: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description="Requested maximum concurrent AI mapping calls",
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {

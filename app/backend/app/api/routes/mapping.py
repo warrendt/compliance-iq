@@ -15,18 +15,18 @@ from app.models import (
     ControlMapping,
     MappingBatch,
     MappingRequest,
-    MappingJob
+    MappingJob,
 )
+from app.models.mapping import record_mapping_activity
 from app.services import get_ai_mapping_service, get_mcsb_service
 from app.db import cosmos_client
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mapping", tags=["mapping"])
 
 # In-memory job storage (for MVP - use Redis/database in production)
 mapping_jobs: dict[str, MappingJob] = {}
-
-
 def _cosmos_ready() -> bool:
     """Check if Cosmos DB is initialized."""
     return bool(cosmos_client and cosmos_client.database)
@@ -148,10 +148,16 @@ async def map_batch_controls(request: MapBatchRequest):
     Processes controls in parallel (default 5 at a time) for faster throughput.
     Returns all results once complete.
     """
-    logger.info(f"Batch mapping {len(request.controls)} controls (concurrency={request.concurrency})")
+    concurrency = min(request.concurrency, get_settings().ai_mapping_max_concurrency)
+    logger.info(
+        "Batch mapping %s controls (requested concurrency=%s, effective concurrency=%s)",
+        len(request.controls),
+        request.concurrency,
+        concurrency,
+    )
 
     ai_service = get_ai_mapping_service()
-    semaphore = asyncio.Semaphore(request.concurrency)
+    semaphore = asyncio.Semaphore(concurrency)
     mappings: List[ControlMapping] = []
     failed = 0
 
@@ -222,6 +228,10 @@ async def analyze_controls(
         total_controls=len(request.controls),
         mapped_controls=0
     )
+    record_mapping_activity(
+        job,
+        f"Created mapping job with {len(request.controls)} controls",
+    )
 
     mapping_jobs[job_id] = job
 
@@ -232,7 +242,8 @@ async def analyze_controls(
     background_tasks.add_task(
         process_mapping_job,
         job_id,
-        request.controls
+        request.controls,
+        min(request.concurrency, get_settings().ai_mapping_max_concurrency),
     )
 
     logger.info(f"Created mapping job {job_id} with {len(request.controls)} controls")
@@ -303,7 +314,11 @@ async def get_mcsb_domains():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
+async def process_mapping_job(
+    job_id: str,
+    controls: List[ExternalControl],
+    concurrency: int = 1,
+):
     """
     Background task to process mapping job.
 
@@ -317,25 +332,43 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         return
 
     job.status = "in_progress"
+    record_mapping_activity(job, "Initializing Azure OpenAI client and mapping services")
 
     try:
         ai_service = get_ai_mapping_service()
+        record_mapping_activity(
+            job,
+            "Loading Microsoft Cloud Security Benchmark and landing zone reference data",
+        )
+        record_mapping_activity(
+            job,
+            f"Starting batch mapping for {len(controls)} controls with {concurrency} parallel workers",
+        )
 
         async def progress_callback(current: int, total: int):
             """Update job progress."""
             job.mapped_controls = current
             job.progress = int((current / total) * 100)
+            record_mapping_activity(job, f"Mapped {current}/{total} controls")
             await _persist_job(job)
             logger.debug(f"Job {job_id}: {current}/{total} ({job.progress}%)")
 
         # Map controls
-        batch_result = await ai_service.map_controls_batch(controls, progress_callback)
+        batch_result = await ai_service.map_controls_batch(
+            controls,
+            progress_callback,
+            concurrency=concurrency,
+        )
 
         # Update job
         job.status = "completed"
         job.progress = 100
         job.result = batch_result
         job.completed_at = datetime.now(timezone.utc)
+        record_mapping_activity(
+            job,
+            f"Completed mapping: {batch_result.mapped_count}/{batch_result.total_controls} controls mapped",
+        )
 
         await _persist_job(job)
 
@@ -345,4 +378,5 @@ async def process_mapping_job(job_id: str, controls: List[ExternalControl]):
         logger.error(f"Job {job_id} failed: {e}")
         job.status = "failed"
         job.error_message = str(e)
+        record_mapping_activity(job, f"Mapping failed: {e}", level="ERROR")
         await _persist_job(job)

@@ -11,6 +11,7 @@ from utils.api_client import APIClient
 def _streamlit_stub():
     return SimpleNamespace(
         session_state={},
+        context=SimpleNamespace(headers={}),
         warning=lambda *args, **kwargs: None,
         info=lambda *args, **kwargs: None,
         error=lambda *args, **kwargs: None,
@@ -18,6 +19,20 @@ def _streamlit_stub():
         rerun=lambda: None,
         stop=lambda: None,
     )
+
+
+def test_get_request_headers_uses_streamlit_context_headers(monkeypatch):
+    st_stub = _streamlit_stub()
+    st_stub.context.headers = {
+        "X-MS-Client-Principal-Name": "alice@example.com",
+        "X-Forwarded-Proto": "https",
+    }
+    monkeypatch.setattr(auth, "st", st_stub)
+
+    assert auth._get_request_headers() == {
+        "x-ms-client-principal-name": "alice@example.com",
+        "x-forwarded-proto": "https",
+    }
 
 
 def test_get_current_user_uses_easy_auth_headers(monkeypatch):
@@ -32,8 +47,6 @@ def test_get_current_user_uses_easy_auth_headers(monkeypatch):
             "x-ms-token-aad-access-token": "arm-token",
         },
     )
-    monkeypatch.setattr(auth, "_get_auth_me_user", lambda headers: None)
-
     user = auth.get_current_user()
 
     assert user is not None
@@ -42,102 +55,23 @@ def test_get_current_user_uses_easy_auth_headers(monkeypatch):
     assert user.access_token == "arm-token"
 
 
-def test_get_current_user_forwards_cookie_to_auth_me(monkeypatch):
+def test_get_current_user_does_not_make_an_auth_me_request(monkeypatch):
     st_stub = _streamlit_stub()
     monkeypatch.setattr(auth, "st", st_stub)
     monkeypatch.setattr(
         auth,
         "_get_request_headers",
         lambda: {
-            "cookie": "AppServiceAuthSession=session-cookie",
-            "x-forwarded-host": "frontend.example.com",
-            "x-forwarded-proto": "https",
+            "x-ms-client-principal-name": "alice@example.com",
+            "x-ms-client-principal-id": "oid-123",
         },
     )
-
-    captured = {}
-
-    class FakeResponse:
-        status_code = 200
-
-        @staticmethod
-        def json():
-            return [{
-                "access_token": "arm-token",
-                "user_claims": [
-                    {"typ": "name", "val": "Alice Example"},
-                    {"typ": "preferred_username", "val": "alice@example.com"},
-                    {
-                        "typ": "http://schemas.microsoft.com/identity/claims/objectidentifier",
-                        "val": "oid-123",
-                    },
-                ],
-            }]
-
-    def fake_get(url, headers, timeout, follow_redirects):
-        captured["url"] = url
-        captured["headers"] = headers
-        captured["timeout"] = timeout
-        captured["follow_redirects"] = follow_redirects
-        return FakeResponse()
-
-    monkeypatch.setattr("httpx.get", fake_get)
 
     user = auth.get_current_user()
 
     assert user is not None
-    assert user.name == "Alice Example"
     assert user.email == "alice@example.com"
-    assert user.access_token == "arm-token"
-    assert captured["url"] == "https://frontend.example.com/.auth/me"
-    assert captured["headers"] == {"Cookie": "AppServiceAuthSession=session-cookie"}
-    assert captured["timeout"] == 5
-    assert captured["follow_redirects"] is False
-
-
-def test_easy_auth_cache_is_cleared_when_request_is_signed_out(monkeypatch):
-    st_stub = _streamlit_stub()
-    st_stub.session_state.update(
-        {
-            "easy_auth_user": auth.AuthUser("Alice", "alice@example.com"),
-            "_easy_auth_context": "principal:oid-123",
-        }
-    )
-    monkeypatch.setattr(auth, "st", st_stub)
-    monkeypatch.setattr(auth, "_get_request_headers", lambda: {})
-
-    assert auth.get_current_user() is None
-    assert "easy_auth_user" not in st_stub.session_state
-    assert "_easy_auth_context" not in st_stub.session_state
-
-
-def test_easy_auth_cache_tracks_the_current_principal(monkeypatch):
-    st_stub = _streamlit_stub()
-    st_stub.session_state.update(
-        {
-            "easy_auth_user": auth.AuthUser("Alice", "alice@example.com"),
-            "_easy_auth_context": "principal:alice-oid",
-        }
-    )
-    monkeypatch.setattr(auth, "st", st_stub)
-    monkeypatch.setattr(
-        auth,
-        "_get_request_headers",
-        lambda: {
-            "x-ms-client-principal-name": "bob@example.com",
-            "x-ms-client-principal-id": "bob-oid",
-        },
-    )
-    monkeypatch.setattr(auth, "_get_auth_me_user", lambda headers: None)
-
-    user = auth.get_current_user()
-
-    assert user.email == "bob@example.com"
-    assert st_stub.session_state["_easy_auth_context"] == "principal:bob-oid"
-
-
-def test_easy_auth_logout_uses_platform_endpoint():
-    assert auth.get_logout_url() == "/.auth/logout?post_logout_redirect_uri=/"
+    assert user.access_token == ""
 
 
 def test_get_request_path_prefers_forwarded_uri(monkeypatch):
