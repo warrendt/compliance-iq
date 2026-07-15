@@ -234,11 +234,17 @@ test_azure_openai_connection()  # Should return True
 
 ### MCSB Controls Not Loading
 
-The service includes 10 default MCSB controls for demonstration. For full MCSB catalog:
+The backend ships the full **92-control** MCSB v3 dataset at
+`app/backend/app/data/mcsb/mcsb_v1_controls.json`, loaded via `MCSB_DATA_PATH`
+(default `data/mcsb/mcsb_v1_controls.json`). If you see only ~10 controls, the app
+has fallen back to the built-in degraded set because the dataset file could not be
+found — check the logs for a `degraded mode` error and verify:
 
-1. Download from GitHub SecurityBenchmarks
-2. Place JSON at `../data/mcsb/mcsb_v1_controls.json`
-3. Restart server
+1. `MCSB_DATA_PATH` resolves correctly. Relative paths resolve against the backend
+   package dir (`app/backend/app`), **not** the `app/backend` working directory, so
+   use `data/mcsb/mcsb_v1_controls.json` (no `../`).
+2. The JSON file exists at the resolved path and is readable.
+3. Restart the server after changing the path.
 
 ## 📝 Development
 
