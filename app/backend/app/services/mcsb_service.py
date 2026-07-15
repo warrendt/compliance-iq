@@ -11,6 +11,7 @@ from functools import lru_cache
 
 from app.models import MCSBControl
 from app.config import get_settings
+from app.services.text_ranking import compute_idf, rank_documents, tokenize
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -35,6 +36,9 @@ class MCSBService:
         self._controls: List[MCSBControl] = []
         self._controls_by_id: Dict[str, MCSBControl] = {}
         self._controls_by_domain: Dict[str, List[MCSBControl]] = {}
+        # Lazily-built TF-IDF ranking index (aligned with self._controls).
+        self._corpus_tokens: List[List[str]] = []
+        self._idf: Dict[str, float] = {}
         self._loaded = False
 
     def load_controls(self) -> None:
@@ -213,6 +217,28 @@ class MCSBService:
         logger.debug(f"Built indexes: {len(self._controls_by_id)} controls, "
                     f"{len(self._controls_by_domain)} domains")
 
+        # Build the TF-IDF ranking corpus (aligned with self._controls order).
+        self._corpus_tokens = [
+            tokenize(self._control_document(ctrl)) for ctrl in self._controls
+        ]
+        self._idf = compute_idf(self._corpus_tokens)
+
+    @staticmethod
+    def _control_document(ctrl: MCSBControl) -> str:
+        """Compose the searchable text for a control (name/domain weighted)."""
+        frameworks = " ".join(
+            value for values in ctrl.related_frameworks.values() for value in values
+        )
+        # Repeat the name and domain so they carry more ranking weight than the
+        # longer description/guidance text.
+        return " ".join([
+            ctrl.control_name, ctrl.control_name,
+            ctrl.domain, ctrl.domain,
+            ctrl.description,
+            " ".join(ctrl.defender_recommendations),
+            frameworks,
+        ])
+
     def get_all_controls(self) -> List[MCSBControl]:
         """
         Get all MCSB controls.
@@ -293,37 +319,54 @@ class MCSBService:
     def get_controls_for_external_control(
         self,
         external_control_description: str,
-        external_control_domain: Optional[str] = None
+        external_control_domain: Optional[str] = None,
+        external_control_name: str = "",
+        requirements: Optional[str] = None,
+        top_k: Optional[int] = None,
     ) -> List[MCSBControl]:
         """
-        Get relevant MCSB controls for an external control.
-        Used to provide context to the AI mapping service.
+        Rank MCSB controls by relevance to an external control.
+
+        All controls are returned (maximum recall); ranking only reorders them so
+        the strongest candidates appear first, which improves the model's
+        attention. Domain is a ranking signal, not a hard filter. Set ``top_k``
+        (or ``settings.mcsb_candidate_top_k``) to a positive value to cap the list.
 
         Args:
-            external_control_description: Description of external control
-            external_control_domain: Optional domain hint
+            external_control_description: Description of the external control.
+            external_control_domain: Optional domain hint (ranking signal).
+            external_control_name: Optional control name/title (ranking signal).
+            requirements: Optional specific requirements text (ranking signal).
+            top_k: Optional cap on the number of controls returned (0/None = all).
 
         Returns:
-            List of potentially relevant MCSB controls
+            MCSB controls ordered most-relevant first.
         """
         if not self._loaded:
             self.load_controls()
 
-        # If domain is provided, filter by domain first
-        if external_control_domain:
-            # Try exact match
-            domain_controls = self.get_controls_by_domain(external_control_domain)
-            if domain_controls:
-                return domain_controls
+        if not self._controls:
+            return []
 
-            # Try fuzzy match on domain names
-            for domain in self._controls_by_domain.keys():
-                if external_control_domain.lower() in domain.lower():
-                    return self._controls_by_domain[domain]
+        query = " ".join(part for part in [
+            external_control_name,
+            external_control_domain or "",
+            external_control_description,
+            requirements or "",
+        ] if part)
+        query_tokens = tokenize(query)
 
-        # Otherwise, return all controls for the AI to analyze
-        # In production, you might want to use semantic search here
-        return self._controls
+        # No usable query signal: fall back to the natural control order.
+        if not query_tokens:
+            ranked = list(self._controls)
+        else:
+            ranking = rank_documents(query_tokens, self._corpus_tokens, self._idf)
+            ranked = [self._controls[index] for index, _score in ranking]
+
+        limit = top_k if top_k is not None else settings.mcsb_candidate_top_k
+        if limit and limit > 0:
+            ranked = ranked[:limit]
+        return ranked
 
 
 @lru_cache

@@ -116,7 +116,9 @@ class AIMappingService:
         if mcsb_controls is None:
             mcsb_controls = self.mcsb_service.get_controls_for_external_control(
                 external_control.description,
-                external_control.domain
+                external_control.domain,
+                external_control_name=external_control.control_name,
+                requirements=external_control.requirements,
             )
 
         # Search for relevant Azure Policies using Microsoft Learn

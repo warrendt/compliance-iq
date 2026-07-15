@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     # Max characters of each MCSB control description included in the mapping
     # prompt. 0 means no truncation (send the full description).
     mcsb_description_max_chars: int = 600
+    # Number of top-ranked MCSB candidate controls to send to the model per
+    # external control. 0 means send all controls (ranked by relevance).
+    mcsb_candidate_top_k: int = 0
 
     model_config = SettingsConfigDict(
         env_file=".env",
