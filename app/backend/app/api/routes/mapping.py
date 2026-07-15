@@ -248,6 +248,7 @@ async def analyze_controls(
         request.controls,
         request.validate_guids,
         access_token,
+        request.concurrency,
     )
 
     logger.info(f"Created mapping job {job_id} with {len(request.controls)} controls")
@@ -342,6 +343,7 @@ async def process_mapping_job(
     controls: List[ExternalControl],
     validate_guids: bool = False,
     access_token: Optional[str] = None,
+    concurrency: int = 5,
 ):
     """
     Background task to process mapping job.
@@ -351,6 +353,7 @@ async def process_mapping_job(
         controls: List of controls to map
         validate_guids: Validate azure_policy_ids against ARM as the signed-in user
         access_token: Caller's ARM-audience token (captured at request time)
+        concurrency: Max controls mapped concurrently
     """
     job = await _load_job(job_id)
     if not job:
@@ -375,6 +378,7 @@ async def process_mapping_job(
             progress_callback,
             validate_guids=validate_guids,
             access_token=access_token,
+            concurrency=concurrency,
         )
 
         # Update job

@@ -7,6 +7,7 @@ Enhanced with Microsoft Learn MCP server for Azure Policy discovery.
 import logging
 import json
 import inspect
+import asyncio
 from typing import List, Optional
 
 import openai
@@ -194,13 +195,16 @@ class AIMappingService:
         logger.debug(f"Prompt preview: {user_prompt[:300]}...")
 
         try:
-            # Call Azure OpenAI with structured output. Temperature is applied
+            # Call Azure OpenAI with structured output. The SDK client is
+            # synchronous and blocks, so run it in a worker thread to keep the
+            # event loop free for concurrent mappings. Temperature is applied
             # when the deployment supports it (see _parse_mapping_completion).
-            completion = self._parse_mapping_completion(
-                messages=[
+            completion = await asyncio.to_thread(
+                self._parse_mapping_completion,
+                [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
-                ]
+                ],
             )
 
             # Extract parsed response
@@ -249,44 +253,69 @@ class AIMappingService:
         progress_callback: Optional[callable] = None,
         validate_guids: bool = False,
         access_token: Optional[str] = None,
+        concurrency: int = 5,
     ) -> MappingBatch:
-        """Map multiple controls in batch (async-safe).
+        """Map multiple controls concurrently.
 
-        Runs map_control with awaits to avoid nesting asyncio.run inside a running
-        loop (which was causing failures in background tasks).
+        Up to ``concurrency`` controls are mapped at once (each blocking OpenAI
+        call runs in a worker thread), bounded by an asyncio.Semaphore. Results
+        keep input order regardless of completion order.
 
         When ``validate_guids`` is set and an ARM-audience ``access_token`` is
         supplied, each mapping's azure_policy_ids are checked for existence in
         Azure Resource Manager as the signed-in user; otherwise they are checked
         offline against the bundled known-good MCSB policy set.
         """
-        logger.info(f"Starting batch mapping for {len(external_controls)} controls")
+        total_controls = len(external_controls)
+        concurrency = max(1, concurrency)
+        logger.info(
+            f"Starting batch mapping for {total_controls} controls "
+            f"(concurrency={concurrency})"
+        )
+
+        semaphore = asyncio.Semaphore(concurrency)
+        progress_lock = asyncio.Lock()
+        completed = 0
+
+        async def _report_progress() -> None:
+            nonlocal completed
+            # Increment and report under one lock so progress is monotonic and
+            # callbacks fire in order even when controls finish out of order.
+            async with progress_lock:
+                completed += 1
+                current = completed
+                if progress_callback:
+                    if inspect.iscoroutinefunction(progress_callback):
+                        await progress_callback(current, total_controls)
+                    else:
+                        progress_callback(current, total_controls)
+
+        async def _map_one(control: ExternalControl):
+            async with semaphore:
+                try:
+                    result = await self.map_control(control)
+                except Exception as e:
+                    # map_control normally returns a fallback rather than raising,
+                    # but guard so one hard failure can't abort the batch.
+                    logger.error(f"Failed to map {control.control_id}: {e}")
+                    result = e
+                await _report_progress()
+                return control, result
+
+        outcomes = await asyncio.gather(
+            *(_map_one(c) for c in external_controls)
+        )
 
         mappings: List[ControlMapping] = []
         unmapped_controls: List[str] = []
-        total_controls = len(external_controls)
-
-        for idx, control in enumerate(external_controls):
-            try:
-                mapping = await self.map_control(control)
-            except Exception as e:
-                # map_control normally returns a fallback rather than raising,
-                # but guard the loop so one hard failure can't abort the batch.
-                logger.error(f"Failed to map {control.control_id}: {e}")
+        for control, result in outcomes:  # gather preserves input order
+            if isinstance(result, Exception):
                 unmapped_controls.append(control.control_id)
-            else:
+            elif getattr(result, "mapping_failed", False):
                 # A fallback mapping means automated mapping did not succeed.
-                # Report it as unmapped instead of counting it as a success.
-                if getattr(mapping, "mapping_failed", False):
-                    unmapped_controls.append(mapping.external_control_id)
-                else:
-                    mappings.append(mapping)
-
-            if progress_callback:
-                if inspect.iscoroutinefunction(progress_callback):
-                    await progress_callback(idx + 1, total_controls)
-                else:
-                    progress_callback(idx + 1, total_controls)
+                unmapped_controls.append(result.external_control_id)
+            else:
+                mappings.append(result)
 
         # Only successful mappings carry policy IDs worth validating.
         await self._apply_policy_validation(mappings, validate_guids, access_token)
