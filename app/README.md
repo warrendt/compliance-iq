@@ -140,9 +140,22 @@ SAMA-NS-01,Network Segmentation,Implement network segmentation,Network Security
 ### Step 2: AI Mapping
 
 1. Navigate to "🤖 AI Mapping" page
-2. Click "Start AI Mapping"
-3. Monitor progress as AI maps each control to MCSB
-4. View confidence scores and reasoning
+2. Optionally set **concurrency** and enable **full GUID validation** (see below)
+3. Click "Start AI Mapping"
+4. Monitor progress as AI maps each control to MCSB
+5. View confidence scores and reasoning; any controls that fail are listed as
+   unmapped for manual review (they are not silently counted as mapped)
+
+> **Accuracy & validation.** Mappings rank all 92 real MCSB controls per external
+> control, apply `AI_TEMPERATURE`, and clean AI-proposed Azure Policy GUIDs.
+> Ticking **full GUID validation** verifies each GUID exists in Azure Resource
+> Manager **as the signed-in user** (needs an ARM-audience Entra ID token; a
+> preflight greys the box out and falls back to offline known-good validation if
+> you lack permission). Tunable settings: `MCSB_CANDIDATE_TOP_K`,
+> `MCSB_DESCRIPTION_MAX_CHARS`, plus per-request `validate_guids` and
+> `concurrency` (1–10). See
+> [`docs/ai-mapping-accuracy-improvements.md`](../docs/ai-mapping-accuracy-improvements.md)
+> for the full flow, identity diagram, and the MCSB dataset refresh workflow.
 
 ### Step 3: Review & Edit
 

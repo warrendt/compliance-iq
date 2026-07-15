@@ -213,7 +213,10 @@ azd up
 
 > The Entra app registration also needs delegated permission for
 > `https://management.azure.com/user_impersonation` with tenant consent if you
-> want the authenticated `/api/v1/deploy` flow to work in production.
+> want the authenticated `/api/v1/deploy` flow **or** the AI Mapping page's
+> optional **full GUID validation** (which checks Azure Policy definitions in ARM
+> as the signed-in user) to work in production. Without it, GUID validation
+> automatically falls back to offline known-good validation — no hard failure.
 
 The `preprovision` hook will confirm whether auth is enabled or disabled.
 The `postprovision` hook will show the auth status in the deployment summary.
