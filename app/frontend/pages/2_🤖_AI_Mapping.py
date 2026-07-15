@@ -269,11 +269,19 @@ else:
                 except Exception:
                     pass  # activity logging is best-effort
 
-                mapped_count = result.get('mapped_count') or len(mappings)
-                failed_count = (result.get('total_controls') or len(mappings)) - mapped_count
+                mapped_count = result.get('mapped_count')
+                if mapped_count is None:
+                    mapped_count = len(mappings)
+                unmapped = result.get('unmapped_controls', []) or []
+                failed_count = len(unmapped)
 
                 if failed_count > 0:
-                    st.warning(f"⚠️ Mapped {mapped_count} controls, {failed_count} failed (fallback created)")
+                    st.warning(
+                        f"⚠️ Mapped {mapped_count} controls — {failed_count} "
+                        f"could not be mapped and need manual review."
+                    )
+                    with st.expander(f"View {failed_count} unmapped control(s)"):
+                        st.write(", ".join(str(c) for c in unmapped))
                 else:
                     st.success(f"✅ Successfully mapped {mapped_count} controls!")
                 st.balloons()

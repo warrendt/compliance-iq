@@ -269,10 +269,18 @@ class AIMappingService:
         for idx, control in enumerate(external_controls):
             try:
                 mapping = await self.map_control(control)
-                mappings.append(mapping)
             except Exception as e:
+                # map_control normally returns a fallback rather than raising,
+                # but guard the loop so one hard failure can't abort the batch.
                 logger.error(f"Failed to map {control.control_id}: {e}")
                 unmapped_controls.append(control.control_id)
+            else:
+                # A fallback mapping means automated mapping did not succeed.
+                # Report it as unmapped instead of counting it as a success.
+                if getattr(mapping, "mapping_failed", False):
+                    unmapped_controls.append(mapping.external_control_id)
+                else:
+                    mappings.append(mapping)
 
             if progress_callback:
                 if inspect.iscoroutinefunction(progress_callback):
@@ -280,6 +288,7 @@ class AIMappingService:
                 else:
                     progress_callback(idx + 1, total_controls)
 
+        # Only successful mappings carry policy IDs worth validating.
         await self._apply_policy_validation(mappings, validate_guids, access_token)
 
         mapped_count = len(mappings)
@@ -567,7 +576,8 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
             reasoning=f"Automated mapping failed: {error_msg}. This control requires manual review and mapping.",
             azure_policy_ids=[],
             mapping_type="none",
-            defender_recommendations=[]
+            defender_recommendations=[],
+            mapping_failed=True,
         )
 
 

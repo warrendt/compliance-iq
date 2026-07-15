@@ -154,34 +154,35 @@ async def map_batch_controls(request: MapBatchRequest):
 
     ai_service = get_ai_mapping_service()
     semaphore = asyncio.Semaphore(request.concurrency)
-    mappings: List[ControlMapping] = []
-    failed = 0
 
     async def map_one(control: ExternalControl) -> Optional[ControlMapping]:
-        nonlocal failed
         async with semaphore:
             try:
                 return await ai_service.map_control(control)
             except Exception as e:
                 logger.error(f"Failed to map {control.control_id}: {e}")
-                failed += 1
                 return ai_service._create_fallback_mapping(control, str(e))
 
     tasks = [map_one(c) for c in request.controls]
     results = await asyncio.gather(*tasks)
     mappings = [m for m in results if m is not None]
 
+    # map_control returns a flagged fallback rather than raising, so failures
+    # are detected via the mapping_failed flag, not the except branch.
+    succeeded = [m for m in mappings if not m.mapping_failed]
+    failed = len(mappings) - len(succeeded)
+
     avg_conf = (
-        sum(m.confidence_score for m in mappings) / len(mappings)
-        if mappings else 0.0
+        sum(m.confidence_score for m in succeeded) / len(succeeded)
+        if succeeded else 0.0
     )
 
-    logger.info(f"Batch complete: {len(mappings)} mapped, {failed} failed, avg confidence {avg_conf:.2f}")
+    logger.info(f"Batch complete: {len(succeeded)} mapped, {failed} failed, avg confidence {avg_conf:.2f}")
 
     return MapBatchResponse(
         mappings=mappings,
         total=len(request.controls),
-        mapped=len(mappings) - failed,
+        mapped=len(succeeded),
         failed=failed,
         avg_confidence=avg_conf,
     )

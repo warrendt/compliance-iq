@@ -53,6 +53,11 @@ class ControlMapping(BaseModel):
         description="Type of mapping relationship"
     )
 
+    mapping_failed: bool = Field(
+        default=False,
+        description="True when automated mapping failed and this is a placeholder needing manual review"
+    )
+
     defender_recommendations: List[str] = Field(
         default_factory=list,
         description="Defender for Cloud recommendations"
