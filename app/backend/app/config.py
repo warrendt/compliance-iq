@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     azure_openai_fallback_model: str = "gpt-4.1-fallback"
     azure_openai_api_version: str = "2024-12-01-preview"
     azure_openai_api_key: Optional[str] = None  # If set, uses API key; else DefaultAzureCredential
-    azure_openai_request_timeout_seconds: float = 45.0
+    azure_openai_request_timeout_seconds: float = 120.0
 
     # Optional: For user-assigned managed identity
     azure_client_id: Optional[str] = None

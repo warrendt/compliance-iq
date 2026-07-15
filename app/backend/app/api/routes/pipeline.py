@@ -58,6 +58,7 @@ class PipelineJobStatus(BaseModel):
     target_platform: str = "defender"  # defender, m365, purview
     framework_name: Optional[str] = None
     controls_extracted: int = 0
+    sections_failed: int = 0
     controls_mapped: int = 0
     error: Optional[str] = None
     output_dir: Optional[str] = None
@@ -770,9 +771,21 @@ def _run_pdf_extraction_job_sync(job_id: str) -> None:
         ).model_dump()
         job["framework_name"] = extraction.framework_name
         job["controls_extracted"] = len(controls)
+        sections_failed = getattr(extraction, "failed_sections", 0)
+        job["sections_failed"] = sections_failed
         job["completed_at"] = datetime.now(timezone.utc).isoformat()
-        update("completed", "Extraction complete", 100)
-        _log_debug(job_id, f"Extracted {len(controls)} controls")
+        complete_stage = "Extraction complete"
+        if sections_failed:
+            complete_stage = (
+                f"Extraction complete — {sections_failed} section(s) could not be "
+                f"processed; {len(controls)} controls recovered"
+            )
+        update("completed", complete_stage, 100)
+        _log_debug(
+            job_id,
+            f"Extracted {len(controls)} controls"
+            + (f" ({sections_failed} section(s) failed)" if sections_failed else ""),
+        )
     except PipelineJobCancelled:
         job.update(
             status="cancelled",
