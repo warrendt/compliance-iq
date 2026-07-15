@@ -27,6 +27,7 @@ from .models import (
     InitiativeGroup,
     PolicyDefinitionRef,
 )
+from .validator import GUID_PATTERN
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,16 @@ def _build_policies(mappings: list[ControlPolicyMapping]) -> list[dict]:
 
         for policy in mapping.azure_policies:
             pid = policy.policy_definition_id
+
+            # Strip hallucinated / malformed policy definition IDs that ARM
+            # would reject (must be a valid Azure Policy GUID).
+            if not pid or not GUID_PATTERN.match(pid.strip().rstrip("/").rsplit("/", 1)[-1]):
+                logger.warning(
+                    f"Control {mapping.control_id}: dropping invalid Azure Policy "
+                    f"definition ID '{pid}' (not a valid GUID)"
+                )
+                continue
+
             full_id = f"/providers/Microsoft.Authorization/policyDefinitions/{pid}"
 
             combo_key = f"{pid}|{group_name}"
