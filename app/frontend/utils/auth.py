@@ -192,6 +192,16 @@ def is_authenticated() -> bool:
     return get_current_user() is not None
 
 
+def has_easy_auth_session() -> bool:
+    """Return True when Container Apps Easy Auth headers identify the user.
+
+    Header-only check: unlike :func:`get_current_user`, it never falls through to
+    the interactive MSAL flow, so it is safe to call on every request (e.g. the
+    landing-page gate) without risking a server-side browser launch or a block.
+    """
+    return _get_easy_auth_user() is not None
+
+
 def get_login_url(post_login_redirect_uri: str = "/") -> str:
     """Return the Easy Auth sign-in URL for Microsoft Entra ID.
 

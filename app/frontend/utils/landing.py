@@ -11,12 +11,13 @@ through to the normal app.
 from __future__ import annotations
 
 import base64
+import os
 from functools import lru_cache
 from pathlib import Path
 
 import streamlit as st
 
-from utils.auth import get_login_url, is_authenticated
+from utils.auth import get_login_url, has_easy_auth_session
 
 # ── Branding ────────────────────────────────────────────────────────────────
 PRODUCT_NAME = "ComplianceIQ"
@@ -24,7 +25,7 @@ TAGLINE = (
     "AI-Powered Compliance Framework Mapping to Microsoft Defender for Cloud, "
     "Microsoft 365 &amp; Microsoft Purview"
 )
-_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo-icon.png"
 
 
 @lru_cache(maxsize=1)
@@ -75,11 +76,10 @@ def _landing_css() -> str:
         text-align: center;
       }
       .ciq-card img.ciq-logo {
-        width: 132px;
-        height: auto;
-        border-radius: 22px;
-        box-shadow: 0 10px 26px rgba(15, 84, 140, 0.28);
+        width: 140px;
+        height: 140px;
         margin-bottom: 1.25rem;
+        filter: drop-shadow(0 12px 24px rgba(13, 47, 82, 0.35));
       }
       .ciq-title {
         font-size: 2rem;
@@ -152,9 +152,40 @@ def render_landing_page() -> None:
     )
 
 
+def is_easy_auth_active() -> bool:
+    """Return True when the app runs behind Container Apps Easy Auth.
+
+    The branded landing page only makes sense where the ``/.auth/login/aad``
+    endpoint exists, so the gate must not fire during local development.
+
+    Detection (no new live config required):
+      * ``EASY_AUTH_ENABLED`` — explicit override ("true"/"false") when set.
+      * otherwise: ``CONTAINER_APP_NAME`` (auto-injected only inside Azure
+        Container Apps) **and** ``ENABLE_AUTH=true`` (auth actually configured).
+    """
+    override = os.getenv("EASY_AUTH_ENABLED")
+    if override is not None:
+        return override.strip().lower() == "true"
+    in_container_app = bool(os.getenv("CONTAINER_APP_NAME"))
+    auth_configured = os.getenv("ENABLE_AUTH", "false").strip().lower() == "true"
+    return in_container_app and auth_configured
+
+
+def should_show_landing(*, easy_auth_active: bool, has_session: bool) -> bool:
+    """Pure gate decision: show the landing page only behind Easy Auth and anon."""
+    return easy_auth_active and not has_session
+
+
 def require_login() -> None:
-    """Gate the app: show the landing page and stop when unauthenticated."""
-    if is_authenticated():
+    """Gate the app: render the landing page and stop for anonymous visitors.
+
+    Uses an Easy-Auth-header-only session check so it never initiates the
+    interactive MSAL flow (which would try to launch a browser server-side).
+    """
+    if not should_show_landing(
+        easy_auth_active=is_easy_auth_active(),
+        has_session=has_easy_auth_session(),
+    ):
         return
     render_landing_page()
     st.stop()
