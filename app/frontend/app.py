@@ -11,6 +11,7 @@ from utils.state_init import (
     recover_session_state,
 )
 from utils.auth import get_request_path
+from utils.landing import require_login
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -37,6 +38,11 @@ st.set_page_config(
 
 # Azure theme
 inject_azure_theme()
+
+# ── Auth gate ─────────────────────────────────────────────────────────────
+# With Easy Auth set to AllowAnonymous, render the branded landing page for
+# unauthenticated visitors and stop; authenticated users fall through.
+require_login()
 
 # ── Centralized session state initialization ──────────────────────────────
 init_session_state()

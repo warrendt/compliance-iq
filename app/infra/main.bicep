@@ -281,6 +281,7 @@ module frontendApp './core/container-app.bicep' = {
     authClientId: authClientId
     authTenantId: authTenantId
     authClientSecret: authClientSecret
+    unauthenticatedClientAction: 'AllowAnonymous'
     environmentVariables: [
       {
         name: 'BACKEND_URL'

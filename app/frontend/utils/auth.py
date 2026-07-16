@@ -9,9 +9,13 @@ Resolution order:
 
 from typing import Optional
 import os
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import streamlit as st
+
+# Container Apps Easy Auth built-in endpoints (served under the /.auth prefix).
+_EASY_AUTH_LOGIN_PATH = "/.auth/login/aad"
+_EASY_AUTH_LOGOUT_PATH = "/.auth/logout"
 
 # ---------------------------------------------------------------------------
 # Types
@@ -181,6 +185,33 @@ def get_access_token() -> Optional[str]:
     """Return the AAD access token for the logged-in user, or None."""
     user = get_current_user()
     return user.access_token if user else None
+
+
+def is_authenticated() -> bool:
+    """Return True when a user is resolved from Easy Auth / MSAL."""
+    return get_current_user() is not None
+
+
+def get_login_url(post_login_redirect_uri: str = "/") -> str:
+    """Return the Easy Auth sign-in URL for Microsoft Entra ID.
+
+    Sends the browser to the built-in ``/.auth/login/aad`` endpoint, which starts
+    the Entra ID authorization-code flow and returns the user to
+    ``post_login_redirect_uri`` (same domain) once signed in.
+    """
+    redirect = quote(post_login_redirect_uri or "/", safe="")
+    return f"{_EASY_AUTH_LOGIN_PATH}?post_login_redirect_uri={redirect}"
+
+
+def get_logout_url(post_logout_redirect_uri: str = "/") -> str:
+    """Return the Easy Auth sign-out URL.
+
+    Hitting ``/.auth/logout`` clears the session cookie and token store, then
+    redirects to ``post_logout_redirect_uri`` (same domain) — ``/`` lands the user
+    back on the branded landing page.
+    """
+    redirect = quote(post_logout_redirect_uri or "/", safe="")
+    return f"{_EASY_AUTH_LOGOUT_PATH}?post_logout_redirect_uri={redirect}"
 
 
 def get_backend_auth_headers() -> dict[str, str]:

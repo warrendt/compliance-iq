@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "738570681422185942"
+      "version": "0.44.1.10279",
+      "templateHash": "13080135953003914526"
     }
   },
   "parameters": {
@@ -318,8 +318,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "13209342643894966374"
+              "version": "0.44.1.10279",
+              "templateHash": "10285706754563756363"
             }
           },
           "parameters": {
@@ -480,8 +480,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "10363558410637292596"
+              "version": "0.44.1.10279",
+              "templateHash": "7702129754509394736"
             }
           },
           "parameters": {
@@ -628,8 +628,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "18108012424414195100"
+              "version": "0.44.1.10279",
+              "templateHash": "6387591230675835071"
             }
           },
           "parameters": {
@@ -726,8 +726,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16313992801405767510"
+              "version": "0.44.1.10279",
+              "templateHash": "17484911280095812624"
             }
           },
           "parameters": {
@@ -835,8 +835,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16629868287981559240"
+              "version": "0.44.1.10279",
+              "templateHash": "17472671153566318066"
             }
           },
           "parameters": {
@@ -1010,8 +1010,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "11735011002900376381"
+              "version": "0.44.1.10279",
+              "templateHash": "1126036541989443451"
             }
           },
           "parameters": {
@@ -1277,8 +1277,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "14989046195306307721"
+              "version": "0.44.1.10279",
+              "templateHash": "10355903969743923410"
             }
           },
           "parameters": {
@@ -1699,8 +1699,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "3979428359485699455"
+              "version": "0.44.1.10279",
+              "templateHash": "3992247341519094642"
             }
           },
           "parameters": {
@@ -1889,8 +1889,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "12271450100268662721"
+              "version": "0.44.1.10279",
+              "templateHash": "11258493480105615224"
             }
           },
           "parameters": {
@@ -1953,11 +1953,21 @@
             "authClientSecret": {
               "type": "securestring",
               "defaultValue": ""
+            },
+            "unauthenticatedClientAction": {
+              "type": "string",
+              "defaultValue": "RedirectToLoginPage",
+              "allowedValues": [
+                "RedirectToLoginPage",
+                "AllowAnonymous",
+                "Return401",
+                "Return403"
+              ]
             }
           },
           "variables": {
             "authEnabled": "[not(empty(parameters('authClientId')))]",
-            "aadRegistration": "[union(createObject('clientId', parameters('authClientId'), 'openIdIssuer', format('https://sts.windows.net/{0}/v2.0', if(not(empty(parameters('authTenantId'))), parameters('authTenantId'), tenant().tenantId))), if(not(empty(parameters('authClientSecret'))), createObject('clientSecretSettingName', 'auth-client-secret'), createObject()))]",
+            "aadRegistration": "[union(createObject('clientId', parameters('authClientId'), 'openIdIssuer', format('https://login.microsoftonline.com/{0}/v2.0', if(not(empty(parameters('authTenantId'))), parameters('authTenantId'), tenant().tenantId))), if(not(empty(parameters('authClientSecret'))), createObject('clientSecretSettingName', 'auth-client-secret'), createObject()))]",
             "aadLogin": "[if(not(empty(parameters('authClientSecret'))), createObject('loginParameters', createArray('response_type=code id_token', 'scope=openid profile email offline_access https://management.azure.com/user_impersonation')), null())]"
           },
           "resources": [
@@ -2027,7 +2037,7 @@
                   "enabled": true
                 },
                 "globalValidation": {
-                  "unauthenticatedClientAction": "RedirectToLoginPage",
+                  "unauthenticatedClientAction": "[parameters('unauthenticatedClientAction')]",
                   "redirectToProvider": "azureactivedirectory"
                 },
                 "identityProviders": {
@@ -2141,6 +2151,9 @@
           "authClientSecret": {
             "value": "[parameters('authClientSecret')]"
           },
+          "unauthenticatedClientAction": {
+            "value": "AllowAnonymous"
+          },
           "environmentVariables": {
             "value": [
               {
@@ -2172,8 +2185,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "12271450100268662721"
+              "version": "0.44.1.10279",
+              "templateHash": "11258493480105615224"
             }
           },
           "parameters": {
@@ -2236,11 +2249,21 @@
             "authClientSecret": {
               "type": "securestring",
               "defaultValue": ""
+            },
+            "unauthenticatedClientAction": {
+              "type": "string",
+              "defaultValue": "RedirectToLoginPage",
+              "allowedValues": [
+                "RedirectToLoginPage",
+                "AllowAnonymous",
+                "Return401",
+                "Return403"
+              ]
             }
           },
           "variables": {
             "authEnabled": "[not(empty(parameters('authClientId')))]",
-            "aadRegistration": "[union(createObject('clientId', parameters('authClientId'), 'openIdIssuer', format('https://sts.windows.net/{0}/v2.0', if(not(empty(parameters('authTenantId'))), parameters('authTenantId'), tenant().tenantId))), if(not(empty(parameters('authClientSecret'))), createObject('clientSecretSettingName', 'auth-client-secret'), createObject()))]",
+            "aadRegistration": "[union(createObject('clientId', parameters('authClientId'), 'openIdIssuer', format('https://login.microsoftonline.com/{0}/v2.0', if(not(empty(parameters('authTenantId'))), parameters('authTenantId'), tenant().tenantId))), if(not(empty(parameters('authClientSecret'))), createObject('clientSecretSettingName', 'auth-client-secret'), createObject()))]",
             "aadLogin": "[if(not(empty(parameters('authClientSecret'))), createObject('loginParameters', createArray('response_type=code id_token', 'scope=openid profile email offline_access https://management.azure.com/user_impersonation')), null())]"
           },
           "resources": [
@@ -2310,7 +2333,7 @@
                   "enabled": true
                 },
                 "globalValidation": {
-                  "unauthenticatedClientAction": "RedirectToLoginPage",
+                  "unauthenticatedClientAction": "[parameters('unauthenticatedClientAction')]",
                   "redirectToProvider": "azureactivedirectory"
                 },
                 "identityProviders": {
@@ -2393,8 +2416,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "15529700734220590152"
+              "version": "0.44.1.10279",
+              "templateHash": "4688824116383140073"
             }
           },
           "parameters": {
@@ -2462,8 +2485,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "4332774421096111608"
+              "version": "0.44.1.10279",
+              "templateHash": "11529546697810097568"
             }
           },
           "parameters": {
@@ -2542,8 +2565,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "15522689748822222218"
+              "version": "0.44.1.10279",
+              "templateHash": "13954168963167179957"
             }
           },
           "parameters": {
@@ -2620,8 +2643,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "15522689748822222218"
+              "version": "0.44.1.10279",
+              "templateHash": "13954168963167179957"
             }
           },
           "parameters": {
