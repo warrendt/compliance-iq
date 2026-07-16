@@ -473,12 +473,14 @@ $initiativeJson = @'
 Set-Content -Path "initiative.json" -Value $initiativeJson
 
 # Create policy initiative
+# -Metadata takes a JSON string (Az.Resources 10.x); a raw hashtable is rejected.
+$metadata = @{{category="{initiative.properties.metadata.category}"}} | ConvertTo-Json -Compress
 New-AzPolicySetDefinition `
   -Name "{initiative_name}" `
   -DisplayName "{initiative.properties.display_name}" `
   -Description "{initiative.properties.description}" `
   -PolicyDefinition "initiative.json" `
-  -Metadata @{{category="{initiative.properties.metadata.category}"}}
+  -Metadata $metadata
 
 Write-Host "Initiative created successfully"
 
@@ -851,13 +853,15 @@ $TempFile = [System.IO.Path]::GetTempFileName()
 Set-Content -Path $TempFile -Value $InitiativeJson
 
 # Create policy set definition at management group scope
+# -Metadata takes a JSON string (Az.Resources 10.x); a raw hashtable is rejected.
+$metadata = @{{category="Regulatory Compliance"}} | ConvertTo-Json -Compress
 New-AzPolicySetDefinition `
     -Name $InitiativeName `
     -DisplayName "{display_name}" `
     -Description "{description}" `
     -PolicyDefinition $TempFile `
     -ManagementGroupName $ManagementGroupId `
-    -Metadata @{{category="Regulatory Compliance"}}
+    -Metadata $metadata
 
 Write-Host ""
 Write-Host "=== Assigning Initiative ===" -ForegroundColor Cyan
