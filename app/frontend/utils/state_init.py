@@ -6,8 +6,9 @@ of truth.  Call ``init_session_state()`` once from ``app.py``; individual pages
 no longer need their own ``if 'key' not in st.session_state`` blocks.
 """
 
+import copy
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import streamlit as st
 
@@ -131,3 +132,55 @@ def persist_workflow_state() -> None:
             "platform_display_name": st.session_state.get("platform_display_name", ""),
         },
     )
+
+
+# Keys that carry the user's active workflow (restored / cleared as a unit).
+_WORKFLOW_KEYS = (
+    "controls",
+    "mappings",
+    "framework_name",
+    "policy_decisions",
+    "generated_policy",
+    "selected_platform",
+    "platform_display_name",
+)
+
+
+def recover_session_state(api_client: Optional[Any] = None) -> bool:
+    """Restore the latest saved workflow into ``st.session_state``.
+
+    Attempted at most once per session. Returns ``True`` when controls were
+    recovered so the caller can surface a "restored" banner, ``False`` otherwise.
+    """
+    if st.session_state.get("controls") or st.session_state.get("_workflow_restore_checked"):
+        return False
+
+    st.session_state["_workflow_restore_checked"] = True
+    try:
+        if api_client is None:
+            from utils.api_client import get_api_client
+
+            api_client = get_api_client()
+        saved = api_client.load_latest_session()
+    except Exception:
+        return False
+
+    if not saved or not saved.get("controls"):
+        return False
+
+    for key in _WORKFLOW_KEYS:
+        if key in saved:
+            st.session_state[key] = saved[key]
+    st.session_state["controls_loaded"] = True
+    return True
+
+
+def clear_workflow_state() -> None:
+    """Reset workflow-related session state to defaults (start a new session)."""
+    for key in _WORKFLOW_KEYS + ("controls_loaded",):
+        if key in SESSION_DEFAULTS:
+            st.session_state[key] = copy.deepcopy(SESSION_DEFAULTS[key])
+
+    # Allow a fresh recovery attempt and start a new persisted session.
+    st.session_state.pop("_workflow_restore_checked", None)
+    st.session_state["session_uuid"] = str(uuid.uuid4())
