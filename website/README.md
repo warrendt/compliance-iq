@@ -15,10 +15,12 @@ framework, no Tailwind, zero build step.**
 
 ```
 website/
-├── index.html            # Single-page marketing site
+├── index.html            # Home: hero + pipeline, 7 frameworks, how-it-works
+├── platform.html         # Platform: architecture + Azure infrastructure
+├── frameworks.html       # Frameworks: the 7 supported standards + deployment
 ├── styles.css            # All styling (palette matches the app sign-in card)
-├── main.js               # App-link wiring + mobile nav + footer year
-├── config.js             # window.COMPLIANCEIQ_APP_URL (placeholder only)
+├── main.js               # Link wiring (app + GitHub) + mobile nav + footer year
+├── config.js             # COMPLIANCEIQ_APP_URL + COMPLIANCEIQ_REPO_URL
 ├── assets/
 │   ├── logo-full.png       # Full-colour lockup — Open Graph / social image
 │   ├── logo-icon.png       # Colour shield mark — favicon source
@@ -35,6 +37,21 @@ website/
 └── README.md
 ```
 
+## Pages & navigation
+
+| Nav item        | Target                                        | Wiring                     |
+| --------------- | --------------------------------------------- | -------------------------- |
+| Platform        | `platform.html` (architecture)                | static link               |
+| Frameworks      | `frameworks.html` (the 7 supported standards) | static link               |
+| Resources       | GitHub repository                             | `[data-repo-link]`        |
+| Sign in         | deployed app root (Entra sign-in)             | `[data-app-link]`         |
+| Get started     | `app/DEPLOYMENT.md` in the repo               | `[data-repo-deploy]`      |
+| Start / Review mapping | deployed app root                      | `[data-app-link]`         |
+
+Every link has a real `href` in the HTML (works with JS disabled); `main.js`
+then overrides the app/GitHub links from `config.js` so both destinations are
+configurable in one place.
+
 ## Run locally
 
 Any static server works. Two options:
@@ -50,17 +67,22 @@ docker run --rm -p 8088:8080 complianceiq-site
 #   → http://localhost:8088   (health: http://localhost:8088/healthz)
 ```
 
-## The app URL (CTAs)
+## Links: app URL and GitHub repo
 
-Every "app" call-to-action — **Get started**, **Start mapping**, **Sign in**,
-**Review mapping** — points at a single configurable URL. The repo commits only
-a **placeholder** (`https://app.example.com`). When set, CTAs go to the app
-root, which then shows the branded Entra sign-in card.
+CTAs point at **two** configurable destinations, both set in `config.js`:
 
-**Precedence:** `config.js` holds the value; `main.js` reads
-`window.COMPLIANCEIQ_APP_URL` and wires every `[data-app-link]`.
+- **`COMPLIANCEIQ_APP_URL`** — the deployed app root. Powers **Sign in**, **Start
+  mapping**, and **Review mapping**. The repo commits only a **placeholder**
+  (`https://app.example.com`); when set, these CTAs land on the app, which then
+  shows the branded Entra sign-in card.
+- **`COMPLIANCEIQ_REPO_URL`** — the public GitHub repository. Powers **Resources**
+  (repo root) and **Get started** (→ `app/DEPLOYMENT.md`). Safe to commit; it is
+  public.
 
-Set the real URL at deploy time **without rebuilding** — the entrypoint
+`main.js` reads both and wires `[data-app-link]`, `[data-repo-link]`, and
+`[data-repo-deploy]` accordingly.
+
+Set the real **app** URL at deploy time **without rebuilding** — the entrypoint
 rewrites `config.js` from an environment variable:
 
 ```bash
@@ -72,7 +94,7 @@ docker run --rm -p 8088:8080 \
 Or, for a static host, edit the one line in `config.js` before publishing.
 
 > **Public repo rule:** never commit the real deployed app hostname or any
-> environment-specific identifier. Keep `config.js` on the placeholder.
+> environment-specific identifier. Keep `COMPLIANCEIQ_APP_URL` on the placeholder.
 
 ## Deploy
 
@@ -99,7 +121,9 @@ rings, `alt`/`aria` on imagery and the diagram, an accessible mobile nav toggle
 ## Verify
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8088   # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8088              # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8088/platform.html    # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8088/frameworks.html  # 200
 curl -s http://localhost:8088 | grep "deployable cloud controls" # hero copy
 curl -s http://localhost:8088/healthz                            # ok
 ```

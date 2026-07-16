@@ -39,13 +39,13 @@
 
       <div class="nav__menu" id="navMenu">
         <ul class="nav__links">
-          <li><a href="#platform">Platform</a></li>
-          <li><a href="#frameworks">Frameworks</a></li>
-          <li><a href="#resources">Resources</a></li>
+          <li><a href="platform.html">Platform</a></li>
+          <li><a href="frameworks.html">Frameworks</a></li>
+          <li><a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a></li>
         </ul>
         <div class="nav__actions">
           <a class="nav__signin" data-app-link href="#">Sign in</a>
-          <a class="btn btn--primary btn--sm" data-app-link href="#">Get started</a>
+          <a class="btn btn--primary btn--sm" data-repo-deploy href="https://github.com/warrendt/compliance-iq">Get started</a>
         </div>
       </div>
     </nav>
@@ -53,7 +53,7 @@
 
   <main id="main">
     <!-- ============================== HERO ============================== -->
-    <section class="hero" id="platform">
+    <section class="hero">
       <div class="hero__inner">
         <div class="hero__copy">
           <h1 class="hero__title">
@@ -70,7 +70,7 @@
                 <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </a>
-            <a class="btn btn--outline" href="#frameworks">
+            <a class="btn btn--outline" href="frameworks.html">
               <svg class="btn__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                 <path d="M4 5.5A1.5 1.5 0 015.5 4H11v15H5.5A1.5 1.5 0 014 17.5v-12zM20 5.5A1.5 1.5 0 0018.5 4H13v15h5.5a1.5 1.5 0 001.5-1.5v-12z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
               </svg>
@@ -80,16 +80,16 @@
         </div>
 
         <!-- Pipeline diagram (rebuilt in HTML/CSS/SVG) -->
-        <div class="hero__diagram" role="img" aria-label="Pipeline: a source control AC-2 flows into AI mapping, which branches to an Azure Policy initiative and Defender guidance recommendation, then to a completed review with high coverage and 92 percent confidence.">
+        <div class="hero__diagram" role="img" aria-label="Pipeline: a source control SAMA-AC-01 flows into AI mapping, which branches to an Azure Policy initiative and Defender guidance recommendation, then to a completed review with high coverage and 92 percent confidence.">
           <div class="pipe">
             <!-- Source control -->
             <article class="pcard pcard--source">
               <p class="pcard__title">Source control</p>
               <div class="pcard__doc">
-                <span class="pcard__doc-id">AC-2</span>
-                <span class="pcard__doc-label">Account Management</span>
+                <span class="pcard__doc-id">SAMA-AC-01</span>
+                <span class="pcard__doc-label">Strong authentication</span>
               </div>
-              <p class="pcard__meta">NIST SP 800-53 Rev. 5</p>
+              <p class="pcard__meta">SAMA Cybersecurity Framework</p>
             </article>
 
             <!-- AI mapping -->
@@ -183,16 +183,60 @@
 
     <!-- ============================== FRAMEWORKS ============================== -->
     <section class="frameworks" id="frameworks">
-      <h2 class="frameworks__title">7 Supported Frameworks</h2>
-      <ul class="frameworks__grid">
-        <li class="fw"><span class="fw__mark fw__mark--nist">NIST</span><span class="fw__label">NIST SP 800-53<br>Rev. 5</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--nist">NIST</span><span class="fw__label">NIST SP 800-171<br>Rev. 2</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--cis">CIS</span><span class="fw__label">CIS Controls<br>v8</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--fedramp">FR</span><span class="fw__label">FedRAMP<br>Rev. 5</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--iso">ISO</span><span class="fw__label">ISO/IEC<br>27001:2022</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--hipaa">&#9877;</span><span class="fw__label">HIPAA Security<br>Rule</span></li>
-        <li class="fw"><span class="fw__mark fw__mark--gdpr">GDPR</span><span class="fw__label">GDPR</span></li>
+      <div class="frameworks__head">
+        <h2 class="frameworks__title">7 supported frameworks</h2>
+        <p class="frameworks__lede">Region-specific regulatory standards — each mapped to Azure Policy and Microsoft Defender for Cloud, ready to deploy as audit-only initiatives.</p>
+      </div>
+      <ul class="fwgrid">
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="sama">SAMA</span>
+          <span class="fwcard__name">SAMA Cybersecurity Framework</span>
+          <span class="fwcard__meta">Saudi Arabia · Financial</span>
+          <span class="fwcard__count">48 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="adhics">ADHICS</span>
+          <span class="fwcard__name">Abu Dhabi Healthcare Information &amp; Cyber Security v2</span>
+          <span class="fwcard__meta">Abu Dhabi · Healthcare</span>
+          <span class="fwcard__count">50 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="ksa">KSA</span>
+          <span class="fwcard__name">Saudi Arabia Government Cloud Security</span>
+          <span class="fwcard__meta">Saudi Arabia · Government</span>
+          <span class="fwcard__count">58 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="ndmo">NDMO</span>
+          <span class="fwcard__name">NDMO Data Management &amp; Personal Data Protection</span>
+          <span class="fwcard__meta">Saudi Arabia · Data governance</span>
+          <span class="fwcard__count">38 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="nca">NCA</span>
+          <span class="fwcard__name">NCA Critical Systems Cybersecurity Controls (CSCC)</span>
+          <span class="fwcard__meta">Saudi Arabia · Government / CNI</span>
+          <span class="fwcard__count">49 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="rsa">RSA</span>
+          <span class="fwcard__name">South African Government Cloud Security</span>
+          <span class="fwcard__meta">South Africa · Government</span>
+          <span class="fwcard__count">56 policies</span>
+        </li>
+        <li class="fwcard">
+          <span class="fwcard__mark" data-fw="oman">OMAN</span>
+          <span class="fwcard__name">Oman Government Cloud Security</span>
+          <span class="fwcard__meta">Oman · Government</span>
+          <span class="fwcard__count">53 policies</span>
+        </li>
       </ul>
+      <div class="frameworks__more">
+        <a class="btn btn--outline btn--sm" href="frameworks.html">
+          See how each framework is deployed
+          <svg class="btn__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
       <p class="frameworks__tagline">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V7l7-4z" fill="none" stroke="#0F6CBD" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.5 12.2l2.4 2.4 4.6-4.6" fill="none" stroke="#0F6CBD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Azure-native. AI-powered. Audit-ready.
@@ -200,7 +244,7 @@
     </section>
 
     <!-- ============================== HOW IT WORKS ============================== -->
-    <section class="how" id="resources">
+    <section class="how">
       <div class="how__head">
         <h2 class="how__title">How it works</h2>
         <p class="how__lede">From governance frameworks to enforced Azure policies and automated evidence — one intelligent pipeline.</p>
@@ -263,9 +307,9 @@
         <p class="site-footer__tag">Azure-native. AI-powered. Audit-ready.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
-        <a href="#platform">Platform</a>
-        <a href="#frameworks">Frameworks</a>
-        <a href="#resources">Resources</a>
+        <a href="platform.html">Platform</a>
+        <a href="frameworks.html">Frameworks</a>
+        <a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a>
         <a data-app-link href="#">Sign in</a>
       </nav>
     </div>

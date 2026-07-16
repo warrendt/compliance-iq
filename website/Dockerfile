@@ -6,7 +6,7 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Static assets.
-COPY index.html styles.css main.js config.js /usr/share/nginx/html/
+COPY index.html platform.html frameworks.html styles.css main.js config.js /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 
 # Inject the app URL at container start from COMPLIANCEIQ_APP_URL (if set).
