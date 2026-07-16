@@ -338,7 +338,10 @@ class AIMappingService:
                     + "\n\nSelect azure_policy_ids ONLY from the ID (GUID) values "
                     "listed above that genuinely enforce this control. You may "
                     "select several. Do NOT invent GUIDs or use policy names as IDs. "
-                    "If none are relevant, return an empty list."
+                    "Prefer enforceable policies (Audit/Deny/DeployIfNotExists) over "
+                    "'Regulatory Compliance' entries, which are manual-attestation "
+                    "controls with no enforcement logic - only pick those if no "
+                    "enforceable policy fits. If none are relevant, return an empty list."
                 )
 
             logger.info(

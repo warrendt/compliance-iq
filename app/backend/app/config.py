@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     policy_catalog_path: str = "data/policy_catalog/azure_policy_catalog.json"
     # Candidate policy definitions retrieved per control and offered to the LLM.
     policy_catalog_candidate_count: int = 15
+    # Ranking multiplier applied to non-enforceable "Regulatory Compliance"
+    # (Microsoft Managed Control / CMA_*) policies during candidate retrieval.
+    # These are manual attestation controls with no enforcement logic, so they
+    # are demoted (not excluded) below real Audit/Deny policies. 1.0 disables
+    # the demotion; lower values push them further down.
+    policy_catalog_regulatory_penalty: float = 0.35
     # Best-effort runtime refresh of the catalog from ARM using the backend's
     # managed identity. Off by default; the on-demand refresh endpoint works
     # regardless. Requires the identity to have Reader on a subscription.

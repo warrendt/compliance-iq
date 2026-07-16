@@ -62,6 +62,19 @@ def _tokenize(text: str) -> List[str]:
     ]
 
 
+# Azure groups Microsoft "Managed Control" (CMA_*) manual-attestation policies
+# under this category. They carry no enforcement logic (no audit/deny effect),
+# so they are demoted below real enforceable policies during retrieval.
+_NON_ENFORCEABLE_CATEGORY = "regulatory compliance"
+
+
+def _enforcement_weight(category: str, penalty: float) -> float:
+    """Ranking multiplier: ``penalty`` for manual-attestation policies, else 1.0."""
+    if (category or "").strip().casefold() == _NON_ENFORCEABLE_CATEGORY:
+        return penalty
+    return 1.0
+
+
 class PolicyCatalogService:
     """TF-IDF retrieval over the Azure built-in policy definition catalog."""
 
@@ -196,9 +209,14 @@ class PolicyCatalogService:
             for doc_idx in self._inverted.get(term, ()):  # postings list
                 scores[doc_idx] = scores.get(doc_idx, 0.0) + qw * self._doc_terms[doc_idx][term]
 
+        penalty = settings.policy_catalog_regulatory_penalty
         ranked = sorted(
             (
-                (idx, dot / (q_norm * self._doc_norms[idx]))
+                (
+                    idx,
+                    (dot / (q_norm * self._doc_norms[idx]))
+                    * _enforcement_weight(self._definitions[idx]["category"], penalty),
+                )
                 for idx, dot in scores.items()
             ),
             key=lambda t: t[1],

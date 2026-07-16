@@ -3,6 +3,8 @@
 import json
 import os
 
+import pytest
+
 os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://dummy.openai.azure.com/")
 os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt")
 os.environ.setdefault("ENABLE_AUTH", "false")
@@ -130,3 +132,67 @@ def test_shipped_snapshot_loads_full_catalog():
     # A customer-managed-keys query should surface CMK encryption policies.
     top = svc.search("encrypt data at rest customer managed keys storage", top_n=5)
     assert any("customer-managed keys" in c.display_name.lower() for c in top)
+
+
+# --- Regulatory Compliance (manual attestation) demotion --------------------
+
+_DEMOTE_SAMPLE = {
+    "count": 2,
+    "definitions": [
+        {
+            # Manual-attestation control. Identical searchable text to the
+            # enforceable policy below, so category is the ONLY differentiator.
+            "name": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "display_name": "Review development process standards and tools",
+            "description": "Review development process standards and tools",
+            "category": "Regulatory Compliance",
+            "mode": "All",
+        },
+        {
+            "name": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "display_name": "Review development process standards and tools",
+            "description": "Review development process standards and tools",
+            "category": "Security Center",
+            "mode": "All",
+        },
+    ],
+}
+
+
+def test_regulatory_compliance_is_demoted_below_enforceable(tmp_path, monkeypatch):
+    import app.services.policy_catalog_service as mod
+
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path, _DEMOTE_SAMPLE))
+    query = "review development process standards and tools"
+
+    # No demotion: identical text -> tie -> stable order keeps the RegC entry
+    # (declared first) on top.
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 1.0)
+    no_demote = svc.search(query, top_n=2)
+    assert no_demote[0].category == "Regulatory Compliance"
+
+    # With demotion: the enforceable policy is ranked first.
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 0.35)
+    demoted = svc.search(query, top_n=2)
+    assert demoted[0].category == "Security Center"
+    # The manual control is demoted, not dropped.
+    assert any(c.category == "Regulatory Compliance" for c in demoted)
+
+
+def test_regulatory_penalty_scales_score(tmp_path, monkeypatch):
+    import app.services.policy_catalog_service as mod
+
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path, _DEMOTE_SAMPLE))
+    query = "review development process standards and tools"
+
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 1.0)
+    full = {c.name: c.score for c in svc.search(query, top_n=2)}
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 0.5)
+    half = {c.name: c.score for c in svc.search(query, top_n=2)}
+
+    reg_guid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    enf_guid = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    # Manual control's score is halved; enforceable policy is unchanged.
+    assert half[reg_guid] == pytest.approx(full[reg_guid] * 0.5, abs=1e-3)
+    assert half[reg_guid] < full[reg_guid]
+    assert half[enf_guid] == full[enf_guid]
