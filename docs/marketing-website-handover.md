@@ -70,11 +70,11 @@ match the mockup aesthetic.
 
 `logo-full.png` is the trimmed, transparent brand lockup (derived from the
 supplied `logo-full.jpg` source with PIL). Other variants: `logo-icon.png`
-(colour shield, used in nav), `logo-icon-white.png` (white shield, footer),
-`logo-white.png` (white knockout of the full lockup), plus a favicon set
-(`favicon.ico`, `favicon-32/48.png`, `apple-touch-icon.png`, `icon-192.png`).
-The nav/footer wordmark is live text for crispness; the coloured shield sits
-beside it.
+(colour shield, favicon source), `logo-icon-white.png` (white shield, used in
+nav + footer on navy), `logo-white.png` (white knockout of the full lockup),
+plus a favicon set (`favicon.ico`, `favicon-32/48.png`, `apple-touch-icon.png`,
+`icon-192.png`). The nav/footer wordmark is live text for crispness; the white
+shield sits beside it on the navy background.
 
 ## Not done / caveats
 

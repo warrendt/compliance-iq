@@ -212,7 +212,7 @@ h1, h2, h3 { margin: 0; line-height: 1.12; letter-spacing: -0.02em; }
 .pipe {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  align-items: start;
+  align-items: center;
   gap: 26px 30px;
   position: relative;
 }
@@ -226,29 +226,32 @@ h1, h2, h3 { margin: 0; line-height: 1.12; letter-spacing: -0.02em; }
   position: relative;
 }
 
-/* connector arrows between the four columns */
-.pipe > .pcard::after,
+/* connector arrows between the four pipeline stages (decorative) */
+.pcard--source::after,
+.pcard--ai::after,
+.pipe__branch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -31px;
+  width: 30px;
+  height: 2px;
+  background: var(--blue-600);
+  transform: translateY(-50%);
+}
+/* arrowheads */
+.pcard--source::before,
+.pcard--ai::before,
 .pipe__branch::before {
   content: "";
   position: absolute;
   top: 50%;
-  width: 26px;
-  height: 2px;
-  background: var(--blue-600);
-}
-.pcard--source::after { right: -28px; }
-.pcard--ai::after { right: -28px; }
-.pipe__branch::before { left: -28px; }
-.pcard--source::before,
-.pcard--ai::after,
-.pipe__branch::before {
-  content: "";
-}
-/* arrowheads */
-.pcard--source::after,
-.pcard--ai::after,
-.pipe__branch::before {
-  box-shadow: 22px -4px 0 -3px transparent;
+  right: -33px;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid var(--blue-600);
+  border-right: 2px solid var(--blue-600);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .pcard__title { margin: 0 0 12px; font-size: 0.82rem; font-weight: 700; color: var(--ink-mute); text-transform: none; }
@@ -527,7 +530,8 @@ h1, h2, h3 { margin: 0; line-height: 1.12; letter-spacing: -0.02em; }
   .hero__inner { grid-template-columns: 1fr; gap: 44px; padding-top: 56px; }
   .hero__sub { max-width: none; }
   .pipe { grid-template-columns: repeat(2, 1fr); gap: 20px; }
-  .pipe > .pcard::after, .pipe__branch::before { display: none; }
+  .pipe > .pcard::after, .pipe > .pcard::before,
+  .pipe__branch::after, .pipe__branch::before { display: none; }
   .pcard--review { grid-column: span 2; }
   .frameworks__grid { grid-template-columns: repeat(4, 1fr); gap: 20px 8px; }
   .fw:nth-child(4n) { border-right: 0; }

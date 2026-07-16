@@ -20,10 +20,10 @@ website/
 ├── main.js               # App-link wiring + mobile nav + footer year
 ├── config.js             # window.COMPLIANCEIQ_APP_URL (placeholder only)
 ├── assets/
-│   ├── logo-full.png       # Trimmed, transparent full lockup (brand source)
-│   ├── logo-icon.png       # Colour shield mark (nav)
-│   ├── logo-icon-white.png # White shield mark (footer, dark bg)
-│   ├── logo-white.png      # White knockout of full lockup
+│   ├── logo-full.png       # Full-colour lockup — Open Graph / social image
+│   ├── logo-icon.png       # Colour shield mark — favicon source
+│   ├── logo-icon-white.png # White shield mark — nav + footer (on navy)
+│   ├── logo-white.png      # White knockout of full lockup (available for dark bg)
 │   ├── favicon.ico / favicon-32.png / favicon-48.png
 │   ├── apple-touch-icon.png
 │   └── icon-192.png        # PWA / share icon
