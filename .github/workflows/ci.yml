@@ -54,3 +54,9 @@ jobs:
             app/tests/test_generate_policy_catalog.py \
             --noconftest -v
 
+      - name: Run frontend state-init unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/frontend
+        run: |
+          python -m pytest app/tests/test_state_init_helpers.py --noconftest -v
+

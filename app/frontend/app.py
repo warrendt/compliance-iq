@@ -8,7 +8,7 @@ from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.state_init import (
     clear_workflow_state,
     init_session_state,
-    recover_session_state,
+    restore_workflow_state,
 )
 from utils.auth import get_request_path
 from components.task_status_bar import render_task_status_bar
@@ -50,16 +50,15 @@ if _request_path:
         st.switch_page(_target_page)
 
 # ── Session recovery ────────────────────────────────────────────────────────
-_session_recovered = False
 try:
-    _session_recovered = recover_session_state(get_api_client())
+    restore_workflow_state()
 except Exception as exc:
     st.session_state["session_save_error"] = f"Session recovery failed: {exc}"
 
-if _session_recovered:
+if notice := st.session_state.pop("workflow_restored_notice", None):
     st.info(
-        f"🔄 Restored **{len(st.session_state.controls)} controls** and "
-        f"**{len(st.session_state.mappings)} mappings** from your latest session."
+        f"🔄 {notice} "
+        f"({len(st.session_state.get('mappings', []))} mappings)."
     )
     if st.button("🗑️ Start a new session"):
         clear_workflow_state()
