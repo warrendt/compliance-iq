@@ -146,6 +146,7 @@ def clear_workflow_state() -> None:
 
 def persist_workflow_state() -> None:
     """Persist essential workflow inputs as soon as they become usable."""
+    from utils.api_client import get_api_client
 
     get_api_client().save_session(
         st.session_state["session_uuid"],

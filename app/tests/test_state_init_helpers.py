@@ -80,3 +80,48 @@ def test_clear_workflow_state_uses_fresh_mutable_objects():
 
     assert s["controls"] == []
     assert s["policy_decisions"] == {}
+
+
+def test_persist_workflow_state_saves_session(monkeypatch):
+    """Regression: persist_workflow_state must not raise NameError.
+
+    Commit a1c247d accidentally dropped the function-local
+    ``from utils.api_client import get_api_client`` import while leaving the
+    ``get_api_client()`` call, so every persist call raised
+    ``NameError: name 'get_api_client' is not defined``. This test injects a
+    fake ``utils.api_client`` module and asserts persist resolves the client
+    and forwards the workflow payload to ``save_session``.
+    """
+    saved: dict = {}
+
+    class _FakeClient:
+        def save_session(self, session_uuid, payload):
+            saved["session_uuid"] = session_uuid
+            saved["payload"] = payload
+
+    fake_api_client = types.ModuleType("utils.api_client")
+    fake_api_client.get_api_client = lambda: _FakeClient()
+    monkeypatch.setitem(sys.modules, "utils.api_client", fake_api_client)
+
+    state_init.init_session_state()
+    s = state_init.st.session_state
+    s["controls"] = [{"control_id": "A"}]
+    s["framework_name"] = "Framework X"
+
+    # Must not raise (was NameError before the fix).
+    state_init.persist_workflow_state()
+
+    assert saved["session_uuid"] == s["session_uuid"]
+    assert saved["payload"]["controls"] == [{"control_id": "A"}]
+    assert saved["payload"]["framework_name"] == "Framework X"
+    # All persisted workflow keys are forwarded.
+    for key in (
+        "controls",
+        "mappings",
+        "framework_name",
+        "policy_decisions",
+        "generated_policy",
+        "selected_platform",
+        "platform_display_name",
+    ):
+        assert key in saved["payload"]
