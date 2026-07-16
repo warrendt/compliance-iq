@@ -1,0 +1,13 @@
+# Keep the image lean and reproducible.
+Dockerfile
+.dockerignore
+README.md
+*.md
+.git
+.gitignore
+.DS_Store
+node_modules
+npm-debug.log
+# Source design refs / scratch — never ship these.
+assets/*.psd
+assets/*.ai
