@@ -45,6 +45,12 @@ def _is_valid_policy_guid(policy_id: str) -> bool:
     return bool(_POLICY_GUID_PATTERN.match(segment))
 
 
+def _sanitize_ref_id(value: str) -> str:
+    """Sanitize a string into a safe ``policyDefinitionReferenceId`` fragment."""
+    cleaned = re.sub(r"[^0-9A-Za-z._-]+", "_", (value or "").strip()).strip("_")
+    return cleaned or "control"
+
+
 class PolicyGenerationService:
     """Service for generating Azure Policy initiatives."""
 
@@ -199,6 +205,7 @@ class PolicyGenerationService:
         """
         policy_definitions = []
         seen_policy_ids = set()
+        used_ref_ids: set[str] = set()
         invalid_ids: List[str] = []
 
         for mapping in mappings:
@@ -233,10 +240,22 @@ class PolicyGenerationService:
                     f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
                 )
 
+                # Azure requires a UNIQUE policyDefinitionReferenceId per set.
+                # Multiple controls (or one control with several policies) would
+                # otherwise collide on the bare control ID and ARM would reject
+                # the initiative. Derive a stable, unique reference id.
+                base_ref = _sanitize_ref_id(mapping.external_control_id)
+                ref_id = base_ref
+                suffix = 2
+                while ref_id in used_ref_ids:
+                    ref_id = f"{base_ref}_{suffix}"
+                    suffix += 1
+                used_ref_ids.add(ref_id)
+
                 # Create reference
                 policy_def = PolicyDefinitionReference(
                     policy_definition_id=full_policy_id,
-                    policy_definition_reference_id=mapping.external_control_id,
+                    policy_definition_reference_id=ref_id,
                     parameters={}  # Can be extended to support parameterization
                 )
 

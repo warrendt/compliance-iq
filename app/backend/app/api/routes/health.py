@@ -8,7 +8,7 @@ import logging
 
 from app import __version__
 from app.auth import test_azure_openai_connection
-from app.services import get_mcsb_service, get_sovereignty_service
+from app.services import get_mcsb_service, get_sovereignty_service, get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
@@ -23,6 +23,8 @@ class HealthResponse(BaseModel):
     mcsb_control_count: int
     slz_policies_loaded: bool = False
     slz_policy_count: int = 0
+    policy_catalog_count: int = 0
+    policy_catalog_source: str = "unloaded"
 
 
 @router.get("", response_model=HealthResponse)
@@ -65,6 +67,16 @@ async def health_check():
         slz_policies_loaded = False
         slz_policy_count = 0
 
+    # Check Azure Policy catalog (retrieval corpus)
+    try:
+        catalog = get_policy_catalog_service()
+        policy_catalog_count = catalog.count
+        policy_catalog_source = catalog.source
+    except Exception as e:
+        logger.error(f"Policy catalog health check failed: {e}")
+        policy_catalog_count = 0
+        policy_catalog_source = "error"
+
     return HealthResponse(
         status="healthy" if (azure_openai_connected and mcsb_controls_loaded) else "degraded",
         version=__version__,
@@ -72,7 +84,9 @@ async def health_check():
         mcsb_controls_loaded=mcsb_controls_loaded,
         mcsb_control_count=mcsb_control_count,
         slz_policies_loaded=slz_policies_loaded,
-        slz_policy_count=slz_policy_count
+        slz_policy_count=slz_policy_count,
+        policy_catalog_count=policy_catalog_count,
+        policy_catalog_source=policy_catalog_source,
     )
 
 

@@ -41,3 +41,16 @@ jobs:
         run: |
           python -m pytest app/tests/test_m365_purview.py --noconftest -v
 
+      - name: Run policy catalog + exporter unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+          AZURE_OPENAI_DEPLOYMENT_NAME: gpt
+          ENABLE_AUTH: "false"
+        run: |
+          python -m pytest \
+            app/tests/test_policy_catalog_service.py \
+            app/tests/test_policy_exporter_refids.py \
+            app/tests/test_generate_policy_catalog.py \
+            --noconftest -v
+

@@ -75,6 +75,19 @@ class Settings(BaseSettings):
     # against the backend ``app/`` package dir; absolute paths are used as-is.
     catalogues_dir: str = "data/catalogues"
 
+    # Azure Policy catalog (retrieval corpus for control -> policy mapping).
+    # Relative paths are resolved against the backend ``app/`` package dir.
+    policy_catalog_path: str = "data/policy_catalog/azure_policy_catalog.json"
+    # Candidate policy definitions retrieved per control and offered to the LLM.
+    policy_catalog_candidate_count: int = 15
+    # Best-effort runtime refresh of the catalog from ARM using the backend's
+    # managed identity. Off by default; the on-demand refresh endpoint works
+    # regardless. Requires the identity to have Reader on a subscription.
+    policy_catalog_runtime_refresh: bool = False
+    # Subscription used for runtime/on-demand ARM catalog refresh (optional;
+    # falls back to the first subscription visible to the identity).
+    policy_catalog_refresh_subscription: Optional[str] = None
+
     # AI Mapping Settings
     ai_temperature: float = 0.3  # Lower for consistency
     ai_max_tokens: int = 16000
