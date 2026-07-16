@@ -20,7 +20,7 @@ class PipelineConfig:
     azure_openai_api_key: Optional[str] = None  # If not set, uses DefaultAzureCredential
 
     azure_openai_fallback_model: str = "gpt-4.1-fallback"
-    azure_openai_request_timeout_seconds: float = 45.0
+    azure_openai_request_timeout_seconds: float = 120.0
 
     # Model settings
     max_tokens: int = 16000
@@ -50,7 +50,7 @@ class PipelineConfig:
             azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_openai_fallback_model=os.getenv("AZURE_OPENAI_FALLBACK_MODEL", "gpt-4.1-fallback"),
             azure_openai_request_timeout_seconds=float(
-                os.getenv("AZURE_OPENAI_REQUEST_TIMEOUT_SECONDS", "45")
+                os.getenv("AZURE_OPENAI_REQUEST_TIMEOUT_SECONDS", "120")
             ),
             max_tokens=int(os.getenv("AI_MAX_TOKENS", "16000")),
             batch_size=int(os.getenv("AI_BATCH_SIZE", "5")),

@@ -170,6 +170,10 @@ class PolicyGenerationResponse(BaseModel):
     total_controls: int = Field(..., description="Total controls processed")
     included_policies: int = Field(..., description="Number of policies included")
     excluded_policies: int = Field(..., description="Number of policies excluded (low confidence)")
+    invalid_policies: int = Field(
+        0,
+        description="Number of policy definition IDs dropped because they were not valid Azure Policy GUIDs"
+    )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 
     model_config = ConfigDict(json_schema_extra={
@@ -178,6 +182,7 @@ class PolicyGenerationResponse(BaseModel):
             "total_controls": 36,
             "included_policies": 34,
             "excluded_policies": 2,
+            "invalid_policies": 0,
             "warnings": ["2 controls excluded due to confidence < 0.7"]
         }
     })

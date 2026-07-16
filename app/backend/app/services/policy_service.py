@@ -5,6 +5,7 @@ Generates valid Azure Policy initiative definitions from control mappings.
 
 import logging
 import json
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -20,6 +21,34 @@ from app.models import (
 from app.services.sovereignty_service import get_sovereignty_service
 
 logger = logging.getLogger(__name__)
+
+# Azure Policy definition IDs (built-in and custom) are referenced by a UUID.
+# Anything that is not a well-formed GUID (e.g. an LLM-hallucinated document
+# title) is not a real policy definition and would be rejected by ARM, so it is
+# stripped at generation time rather than emitted into the initiative.
+_POLICY_GUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _is_valid_policy_guid(policy_id: str) -> bool:
+    """Return True if ``policy_id`` is a well-formed Azure Policy definition GUID.
+
+    Accepts either a bare GUID or a full
+    ``/providers/Microsoft.Authorization/policyDefinitions/<guid>`` resource ID,
+    validating only the trailing definition segment.
+    """
+    if not policy_id:
+        return False
+    segment = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+    return bool(_POLICY_GUID_PATTERN.match(segment))
+
+
+def _sanitize_ref_id(value: str) -> str:
+    """Sanitize a string into a safe ``policyDefinitionReferenceId`` fragment."""
+    cleaned = re.sub(r"[^0-9A-Za-z._-]+", "_", (value or "").strip()).strip("_")
+    return cleaned or "control"
 
 
 class PolicyGenerationService:
@@ -54,8 +83,20 @@ class PolicyGenerationService:
             request.include_all_policies
         )
 
-        # Generate policy definitions
-        policy_definitions = self._create_policy_definitions(filtered_mappings)
+        # Generate policy definitions (invalid/hallucinated GUIDs are stripped)
+        policy_definitions, invalid_policy_ids = self._create_policy_definitions(
+            filtered_mappings
+        )
+
+        unique_invalid = sorted(set(invalid_policy_ids))
+        if unique_invalid:
+            preview = ", ".join(unique_invalid[:5])
+            if len(unique_invalid) > 5:
+                preview += ", …"
+            warnings.append(
+                f"{len(unique_invalid)} invalid policy definition ID(s) dropped "
+                f"(not valid Azure Policy GUIDs): {preview}"
+            )
 
         # Create metadata
         metadata = PolicyInitiativeMetadata(
@@ -81,12 +122,14 @@ class PolicyGenerationService:
             total_controls=len(request.mappings),
             included_policies=len(policy_definitions),
             excluded_policies=len(request.mappings) - len(filtered_mappings),
+            invalid_policies=len(unique_invalid),
             warnings=warnings
         )
 
         logger.info(
             f"Generated initiative with {response.included_policies} policies, "
-            f"excluded {response.excluded_policies}"
+            f"excluded {response.excluded_policies}, "
+            f"dropped {response.invalid_policies} invalid policy ID(s)"
         )
 
         return response
@@ -145,18 +188,25 @@ class PolicyGenerationService:
     def _create_policy_definitions(
         self,
         mappings: List[ControlMapping]
-    ) -> List[PolicyDefinitionReference]:
+    ) -> tuple[List[PolicyDefinitionReference], List[str]]:
         """
         Create policy definition references from mappings.
+
+        Any ``azure_policy_ids`` entry that is not a well-formed Azure Policy
+        definition GUID is dropped (it would be rejected by ARM as
+        ``PolicyDefinitionNotFound``) and returned separately for honest
+        reporting.
 
         Args:
             mappings: List of control mappings
 
         Returns:
-            List of policy definition references
+            Tuple of (valid policy definition references, dropped invalid IDs)
         """
         policy_definitions = []
         seen_policy_ids = set()
+        used_ref_ids: set[str] = set()
+        invalid_ids: List[str] = []
 
         for mapping in mappings:
             # Skip if no Azure Policy IDs
@@ -175,22 +225,47 @@ class PolicyGenerationService:
 
                 seen_policy_ids.add(policy_id)
 
+                # Strip hallucinated / malformed policy definition IDs that ARM
+                # would reject (e.g. document titles instead of GUIDs).
+                if not _is_valid_policy_guid(policy_id):
+                    invalid_ids.append(policy_id)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping invalid "
+                        f"Azure Policy definition ID '{policy_id}' (not a valid GUID)"
+                    )
+                    continue
+
                 # Create full policy definition ID
                 full_policy_id = (
                     f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
                 )
 
+                # Azure requires a UNIQUE policyDefinitionReferenceId per set.
+                # Multiple controls (or one control with several policies) would
+                # otherwise collide on the bare control ID and ARM would reject
+                # the initiative. Derive a stable, unique reference id.
+                base_ref = _sanitize_ref_id(mapping.external_control_id)
+                ref_id = base_ref
+                suffix = 2
+                while ref_id in used_ref_ids:
+                    ref_id = f"{base_ref}_{suffix}"
+                    suffix += 1
+                used_ref_ids.add(ref_id)
+
                 # Create reference
                 policy_def = PolicyDefinitionReference(
                     policy_definition_id=full_policy_id,
-                    policy_definition_reference_id=mapping.external_control_id,
+                    policy_definition_reference_id=ref_id,
                     parameters={}  # Can be extended to support parameterization
                 )
 
                 policy_definitions.append(policy_def)
 
-        logger.info(f"Created {len(policy_definitions)} policy definition references")
-        return policy_definitions
+        logger.info(
+            f"Created {len(policy_definitions)} policy definition references"
+            + (f", dropped {len(invalid_ids)} invalid" if invalid_ids else "")
+        )
+        return policy_definitions, invalid_ids
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:
         """

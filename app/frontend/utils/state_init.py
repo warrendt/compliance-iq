@@ -6,6 +6,7 @@ of truth.  Call ``init_session_state()`` once from ``app.py``; individual pages
 no longer need their own ``if 'key' not in st.session_state`` blocks.
 """
 
+import copy
 import uuid
 from typing import Any, Dict
 
@@ -67,6 +68,17 @@ SESSION_DEFAULTS: Dict[str, Any] = {
 }
 
 
+# Transient keys created ad-hoc by pages (uploads, restore guards) that are not
+# part of SESSION_DEFAULTS but must be dropped when starting a new session.
+_TRANSIENT_STATE_KEYS = (
+    "uploaded_df",
+    "workflow_restored_notice",
+    "_workflow_restore_checked",
+    "session_recovery_error",
+    "session_save_error",
+)
+
+
 def init_session_state() -> None:
     """Populate ``st.session_state`` with any missing default keys.
 
@@ -115,9 +127,25 @@ def restore_workflow_state() -> None:
     )
 
 
+def clear_workflow_state() -> None:
+    """Reset the workflow to a clean slate for a brand-new session.
+
+    Restores every default key to a fresh (deep-copied) copy of its default so
+    no mutable state leaks across sessions, drops transient upload artifacts,
+    issues a new ``session_uuid`` so persisted state is kept separate, and
+    re-arms the one-shot restore guard so the fresh session is not immediately
+    re-hydrated from the backend.
+    """
+    for key, default in SESSION_DEFAULTS.items():
+        st.session_state[key] = copy.deepcopy(default)
+    for key in _TRANSIENT_STATE_KEYS:
+        st.session_state.pop(key, None)
+    st.session_state["session_uuid"] = str(uuid.uuid4())
+    st.session_state["_workflow_restore_checked"] = True
+
+
 def persist_workflow_state() -> None:
     """Persist essential workflow inputs as soon as they become usable."""
-    from utils.api_client import get_api_client
 
     get_api_client().save_session(
         st.session_state["session_uuid"],

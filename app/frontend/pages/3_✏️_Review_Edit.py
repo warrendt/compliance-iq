@@ -242,10 +242,14 @@ else:
                     _pd = _details.get(policy_id)
                     if _pd and _pd.get("display_name"):
                         _url = _pd.get("learn_url", "")
+                        _title = f"**{_pd['display_name']}**"
                         if _url:
-                            st.markdown(f"- **{_pd['display_name']}** — `{policy_id}` ([docs]({_url}))")
-                        else:
-                            st.markdown(f"- **{_pd['display_name']}** — `{policy_id}`")
+                            _title += f" ([docs]({_url}))"
+                        st.markdown(f"- {_title}")
+                        _desc = _pd.get("description")
+                        if _desc:
+                            st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;{_desc}")
+                        st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;`{policy_id}`")
                     else:
                         st.code(policy_id, language="text")
             

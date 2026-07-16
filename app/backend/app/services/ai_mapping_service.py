@@ -16,6 +16,7 @@ from app.models import ExternalControl, MCSBControl, ControlMapping, MappingBatc
 from app.models.sovereignty import SovereigntyMapping
 from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
+from app.services.policy_catalog_service import get_policy_catalog_service
 from app.services.sovereignty_service import get_sovereignty_service
 from app.auth import get_azure_openai_client
 from app.config import get_settings
@@ -89,6 +90,7 @@ class AIMappingService:
         """Initialize AI mapping service."""
         self.client = get_azure_openai_client()
         self.learn_client = get_microsoft_learn_client()
+        self.catalog = get_policy_catalog_service()
         self.mcsb_service = get_mcsb_service()
         self.sovereignty_service = get_sovereignty_service()
         self.model = settings.azure_openai_deployment_name
@@ -285,58 +287,76 @@ class AIMappingService:
 
     async def _search_azure_policies(self, external_control: ExternalControl) -> str:
         """
-        Search Microsoft Learn for relevant Azure Policies.
+        Retrieve candidate Azure built-in policy definitions for a control.
+
+        Uses TF-IDF retrieval over the shipped Azure Policy catalog (~2.5k
+        built-in definitions) so the model chooses ``azure_policy_ids`` from
+        *real* Azure Policy GUIDs instead of inventing them or being limited to
+        the small MCSB control set. Degrades gracefully to a best-practice hint
+        if the catalog is unavailable.
 
         Args:
             external_control: External control to find policies for
 
         Returns:
-            Context string with relevant policy information
+            Context string with candidate policy definitions (name + GUID)
         """
         try:
-            logger.info(f"Searching Azure policies for: {external_control.control_id}")
-            
-            # Search Microsoft Learn for relevant policies
-            policies = await self.learn_client.search_azure_policies(
-                control_name=external_control.control_name,
-                description=external_control.description,
-                domain=external_control.domain
+            query = " ".join(
+                p for p in (
+                    external_control.control_name,
+                    external_control.description,
+                    external_control.domain or "",
+                ) if p
             )
-            
-            if policies:
-                # Format policy information for the prompt
-                policy_list = []
-                logger.info(f"Formatting {len(policies)} policies for AI prompt context")
-                for i, policy in enumerate(policies, 1):
-                    policy_info = f"""
-  - Policy: {policy['policy_name']}
-    ID: {policy['policy_id']}
-    Description: {policy['description']}
-    Learn More: {policy['learn_url']}
-"""
-                    policy_list.append(policy_info)
-                    logger.debug(f"  Added policy {i}/{len(policies)}: {policy['policy_name'][:60]}")
-                
-                policy_context = f"""
-Relevant Azure Policies from Microsoft Learn:
-{len(policies)} policies found that may implement this control:
-{''.join(policy_list)}
+            candidates = await asyncio.to_thread(
+                self.catalog.search,
+                query,
+                settings.policy_catalog_candidate_count,
+            )
 
-Use these policy IDs in the azure_policy_ids field if they match the control requirements.
-"""
-                logger.info(f"✓ Generated policy context ({len(policy_context)} chars) with {len(policies)} policies for {external_control.control_id}")
-                logger.debug(f"Policy context preview: {policy_context[:200]}...")
-                return policy_context
-            else:
-                return """
-Azure Policy Context:
-No specific policies found in Microsoft Learn for this control.
-Consider general security policies or provide custom policy recommendations based on the control requirements.
-"""
-            
+            if candidates:
+                logger.info(
+                    "Retrieved %d candidate Azure policies for %s from catalog (%s)",
+                    len(candidates), external_control.control_id, self.catalog.source,
+                )
+                lines = []
+                for c in candidates:
+                    desc = (c.description or "").strip().replace("\n", " ")
+                    if len(desc) > 220:
+                        desc = desc[:217] + "..."
+                    lines.append(
+                        f"  - {c.display_name} [{c.category}]\n"
+                        f"    ID: {c.name}\n"
+                        f"    {desc}"
+                    )
+                return (
+                    "Candidate Azure Policy definitions (retrieved from the Azure "
+                    "built-in policy catalog):\n"
+                    f"{len(candidates)} candidates ranked by relevance.\n"
+                    + "\n".join(lines)
+                    + "\n\nSelect azure_policy_ids ONLY from the ID (GUID) values "
+                    "listed above that genuinely enforce this control. You may "
+                    "select several. Do NOT invent GUIDs or use policy names as IDs. "
+                    "If none are relevant, return an empty list."
+                )
+
+            logger.info(
+                "No catalog candidates for %s (catalog source=%s)",
+                external_control.control_id, self.catalog.source,
+            )
+            return (
+                "Azure Policy Context:\n"
+                "No candidate policy definitions were retrieved for this control. "
+                "Return an empty azure_policy_ids list rather than inventing GUIDs."
+            )
+
         except Exception as e:
-            logger.warning(f"Failed to search Azure policies: {e}")
-            return "Azure Policy search unavailable - provide policy recommendations based on best practices"
+            logger.warning(f"Failed to retrieve candidate Azure policies: {e}")
+            return (
+                "Azure Policy search unavailable - return an empty azure_policy_ids "
+                "list rather than inventing GUIDs."
+            )
 
     def _create_mapping_prompt(
         self,
@@ -390,11 +410,15 @@ Azure Policy Context:
 Task:
 -----
 1. MCSB Mapping: Analyze the external control and identify the best matching MCSB control.
-   Use the Azure Policy context to help identify relevant policy IDs that implement this control.
    Provide a confidence score, mapping type, and detailed reasoning.
-   Include specific Azure Policy definition IDs (GUIDs or built-in policy names) that enforce this control.
 
-2. Sovereignty Mapping: Determine the appropriate SLZ sovereignty level (L1/L2/L3),
+2. Azure Policy selection: From the "Azure Policy Context" section below, select the
+   Azure Policy definition GUIDs that genuinely enforce this control and put them in
+   azure_policy_ids. Use ONLY the ID (GUID) values listed there. Select as many as truly
+   apply (there may be several). Never invent GUIDs, and never put a policy name or MCSB
+   control ID in azure_policy_ids. If none of the candidates fit, return an empty list.
+
+3. Sovereignty Mapping: Determine the appropriate SLZ sovereignty level (L1/L2/L3),
    relevant sovereignty control objectives (SO-1 through SO-5), and matching SLZ policies.
    Provide the sovereignty mapping in the 'sovereignty' field with:
    - sovereignty_level: "L1", "L2", or "L3"
@@ -403,8 +427,9 @@ Task:
    - target_archetype: "sovereign_root", "confidential_corp", or "confidential_online"
    - reasoning: brief explanation of why this sovereignty level was chosen
 
-Important: The azure_policy_ids field should contain actual Azure Policy definition IDs found in the Azure Policy Context above.
-The sovereignty field should reference specific SLZ policies from the Sovereignty Context above.
+Important: azure_policy_ids MUST contain only GUIDs copied verbatim from the Azure Policy
+Context above. The sovereignty field should reference specific SLZ policies from the
+Sovereignty Context above.
 """
         return prompt
 

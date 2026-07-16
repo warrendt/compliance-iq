@@ -163,6 +163,17 @@ def _strict_response_schema(response_format: type[BaseModel]) -> dict:
                 make_objects_strict(child)
 
     make_objects_strict(schema)
+
+    # Strip server-only fields the model must never populate (honest accounting
+    # values set by the pipeline itself, not by the LLM).
+    server_only = {"failed_sections"}
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for name in server_only:
+            properties.pop(name, None)
+    if isinstance(schema.get("required"), list):
+        schema["required"] = [r for r in schema["required"] if r not in server_only]
+
     return schema
 
 
@@ -294,6 +305,8 @@ def _extract_multi_chunk(
     issuing_authority = None
     country_or_region = None
     summary = ""
+    metadata_captured = False
+    failed_sections = 0
 
     for i, chunk in enumerate(chunks):
         logger.info(f"Processing chunk {i + 1}/{len(chunks)} ({len(chunk):,} chars)")
@@ -310,25 +323,41 @@ Extract ALL compliance controls found in this portion of the document.
 This is part {i + 1} of {len(chunks)} parts of the same document.
 Be thorough — capture every control, requirement, and sub-requirement found in this section."""
 
-        completion = _parse_with_retry(
-            client,
-            config,
-            messages=[
-                {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format=ControlExtractionResult,
-        )
+        try:
+            completion = _parse_with_retry(
+                client,
+                config,
+                messages=[
+                    {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format=ControlExtractionResult,
+            )
+        except RuntimeError as exc:
+            # One section exhausting all models must not discard the sections that
+            # did succeed. Record the failure honestly and keep going.
+            failed_sections += 1
+            logger.warning(
+                "Chunk %s/%s failed extraction after all models were exhausted: %s. "
+                "Continuing with the remaining sections.",
+                i + 1,
+                len(chunks),
+                exc,
+            )
+            if progress_callback:
+                progress_callback(i + 1, len(chunks))
+            continue
 
         result = completion
 
-        # Take metadata from first chunk
-        if i == 0:
+        # Take metadata from the first section that extracts successfully.
+        if not metadata_captured:
             framework_name = result.framework_name
             framework_version = result.framework_version
             issuing_authority = result.issuing_authority
             country_or_region = result.country_or_region
             summary = result.summary
+            metadata_captured = True
 
         # Deduplicate controls by ID
         for ctrl in result.controls:
@@ -342,6 +371,19 @@ Be thorough — capture every control, requirement, and sub-requirement found in
         if progress_callback:
             progress_callback(i + 1, len(chunks))
 
+    if failed_sections == len(chunks):
+        raise RuntimeError(
+            "Azure OpenAI extraction failed for every document section after "
+            "exhausting the configured primary and fallback models"
+        )
+
+    if failed_sections:
+        logger.warning(
+            "Extraction completed with partial coverage: %s of %s sections failed.",
+            failed_sections,
+            len(chunks),
+        )
+
     return ControlExtractionResult(
         framework_name=framework_name,
         framework_version=framework_version,
@@ -349,4 +391,5 @@ Be thorough — capture every control, requirement, and sub-requirement found in
         country_or_region=country_or_region,
         controls=all_controls,
         summary=summary,
+        failed_sections=failed_sections,
     )

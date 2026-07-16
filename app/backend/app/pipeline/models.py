@@ -55,6 +55,14 @@ class ControlExtractionResult(BaseModel):
     summary: str = Field(
         ..., description="Brief summary of the framework's purpose and scope"
     )
+    failed_sections: int = Field(
+        default=0,
+        description=(
+            "Number of document sections that could not be extracted after "
+            "exhausting all models. Server-populated for honest accounting; "
+            "never emitted by the model (stripped from the strict output schema)."
+        ),
+    )
 
 
 # ── Stage 2: Azure Policy Mappings ────────────────────────────────────────────
