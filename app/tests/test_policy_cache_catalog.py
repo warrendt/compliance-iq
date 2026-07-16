@@ -12,6 +12,7 @@ import pytest
 from app.services.policy_cache_service import (
     PolicyCacheService,
     _portal_definition_url,
+    _is_stub_description,
 )
 from app.services.policy_catalog_service import get_policy_catalog_service
 
@@ -72,6 +73,65 @@ async def test_get_policy_details_deduplicates_and_batches():
     results = await service.get_policy_details([guid, guid, guid])
 
     assert list(results.keys()) == [guid]
+
+
+@pytest.mark.parametrize(
+    "display_name,description,expected",
+    [
+        # Empty description is a stub.
+        ("Establish a secure software development program", "", True),
+        # CMA_ prefix that just repeats the display name is a stub.
+        (
+            "Establish a secure software development program",
+            "CMA_0259 - Establish a secure software development program",
+            True,
+        ),
+        # Exact repeat of the name (no CMA prefix) is a stub.
+        ("Review development process, standards and tools",
+         "Review development process, standards and tools", True),
+        # A genuine, informative description is NOT a stub.
+        (
+            "Audit virtual machines without disaster recovery configured",
+            "Audit virtual machines which do not have disaster recovery configured.",
+            False,
+        ),
+    ],
+)
+def test_is_stub_description(display_name, description, expected):
+    assert _is_stub_description(display_name, description) is expected
+
+
+@pytest.mark.asyncio
+async def test_get_policy_details_flags_stub_descriptions():
+    """CMA_ Regulatory Compliance policies are flagged as description stubs."""
+    guid = "e750ca06-1824-464a-2cf3-d0fa754d1cb4"  # CMA_0259, real built-in
+
+    service = PolicyCacheService()
+    results = await service.get_policy_details([guid])
+
+    assert guid in results
+    detail = results[guid]
+    assert detail["display_name"] == "Establish a secure software development program"
+    # The Azure description just repeats the name -> flagged so the UI can hide it.
+    assert detail["description_is_stub"] is True
+    assert detail["category"] == "Regulatory Compliance"
+
+
+@pytest.mark.asyncio
+async def test_get_policy_details_rich_description_not_flagged():
+    """A real Audit/Deny policy keeps its informative description (not a stub)."""
+    data = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    rich = next(
+        d for d in data["definitions"]
+        if not _is_stub_description(d.get("display_name", ""), d.get("description", ""))
+    )
+    guid = rich["name"]
+
+    service = PolicyCacheService()
+    results = await service.get_policy_details([guid])
+
+    assert results[guid]["description_is_stub"] is False
+    assert results[guid]["description"] == rich["description"]
 
 
 @pytest.mark.asyncio
