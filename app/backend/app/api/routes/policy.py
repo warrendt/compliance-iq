@@ -43,29 +43,44 @@ def _mcsb_version_payload(
     initiative_json: dict,
     bicep_template: str,
     scripts: dict,
+    standard: Optional[dict] = None,
 ) -> dict:
     """Create a complete, immutable download bundle for an MCSB generation."""
     stem = _file_stem(request.framework_name)
+    files = [
+        _json_file(f"{stem}_initiative.json", initiative_json),
+        {"name": f"{stem}_initiative.bicep", "content": bicep_template},
+        {
+            "name": f"Deploy-{stem}Initiative.ps1",
+            "content": scripts["powershell"],
+        },
+        {
+            "name": f"deploy-{stem}-initiative.sh",
+            "content": scripts.get("cli", ""),
+        },
+        _json_file(
+            f"{stem}_mappings.json",
+            [mapping.model_dump(mode="json") for mapping in request.mappings],
+        ),
+    ]
+    if standard:
+        files.extend(
+            [
+                {
+                    "name": f"{stem}_defender_standard.json",
+                    "content": standard["arm_template"],
+                },
+                {
+                    "name": f"Deploy-{stem}DefenderStandard.ps1",
+                    "content": standard["powershell"],
+                },
+            ]
+        )
     return {
         "artifact_type": "mcsb_initiative",
         "framework_name": request.framework_name,
         "initiative_id": initiative_id,
-        "files": [
-            _json_file(f"{stem}_initiative.json", initiative_json),
-            {"name": f"{stem}_initiative.bicep", "content": bicep_template},
-            {
-                "name": f"Deploy-{stem}Initiative.ps1",
-                "content": scripts["powershell"],
-            },
-            {
-                "name": f"deploy-{stem}-initiative.sh",
-                "content": scripts.get("cli", ""),
-            },
-            _json_file(
-                f"{stem}_mappings.json",
-                [mapping.model_dump(mode="json") for mapping in request.mappings],
-            ),
-        ],
+        "files": files,
         "omitted_files": [],
     }
 
@@ -149,6 +164,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         scripts = policy_service.generate_deployment_script(
             response.initiative, initiative_name, enforce_mode=request.enforce_mode
         )
+        standard = policy_service.generate_security_standard(
+            response.initiative, initiative_name
+        )
 
         result = response.model_dump()
         result["initiative_id"] = f"{initiative_name}-compliance"
@@ -156,6 +174,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         result["bicep_template"] = bicep_template
         result["powershell_script"] = scripts["powershell"]
         result["cli_script"] = scripts.get("cli", "")
+        result["defender_standard_name"] = standard["standard_name"]
+        result["defender_standard_template"] = standard["arm_template"]
+        result["defender_standard_script"] = standard["powershell"]
 
         version = await version_service.create_version(
             user_id=user.email,
@@ -165,6 +186,7 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
                 initiative_json=initiative_json,
                 bicep_template=bicep_template,
                 scripts=scripts,
+                standard=standard,
             ),
             metadata={
                 "source": "mcsb_initiative",
@@ -192,6 +214,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
             "bicep_template": bicep_template,
             "powershell_script": scripts["powershell"],
             "cli_script": scripts.get("cli", ""),
+            "defender_standard_name": standard["standard_name"],
+            "defender_standard_template": standard["arm_template"],
+            "defender_standard_script": standard["powershell"],
             "enforce_mode": request.enforce_mode,
             "mappings_count": len(request.mappings),
             "included_policies": response.included_policies,

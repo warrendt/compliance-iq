@@ -27,14 +27,48 @@ class PolicyDefinitionReference(BaseModel):
         default_factory=dict,
         description="Parameter values for this policy"
     )
+    group_names: List[str] = Field(
+        default_factory=list,
+        description="Names of the policyDefinitionGroups (controls) this policy belongs to"
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
             "policyDefinitionReferenceId": "SAMA-AC-01",
-            "parameters": {}
+            "parameters": {},
+            "groupNames": ["SAMA_AC_01"]
         }
     })
+
+
+class PolicyDefinitionGroup(BaseModel):
+    """A control grouping inside a Regulatory Compliance initiative.
+
+    Grouping is what turns a flat policy set definition into a
+    Regulatory-Compliance-style initiative: each group represents one control of
+    the source framework and the member policies reference it via ``groupNames``.
+    """
+
+    name: str = Field(..., description="Unique group name (sanitized control ID)")
+    display_name: Optional[str] = Field(
+        None, description="Human-readable group name (control ID + title)"
+    )
+    category: Optional[str] = Field(
+        None, description="Compliance domain / category for this control"
+    )
+    description: Optional[str] = Field(None, description="Group description")
+
+    def to_azure_json(self) -> Dict[str, Any]:
+        """Emit the Azure ``policyDefinitionGroups`` entry (omitting empty fields)."""
+        group: Dict[str, Any] = {"name": self.name}
+        if self.display_name:
+            group["displayName"] = self.display_name
+        if self.category:
+            group["category"] = self.category
+        if self.description:
+            group["description"] = self.description
+        return group
 
 
 class PolicyInitiativeMetadata(BaseModel):
@@ -68,6 +102,10 @@ class PolicyInitiativeProperties(BaseModel):
     policy_definitions: List[PolicyDefinitionReference] = Field(
         ...,
         description="List of policy definitions in this initiative"
+    )
+    policy_definition_groups: List[PolicyDefinitionGroup] = Field(
+        default_factory=list,
+        description="Control groupings that make this a Regulatory Compliance initiative"
     )
 
     model_config = ConfigDict(json_schema_extra={
@@ -105,28 +143,38 @@ class PolicyInitiative(BaseModel):
         Returns:
             Dict: Azure Policy initiative JSON
         """
-        return {
-            "properties": {
-                "displayName": self.properties.display_name,
-                "description": self.properties.description,
-                "metadata": {
-                    "category": self.properties.metadata.category,
-                    "source": self.properties.metadata.source,
-                    "version": self.properties.metadata.version,
-                    "generatedDate": self.properties.metadata.generated_date.isoformat(),
-                    "frameworkName": self.properties.metadata.framework_name,
-                    "frameworkVersion": self.properties.metadata.framework_version
-                },
-                "policyDefinitions": [
-                    {
-                        "policyDefinitionId": pd.policy_definition_id,
-                        "policyDefinitionReferenceId": pd.policy_definition_reference_id,
-                        "parameters": pd.parameters
-                    }
-                    for pd in self.properties.policy_definitions
-                ]
+        policy_definitions: List[Dict[str, Any]] = []
+        for pd in self.properties.policy_definitions:
+            entry: Dict[str, Any] = {
+                "policyDefinitionId": pd.policy_definition_id,
+                "policyDefinitionReferenceId": pd.policy_definition_reference_id,
+                "parameters": pd.parameters,
             }
+            if pd.group_names:
+                entry["groupNames"] = pd.group_names
+            policy_definitions.append(entry)
+
+        properties: Dict[str, Any] = {
+            "displayName": self.properties.display_name,
+            "description": self.properties.description,
+            "metadata": {
+                "category": self.properties.metadata.category,
+                "source": self.properties.metadata.source,
+                "version": self.properties.metadata.version,
+                "generatedDate": self.properties.metadata.generated_date.isoformat(),
+                "frameworkName": self.properties.metadata.framework_name,
+                "frameworkVersion": self.properties.metadata.framework_version
+            },
+            "policyDefinitions": policy_definitions,
         }
+
+        if self.properties.policy_definition_groups:
+            properties["policyDefinitionGroups"] = [
+                group.to_azure_json()
+                for group in self.properties.policy_definition_groups
+            ]
+
+        return {"properties": properties}
 
 
 class PolicyGenerationRequest(BaseModel):

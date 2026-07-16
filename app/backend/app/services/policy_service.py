@@ -6,6 +6,7 @@ Generates valid Azure Policy initiative definitions from control mappings.
 import logging
 import json
 import re
+import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -15,6 +16,7 @@ from app.models import (
     PolicyInitiativeProperties,
     PolicyInitiativeMetadata,
     PolicyDefinitionReference,
+    PolicyDefinitionGroup,
     PolicyGenerationRequest,
     PolicyGenerationResponse
 )
@@ -51,6 +53,17 @@ def _sanitize_ref_id(value: str) -> str:
     return cleaned or "control"
 
 
+def _sanitize_group_name(value: str) -> str:
+    """Sanitize a control ID into a valid ``policyDefinitionGroups`` name.
+
+    Azure group names allow alphanumerics and underscores; anything else is
+    collapsed to an underscore so member policies can reference the group via
+    ``groupNames``.
+    """
+    cleaned = re.sub(r"[^0-9A-Za-z_]+", "_", (value or "").strip()).strip("_")
+    return cleaned or "control"
+
+
 class PolicyGenerationService:
     """Service for generating Azure Policy initiatives."""
 
@@ -84,7 +97,9 @@ class PolicyGenerationService:
         )
 
         # Generate policy definitions (invalid/hallucinated GUIDs are stripped)
-        policy_definitions, invalid_policy_ids = self._create_policy_definitions(
+        # and the control groupings that make this a Regulatory Compliance
+        # initiative.
+        policy_definitions, groups, invalid_policy_ids = self._create_policy_definitions(
             filtered_mappings
         )
 
@@ -110,7 +125,8 @@ class PolicyGenerationService:
             display_name=f"{request.framework_name} Compliance Initiative",
             description=f"AI-generated policy initiative for {request.framework_name} compliance framework",
             metadata=metadata,
-            policy_definitions=policy_definitions
+            policy_definitions=policy_definitions,
+            policy_definition_groups=groups
         )
 
         # Create initiative
@@ -188,9 +204,15 @@ class PolicyGenerationService:
     def _create_policy_definitions(
         self,
         mappings: List[ControlMapping]
-    ) -> tuple[List[PolicyDefinitionReference], List[str]]:
+    ) -> tuple[List[PolicyDefinitionReference], List[PolicyDefinitionGroup], List[str]]:
         """
-        Create policy definition references from mappings.
+        Create policy definition references and control groups from mappings.
+
+        Each external control becomes one ``policyDefinitionGroups`` entry and its
+        mapped policies reference it via ``groupNames`` — this is what turns a flat
+        policy set definition into a Regulatory-Compliance-style initiative. A
+        policy GUID shared by several controls is emitted once but accumulates the
+        group names of every control it maps to (mirrors the pipeline builder).
 
         Any ``azure_policy_ids`` entry that is not a well-formed Azure Policy
         definition GUID is dropped (it would be rejected by ARM as
@@ -201,10 +223,12 @@ class PolicyGenerationService:
             mappings: List of control mappings
 
         Returns:
-            Tuple of (valid policy definition references, dropped invalid IDs)
+            Tuple of (policy definition references, control groups, dropped invalid IDs)
         """
-        policy_definitions = []
-        seen_policy_ids = set()
+        policy_by_full_id: Dict[str, PolicyDefinitionReference] = {}
+        ordered_definitions: List[PolicyDefinitionReference] = []
+        groups_by_name: Dict[str, PolicyDefinitionGroup] = {}
+        ordered_groups: List[PolicyDefinitionGroup] = []
         used_ref_ids: set[str] = set()
         invalid_ids: List[str] = []
 
@@ -216,15 +240,26 @@ class PolicyGenerationService:
                 )
                 continue
 
+            # One group per external control (created lazily; pruned later if it
+            # ends up with no valid policies).
+            group_name = _sanitize_group_name(mapping.external_control_id)
+            if group_name not in groups_by_name:
+                display_name = mapping.external_control_id
+                if mapping.external_control_name:
+                    display_name = (
+                        f"{mapping.external_control_id}: {mapping.external_control_name}"
+                    )
+                group = PolicyDefinitionGroup(
+                    name=group_name,
+                    display_name=display_name,
+                    category=mapping.mcsb_domain or None,
+                    description=mapping.reasoning or None,
+                )
+                groups_by_name[group_name] = group
+                ordered_groups.append(group)
+
             # Create a policy definition reference for each Azure Policy
             for policy_id in mapping.azure_policy_ids:
-                # Avoid duplicates
-                if policy_id in seen_policy_ids:
-                    logger.debug(f"Skipping duplicate policy: {policy_id}")
-                    continue
-
-                seen_policy_ids.add(policy_id)
-
                 # Strip hallucinated / malformed policy definition IDs that ARM
                 # would reject (e.g. document titles instead of GUIDs).
                 if not _is_valid_policy_guid(policy_id):
@@ -239,6 +274,14 @@ class PolicyGenerationService:
                 full_policy_id = (
                     f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
                 )
+
+                # A policy shared across controls is emitted once but joins each
+                # control's group.
+                existing = policy_by_full_id.get(full_policy_id)
+                if existing is not None:
+                    if group_name not in existing.group_names:
+                        existing.group_names.append(group_name)
+                    continue
 
                 # Azure requires a UNIQUE policyDefinitionReferenceId per set.
                 # Multiple controls (or one control with several policies) would
@@ -256,16 +299,26 @@ class PolicyGenerationService:
                 policy_def = PolicyDefinitionReference(
                     policy_definition_id=full_policy_id,
                     policy_definition_reference_id=ref_id,
-                    parameters={}  # Can be extended to support parameterization
+                    parameters={},  # Can be extended to support parameterization
+                    group_names=[group_name],
                 )
 
-                policy_definitions.append(policy_def)
+                policy_by_full_id[full_policy_id] = policy_def
+                ordered_definitions.append(policy_def)
+
+        # Only keep groups that ended up with at least one valid policy so the
+        # initiative never references an empty control group.
+        used_group_names = {
+            name for pd in ordered_definitions for name in pd.group_names
+        }
+        groups = [g for g in ordered_groups if g.name in used_group_names]
 
         logger.info(
-            f"Created {len(policy_definitions)} policy definition references"
+            f"Created {len(ordered_definitions)} policy definition references "
+            f"across {len(groups)} control group(s)"
             + (f", dropped {len(invalid_ids)} invalid" if invalid_ids else "")
         )
-        return policy_definitions, invalid_ids
+        return ordered_definitions, groups, invalid_ids
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:
         """
@@ -384,17 +437,36 @@ resource policyInitiative 'Microsoft.Authorization/policySetDefinitions@2021-06-
     policyDefinitions: [
 """
 
-        # Add policy definitions
+        # Add policy definitions (with control group membership)
         for policy_def in props.policy_definitions:
+            group_names_bicep = ", ".join(
+                f"'{name}'" for name in policy_def.group_names
+            )
             bicep_template += f"""      {{
         policyDefinitionId: '{policy_def.policy_definition_id}'
         policyDefinitionReferenceId: '{policy_def.policy_definition_reference_id}'
         parameters: {{}}
+        groupNames: [{group_names_bicep}]
       }}
 """
 
-        bicep_template += """    ]
-  }
+        bicep_template += "    ]\n"
+
+        # Add control groups (Regulatory Compliance grouping)
+        if props.policy_definition_groups:
+            bicep_template += "    policyDefinitionGroups: [\n"
+            for group in props.policy_definition_groups:
+                bicep_template += f"      {{\n        name: '{group.name}'\n"
+                if group.display_name:
+                    safe_display = group.display_name.replace("'", "\\'")
+                    bicep_template += f"        displayName: '{safe_display}'\n"
+                if group.category:
+                    safe_category = group.category.replace("'", "\\'")
+                    bicep_template += f"        category: '{safe_category}'\n"
+                bicep_template += "      }\n"
+            bicep_template += "    ]\n"
+
+        bicep_template += """  }
 }
 
 output initiativeId string = policyInitiative.id
@@ -424,30 +496,64 @@ output initiativeName string = policyInitiative.name
             Dictionary with 'cli' and 'powershell' script strings
         """
         enforcement_mode_ps = "Default" if enforce_mode else "DoNotEnforce"
-        # Export as JSON
-        json_content = self.export_as_json(initiative, pretty=False)
 
-        # Azure CLI script
+        # New-AzPolicySetDefinition / `az policy set-definition create` take the
+        # policy references and the control groups as SEPARATE arrays — not the
+        # `{"properties": {...}}` wrapper. Passing the wrapper (or omitting the
+        # groups) is why an earlier build produced an ungrouped "Custom (legacy)"
+        # initiative. Split them here.
+        props = initiative.to_azure_json()["properties"]
+        policy_definitions = props.get("policyDefinitions", [])
+        policy_groups = props.get("policyDefinitionGroups", [])
+        policy_definitions_json = json.dumps(policy_definitions, indent=2)
+        policy_groups_json = json.dumps(policy_groups, indent=2)
+        category = initiative.properties.metadata.category
+        has_groups = bool(policy_groups)
+
+        # ── Azure CLI script ──────────────────────────────────────────────
+        cli_groups_file = (
+            f"""
+cat > policy-groups.json <<'EOF'
+{policy_groups_json}
+EOF
+"""
+            if has_groups
+            else ""
+        )
+        cli_groups_arg = "  --definition-groups policy-groups.json \\\n" if has_groups else ""
+
         cli_script = f"""#!/bin/bash
 # Deploy {initiative.properties.display_name}
 
-# Save initiative definition to file
-cat > initiative.json <<'EOF'
-{json_content}
+# Regulatory Compliance initiative: policy references and control groups are
+# supplied as separate arrays.
+cat > policy-definitions.json <<'EOF'
+{policy_definitions_json}
 EOF
-
+{cli_groups_file}
 # Create policy initiative
 az policy set-definition create \\
   --name "{initiative_name}" \\
   --display-name "{initiative.properties.display_name}" \\
   --description "{initiative.properties.description}" \\
-  --definitions initiative.json \\
-  --metadata category="{initiative.properties.metadata.category}"
+  --definitions policy-definitions.json \\
+{cli_groups_arg}  --metadata category="{category}"
 
 echo "Initiative created successfully"
 """
 
-        # PowerShell script
+        # ── PowerShell script ─────────────────────────────────────────────
+        ps_groups_block = (
+            f"""
+$groupDefinitions = @'
+{policy_groups_json}
+'@
+"""
+            if has_groups
+            else ""
+        )
+        ps_groups_arg = "  -GroupDefinition $groupDefinitions `\n" if has_groups else ""
+
         ps_script = f"""# Deploy {initiative.properties.display_name}
 # Enforcement Mode: {enforcement_mode_ps}
 
@@ -465,22 +571,21 @@ param(
 # Enforcement mode: generated from mapping agent setting, overridable via -AuditOnly switch
 $EnforcementMode = if ($AuditOnly) {{ 'DoNotEnforce' }} else {{ '{enforcement_mode_ps}' }}
 
-# Save initiative definition to file
-$initiativeJson = @'
-{json_content}
+# Regulatory Compliance initiative: policy references and control groups are
+# supplied to New-AzPolicySetDefinition as SEPARATE arrays.
+$policyDefinitions = @'
+{policy_definitions_json}
 '@
-
-Set-Content -Path "initiative.json" -Value $initiativeJson
-
+{ps_groups_block}
 # Create policy initiative
 # -Metadata takes a JSON string (Az.Resources 10.x); a raw hashtable is rejected.
-$metadata = @{{category="{initiative.properties.metadata.category}"}} | ConvertTo-Json -Compress
+$metadata = @{{category="{category}"}} | ConvertTo-Json -Compress
 New-AzPolicySetDefinition `
   -Name "{initiative_name}" `
   -DisplayName "{initiative.properties.display_name}" `
   -Description "{initiative.properties.description}" `
-  -PolicyDefinition "initiative.json" `
-  -Metadata $metadata
+  -PolicyDefinition $policyDefinitions `
+{ps_groups_arg}  -Metadata $metadata
 
 Write-Host "Initiative created successfully"
 
@@ -519,6 +624,148 @@ if ($AssignAfterCreation) {{
         return {
             "cli": cli_script,
             "powershell": ps_script
+        }
+
+    def generate_security_standard(
+        self,
+        initiative: PolicyInitiative,
+        initiative_name: str,
+        standard_name: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """
+        Generate a Microsoft Defender for Cloud custom compliance standard.
+
+        A plain policy set definition (initiative) surfaces in Defender for Cloud
+        as a *Custom (legacy)* item. To appear as a first-class **Compliance**
+        standard in the Regulatory Compliance dashboard, the initiative must be
+        wrapped in a ``Microsoft.Security/securityStandards`` resource whose
+        ``policySetDefinitionId`` links it. This mechanism requires the
+        **Microsoft Defender CSPM** plan on the target scope.
+
+        Args:
+            initiative: The generated policy initiative.
+            initiative_name: Name the initiative (policy set definition) is
+                deployed under; used to resolve its resource ID.
+            standard_name: Optional GUID for the standard (one is generated when
+                omitted — Azure requires the standard name to be a GUID).
+
+        Returns:
+            Dict with ``standard_name``, ``arm_template`` (JSON string) and
+            ``powershell`` (deploy script) keys.
+        """
+        standard_name = standard_name or str(uuid.uuid4())
+        display_name = f"{initiative.properties.display_name}"
+        description = (
+            initiative.properties.description
+            or f"Custom compliance standard for {initiative.properties.metadata.framework_name}."
+        )
+
+        arm_template = {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "metadata": {
+                "_generator": "ComplianceIQ",
+                "comments": "Requires the Microsoft Defender CSPM plan on the target scope.",
+            },
+            "parameters": {
+                "standardName": {
+                    "type": "string",
+                    "defaultValue": standard_name,
+                    "metadata": {"description": "GUID name of the custom security standard."},
+                },
+                "policySetDefinitionId": {
+                    "type": "string",
+                    "metadata": {
+                        "description": "Resource ID of the policy set definition (initiative) to link."
+                    },
+                },
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.Security/securityStandards",
+                    "apiVersion": "2024-08-01",
+                    "name": "[parameters('standardName')]",
+                    "properties": {
+                        "displayName": display_name,
+                        "description": description,
+                        "cloudProviders": ["Azure"],
+                        "policySetDefinitionId": "[parameters('policySetDefinitionId')]",
+                    },
+                }
+            ],
+        }
+        arm_template_json = json.dumps(arm_template, indent=2)
+
+        ps_script = f"""# Deploy Defender for Cloud custom compliance standard
+# {display_name}
+#
+# Wraps the policy initiative '{initiative_name}' in a
+# Microsoft.Security/securityStandards resource so it appears as a first-class
+# *Compliance* standard in the Defender for Cloud Regulatory Compliance
+# dashboard (instead of "Custom (legacy)").
+#
+# PREREQUISITE: the Microsoft Defender CSPM plan must be enabled on the target
+# scope. Deploy and (optionally) assign the initiative first.
+
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$Scope = "",
+
+    [Parameter(Mandatory=$false)]
+    [string]$InitiativeName = "{initiative_name}"
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not $Scope) {{
+    $context = Get-AzContext
+    if (-not $context) {{ Write-Error "Not authenticated. Run Connect-AzAccount first."; exit 1 }}
+    $Scope = "/subscriptions/$($context.Subscription.Id)"
+}}
+Write-Host "[Scope] $Scope" -ForegroundColor Yellow
+
+# Resolve the initiative (policy set definition) resource ID at this scope.
+$psd = Get-AzPolicySetDefinition -Name $InitiativeName -ErrorAction SilentlyContinue
+if ($psd -and $psd.PolicySetDefinitionId) {{
+    $policySetId = $psd.PolicySetDefinitionId
+}} elseif ($psd -and $psd.Id) {{
+    $policySetId = $psd.Id
+}} else {{
+    $policySetId = "$Scope/providers/Microsoft.Authorization/policySetDefinitions/$InitiativeName"
+    Write-Warning "Initiative not found via Get-AzPolicySetDefinition; using derived ID: $policySetId"
+}}
+
+$standardName = "{standard_name}"
+$body = @{{
+    properties = @{{
+        displayName           = "{display_name}"
+        description           = "{description}"
+        cloudProviders        = @("Azure")
+        policySetDefinitionId = $policySetId
+    }}
+}} | ConvertTo-Json -Depth 10
+
+$path = "$Scope/providers/Microsoft.Security/securityStandards/$standardName`?api-version=2024-08-01"
+
+Write-Host "Creating custom compliance standard: $standardName" -ForegroundColor Green
+$response = Invoke-AzRestMethod -Method PUT -Path $path -Payload $body
+if ($response.StatusCode -ge 400) {{
+    Write-Error "Failed to create standard ($($response.StatusCode)): $($response.Content)"
+    exit 1
+}}
+
+Write-Host "SUCCESS: Custom compliance standard created." -ForegroundColor Green
+Write-Host "  Standard: $standardName" -ForegroundColor White
+Write-Host "  Linked initiative: $policySetId" -ForegroundColor White
+Write-Host ""
+Write-Host "It appears under Defender for Cloud > Regulatory compliance once the" -ForegroundColor Cyan
+Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." -ForegroundColor Cyan
+"""
+
+        return {
+            "standard_name": standard_name,
+            "arm_template": arm_template_json,
+            "powershell": ps_script,
         }
 
     # ── SLZ-Specific Initiative Generation ────────────────────────────

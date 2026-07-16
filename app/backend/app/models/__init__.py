@@ -11,6 +11,7 @@ from app.models.mapping import (
 )
 from app.models.policy import (
     PolicyDefinitionReference,
+    PolicyDefinitionGroup,
     PolicyInitiativeMetadata,
     PolicyInitiativeProperties,
     PolicyInitiative,
@@ -66,6 +67,7 @@ __all__ = [
     "MappingRequest",
     # Policy models
     "PolicyDefinitionReference",
+    "PolicyDefinitionGroup",
     "PolicyInitiativeMetadata",
     "PolicyInitiativeProperties",
     "PolicyInitiative",

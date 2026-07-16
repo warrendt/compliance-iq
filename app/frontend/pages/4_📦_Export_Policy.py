@@ -249,7 +249,7 @@ if st.session_state.generated_policy:
     st.markdown("---")
     
     # Tabs for different outputs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Initiative JSON", "🔧 PowerShell Script", "📊 Bicep Template", "📖 Deployment Guide", "🔍 Policy Details"])
+    tab1, tab2, tab3, tab6, tab4, tab5 = st.tabs(["📋 Initiative JSON", "🔧 PowerShell Script", "📊 Bicep Template", "🛡️ Defender Standard", "📖 Deployment Guide", "🔍 Policy Details"])
     
     with tab1:
         st.markdown("#### Azure Policy Initiative JSON")
@@ -293,7 +293,54 @@ if st.session_state.generated_policy:
             mime="text/plain"
         )
     
-    with tab4:
+    with tab6:
+        st.markdown("#### 🛡️ Defender for Cloud Custom Compliance Standard")
+        st.markdown(
+            "A plain policy initiative shows in Microsoft Defender for Cloud as "
+            "**Custom (legacy)**. To make it appear as a first-class **Compliance** "
+            "standard in the Regulatory Compliance dashboard, deploy this "
+            "`Microsoft.Security/securityStandards` resource, which links the "
+            "initiative via its `policySetDefinitionId`."
+        )
+        st.warning(
+            "**Prerequisite:** the Microsoft Defender CSPM plan must be enabled on "
+            "the target scope. Deploy the initiative (PowerShell/Bicep tab) first, "
+            "then run this script."
+        )
+
+        framework_stem = st.session_state.framework_name.replace(' ', '_')
+
+        standard_script = policy.get('defender_standard_script')
+        standard_template = policy.get('defender_standard_template')
+
+        if standard_script or standard_template:
+            std_name = policy.get('defender_standard_name', 'N/A')
+            st.caption(f"Standard name (GUID): `{std_name}`")
+
+            if standard_script:
+                st.markdown("**PowerShell (recommended - resolves the initiative ID automatically):**")
+                st.code(standard_script, language="powershell", line_numbers=True)
+                st.download_button(
+                    label="📥 Download Defender Standard Script",
+                    data=standard_script,
+                    file_name=f"Deploy-{framework_stem}DefenderStandard.ps1",
+                    mime="text/plain",
+                )
+
+            if standard_template:
+                st.markdown("**ARM template (declarative):**")
+                st.code(standard_template, language="json", line_numbers=True)
+                st.download_button(
+                    label="📥 Download Defender Standard ARM Template",
+                    data=standard_template,
+                    file_name=f"{framework_stem}_defender_standard.json",
+                    mime="application/json",
+                )
+        else:
+            st.info(
+                "No Defender standard artifact was generated for this initiative. "
+                "Re-generate the policy to produce it."
+            )
         st.markdown("#### 📖 Deployment Guide")
         
         st.markdown("""
