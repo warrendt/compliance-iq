@@ -725,7 +725,7 @@ class APIClient:
     def validate_deploy(
         self, scope: str, initiative_name: str, initiative_body: dict
     ) -> Dict[str, Any]:
-        """Dry-run validation of an initiative deployment."""
+        """Non-destructive validation of an initiative (no tenant writes)."""
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/deploy/validate",

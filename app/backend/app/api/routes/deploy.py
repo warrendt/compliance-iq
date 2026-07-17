@@ -49,26 +49,36 @@ async def list_scopes(user: User = Depends(get_current_user)):
 
 
 # ------------------------------------------------------------------
-# Validate (dry-run)
+# Validate (non-destructive dry run)
 # ------------------------------------------------------------------
 
 class ValidateRequest(BaseModel):
     scope: str = Field(..., description="ARM scope path")
     initiative_name: str = Field(..., min_length=1, max_length=128)
     initiative_body: dict[str, Any]
+    check_references: bool = Field(
+        True,
+        description="Verify each referenced policy definition exists (read-only).",
+    )
 
 
 @router.post("/validate")
 async def validate_initiative(
     req: ValidateRequest, user: User = Depends(get_current_user)
 ):
-    """Dry-run: create/update the initiative definition and return ARM result."""
+    """Non-destructive validation of an initiative definition.
+
+    Runs structural checks and read-only reference resolution. Nothing is
+    written to the tenant — unlike deploy, this never creates or updates
+    the policy set definition.
+    """
     svc = _svc(user)
     try:
         result = await svc.validate_initiative(
             scope=req.scope,
             initiative_name=req.initiative_name,
             body=req.initiative_body,
+            check_references=req.check_references,
         )
         return result
     except Exception as exc:

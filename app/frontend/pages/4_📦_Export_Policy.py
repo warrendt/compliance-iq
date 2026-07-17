@@ -564,18 +564,31 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
 
             with col_val:
                 if st.button("✅ Validate", use_container_width=True, key="btn_validate_deploy"):
-                    with st.spinner("Validating..."):
+                    with st.spinner("Validating (read-only — no changes made)..."):
                         try:
                             vr = api_client.validate_deploy(
                                 scope=selected_scope,
                                 initiative_name=deploy_name,
                                 initiative_body=policy.get("initiative_json", {}),
                             )
-                            if vr.get("status_code", 0) < 300:
-                                st.success(f"✅ Validation passed (HTTP {vr['status_code']})")
+                            summary = vr.get("summary", {})
+                            if vr.get("valid"):
+                                st.success(
+                                    "✅ Validation passed — no changes were made to your tenant."
+                                )
                             else:
-                                st.warning(f"⚠️ ARM returned HTTP {vr['status_code']}")
-                                st.json(vr.get("body", {}))
+                                st.error("❌ Validation found issues (nothing was deployed):")
+                                for err in vr.get("errors", []):
+                                    st.write(f"- {err}")
+                            for warn in vr.get("warnings", []):
+                                st.warning(warn)
+                            if summary:
+                                st.caption(
+                                    f"{summary.get('policy_count', 0)} policies · "
+                                    f"{summary.get('group_count', 0)} groups · "
+                                    f"{summary.get('references_checked', 0)} references verified · "
+                                    f"{summary.get('unresolved_references', 0)} unresolved"
+                                )
                         except Exception as _e:
                             st.error(f"❌ Validation failed: {_e}")
 
