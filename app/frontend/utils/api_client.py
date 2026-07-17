@@ -15,6 +15,10 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 _MAX_LOG_ENTRIES = 100
 
+# Backend /api/v1/policy/details caps policy_ids at 100 per request; the client
+# chunks larger lists into batches of this size and merges the results.
+_POLICY_DETAILS_BATCH_SIZE = 100
+
 
 def _ensure_log() -> deque:
     """Return the session-scoped API log deque."""
@@ -316,20 +320,41 @@ class APIClient:
     def get_policy_details(self, policy_ids: List[str]) -> Dict[str, Any]:
         """Batch-lookup Azure Policy details by GUID (cached).
 
+        The backend caps each request at ``_POLICY_DETAILS_BATCH_SIZE`` GUIDs,
+        so requests are split into chunks and the results are merged. Without
+        this, initiatives with more than 100 policies would 422 and the UI
+        would fall back to showing bare GUIDs instead of policy names.
+
         Args:
             policy_ids: List of Azure Policy definition GUIDs
 
         Returns:
             Dict with 'policies' key mapping GUIDs to detail dicts
         """
+        if not policy_ids:
+            return {"requested": 0, "found": 0, "policies": {}}
+
+        chunks = [
+            policy_ids[i : i + _POLICY_DETAILS_BATCH_SIZE]
+            for i in range(0, len(policy_ids), _POLICY_DETAILS_BATCH_SIZE)
+        ]
+
+        merged_policies: Dict[str, Any] = {}
         with self._get_client() as client:
-            response = client.post(
-                f"{self.base_url}/api/v1/policy/details",
-                json={"policy_ids": policy_ids},
-                timeout=60.0,
-            )
-            response.raise_for_status()
-            return response.json()
+            for chunk in chunks:
+                response = client.post(
+                    f"{self.base_url}/api/v1/policy/details",
+                    json={"policy_ids": chunk},
+                    timeout=60.0,
+                )
+                response.raise_for_status()
+                merged_policies.update(response.json().get("policies", {}))
+
+        return {
+            "requested": len(policy_ids),
+            "found": len(merged_policies),
+            "policies": merged_policies,
+        }
 
     # --- Sovereignty / SLZ endpoints ---
 
