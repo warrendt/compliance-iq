@@ -1,14 +1,14 @@
 [client]
 showSidebarNavigation = false
 
-# Fluent 2 design tokens (Microsoft 365 / Defender / Purview shell).
+# ComplianceIQ brand design tokens (navy shell + intelligence blue).
 # Keep these in sync with the CSS variables in utils/theme.py.
 [theme]
 base = "light"
-primaryColor = "#0F6CBD"            # colorBrandBackground (Microsoft blue)
-backgroundColor = "#FFFFFF"         # colorNeutralBackground1 (content canvas)
-secondaryBackgroundColor = "#FAFAFA" # colorNeutralBackground2 (nav / layers)
-textColor = "#242424"               # colorNeutralForeground1
+primaryColor = "#2563EB"            # intelligence blue (primary action / AI)
+backgroundColor = "#F8FAFC"         # app canvas
+secondaryBackgroundColor = "#F1F5FA" # nav / layers
+textColor = "#0B2545"               # brand navy (strong text)
 font = "sans serif"                 # Segoe UI Variable, Segoe UI, system sans
 
 [server]
