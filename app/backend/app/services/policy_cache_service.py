@@ -7,9 +7,11 @@ import logging
 import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from app.db import cosmos_client
 from app.services.microsoft_learn_client import get_microsoft_learn_client
+from app.services.policy_catalog_service import get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,16 @@ GUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+
+
+def _portal_definition_url(policy_id: str) -> str:
+    """Build a stable Azure Portal deep link to a built-in policy definition."""
+    definition_id = f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
+    encoded = quote(definition_id, safe="")
+    return (
+        "https://portal.azure.com/#view/Microsoft_Azure_Policy/"
+        f"PolicyDetailBlade/definitionId/{encoded}"
+    )
 
 
 class PolicyCacheService:
@@ -43,9 +55,26 @@ class PolicyCacheService:
         results: Dict[str, Dict[str, Any]] = {}
         miss_ids: List[str] = []
 
-        # --- 1. Cosmos cache hit pass ---
+        # --- 1. Local catalog pass (authoritative for built-in policies) ---
+        # The 2.5k built-in definition snapshot carries readable display names
+        # and descriptions in-memory, so it resolves the vast majority of GUIDs
+        # instantly without a Cosmos round-trip or a flaky Learn search.
+        catalog = get_policy_catalog_service()
+        for pid in valid_ids:
+            definition = catalog.get(pid)
+            if definition:
+                results[pid] = self._from_catalog(pid, definition)
+            else:
+                miss_ids.append(pid)
+
+        if not miss_ids:
+            logger.info("policy_catalog_hit_all", extra={"count": len(results)})
+            return results
+
+        # --- 2. Cosmos cache hit pass (custom / non-catalog GUIDs) ---
+        remaining: List[str] = []
         if cosmos_client.database:
-            for pid in valid_ids:
+            for pid in miss_ids:
                 try:
                     doc = await cosmos_client.get_document(
                         self.container, pid, partition_key=pid
@@ -53,17 +82,18 @@ class PolicyCacheService:
                     if doc:
                         results[pid] = self._doc_to_detail(doc)
                     else:
-                        miss_ids.append(pid)
+                        remaining.append(pid)
                 except Exception:
-                    miss_ids.append(pid)
+                    remaining.append(pid)
         else:
-            miss_ids = valid_ids
+            remaining = miss_ids
+        miss_ids = remaining
 
         if not miss_ids:
             logger.info("policy_cache_hit_all", extra={"count": len(results)})
             return results
 
-        # --- 2. Microsoft Learn fallback for cache misses ---
+        # --- 3. Microsoft Learn fallback for remaining misses ---
         logger.info(
             "policy_cache_miss",
             extra={"hit": len(results), "miss": len(miss_ids)},
@@ -80,6 +110,17 @@ class PolicyCacheService:
     # Internals
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _from_catalog(policy_id: str, definition: Dict[str, str]) -> Dict[str, Any]:
+        """Build a detail dict from a local catalog definition."""
+        return {
+            "policy_id": policy_id,
+            "display_name": definition.get("display_name", ""),
+            "description": definition.get("description", ""),
+            "category": definition.get("category", ""),
+            "learn_url": _portal_definition_url(policy_id),
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }
     async def _fetch_from_learn(self, policy_id: str) -> Optional[Dict[str, Any]]:
         """Search Microsoft Learn for a single policy by GUID."""
         try:
@@ -129,6 +170,7 @@ class PolicyCacheService:
             "policy_id": doc.get("policy_id", doc.get("id", "")),
             "display_name": doc.get("display_name", ""),
             "description": doc.get("description", ""),
+            "category": doc.get("category", ""),
             "learn_url": doc.get("learn_url", ""),
             "cached_at": doc.get("cached_at", ""),
         }

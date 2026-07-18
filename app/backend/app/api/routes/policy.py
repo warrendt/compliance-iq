@@ -508,3 +508,36 @@ async def get_policy_details(request: PolicyDetailsRequest):
     except Exception as e:
         logger.error(f"Failed to look up policy details: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Azure Policy catalog (retrieval corpus) ---
+
+
+@router.get("/catalog/status")
+async def policy_catalog_status():
+    """Return the size and source of the Azure Policy retrieval catalog."""
+    from app.services import get_policy_catalog_service
+
+    catalog = get_policy_catalog_service()
+    return {"count": catalog.count, "source": catalog.source}
+
+
+@router.post("/catalog/refresh")
+async def refresh_policy_catalog(
+    subscription: Optional[str] = Query(None, description="Subscription to query"),
+    user: User = Depends(get_current_user),
+):
+    """Refresh the Azure Policy catalog from ARM using the backend identity.
+
+    Best-effort: requires the backend managed identity to have Reader on a
+    subscription. Falls back to the shipped snapshot (unchanged) on failure.
+    """
+    from app.services import get_policy_catalog_service
+
+    catalog = get_policy_catalog_service()
+    try:
+        count = await catalog.refresh_from_arm(subscription=subscription)
+        return {"status": "refreshed", "count": count, "source": catalog.source}
+    except Exception as e:
+        logger.error(f"Policy catalog refresh failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Catalog refresh failed: {e}")

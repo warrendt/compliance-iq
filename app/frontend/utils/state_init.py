@@ -68,6 +68,17 @@ SESSION_DEFAULTS: Dict[str, Any] = {
 }
 
 
+# Transient keys created ad-hoc by pages (uploads, restore guards) that are not
+# part of SESSION_DEFAULTS but must be dropped when starting a new session.
+_TRANSIENT_STATE_KEYS = (
+    "uploaded_df",
+    "workflow_restored_notice",
+    "_workflow_restore_checked",
+    "session_recovery_error",
+    "session_save_error",
+)
+
+
 def init_session_state() -> None:
     """Populate ``st.session_state`` with any missing default keys.
 
@@ -116,9 +127,25 @@ def restore_workflow_state() -> None:
     )
 
 
+def clear_workflow_state() -> None:
+    """Reset the workflow to a clean slate for a brand-new session.
+
+    Restores every default key to a fresh (deep-copied) copy of its default so
+    no mutable state leaks across sessions, drops transient upload artifacts,
+    issues a new ``session_uuid`` so persisted state is kept separate, and
+    re-arms the one-shot restore guard so the fresh session is not immediately
+    re-hydrated from the backend.
+    """
+    for key, default in SESSION_DEFAULTS.items():
+        st.session_state[key] = copy.deepcopy(default)
+    for key in _TRANSIENT_STATE_KEYS:
+        st.session_state.pop(key, None)
+    st.session_state["session_uuid"] = str(uuid.uuid4())
+    st.session_state["_workflow_restore_checked"] = True
+
+
 def persist_workflow_state() -> None:
     """Persist essential workflow inputs as soon as they become usable."""
-    from utils.api_client import get_api_client
 
     get_api_client().save_session(
         st.session_state["session_uuid"],
@@ -173,14 +200,3 @@ def recover_session_state(api_client: Optional[Any] = None) -> bool:
             st.session_state[key] = saved[key]
     st.session_state["controls_loaded"] = True
     return True
-
-
-def clear_workflow_state() -> None:
-    """Reset workflow-related session state to defaults (start a new session)."""
-    for key in _WORKFLOW_KEYS + ("controls_loaded",):
-        if key in SESSION_DEFAULTS:
-            st.session_state[key] = copy.deepcopy(SESSION_DEFAULTS[key])
-
-    # Allow a fresh recovery attempt and start a new persisted session.
-    st.session_state.pop("_workflow_restore_checked", None)
-    st.session_state["session_uuid"] = str(uuid.uuid4())
