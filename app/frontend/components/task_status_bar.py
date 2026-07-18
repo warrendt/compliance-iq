@@ -47,9 +47,6 @@ _ORIGIN_LABELS = {
     "pages/2_AI_Mapping.py": "AI Mapping",
 }
 
-_NOTIFICATION_COLUMN_WIDTHS = [5, 1.5, 0.75]
-
-
 def render_task_status_bar() -> None:
     """Render active task progress inline near the top of a workflow page.
 
@@ -124,23 +121,26 @@ def _render_notification(notification: dict) -> None:
     description = notification["description"] or label
     source = _ORIGIN_LABELS.get(notification["page_origin"], notification["page_origin"] or "this session")
 
-    content_column, view_column, dismiss_column = st.columns(_NOTIFICATION_COLUMN_WIDTHS)
-    with content_column:
-        st.markdown(f"{icon} **{description}**")
-        st.caption(f"{event.capitalize()} · Started on {source} · {notification['occurred_at'][:19]}")
-    with view_column:
-        page = _PAGE_MAP.get(notification["type"])
-        if event == "completed" and task and page:
-            if st.button(
-                "View",
-                key=f"view_notification_{notification['id']}",
-                use_container_width=True,
-            ):
-                _view_task(task, page)
-    with dismiss_column:
-        if st.button("✕", key=f"dismiss_notification_{notification['id']}"):
-            dismiss_task_notification(notification["id"])
-            st.rerun()
+    # Laid out without ``st.columns``: the bell lives inside a sidebar column,
+    # and Streamlit forbids nesting columns anywhere in the sidebar.
+    st.markdown(f"{icon} **{description}**")
+    st.caption(f"{event.capitalize()} · Started on {source} · {notification['occurred_at'][:19]}")
+
+    page = _PAGE_MAP.get(notification["type"])
+    if event == "completed" and task and page:
+        if st.button(
+            "View",
+            key=f"view_notification_{notification['id']}",
+            use_container_width=True,
+        ):
+            _view_task(task, page)
+    if st.button(
+        "Dismiss",
+        key=f"dismiss_notification_{notification['id']}",
+        use_container_width=True,
+    ):
+        dismiss_task_notification(notification["id"])
+        st.rerun()
 
 
 def _view_task(task: dict, page: str) -> None:
