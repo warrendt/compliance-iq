@@ -204,6 +204,28 @@ FLUENT_CSS = """
         font-size: 0.68rem; color: var(--neutral-fg-3);
         letter-spacing: 0.01em; margin-top: 1px;
     }
+    /* Keep the brand lockup and the notification bell on ONE line. Streamlit
+       columns wrap-stack vertically inside the narrow sidebar, which is what
+       dropped the bell under the heading; force the brand row to never wrap and
+       pin the bell hard against the right edge, aligned with the heading. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div {
+        min-width: 0;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div:last-child {
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    /* Compact the bell trigger so it reads as an icon button, not a wide bar. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) [data-testid="stPopover"] button {
+        padding: 0.2rem 0.45rem; min-height: 0;
+    }
     [data-testid="stSidebar"] * {
         color: var(--neutral-fg-2);
     }
@@ -218,6 +240,9 @@ FLUENT_CSS = """
         margin: 0.6rem 0;
     }
     /* Nav items (st.page_link) — Fluent list rows with selected accent bar */
+    [data-testid="stSidebar"] [data-testid="stPageLink"] {
+        margin: 2px 0;
+    }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
         border-radius: var(--radius-md);
@@ -592,30 +617,42 @@ def render_sidebar():
 
     with st.sidebar:
         _icon_uri = _logo_data_uri(icon=True)
-        if _icon_uri:
-            st.markdown(
-                '<div class="ciq-brand">'
-                f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" />'
-                '<div class="ciq-brand-text">'
-                '<span class="ciq-brand-name">ComplianceIQ</span>'
-                '<span class="ciq-brand-tag">Compliance · Microsoft 365 &amp; Azure</span>'
-                '</div></div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown("### ComplianceIQ")
-            st.caption("Compliance · Microsoft 365 & Azure")
-        render_notification_bell()
+        # Brand lockup and the notification bell share one row so the bell sits
+        # inline with the heading on the right edge of the sidebar.
+        brand_col, bell_col = st.columns([0.78, 0.22], vertical_alignment="center")
+        with brand_col:
+            if _icon_uri:
+                st.markdown(
+                    # Inline styles mirror the .ciq-brand* rules so the lockup
+                    # lays out correctly on the very first paint, before the
+                    # injected stylesheet parses (prevents the brief flash where
+                    # the name and tagline render run-together on one line).
+                    '<div class="ciq-brand" style="display:flex;align-items:center;gap:0.6rem;">'
+                    f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" '
+                    'width="38" height="38" decoding="sync" '
+                    'style="width:38px;height:38px;flex:0 0 38px;border-radius:8px;" />'
+                    '<div class="ciq-brand-text" style="display:flex;flex-direction:column;line-height:1.15;min-width:0;">'
+                    '<span class="ciq-brand-name" style="display:block;font-weight:700;">ComplianceIQ</span>'
+                    '<span class="ciq-brand-tag" style="display:block;font-size:0.72rem;opacity:0.7;">'
+                    'Compliance · Microsoft 365 &amp; Azure</span>'
+                    '</div></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown("### ComplianceIQ")
+                st.caption("Compliance · Microsoft 365 & Azure")
+        with bell_col:
+            render_notification_bell()
         st.markdown("---")
 
         # ── Clickable navigation ──
         st.page_link("app.py", label="Home", icon=None)
         st.page_link("pages/1_Upload_Controls.py", label="Upload Controls")
+        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
         st.page_link("pages/2_AI_Mapping.py", label="AI Mapping")
         st.page_link("pages/3_Review_Edit.py", label="Review & Edit")
         st.page_link("pages/4_Export_Policy.py", label="Export Policy")
-        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
-        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer")
+        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer · BETA")
         st.page_link("pages/8_Diff_Compare.py", label="Gap Analysis")
         st.page_link("pages/9_Version_History.py", label="Version History")
         st.page_link("pages/7_Profile.py", label="My Workspace")

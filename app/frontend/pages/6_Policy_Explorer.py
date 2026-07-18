@@ -27,8 +27,16 @@ render_task_status_bar()
 # Header
 render_page_header(
     "Policy explorer",
-    eyebrow="Enforce",
+    eyebrow="Enforce · BETA",
     description="Browse policy definitions, initiatives, and assignments in your Azure tenant.",
+)
+st.markdown(
+    '<span style="display:inline-block;padding:2px 10px;border-radius:999px;'
+    'background:#FFF4CE;color:#7A5B00;border:1px solid #F2D98B;'
+    'font-size:0.72rem;font-weight:700;letter-spacing:0.06em;">BETA</span> '
+    '<span style="color:var(--neutral-fg-3);font-size:0.85rem;">'
+    'This feature is under active development and may not work reliably yet.</span>',
+    unsafe_allow_html=True,
 )
 st.markdown("---")
 

@@ -155,8 +155,31 @@ def test_bell_label_includes_retained_notification_count():
     assert status_bar._notification_bell_label(3) == "🔔 3"
 
 
-def test_notification_layout_reserves_space_for_view_action():
-    assert status_bar._NOTIFICATION_COLUMN_WIDTHS == [5, 1.5, 0.75]
+def test_notification_render_avoids_nested_columns_in_sidebar(monkeypatch):
+    """Regression: the bell lives inside a sidebar column, and Streamlit forbids
+    nesting columns anywhere in the sidebar. Rendering a retained notification
+    must therefore never call ``st.columns`` (previously it crashed the app when
+    any task notification existed)."""
+    def _no_columns(*args, **kwargs):
+        raise AssertionError("st.columns must not be used inside the sidebar bell")
+
+    stub = _streamlit_stub([], [])
+    stub.columns = _no_columns
+    monkeypatch.setattr(status_bar, "st", stub)
+    monkeypatch.setattr(status_bar, "get_task", lambda job_id: {"job_id": job_id, "type": "ai_mapping"})
+
+    status_bar._render_notification(
+        {
+            "id": "n1",
+            "job_id": "job-1",
+            "event": "completed",
+            "status": "completed",
+            "type": "ai_mapping",
+            "description": "Mapping finished",
+            "page_origin": "ai_mapping",
+            "occurred_at": "2026-07-18T10:00:00Z",
+        }
+    )
 
 
 def test_notification_bell_opens_popover_with_count(monkeypatch):

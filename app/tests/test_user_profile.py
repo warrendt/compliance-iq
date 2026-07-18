@@ -207,3 +207,35 @@ async def test_get_history_returns_empty_on_query_failure():
         result = await get_history(request=mock_request, limit=10, event_type=None, user=mock_user)
 
         assert result == []
+
+
+@pytest.mark.asyncio
+async def test_get_history_excludes_session_autosaves_by_default():
+    """The activity feed must hide background 'session.saved' autosaves."""
+    from fastapi import Request
+
+    mock_user = User(oid="abc", email="dev@example.com", name="Dev User")
+    mock_request = MagicMock(spec=Request)
+    captured = {}
+
+    async def _capture(container, query=None, parameters=None, partition_key=None):
+        captured["query"] = query
+        captured["parameters"] = parameters
+        return []
+
+    with patch("app.api.routes.user.cosmos_client") as mock_cosmos:
+        mock_cosmos.database = MagicMock()
+        mock_cosmos.ensure_container = AsyncMock()
+        mock_cosmos.query_documents = AsyncMock(side_effect=_capture)
+
+        from app.api.routes.user import get_history
+
+        await get_history(request=mock_request, limit=10, event_type=None, user=mock_user)
+        assert "c.resourceType <> 'session'" in captured["query"]
+
+        # An explicit event_type filter still works and is not overridden.
+        await get_history(
+            request=mock_request, limit=10, event_type="upload", user=mock_user
+        )
+        assert "c.resourceType = @resourceType" in captured["query"]
+        assert "c.resourceType <> 'session'" not in captured["query"]
