@@ -87,3 +87,24 @@ def test_no_st_image_with_use_container_width():
         "st.image(..., use_container_width=...) is unsupported on Streamlit 1.37.0: "
         + ", ".join(offenders)
     )
+
+
+def test_sidebar_uses_compact_brand_lockup_not_gradient_tile():
+    """The sidebar top must render a compact icon+wordmark lockup, not the full
+    raster logo.png (a rounded app-icon on a gradient canvas) blown up to 220px.
+    Guard against reintroducing the "floating icon in a gradient box" look."""
+    text = THEME.read_text(encoding="utf-8")
+    assert "ciq-brand" in text, "Sidebar brand lockup markup (.ciq-brand) missing"
+    assert "ComplianceIQ" in text
+    assert "max-width:220px" not in text, (
+        "Sidebar still renders the full logo.png gradient tile at 220px"
+    )
+
+
+def test_start_script_supervises_streamlit():
+    """start.sh must relaunch Streamlit if it exits so a crash self-heals
+    instead of leaving nginx serving a permanent 502 Connection error."""
+    start = FRONTEND / "start.sh"
+    text = start.read_text(encoding="utf-8")
+    assert "while true" in text, "start.sh does not supervise/restart Streamlit"
+    assert "streamlit run app.py" in text

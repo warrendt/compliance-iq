@@ -185,6 +185,25 @@ FLUENT_CSS = """
         background: var(--neutral-bg-2);
         border-right: 1px solid var(--neutral-stroke-2);
     }
+    /* Brand lockup: compact icon + wordmark (replaces the raster gradient tile) */
+    .ciq-brand {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.15rem 0.1rem 0.35rem;
+    }
+    .ciq-brand-mark {
+        width: 38px; height: 38px; flex: 0 0 38px;
+        border-radius: 9px; display: block;
+        box-shadow: var(--elevation-1, 0 1px 2px rgba(11,37,69,0.18));
+    }
+    .ciq-brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+    .ciq-brand-name {
+        font-family: var(--font-family); font-weight: 700; font-size: 1.05rem;
+        color: var(--neutral-fg-1); letter-spacing: -0.01em;
+    }
+    .ciq-brand-tag {
+        font-size: 0.68rem; color: var(--neutral-fg-3);
+        letter-spacing: 0.01em; margin-top: 1px;
+    }
     [data-testid="stSidebar"] * {
         color: var(--neutral-fg-2);
     }
@@ -440,20 +459,20 @@ FLUENT_CSS = """
 
     /* ───────────── Shared components (ComplianceIQ primitives) ───────────── */
     /* Page header: eyebrow → title → description */
-    .ciq-page-header { margin: 0 0 1.25rem 0; }
+    .ciq-page-header { margin: 0 0 1rem 0; }
     .ciq-eyebrow {
         display: inline-block;
-        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+        font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em;
         text-transform: uppercase; color: var(--brand-primary);
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.4rem;
     }
     .ciq-page-title {
-        font-size: 1.9rem; font-weight: 600; line-height: 2.4rem;
-        color: var(--neutral-fg-1); letter-spacing: -0.01em; margin: 0 0 0.2rem 0;
+        font-size: 1.9rem; font-weight: 600; line-height: 2.3rem;
+        color: var(--neutral-fg-1); letter-spacing: -0.01em; margin: 0 0 0.3rem 0;
     }
     .ciq-page-desc {
         font-size: 0.95rem; color: var(--neutral-fg-3);
-        margin: 0; max-width: 68ch;
+        margin: 0; max-width: 68ch; line-height: 1.5;
     }
 
     /* Section heading */
@@ -569,17 +588,24 @@ def inject_azure_theme():
 
 def render_sidebar():
     """Render a consistent Fluent-styled left navigation across all pages."""
+    from components.task_status_bar import render_notification_bell
+
     with st.sidebar:
-        _logo_uri = _logo_data_uri(icon=False) or _logo_data_uri(icon=True)
-        if _logo_uri:
+        _icon_uri = _logo_data_uri(icon=True)
+        if _icon_uri:
             st.markdown(
-                f'<img src="{_logo_uri}" alt="ComplianceIQ" '
-                'style="width:100%;max-width:220px;display:block;margin:0 auto 0.25rem;" />',
+                '<div class="ciq-brand">'
+                f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" />'
+                '<div class="ciq-brand-text">'
+                '<span class="ciq-brand-name">ComplianceIQ</span>'
+                '<span class="ciq-brand-tag">Compliance · Microsoft 365 &amp; Azure</span>'
+                '</div></div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown("### ComplianceIQ")
-        st.caption("Compliance · Microsoft 365 & Azure")
+            st.caption("Compliance · Microsoft 365 & Azure")
+        render_notification_bell()
         st.markdown("---")
 
         # ── Clickable navigation ──
