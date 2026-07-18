@@ -974,6 +974,48 @@ class APIClient:
         except Exception:
             return []
 
+    def get_user_upload(self, upload_id: str) -> Dict[str, Any]:
+        """Fetch a single stored control set (including its parsed ``controls``).
+
+        Used by the workspace to rebuild a downloadable CSV on demand.
+
+        Returns:
+            The upload detail dict, or an empty dict on any failure.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/uploads/{upload_id}",
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return {}
+
+    def get_user_export(
+        self, export_id: str, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Fetch a single export artifact including its downloadable ``content``.
+
+        Args:
+            export_id: The export/artifact id.
+            session_id: Optional partition hint for an efficient point read.
+
+        Returns:
+            The export detail dict, or an empty dict on any failure.
+        """
+        try:
+            params = {"session_id": session_id} if session_id else None
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/exports/{export_id}",
+                    params=params,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return {}
+
     # ── Control comparison (diff) ─────────────────────────────────────────
 
     def list_comparison_frameworks(self) -> List[Dict[str, Any]]:

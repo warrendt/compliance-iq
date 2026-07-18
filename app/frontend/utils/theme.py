@@ -204,6 +204,28 @@ FLUENT_CSS = """
         font-size: 0.68rem; color: var(--neutral-fg-3);
         letter-spacing: 0.01em; margin-top: 1px;
     }
+    /* Keep the brand lockup and the notification bell on ONE line. Streamlit
+       columns wrap-stack vertically inside the narrow sidebar, which is what
+       dropped the bell under the heading; force the brand row to never wrap and
+       pin the bell hard against the right edge, aligned with the heading. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div {
+        min-width: 0;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div:last-child {
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    /* Compact the bell trigger so it reads as an icon button, not a wide bar. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) [data-testid="stPopover"] button {
+        padding: 0.2rem 0.45rem; min-height: 0;
+    }
     [data-testid="stSidebar"] * {
         color: var(--neutral-fg-2);
     }
@@ -218,6 +240,9 @@ FLUENT_CSS = """
         margin: 0.6rem 0;
     }
     /* Nav items (st.page_link) — Fluent list rows with selected accent bar */
+    [data-testid="stSidebar"] [data-testid="stPageLink"] {
+        margin: 2px 0;
+    }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
         border-radius: var(--radius-md);
@@ -599,7 +624,8 @@ def render_sidebar():
             if _icon_uri:
                 st.markdown(
                     '<div class="ciq-brand">'
-                    f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" />'
+                    f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" '
+                    'width="38" height="38" decoding="sync" />'
                     '<div class="ciq-brand-text">'
                     '<span class="ciq-brand-name">ComplianceIQ</span>'
                     '<span class="ciq-brand-tag">Compliance · Microsoft 365 &amp; Azure</span>'
@@ -620,7 +646,7 @@ def render_sidebar():
         st.page_link("pages/2_AI_Mapping.py", label="AI Mapping")
         st.page_link("pages/3_Review_Edit.py", label="Review & Edit")
         st.page_link("pages/4_Export_Policy.py", label="Export Policy")
-        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer")
+        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer · BETA")
         st.page_link("pages/8_Diff_Compare.py", label="Gap Analysis")
         st.page_link("pages/9_Version_History.py", label="Version History")
         st.page_link("pages/7_Profile.py", label="My Workspace")

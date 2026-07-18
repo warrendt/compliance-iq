@@ -168,6 +168,11 @@ async def get_history(
     if event_type:
         type_filter = " AND c.resourceType = @resourceType"
         params.append({"name": "@resourceType", "value": event_type})
+    else:
+        # Hide low-value background session autosaves ("session.saved") from the
+        # user-facing activity feed; they are noise, not meaningful actions.
+        # (Still queryable explicitly via ?event_type=session.)
+        type_filter = " AND c.resourceType <> 'session'"
 
     query = (
         f"SELECT TOP {limit} c.id, c.action, c.resourceType, c.metadata, c.timestamp "

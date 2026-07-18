@@ -206,8 +206,21 @@ st.markdown(
     "3. **Review** — confirm or adjust mappings and close control gaps  \n"
     "4. **Deploy** — generate and export policy initiatives ready for Azure"
 )
-if st.button(f"Continue: {_next_label}", type="primary", key="home_continue"):
-    st.switch_page(_next_page)
+_action_col, _reset_col = st.columns([1, 1])
+with _action_col:
+    if st.button(f"Continue: {_next_label}", type="primary", key="home_continue"):
+        st.switch_page(_next_page)
+with _reset_col:
+    _ws_dirty = bool(_controls or _mappings or _has_policy)
+    with st.popover("🧹 Clear workspace", disabled=not _ws_dirty):
+        st.markdown(
+            "**Start again?** This clears the controls, mappings, and generated "
+            "policy cached in this session so you can begin a fresh run.\n\n"
+            "Documents and control sets already saved to your workspace are kept."
+        )
+        if st.button("Yes, clear workspace", type="primary", key="confirm_clear_ws"):
+            clear_workflow_state()
+            st.rerun()
 
 # Quick start guide
 with st.expander("How ComplianceIQ works", expanded=False):
