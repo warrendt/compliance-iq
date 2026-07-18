@@ -70,6 +70,7 @@ def validate_mappings(
     extraction: ControlExtractionResult,
     mappings: list[ControlPolicyMapping],
     min_confidence: float = 0.5,
+    catalog: Optional[object] = None,
 ) -> ValidationReport:
     """
     Validate the complete set of control-to-policy mappings.
@@ -77,6 +78,7 @@ def validate_mappings(
     Checks:
     - All extracted controls have a mapping
     - Policy definition IDs are valid GUIDs
+    - Referenced GUIDs exist in the Azure built-in policy catalog
     - MCSB control IDs follow expected format
     - Confidence scores are reasonable
     - No duplicate policy references within a group
@@ -86,10 +88,21 @@ def validate_mappings(
         extraction: The original extracted controls.
         mappings: The policy mappings to validate.
         min_confidence: Threshold below which a warning is raised.
+        catalog: Optional built-in policy catalog service (injected for testing).
+            When available, referenced GUIDs are checked for existence; otherwise
+            the static ``KNOWN_POLICY_GUIDS`` fallback is used.
 
     Returns:
         ValidationReport with all issues found.
     """
+    if catalog is None:
+        try:
+            from app.services.policy_catalog_service import get_policy_catalog_service
+            catalog = get_policy_catalog_service()
+        except Exception:  # pragma: no cover - defensive
+            catalog = None
+    catalog_available = bool(getattr(catalog, "available", False))
+
     issues: list[ValidationIssue] = []
     total_controls = len(extraction.controls)
     extracted_ids = {c.control_id for c in extraction.controls}
@@ -159,7 +172,15 @@ def validate_mappings(
                 else:
                     all_policy_ids.add(pid)
 
-                    if pid not in KNOWN_POLICY_GUIDS:
+                    if catalog_available:
+                        if not catalog.exists(pid):
+                            issues.append(ValidationIssue(
+                                severity="warning",
+                                control_id=control_id,
+                                message=f"Policy GUID '{pid}' is not a real Azure built-in policy definition",
+                                suggestion="ARM would reject this as PolicyDefinitionNotFound; it will be dropped before deployment. Re-run mapping or remove it.",
+                            ))
+                    elif pid not in KNOWN_POLICY_GUIDS:
                         issues.append(ValidationIssue(
                             severity="info",
                             control_id=control_id,

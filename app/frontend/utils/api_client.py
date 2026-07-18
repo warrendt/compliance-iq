@@ -79,6 +79,28 @@ def _on_response(response: httpx.Response) -> None:
         pass  # outside Streamlit context (e.g. tests)
 
 
+def _raise_for_status_with_detail(response: httpx.Response) -> None:
+    """Raise a clear error carrying the backend's ``detail`` on 4xx/5xx.
+
+    ``httpx.Response.raise_for_status`` surfaces only the status line (e.g.
+    "Server error '502 Bad Gateway'"), hiding the FastAPI ``{"detail": ...}``
+    body — which for deploy failures is the real ARM error (e.g.
+    ``PolicyDefinitionNotFound``). Extract it so the UI shows the true cause.
+    """
+    if response.status_code < 400:
+        return
+    detail = None
+    try:
+        body = response.json()
+        if isinstance(body, dict):
+            detail = body.get("detail")
+    except Exception:
+        detail = None
+    if detail:
+        raise RuntimeError(str(detail))
+    response.raise_for_status()
+
+
 class _SharedHTTPTransport(httpx.HTTPTransport):
     """An ``httpx`` transport whose connection pool outlives per-request clients.
 
@@ -757,7 +779,7 @@ class APIClient:
                     "initiative_body": initiative_body,
                 },
             )
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def deploy_initiative_to_azure(
@@ -785,7 +807,7 @@ class APIClient:
                 f"{self.base_url}/api/v1/deploy/initiative",
                 json=payload,
             )
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def list_policy_definitions_arm(

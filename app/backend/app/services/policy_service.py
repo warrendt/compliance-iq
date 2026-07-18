@@ -19,6 +19,7 @@ from app.models import (
     PolicyGenerationResponse
 )
 from app.services.sovereignty_service import get_sovereignty_service
+from app.services.policy_catalog_service import get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +95,9 @@ class PolicyGenerationService:
             if len(unique_invalid) > 5:
                 preview += ", …"
             warnings.append(
-                f"{len(unique_invalid)} invalid policy definition ID(s) dropped "
-                f"(not valid Azure Policy GUIDs): {preview}"
+                f"{len(unique_invalid)} policy definition ID(s) dropped — not "
+                f"valid GUIDs or not found in the Azure built-in policy catalog "
+                f"(ARM would reject them as PolicyDefinitionNotFound): {preview}"
             )
 
         # Create metadata
@@ -187,22 +189,35 @@ class PolicyGenerationService:
 
     def _create_policy_definitions(
         self,
-        mappings: List[ControlMapping]
+        mappings: List[ControlMapping],
+        catalog: Optional[Any] = None,
     ) -> tuple[List[PolicyDefinitionReference], List[str]]:
         """
         Create policy definition references from mappings.
 
         Any ``azure_policy_ids`` entry that is not a well-formed Azure Policy
-        definition GUID is dropped (it would be rejected by ARM as
-        ``PolicyDefinitionNotFound``) and returned separately for honest
-        reporting.
+        definition GUID, or that is well-formed but does **not** correspond to a
+        real Azure built-in policy definition, is dropped. Both cases are
+        rejected by ARM as ``PolicyDefinitionNotFound`` and would fail the entire
+        initiative deployment, so they are stripped here and returned separately
+        for honest reporting.
+
+        Existence is checked against the shipped Azure built-in policy catalog
+        (the same corpus the AI mapping engine draws candidates from, so any
+        legitimately-selected GUID is present). When the catalog is unavailable
+        the existence check is skipped and only GUID format is enforced.
 
         Args:
             mappings: List of control mappings
+            catalog: Optional catalog service (injected for testing)
 
         Returns:
             Tuple of (valid policy definition references, dropped invalid IDs)
         """
+        if catalog is None:
+            catalog = get_policy_catalog_service()
+        enforce_existence = bool(getattr(catalog, "available", False))
+
         policy_definitions = []
         seen_policy_ids = set()
         used_ref_ids: set[str] = set()
@@ -232,6 +247,19 @@ class PolicyGenerationService:
                     logger.warning(
                         f"Control {mapping.external_control_id}: dropping invalid "
                         f"Azure Policy definition ID '{policy_id}' (not a valid GUID)"
+                    )
+                    continue
+
+                # Strip well-formed GUIDs that are not real built-in policy
+                # definitions — ARM returns PolicyDefinitionNotFound for these
+                # and fails the whole initiative.
+                if enforce_existence and not catalog.exists(policy_id):
+                    invalid_ids.append(policy_id)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping Azure "
+                        f"Policy definition ID '{policy_id}' — not found in the "
+                        f"Azure built-in policy catalog (would fail ARM as "
+                        f"PolicyDefinitionNotFound)"
                     )
                     continue
 
