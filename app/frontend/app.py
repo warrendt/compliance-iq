@@ -5,26 +5,34 @@ Main Streamlit application for AI Control Mapping Agent.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import (
+    render_page_header,
+    render_workflow_stepper,
+    render_metric_card,
+    render_status_badge,
+    render_section_heading,
+)
 from utils.state_init import (
     clear_workflow_state,
     init_session_state,
     restore_workflow_state,
 )
 from utils.auth import get_request_path
+from utils.landing import require_login
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 import httpx
 
 _DEEPLINK_PAGE_MAP = {
-    "Platform_Selection": "pages/0_🎯_Platform_Selection.py",
-    "Upload_Controls": "pages/1_📁_Upload_Controls.py",
-    "AI_Mapping": "pages/2_🤖_AI_Mapping.py",
-    "Review_Edit": "pages/3_✏️_Review_Edit.py",
-    "Export_Policy": "pages/4_📦_Export_Policy.py",
-    "PDF_Pipeline": "pages/5_🚀_PDF_Pipeline.py",
-    "Policy_Explorer": "pages/6_🔍_Policy_Explorer.py",
-    "Profile": "pages/7_👤_Profile.py",
+    "Platform_Selection": "pages/0_Platform_Selection.py",
+    "Upload_Controls": "pages/1_Upload_Controls.py",
+    "AI_Mapping": "pages/2_AI_Mapping.py",
+    "Review_Edit": "pages/3_Review_Edit.py",
+    "Export_Policy": "pages/4_Export_Policy.py",
+    "PDF_Pipeline": "pages/5_PDF_Pipeline.py",
+    "Policy_Explorer": "pages/6_Policy_Explorer.py",
+    "Profile": "pages/7_Profile.py",
 }
 
 # Page configuration
@@ -37,6 +45,11 @@ st.set_page_config(
 
 # Azure theme
 inject_azure_theme()
+
+# ── Auth gate ─────────────────────────────────────────────────────────────
+# With Easy Auth set to AllowAnonymous, render the branded landing page for
+# unauthenticated visitors and stop; authenticated users fall through.
+require_login()
 
 # ── Centralized session state initialization ──────────────────────────────
 init_session_state()
@@ -57,16 +70,38 @@ except Exception as exc:
 
 if notice := st.session_state.pop("workflow_restored_notice", None):
     st.info(
-        f"🔄 {notice} "
+        f"{notice} "
         f"({len(st.session_state.get('mappings', []))} mappings)."
     )
-    if st.button("🗑️ Start a new session"):
+    if st.button("Start a new session"):
         clear_workflow_state()
         st.rerun()
 
-# Main content
-st.markdown('<div class="main-header">🛡️ ComplianceIQ</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">AI-Powered Compliance Framework Mapping to Microsoft Defender for Cloud, Microsoft 365 &amp; Microsoft Purview</div>', unsafe_allow_html=True)
+# ── Lifecycle state (drives the header stepper + dashboard) ─────────────────
+_controls = st.session_state.get("controls", [])
+_mappings = st.session_state.get("mappings", [])
+_has_policy = bool(st.session_state.get("generated_policy"))
+_platform_selected = "selected_platform" in st.session_state
+
+if len(_controls) == 0:
+    _active_stage = "Govern"
+elif len(_mappings) == 0:
+    _active_stage = "Map"
+elif not _has_policy:
+    _active_stage = "Enforce"
+else:
+    _active_stage = "Report"
+
+# Main content — brand header + lifecycle stepper
+render_page_header(
+    "ComplianceIQ",
+    eyebrow="Compliance control tower",
+    description=(
+        "Map regulatory control frameworks to Microsoft Defender for Cloud, "
+        "Microsoft 365 and Microsoft Purview — then generate deployable policy."
+    ),
+)
+render_workflow_stepper(_active_stage)
 
 # Sidebar — shared branding + backend status
 render_sidebar()
@@ -76,112 +111,106 @@ render_task_status_bar()
 
 with st.sidebar:
     st.markdown("---")
-    st.markdown("#### 🔌 Backend Status")
+    st.markdown("#### Backend status")
     try:
         api_client = get_api_client()
         health = api_client.health_check()
 
         if health.get("status") == "healthy":
-            st.success("✅ Backend Connected")
+            st.success("Backend connected")
             st.caption(f"MCSB Controls: {health.get('mcsb_controls_loaded', 0)}")
 
             slz_count = health.get("slz_policy_count", 0)
             if slz_count > 0:
-                st.success(f"✅ SLZ Policies: {slz_count}")
+                st.success(f"SLZ policies: {slz_count}")
             else:
-                st.warning("⚠️ SLZ Policies not loaded")
+                st.warning("SLZ policies not loaded")
 
             if health.get("azure_openai_connected"):
-                st.success("✅ Azure OpenAI Ready")
+                st.success("Azure OpenAI ready")
             else:
-                st.warning("⚠️ Azure OpenAI not configured")
+                st.warning("Azure OpenAI not configured")
         else:
-            st.error("❌ Backend Issues")
+            st.error("Backend issues")
 
     except httpx.ConnectError:
-        st.error("❌ Backend Offline")
+        st.error("Backend offline")
         st.caption("Start backend: `uvicorn app.main:app`")
     except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
+        st.error(f"Error: {str(e)}")
 
 # Show selected platform
 with st.sidebar:
     st.markdown("---")
-    st.markdown("#### 🎯 Target Platform")
+    st.markdown("#### Target platform")
     platform_name = st.session_state.get('platform_display_name', 'Microsoft Defender for Cloud')
-    platform_icons = {
-        "Microsoft Defender for Cloud": "🛡️",
-        "Microsoft 365 Compliance": "📧",
-        "Microsoft Purview": "🔍",
-    }
-    st.info(f"{platform_icons.get(platform_name, '🎯')} {platform_name}")
-    if st.button("Change Platform", key="change_platform", use_container_width=True):
-        st.switch_page("pages/0_🎯_Platform_Selection.py")
+    st.info(platform_name)
+    if st.button("Change platform", key="change_platform", use_container_width=True):
+        st.switch_page("pages/0_Platform_Selection.py")
 
-# Main page content
+# ── Control-tower dashboard ────────────────────────────────────────────────
 st.markdown("---")
 
-# Welcome message and instructions
-col0, col1, col2, col3 = st.columns(4)
+_controls_variant, _controls_label = (
+    ("success", "Loaded") if len(_controls) else ("neutral", "Not started")
+)
+if len(_mappings):
+    _map_variant, _map_label = "success", "Mapped"
+elif len(_controls):
+    _map_variant, _map_label = "warning", "Pending"
+else:
+    _map_variant, _map_label = "neutral", "Not started"
+if _has_policy:
+    _policy_variant, _policy_label = "success", "Generated"
+elif len(_mappings):
+    _policy_variant, _policy_label = "warning", "Pending"
+else:
+    _policy_variant, _policy_label = "neutral", "Not started"
 
-with col0:
-    st.markdown("### 🎯 Step 0: Platform")
-    st.markdown("""
-    Choose your target compliance platform.
-    
-    **Options:**
-    - Defender for Cloud
-    - Microsoft 365
-    - Microsoft Purview
-    """)
-    if st.button("Select Platform →", key="nav_platform", use_container_width=True):
-        st.switch_page("pages/0_🎯_Platform_Selection.py")
+k0, k1, k2 = st.columns(3)
+with k0:
+    render_metric_card(
+        "Controls loaded", len(_controls),
+        sub=st.session_state.get("framework_name") or "No framework yet",
+    )
+    render_status_badge(_controls_variant, _controls_label)
+with k1:
+    render_metric_card(
+        "Controls mapped", len(_mappings),
+        sub="AI-mapped to platform controls",
+    )
+    render_status_badge(_map_variant, _map_label)
+with k2:
+    render_metric_card(
+        "Policies generated", "Yes" if _has_policy else "0",
+        sub="Ready for review & export",
+    )
+    render_status_badge(_policy_variant, _policy_label)
 
-with col1:
-    st.markdown("### 📁 Step 1: Upload")
-    st.markdown("""
-    Upload your compliance framework controls in CSV or Excel format.
-    
-    **Required columns:**
-    - Control ID
-    - Control Name  
-    - Description
-    - Domain (optional)
-    """)
-    if st.button("Go to Upload →", key="nav_upload", use_container_width=True):
-        st.switch_page("pages/1_📁_Upload_Controls.py")
+# ── Next best action (a single primary action for the whole page) ──────────
+if not _platform_selected:
+    _next_label, _next_page = "Choose platform", "pages/0_Platform_Selection.py"
+elif len(_controls) == 0:
+    _next_label, _next_page = "Upload controls", "pages/1_Upload_Controls.py"
+elif len(_mappings) == 0:
+    _next_label, _next_page = "Run AI mapping", "pages/2_AI_Mapping.py"
+elif not _has_policy:
+    _next_label, _next_page = "Review & export", "pages/3_Review_Edit.py"
+else:
+    _next_label, _next_page = "View export package", "pages/4_Export_Policy.py"
 
-with col2:
-    st.markdown("### 🤖 Step 2: Map")
-    st.markdown("""
-    Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark.
-    
-    **Features:**
-    - AI-powered analysis
-    - Confidence scoring
-    - Sovereignty level assignment
-    - Detailed reasoning
-    """)
-    if st.button("Go to Mapping →", key="nav_mapping", use_container_width=True):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
-
-with col3:
-    st.markdown("### 📦 Step 3: Export")
-    st.markdown("""
-    Generate Azure Policy initiatives ready for deployment.
-    
-    **Outputs:**
-    - MCSB Policy Initiative
-    - SLZ Sovereign Initiatives
-    - Bicep templates & scripts
-    """)
-    if st.button("Go to Export →", key="nav_export", use_container_width=True):
-        st.switch_page("pages/4_📦_Export_Policy.py")
-
-st.markdown("---")
+render_section_heading("Your compliance journey")
+st.markdown(
+    "1. **Ingest** — choose a platform and upload your control framework  \n"
+    "2. **Map** — AI maps each control to platform controls with a confidence score  \n"
+    "3. **Review** — confirm or adjust mappings and close control gaps  \n"
+    "4. **Deploy** — generate and export policy initiatives ready for Azure"
+)
+if st.button(f"Continue: {_next_label}", type="primary", key="home_continue"):
+    st.switch_page(_next_page)
 
 # Quick start guide
-with st.expander("📖 Quick Start Guide", expanded=False):
+with st.expander("How ComplianceIQ works", expanded=False):
     st.markdown("""
     ### How to Use This Tool
     

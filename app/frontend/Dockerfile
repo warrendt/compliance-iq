@@ -24,6 +24,7 @@ COPY --chown=appuser:appuser app.py .
 COPY --chown=appuser:appuser pages/ ./pages/
 COPY --chown=appuser:appuser utils/ ./utils/
 COPY --chown=appuser:appuser components/ ./components/
+COPY --chown=appuser:appuser assets/ ./assets/
 
 # Create .streamlit directory for config
 RUN mkdir -p /app/.streamlit && chown -R appuser:appuser /app/.streamlit

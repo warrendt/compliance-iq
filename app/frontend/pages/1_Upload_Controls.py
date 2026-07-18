@@ -7,6 +7,7 @@ import pandas as pd
 import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -32,8 +33,11 @@ for key in ["control_id_col", "control_name_col", "description_col", "domain_col
         st.session_state[key] = ""
 
 # Header
-st.title("📁 Upload Framework Controls")
-st.markdown("Import your compliance framework controls from CSV or Excel files.")
+render_page_header(
+    "Upload framework controls",
+    eyebrow="Govern",
+    description="Import your compliance framework controls from CSV or Excel files.",
+)
 
 st.markdown("---")
 
@@ -281,7 +285,7 @@ if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
                 st.markdown("---")
                 st.info("👉 Go to **AI Mapping** to start mapping these controls to MCSB")
                 if st.button("Continue to AI Mapping →", type="primary"):
-                    st.switch_page("pages/2_🤖_AI_Mapping.py")
+                    st.switch_page("pages/2_AI_Mapping.py")
         
         else:
             st.warning("⚠️ Please map all required fields (marked with *)")

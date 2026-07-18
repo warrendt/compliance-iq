@@ -5,6 +5,7 @@ AI Mapping Page - Map controls to MCSB using AI.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state, restore_workflow_state
 from utils.task_manager import (
     cancel_task,
@@ -48,8 +49,11 @@ if not st.session_state.mapping_in_progress:
         st.session_state.mapping_job_id = active_mapping_job
 
 # Header
-st.title("🤖 AI Control Mapping")
-st.markdown("Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies")
+render_page_header(
+    "AI control mapping",
+    eyebrow="Map",
+    description="Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies.",
+)
 
 st.markdown("---")
 
@@ -60,7 +64,7 @@ if notice := st.session_state.pop("workflow_restored_notice", None):
 if not st.session_state.controls:
     st.warning("⚠️ No controls loaded. Please upload controls first.")
     if st.button("Go to Upload Page"):
-        st.switch_page("pages/1_📁_Upload_Controls.py")
+        st.switch_page("pages/1_Upload_Controls.py")
     st.stop()
 
 # Display framework info
@@ -457,7 +461,7 @@ else:
             st.metric("Unique MCSB Controls", unique_mcsb)
         st.info("👉 Go to **Review & Edit** to validate the mappings")
         st.page_link(
-            "pages/3_✏️_Review_Edit.py",
+            "pages/3_Review_Edit.py",
             label="Continue to Review →",
             icon="➡️",
         )
@@ -527,7 +531,7 @@ else:
                     job_id,
                     "ai_mapping",
                     description=f"{st.session_state.framework_name} ({num_controls} controls)",
-                    page_origin="pages/2_🤖_AI_Mapping.py",
+                    page_origin="pages/2_AI_Mapping.py",
                     total=num_controls,
                 )
 
@@ -602,10 +606,10 @@ with st.sidebar:
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         if st.button("← Upload", use_container_width=True):
-            st.switch_page("pages/1_📁_Upload_Controls.py")
+            st.switch_page("pages/1_Upload_Controls.py")
     with col_nav2:
         if st.button("Review →", use_container_width=True):
-            st.switch_page("pages/3_✏️_Review_Edit.py")
+            st.switch_page("pages/3_Review_Edit.py")
 
 render_footer()
 render_log_viewer()

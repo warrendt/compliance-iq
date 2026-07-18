@@ -10,6 +10,7 @@ import json
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from utils.auth import get_current_user
 from components.log_viewer import render_log_viewer
@@ -68,10 +69,13 @@ render_sidebar()
 # ── Auth check ─────────────────────────────────────────────────────────────
 auth_user = get_current_user()
 
-st.markdown("## 🧭 My Workspace")
-st.markdown(
-    "Your one-stop compliance workspace — every document, control set, mapping, "
-    "edit, and policy you build is captured here for your tenant."
+render_page_header(
+    "My workspace",
+    eyebrow="Report",
+    description=(
+        "Your one-stop compliance workspace — every document, control set, mapping, "
+        "edit, and policy you build is captured here for your tenant."
+    ),
 )
 st.markdown("---")
 
@@ -84,13 +88,13 @@ ws_user_key = (auth_user.email if auth_user else "anon")
 # ── Quick actions ──────────────────────────────────────────────────────────
 qa1, qa2, qa3, qa4 = st.columns(4)
 if qa1.button("📁 Upload controls", use_container_width=True):
-    st.switch_page("pages/1_📁_Upload_Controls.py")
+    st.switch_page("pages/1_Upload_Controls.py")
 if qa2.button("🤖 AI mapping", use_container_width=True):
-    st.switch_page("pages/2_🤖_AI_Mapping.py")
+    st.switch_page("pages/2_AI_Mapping.py")
 if qa3.button("🎯 Gap analysis", use_container_width=True):
-    st.switch_page("pages/8_🔀_Diff_Compare.py")
+    st.switch_page("pages/8_Diff_Compare.py")
 if qa4.button("📦 Export policy", use_container_width=True):
-    st.switch_page("pages/4_📦_Export_Policy.py")
+    st.switch_page("pages/4_Export_Policy.py")
 
 st.markdown("---")
 
@@ -204,7 +208,7 @@ with tab_history:
             }
             icon = icon_map.get(item.get("type", ""), "📋")
             summary = item.get("summary", item.get("type", "event"))
-            st.markdown(f"{icon} **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"{icon} **{summary}** &nbsp; <small style='color:var(--neutral-fg-3)'>{ts}</small>", unsafe_allow_html=True)
     else:
         st.info("No activity recorded yet. Start by uploading a compliance framework.")
 
@@ -219,14 +223,14 @@ with tab_documents:
             rows = up.get("rowCount", 0)
             size_kb = round((up.get("fileSize", 0) or 0) / 1024, 1)
             c1, c2, c3 = st.columns([3, 1, 1])
-            c1.markdown(f"📄 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c1.markdown(f"📄 **{fname}** &nbsp;<small style='color:var(--neutral-fg-3)'>v{version}</small>", unsafe_allow_html=True)
             c2.caption(f"{rows} controls · {size_kb} KB")
             c3.caption(ts)
             st.divider()
     else:
         st.info("No documents uploaded yet.")
         if st.button("📄 Upload a document (PDF)", key="ws_goto_pdf"):
-            st.switch_page("pages/5_🚀_PDF_Pipeline.py")
+            st.switch_page("pages/5_PDF_Pipeline.py")
 
 # Controls (stream #5)
 with tab_controls:
@@ -239,7 +243,7 @@ with tab_controls:
             count = up.get("controlCount", up.get("rowCount", 0))
             up_id = up.get("id", "")
             c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
-            c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:var(--neutral-fg-3)'>v{version}</small>", unsafe_allow_html=True)
             c2.caption(f"{count} controls")
             c3.caption(ts)
             cache_key = f"ws_ctrl:{ws_user_key}:{up_id}"
@@ -265,7 +269,7 @@ with tab_controls:
     else:
         st.info("No control sets stored yet.")
         if st.button("📁 Load controls", key="ws_goto_upload"):
-            st.switch_page("pages/1_📁_Upload_Controls.py")
+            st.switch_page("pages/1_Upload_Controls.py")
 
 # Mappings (stream #1)
 with tab_mappings:
@@ -286,7 +290,7 @@ with tab_mappings:
     else:
         st.info("No AI mapping results recorded yet.")
         if st.button("🤖 Go to AI Mapping", key="profile_goto_mapping"):
-            st.switch_page("pages/2_🤖_AI_Mapping.py")
+            st.switch_page("pages/2_AI_Mapping.py")
 
 # Changes (stream #2 — edits, audit-only)
 with tab_changes:
@@ -296,7 +300,7 @@ with tab_changes:
         for item in changes:
             ts = item.get("timestamp", "")[:19].replace("T", " ")
             summary = item.get("summary", "Edit")
-            st.markdown(f"✏️ **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"✏️ **{summary}** &nbsp; <small style='color:var(--neutral-fg-3)'>{ts}</small>", unsafe_allow_html=True)
             st.divider()
     else:
         st.info("No edits recorded yet. Changes you make in Review & Edit appear here.")
@@ -351,7 +355,7 @@ with tab_exports:
     else:
         st.info("No policy exports recorded yet.")
         if st.button("📦 Go to Export", key="profile_goto_export"):
-            st.switch_page("pages/4_📦_Export_Policy.py")
+            st.switch_page("pages/4_Export_Policy.py")
 
 render_footer()
 render_log_viewer()

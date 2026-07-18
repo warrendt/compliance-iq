@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state, restore_workflow_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -24,8 +25,11 @@ render_sidebar()
 render_task_status_bar()
 
 # Header
-st.title("✏️ Review & Edit Mappings")
-st.markdown("Review and refine the AI-generated mappings before exporting")
+render_page_header(
+    "Review & edit mappings",
+    eyebrow="Map",
+    description="Review and refine the AI-generated mappings before exporting.",
+)
 
 st.markdown("---")
 
@@ -33,7 +37,7 @@ st.markdown("---")
 if not st.session_state.mappings:
     st.warning("⚠️ No mappings to review. Please complete the mapping step first.")
     if st.button("Go to AI Mapping"):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
     st.stop()
 
 # Get API client
@@ -360,7 +364,7 @@ col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
     if st.button("← Back to Mapping", use_container_width=True):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
 
 with col_action2:
     # Download current mappings
@@ -377,7 +381,7 @@ with col_action2:
 
 with col_action3:
     if st.button("Continue to Export →", type="primary", use_container_width=True):
-        st.switch_page("pages/4_📦_Export_Policy.py")
+        st.switch_page("pages/4_Export_Policy.py")
 
 # Sidebar
 with st.sidebar:

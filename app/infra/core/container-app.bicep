@@ -19,6 +19,17 @@ param authTenantId string = ''
 @secure()
 param authClientSecret string = ''
 
+// Easy Auth behaviour for unauthenticated callers. The frontend uses
+// 'AllowAnonymous' so it can render a branded landing page before sign-in;
+// the backend keeps the default forced-login redirect.
+@allowed([
+  'RedirectToLoginPage'
+  'AllowAnonymous'
+  'Return401'
+  'Return403'
+])
+param unauthenticatedClientAction string = 'RedirectToLoginPage'
+
 var authEnabled = !empty(authClientId)
 var containerSecrets = concat(
   !empty(containerRegistryName) ? [
@@ -128,7 +139,7 @@ resource authConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (a
       enabled: true
     }
     globalValidation: {
-      unauthenticatedClientAction: 'RedirectToLoginPage'
+      unauthenticatedClientAction: unauthenticatedClientAction
       redirectToProvider: 'azureactivedirectory'
     }
     identityProviders: {

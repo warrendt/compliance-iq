@@ -142,3 +142,60 @@ def test_api_client_uses_backend_auth_headers(monkeypatch):
         assert http_client.headers["X-MS-CLIENT-PRINCIPAL-NAME"] == "alice@example.com"
     finally:
         http_client.close()
+
+
+def test_get_login_url_targets_easy_auth_aad_endpoint():
+    assert auth.get_login_url("/") == "/.auth/login/aad?post_login_redirect_uri=%2F"
+
+
+def test_get_login_url_encodes_redirect_path():
+    url = auth.get_login_url("/Policy_Explorer?x=1")
+    assert url == (
+        "/.auth/login/aad?post_login_redirect_uri=%2FPolicy_Explorer%3Fx%3D1"
+    )
+
+
+def test_get_logout_url_returns_to_landing_by_default():
+    assert auth.get_logout_url() == "/.auth/logout?post_logout_redirect_uri=%2F"
+
+
+def test_is_authenticated_reflects_current_user(monkeypatch):
+    monkeypatch.setattr(auth, "get_current_user", lambda: None)
+    assert auth.is_authenticated() is False
+
+    user = auth.AuthUser(name="Alice", email="alice@example.com")
+    monkeypatch.setattr(auth, "get_current_user", lambda: user)
+    assert auth.is_authenticated() is True
+
+def test_has_easy_auth_session_true_with_easy_auth_headers(monkeypatch):
+    st_stub = _streamlit_stub()
+    monkeypatch.setattr(auth, "st", st_stub)
+    monkeypatch.setattr(
+        auth,
+        "_get_request_headers",
+        lambda: {"x-ms-client-principal-name": "alice@example.com"},
+    )
+    assert auth.has_easy_auth_session() is True
+
+
+def test_has_easy_auth_session_false_without_headers(monkeypatch):
+    st_stub = _streamlit_stub()
+    monkeypatch.setattr(auth, "st", st_stub)
+    monkeypatch.setattr(auth, "_get_request_headers", lambda: {})
+    assert auth.has_easy_auth_session() is False
+
+
+def test_has_easy_auth_session_never_triggers_msal(monkeypatch):
+    """Regression: the gate check must not fall through to the interactive
+    MSAL flow, which would try to launch a browser server-side in production."""
+    st_stub = _streamlit_stub()
+    monkeypatch.setattr(auth, "st", st_stub)
+    monkeypatch.setenv("ENABLE_AUTH", "true")
+    monkeypatch.setattr(auth, "_get_request_headers", lambda: {})
+
+    def _boom():
+        raise AssertionError("MSAL interactive flow must not be invoked")
+
+    monkeypatch.setattr(auth, "_get_msal_user", _boom)
+
+    assert auth.has_easy_auth_session() is False
