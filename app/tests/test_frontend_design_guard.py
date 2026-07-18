@@ -108,3 +108,29 @@ def test_start_script_supervises_streamlit():
     text = start.read_text(encoding="utf-8")
     assert "while true" in text, "start.sh does not supervise/restart Streamlit"
     assert "streamlit run app.py" in text
+
+
+def test_notification_bell_sits_inline_with_the_brand_heading():
+    """The bell must share a vertically-centered row with the brand lockup so it
+    aligns with the heading on the right of the sidebar, not float on its own line."""
+    text = THEME.read_text(encoding="utf-8")
+    assert 'vertical_alignment="center"' in text, (
+        "brand/bell row must use st.columns(..., vertical_alignment='center')"
+    )
+    brand_idx = text.index('class="ciq-brand"')
+    bell_idx = text.index("render_notification_bell()")
+    columns_idx = text.rindex("st.columns", 0, brand_idx)
+    assert columns_idx < brand_idx < bell_idx, (
+        "notification bell should render in the same columns row as the brand lockup"
+    )
+
+
+def test_pdf_extraction_nav_sits_directly_below_upload_controls():
+    """Nav order guard: PDF Extraction belongs immediately under Upload Controls."""
+    text = THEME.read_text(encoding="utf-8")
+    upload_idx = text.index('label="Upload Controls"')
+    pdf_idx = text.index('label="PDF Extraction"')
+    mapping_idx = text.index('label="AI Mapping"')
+    assert upload_idx < pdf_idx < mapping_idx, (
+        "PDF Extraction must be listed directly below Upload Controls and above AI Mapping"
+    )

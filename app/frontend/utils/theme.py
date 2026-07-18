@@ -592,29 +592,34 @@ def render_sidebar():
 
     with st.sidebar:
         _icon_uri = _logo_data_uri(icon=True)
-        if _icon_uri:
-            st.markdown(
-                '<div class="ciq-brand">'
-                f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" />'
-                '<div class="ciq-brand-text">'
-                '<span class="ciq-brand-name">ComplianceIQ</span>'
-                '<span class="ciq-brand-tag">Compliance · Microsoft 365 &amp; Azure</span>'
-                '</div></div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown("### ComplianceIQ")
-            st.caption("Compliance · Microsoft 365 & Azure")
-        render_notification_bell()
+        # Brand lockup and the notification bell share one row so the bell sits
+        # inline with the heading on the right edge of the sidebar.
+        brand_col, bell_col = st.columns([0.78, 0.22], vertical_alignment="center")
+        with brand_col:
+            if _icon_uri:
+                st.markdown(
+                    '<div class="ciq-brand">'
+                    f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" />'
+                    '<div class="ciq-brand-text">'
+                    '<span class="ciq-brand-name">ComplianceIQ</span>'
+                    '<span class="ciq-brand-tag">Compliance · Microsoft 365 &amp; Azure</span>'
+                    '</div></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown("### ComplianceIQ")
+                st.caption("Compliance · Microsoft 365 & Azure")
+        with bell_col:
+            render_notification_bell()
         st.markdown("---")
 
         # ── Clickable navigation ──
         st.page_link("app.py", label="Home", icon=None)
         st.page_link("pages/1_Upload_Controls.py", label="Upload Controls")
+        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
         st.page_link("pages/2_AI_Mapping.py", label="AI Mapping")
         st.page_link("pages/3_Review_Edit.py", label="Review & Edit")
         st.page_link("pages/4_Export_Policy.py", label="Export Policy")
-        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
         st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer")
         st.page_link("pages/8_Diff_Compare.py", label="Gap Analysis")
         st.page_link("pages/9_Version_History.py", label="Version History")
