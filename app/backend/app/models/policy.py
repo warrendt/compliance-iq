@@ -226,6 +226,10 @@ class PolicyGenerationResponse(BaseModel):
         0,
         description="Number of built-in policies dropped because they cannot be part of a custom policy set (e.g. System Policy)"
     )
+    excluded_parameterized_policies: int = Field(
+        0,
+        description="Number of built-in policies dropped because they require a parameter value with no default (e.g. vault name/region), which ARM would reject in a custom policy set"
+    )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 
     model_config = ConfigDict(json_schema_extra={

@@ -100,9 +100,13 @@ class PolicyGenerationService:
         # Generate policy definitions (invalid/hallucinated GUIDs are stripped)
         # and the control groupings that make this a Regulatory Compliance
         # initiative.
-        policy_definitions, groups, invalid_policy_ids, non_includable_ids = (
-            self._create_policy_definitions(filtered_mappings)
-        )
+        (
+            policy_definitions,
+            groups,
+            invalid_policy_ids,
+            non_includable_ids,
+            parameterized_ids,
+        ) = self._create_policy_definitions(filtered_mappings)
 
         unique_invalid = sorted(set(invalid_policy_ids))
         if unique_invalid:
@@ -123,6 +127,17 @@ class PolicyGenerationService:
                 f"{len(unique_non_includable)} non-includable built-in policy(ies) "
                 f"dropped (cannot be part of a custom policy set, e.g. System "
                 f"Policy): {preview}"
+            )
+
+        unique_parameterized = sorted(set(parameterized_ids))
+        if unique_parameterized:
+            preview = ", ".join(unique_parameterized[:5])
+            if len(unique_parameterized) > 5:
+                preview += ", …"
+            warnings.append(
+                f"{len(unique_parameterized)} parameterized built-in policy(ies) "
+                f"dropped (require a parameter value with no default, e.g. vault "
+                f"name/region, so ARM would reject the set definition): {preview}"
             )
 
         # Create metadata
@@ -152,6 +167,7 @@ class PolicyGenerationService:
             excluded_policies=len(request.mappings) - len(filtered_mappings),
             invalid_policies=len(unique_invalid),
             excluded_builtin_policies=len(unique_non_includable),
+            excluded_parameterized_policies=len(unique_parameterized),
             warnings=warnings
         )
 
@@ -217,7 +233,13 @@ class PolicyGenerationService:
     def _create_policy_definitions(
         self,
         mappings: List[ControlMapping]
-    ) -> tuple[List[PolicyDefinitionReference], List[PolicyDefinitionGroup], List[str], List[str]]:
+    ) -> tuple[
+        List[PolicyDefinitionReference],
+        List[PolicyDefinitionGroup],
+        List[str],
+        List[str],
+        List[str],
+    ]:
         """
         Create policy definition references and control groups from mappings.
 
@@ -237,12 +259,19 @@ class PolicyGenerationService:
         of a custom policy set", which would break the generated deployment
         scripts. They are returned separately so callers can report them.
 
+        Built-ins that have a required (no-default) parameter are dropped too:
+        ARM rejects the set definition with ``MissingPolicyParameter`` unless a
+        value is supplied, and the generator cannot invent resource-specific
+        values (vault names, regions, workspace IDs). They are returned separately
+        for honest reporting.
+
         Args:
             mappings: List of control mappings
 
         Returns:
             Tuple of (policy definition references, control groups, dropped
-            invalid IDs, dropped non-includable built-in IDs)
+            invalid IDs, dropped non-includable built-in IDs, dropped
+            parameterized built-in IDs)
         """
         catalog = get_policy_catalog_service()
         policy_by_full_id: Dict[str, PolicyDefinitionReference] = {}
@@ -252,6 +281,7 @@ class PolicyGenerationService:
         used_ref_ids: set[str] = set()
         invalid_ids: List[str] = []
         non_includable_ids: List[str] = []
+        parameterized_ids: List[str] = []
 
         for mapping in mappings:
             # Skip if no Azure Policy IDs
@@ -307,6 +337,20 @@ class PolicyGenerationService:
                     )
                     continue
 
+                # Strip built-ins that have a required (no-default) parameter.
+                # ARM rejects the set definition with "MissingPolicyParameter"
+                # unless a value is supplied, and the generator cannot invent
+                # resource-specific values. Only dropped when the catalog
+                # positively flags them.
+                if catalog.requires_parameters(policy_guid):
+                    parameterized_ids.append(policy_guid)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping "
+                        f"parameterized built-in '{policy_guid}' "
+                        f"(has a required parameter with no default value)"
+                    )
+                    continue
+
                 # Create full policy definition ID
                 full_policy_id = (
                     f"/providers/Microsoft.Authorization/policyDefinitions/{policy_guid}"
@@ -358,8 +402,18 @@ class PolicyGenerationService:
                 f", dropped {len(non_includable_ids)} non-includable"
                 if non_includable_ids else ""
             )
+            + (
+                f", dropped {len(parameterized_ids)} parameterized"
+                if parameterized_ids else ""
+            )
         )
-        return ordered_definitions, groups, invalid_ids, non_includable_ids
+        return (
+            ordered_definitions,
+            groups,
+            invalid_ids,
+            non_includable_ids,
+            parameterized_ids,
+        )
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:
         """

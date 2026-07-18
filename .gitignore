@@ -36,6 +36,10 @@ Thumbs.db
 # Reference docs (not for public)
 Microsoft_SITA Reference Architecture Document.pdf
 
+# Local run artifacts and scratch input docs (never commit to this public repo)
+artifacts/
+reference_documents/new_docs/
+
 
 # Local secrets - never commit these
 .env.ps1

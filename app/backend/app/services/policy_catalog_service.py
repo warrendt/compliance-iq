@@ -146,6 +146,7 @@ class PolicyCatalogService:
                 "display_name": (d.get("display_name") or "").strip(),
                 "description": (d.get("description") or "").strip(),
                 "category": (d.get("category") or "Uncategorized").strip(),
+                "requires_parameters": bool(d.get("requires_parameters", False)),
             }
             for d in definitions
             if (d.get("name") or "").strip() and (d.get("display_name") or "").strip()
@@ -267,6 +268,24 @@ class PolicyCatalogService:
         if not entry:
             return False
         return _is_non_includable_category(entry.get("category", ""))
+
+    def requires_parameters(self, name: str) -> bool:
+        """True if the built-in ``name`` (GUID) has a required (no-default) parameter.
+
+        Such a built-in cannot be referenced in a custom policy set without
+        supplying a value: ARM rejects the set definition with
+        ``MissingPolicyParameter``. The generator has no way to invent
+        resource-specific values (vault names, regions, workspace IDs), so these
+        are excluded at generation to keep the emitted initiative deployable.
+
+        Returns ``True`` only when the catalog positively flags the entry.
+        Unknown GUIDs return ``False`` — the snapshot may not be exhaustive, so we
+        never strip a policy we cannot positively classify.
+        """
+        entry = self.get(name)
+        if not entry:
+            return False
+        return bool(entry.get("requires_parameters", False))
 
     @property
     def count(self) -> int:

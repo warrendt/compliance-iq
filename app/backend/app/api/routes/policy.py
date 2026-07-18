@@ -71,8 +71,13 @@ def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[s
         "\n## Automatic exclusions\n\n"
         "Built-in policies that cannot live in a custom policy set are dropped during "
         "generation so the deploy does not fail:\n\n"
-        "- **System Policy** built-ins (Azure rejects them from custom sets).\n\n"
-        "See `excluded_builtin_policies` in the generation response for the count.\n"
+        "- **System Policy** built-ins (Azure rejects them from custom sets).\n"
+        "- **Parameterized** built-ins with a required parameter that has no default "
+        "value (e.g. vault name/region/workspace). ARM rejects the set definition "
+        "with `MissingPolicyParameter` unless a value is supplied, and it cannot be "
+        "invented safely.\n\n"
+        "See `excluded_builtin_policies` and `excluded_parameterized_policies` in the "
+        "generation response for the counts.\n"
     )
     return {"name": "README.md", "content": content}
 

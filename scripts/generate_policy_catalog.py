@@ -47,7 +47,7 @@ DEFAULT_OUTPUT = (
 _AZ_QUERY = (
     "[?policyType=='BuiltIn'].{name:name, display_name:displayName, "
     "description:description, category:metadata.category, mode:mode, "
-    "version:metadata.version}"
+    "version:metadata.version, parameters:parameters}"
 )
 
 
@@ -55,6 +55,27 @@ def _is_deprecated(item: Dict[str, Any]) -> bool:
     display = (item.get("display_name") or item.get("displayName") or "")
     version = (item.get("version") or "")
     return display.startswith("[Deprecated]") or "deprecated" in version.lower()
+
+
+def _requires_parameters(item: Dict[str, Any]) -> bool:
+    """True if the definition has at least one parameter without a default value.
+
+    A built-in whose parameters all carry a ``defaultValue`` can be referenced in
+    a custom policy set with no ``parameters`` block. One that has a parameter
+    *without* a default cannot: ARM rejects the set definition with
+    ``MissingPolicyParameter`` unless a value (or pass-through) is supplied.
+    Because the generator has no way to invent resource-specific values (vault
+    names, regions, workspace IDs), such built-ins are excluded at generation so
+    the emitted initiative stays deployable. This flag makes that detectable.
+    """
+    params = item.get("parameters") or {}
+    if not isinstance(params, dict):
+        return False
+    return any(
+        "defaultValue" not in (spec or {})
+        for spec in params.values()
+        if isinstance(spec, dict) or spec is None
+    )
 
 
 def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -82,6 +103,7 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "description": (item.get("description") or "").strip(),
                 "category": (item.get("category") or "Uncategorized").strip(),
                 "mode": (item.get("mode") or "All").strip(),
+                "requires_parameters": _requires_parameters(item),
             }
         )
     out.sort(key=lambda d: d["name"])
