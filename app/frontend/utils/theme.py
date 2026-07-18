@@ -570,9 +570,13 @@ def inject_azure_theme():
 def render_sidebar():
     """Render a consistent Fluent-styled left navigation across all pages."""
     with st.sidebar:
-        _logo = _LOGO_FULL_PATH if _LOGO_FULL_PATH.exists() else _LOGO_ICON_PATH
-        if _logo.exists():
-            st.image(str(_logo), use_container_width=True)
+        _logo_uri = _logo_data_uri(icon=False) or _logo_data_uri(icon=True)
+        if _logo_uri:
+            st.markdown(
+                f'<img src="{_logo_uri}" alt="ComplianceIQ" '
+                'style="width:100%;max-width:220px;display:block;margin:0 auto 0.25rem;" />',
+                unsafe_allow_html=True,
+            )
         else:
             st.markdown("### ComplianceIQ")
         st.caption("Compliance · Microsoft 365 & Azure")

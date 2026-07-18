@@ -68,3 +68,22 @@ def test_sidebar_nav_labels_are_emoji_free():
         label for label in label_pattern.findall(text) if _EMOJI.search(label)
     ]
     assert not offenders, f"Emoji in sidebar nav labels: {offenders}"
+
+
+def test_no_st_image_with_use_container_width():
+    """`st.image(use_container_width=...)` crashes on the pinned Streamlit 1.37.0
+    (the arg was added to st.image later). Logos must render via HTML data URIs,
+    not st.image. Guard against reintroducing the incompatible call."""
+    root = FRONTEND
+    pattern = re.compile(r"st\.image\((?:[^()]*|\([^()]*\))*use_container_width", re.DOTALL)
+    offenders: list[str] = []
+    for path in root.rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if pattern.search(text):
+            offenders.append(str(path.relative_to(root)))
+    assert not offenders, (
+        "st.image(..., use_container_width=...) is unsupported on Streamlit 1.37.0: "
+        + ", ".join(offenders)
+    )
