@@ -432,6 +432,107 @@ FLUENT_CSS = """
         background: var(--status-info-bg);    border-color: var(--status-info-stroke); }
     .fluent-badge.neutral { color: var(--neutral-fg-2);
         background: var(--neutral-bg-3);      border-color: var(--neutral-stroke-2); }
+    /* Optional leading status dot inside a badge */
+    .fluent-badge .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; display: inline-block;
+    }
+
+    /* ───────────── Shared components (ComplianceIQ primitives) ───────────── */
+    /* Page header: eyebrow → title → description */
+    .ciq-page-header { margin: 0 0 1.25rem 0; }
+    .ciq-eyebrow {
+        display: inline-block;
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--brand-primary);
+        margin-bottom: 0.35rem;
+    }
+    .ciq-page-title {
+        font-size: 1.9rem; font-weight: 600; line-height: 2.4rem;
+        color: var(--neutral-fg-1); letter-spacing: -0.01em; margin: 0 0 0.2rem 0;
+    }
+    .ciq-page-desc {
+        font-size: 0.95rem; color: var(--neutral-fg-3);
+        margin: 0; max-width: 68ch;
+    }
+
+    /* Section heading */
+    .ciq-section-heading {
+        font-size: 1.05rem; font-weight: 600; color: var(--neutral-fg-1);
+        margin: 1.5rem 0 0.6rem 0; padding-bottom: 0.35rem;
+        border-bottom: 1px solid var(--neutral-stroke-2);
+    }
+
+    /* Lifecycle stepper: Govern → Map → Enforce → Report */
+    .ciq-stepper {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 0.4rem; margin: 0 0 1.25rem 0;
+    }
+    .ciq-step {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.3rem 0.7rem; border-radius: var(--radius-pill);
+        font-size: 0.8rem; font-weight: 600;
+        background: var(--neutral-bg-3); color: var(--neutral-fg-3);
+        border: 1px solid var(--neutral-stroke-2);
+    }
+    .ciq-step .num {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%;
+        font-size: 0.7rem; background: var(--neutral-stroke-2);
+        color: var(--neutral-fg-2);
+    }
+    .ciq-step.active {
+        background: var(--brand-tint); color: var(--brand-primary);
+        border-color: var(--status-info-stroke);
+    }
+    .ciq-step.active .num { background: var(--brand-primary); color: #FFFFFF; }
+    .ciq-step.done {
+        background: #EAF0F7; color: var(--brand-navy);
+        border-color: var(--neutral-stroke-2);
+    }
+    .ciq-step.done .num { background: var(--brand-navy); color: #FFFFFF; }
+    .ciq-step-sep { color: var(--neutral-fg-disabled); font-size: 0.9rem; }
+
+    /* Metric / KPI card */
+    .ciq-metric-card {
+        background: var(--neutral-bg-1); border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg); padding: 1rem 1.1rem;
+        box-shadow: var(--elevation-2); height: 100%;
+    }
+    .ciq-metric-label {
+        font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+        text-transform: uppercase; color: var(--neutral-fg-3); margin: 0;
+    }
+    .ciq-metric-value {
+        font-size: 2rem; font-weight: 600; line-height: 2.3rem;
+        color: var(--neutral-fg-1); margin: 0.2rem 0;
+    }
+    .ciq-metric-sub { font-size: 0.82rem; color: var(--neutral-fg-3); margin: 0; }
+
+    /* Selection card (framework / platform choices) */
+    .ciq-select-card {
+        background: var(--neutral-bg-1); border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg); padding: 1rem 1.1rem;
+        box-shadow: var(--elevation-2); height: 100%;
+    }
+    .ciq-select-card.selected {
+        border-color: var(--brand-primary); background: var(--brand-tint);
+        box-shadow: 0 0 0 1px var(--brand-primary), var(--elevation-4);
+    }
+    .ciq-select-title {
+        font-size: 1rem; font-weight: 600; color: var(--neutral-fg-1);
+        margin: 0 0 0.25rem 0;
+    }
+    .ciq-select-desc { font-size: 0.85rem; color: var(--neutral-fg-3); margin: 0; }
+
+    /* Empty state */
+    .ciq-empty {
+        text-align: center; padding: 2.5rem 1.5rem;
+        border: 1px dashed var(--neutral-stroke-1); border-radius: var(--radius-lg);
+        background: var(--neutral-bg-3); color: var(--neutral-fg-3);
+    }
+    .ciq-empty h4 { color: var(--neutral-fg-1); margin: 0 0 0.4rem 0; }
+    .ciq-empty p { margin: 0; font-size: 0.9rem; }
 
     /* ───────────── Links ───────────── */
     a { color: var(--brand-foreground); }
