@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "13080135953003914526"
+      "templateHash": "50880645118330916"
     }
   },
   "parameters": {
@@ -106,6 +106,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "Entra ID app registration client secret for Easy Auth token store and delegated ARM tokens"
+      }
+    },
+    "frontendCustomDomain": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom domain to bind to the frontend app (e.g. app.compliance-iq.net). Leave empty to skip. Requires the CNAME + asuid TXT records to already exist in DNS before deployment."
       }
     },
     "devPublicIpAddress": {
@@ -1784,6 +1791,90 @@
       ]
     },
     {
+      "condition": "[not(empty(parameters('frontendCustomDomain')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "frontend-cert",
+      "resourceGroup": "[variables('resolvedResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-environment'), '2025-04-01').outputs.name.value]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "customDomain": {
+            "value": "[parameters('frontendCustomDomain')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "1514694315364185661"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "customDomain": {
+              "type": "string",
+              "metadata": {
+                "description": "Fully-qualified custom domain to secure, e.g. app.compliance-iq.net"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments/managedCertificates",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('environmentName'), format('mc-{0}', replace(parameters('customDomain'), '.', '-')))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subjectName": "[parameters('customDomain')]",
+                "domainControlValidation": "CNAME"
+              }
+            }
+          ],
+          "outputs": {
+            "certificateId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments/managedCertificates', parameters('environmentName'), format('mc-{0}', replace(parameters('customDomain'), '.', '-')))]"
+            },
+            "certificateName": {
+              "type": "string",
+              "value": "[format('mc-{0}', replace(parameters('customDomain'), '.', '-'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-environment')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resolvedResourceGroupName'))]"
+      ]
+    },
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "backend-app",
@@ -1890,7 +1981,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "11258493480105615224"
+              "templateHash": "13499448612216964646"
             }
           },
           "parameters": {
@@ -1942,6 +2033,13 @@
               "type": "string",
               "defaultValue": ""
             },
+            "customDomains": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Custom domain bindings for ingress. Each item: { name, bindingType, certificateId }. Empty by default."
+              }
+            },
             "authClientId": {
               "type": "string",
               "defaultValue": ""
@@ -1988,6 +2086,7 @@
                     "targetPort": "[parameters('containerPort')]",
                     "transport": "http",
                     "allowInsecure": false,
+                    "customDomains": "[parameters('customDomains')]",
                     "traffic": [
                       {
                         "latestRevision": true,
@@ -2154,6 +2253,7 @@
           "unauthenticatedClientAction": {
             "value": "AllowAnonymous"
           },
+          "customDomains": "[if(not(empty(parameters('frontendCustomDomain'))), createObject('value', createArray(createObject('name', parameters('frontendCustomDomain'), 'bindingType', 'SniEnabled', 'certificateId', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'frontend-cert'), '2025-04-01').outputs.certificateId.value))), createObject('value', createArray()))]",
           "environmentVariables": {
             "value": [
               {
@@ -2186,7 +2286,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "11258493480105615224"
+              "templateHash": "13499448612216964646"
             }
           },
           "parameters": {
@@ -2238,6 +2338,13 @@
               "type": "string",
               "defaultValue": ""
             },
+            "customDomains": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Custom domain bindings for ingress. Each item: { name, bindingType, certificateId }. Empty by default."
+              }
+            },
             "authClientId": {
               "type": "string",
               "defaultValue": ""
@@ -2284,6 +2391,7 @@
                     "targetPort": "[parameters('containerPort')]",
                     "transport": "http",
                     "allowInsecure": false,
+                    "customDomains": "[parameters('customDomains')]",
                     "traffic": [
                       {
                         "latestRevision": true,
@@ -2386,6 +2494,7 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'backend-app')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'container-apps-environment')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'container-registry')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'frontend-cert')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resolvedResourceGroupName'))]"
       ]
     },
@@ -2748,6 +2857,10 @@
     "FRONTEND_URI": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'frontend-app'), '2025-04-01').outputs.uri.value]"
+    },
+    "FRONTEND_CUSTOM_DOMAIN_URI": {
+      "type": "string",
+      "value": "[if(not(empty(parameters('frontendCustomDomain'))), format('https://{0}', parameters('frontendCustomDomain')), '')]"
     },
     "SERVICE_BACKEND_NAME": {
       "type": "string",

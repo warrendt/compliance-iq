@@ -13,6 +13,9 @@ param cpu string = '0.5'
 param memory string = '1Gi'
 param containerRegistryName string = ''
 
+@description('Custom domain bindings for ingress. Each item: { name, bindingType, certificateId }. Empty by default.')
+param customDomains array = []
+
 // Authentication (Easy Auth v2) – only applied when authClientId is set
 param authClientId string = ''
 param authTenantId string = ''
@@ -78,6 +81,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         targetPort: containerPort
         transport: 'http'
         allowInsecure: false
+        customDomains: customDomains
         traffic: [
           {
             latestRevision: true
