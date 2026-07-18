@@ -4,8 +4,10 @@ Deploy & Explorer endpoints — proxy ARM calls using the caller's Entra token.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import Any, Optional
+from typing import Any, Awaitable, Optional
 import logging
+
+import httpx
 
 from app.auth.azure_ad_auth import User, get_current_user
 from app.services.policy_deploy_service import PolicyDeployService
@@ -28,12 +30,49 @@ def _svc(user: User) -> PolicyDeployService:
 # Scopes
 # ------------------------------------------------------------------
 
+async def _safe_arm_fetch(
+    coro: Awaitable[list[dict[str, Any]]], label: str
+) -> tuple[list[dict[str, Any]], Optional[str]]:
+    """Await an ARM list call, converting failures into a warning string.
+
+    Returns ``(items, warning)``. On success ``warning`` is ``None``; on
+    failure ``items`` is empty and ``warning`` describes the ARM error. This
+    lets one scope source fail (e.g. management groups, which most users cannot
+    read) without discarding results from the other.
+    """
+    try:
+        return await coro, None
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        body = (exc.response.text or "").strip()[:300]
+        logger.warning("scope_fetch_failed label=%s status=%s", label, status)
+        if status in (401, 403):
+            reason = (
+                "access denied — your signed-in identity lacks read permission "
+                "at this level (this is expected for most users at the "
+                "management-group level)"
+            )
+        else:
+            reason = f"ARM HTTP {status}: {body}" if body else f"ARM HTTP {status}"
+        return [], f"{label}: {reason}"
+    except Exception as exc:  # noqa: BLE001 — surface any failure as a warning
+        logger.warning("scope_fetch_error label=%s", label, exc_info=exc)
+        return [], f"{label}: {exc}"
+
+
 @router.get("/scopes")
 async def list_scopes(user: User = Depends(get_current_user)):
-    """Return subscriptions and management groups visible to the caller."""
+    """Return subscriptions and management groups visible to the caller.
+
+    Subscriptions and management groups are fetched independently so a failure
+    in one (commonly a 403 on management groups) does not blank out the other.
+    """
     svc = _svc(user)
-    subs = await svc.list_subscriptions()
-    mgs = await svc.list_management_groups()
+
+    subs, subs_warn = await _safe_arm_fetch(svc.list_subscriptions(), "Subscriptions")
+    mgs, mgs_warn = await _safe_arm_fetch(
+        svc.list_management_groups(), "Management groups"
+    )
 
     sub_items = [
         {"id": s["subscriptionId"], "display": s.get("displayName", s["subscriptionId"]), "type": "subscription",
@@ -45,7 +84,15 @@ async def list_scopes(user: User = Depends(get_current_user)):
          "scope": f"/providers/Microsoft.Management/managementGroups/{m['name']}"}
         for m in mgs
     ]
-    return {"scopes": sub_items + mg_items}
+
+    warnings = [w for w in (subs_warn, mgs_warn) if w]
+
+    # Only fail the whole request when BOTH sources errored — otherwise return
+    # whatever we could resolve plus the warnings.
+    if subs_warn and mgs_warn:
+        raise HTTPException(status_code=502, detail=" | ".join(warnings))
+
+    return {"scopes": sub_items + mg_items, "warnings": warnings}
 
 
 # ------------------------------------------------------------------
