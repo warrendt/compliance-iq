@@ -7,6 +7,7 @@ starting the control mapping workflow.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header, render_status_badge
 from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
@@ -24,10 +25,13 @@ render_sidebar()
 init_session_state()
 render_task_status_bar()
 
-st.markdown("## 🎯 Platform Selection")
-st.markdown(
-    "Choose your target compliance platform. This determines which policies "
-    "and configurations will be generated from your compliance controls."
+render_page_header(
+    "Platform selection",
+    eyebrow="Govern",
+    description=(
+        "Choose your target compliance platform. This determines which policies "
+        "and configurations are generated from your compliance controls."
+    ),
 )
 
 st.markdown("---")
@@ -36,7 +40,8 @@ st.markdown("---")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown("### 🛡️ Microsoft Defender for Cloud")
+    st.markdown("### Microsoft Defender for Cloud")
+    render_status_badge("info", "Recommended for Azure")
     st.markdown("""
     **Azure Policy & Defender Compliance**
     
@@ -54,14 +59,14 @@ with col1:
     - Infrastructure compliance
     - Cloud security posture
     """)
-    if st.button("Select Azure Defender →", key="select_azure", use_container_width=True, type="primary"):
+    if st.button("Select Azure Defender", key="select_azure", use_container_width=True, type="primary"):
         st.session_state.selected_platform = "azure_defender"
         st.session_state.platform_display_name = "Microsoft Defender for Cloud"
-        st.success("✅ Platform selected: Microsoft Defender for Cloud")
+        st.success("Platform selected: Microsoft Defender for Cloud")
         st.info("Navigate to **Upload Controls** to continue.")
 
 with col2:
-    st.markdown("### 📧 Microsoft 365 Compliance")
+    st.markdown("### Microsoft 365 Compliance")
     st.markdown("""
     **M365 Compliance Policies**
     
@@ -79,14 +84,14 @@ with col2:
     - Identity & access management
     - Endpoint compliance
     """)
-    if st.button("Select Microsoft 365 →", key="select_m365", use_container_width=True, type="primary"):
+    if st.button("Select Microsoft 365", key="select_m365", use_container_width=True):
         st.session_state.selected_platform = "microsoft_365"
         st.session_state.platform_display_name = "Microsoft 365 Compliance"
-        st.success("✅ Platform selected: Microsoft 365 Compliance")
+        st.success("Platform selected: Microsoft 365 Compliance")
         st.info("Navigate to **Upload Controls** to continue.")
 
 with col3:
-    st.markdown("### 🔍 Microsoft Purview")
+    st.markdown("### Microsoft Purview")
     st.markdown("""
     **Data Governance & Protection**
     
@@ -104,10 +109,10 @@ with col3:
     - Data lifecycle management
     - Regulatory record keeping
     """)
-    if st.button("Select Microsoft Purview →", key="select_purview", use_container_width=True, type="primary"):
+    if st.button("Select Microsoft Purview", key="select_purview", use_container_width=True):
         st.session_state.selected_platform = "microsoft_purview"
         st.session_state.platform_display_name = "Microsoft Purview"
-        st.success("✅ Platform selected: Microsoft Purview")
+        st.success("Platform selected: Microsoft Purview")
         st.info("Navigate to **Upload Controls** to continue.")
 
 st.markdown("---")
@@ -120,7 +125,7 @@ if "selected_platform" in st.session_state:
     )
 
 # Comparison table
-with st.expander("📊 Platform Comparison", expanded=False):
+with st.expander("Platform comparison", expanded=False):
     st.markdown("""
     | Feature | Defender for Cloud | Microsoft 365 | Microsoft Purview |
     |---------|-------------------|---------------|-------------------|
@@ -134,7 +139,7 @@ with st.expander("📊 Platform Comparison", expanded=False):
     | **Sovereignty** | SLZ L1-L3 support | Regional settings | Regional settings |
     """)
 
-with st.expander("❓ How to Choose", expanded=False):
+with st.expander("How to choose", expanded=False):
     st.markdown("""
     ### Choosing the Right Platform
     
