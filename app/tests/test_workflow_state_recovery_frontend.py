@@ -89,5 +89,51 @@ def test_clear_workflow_state_resets_and_reissues_uuid(monkeypatch):
     assert streamlit.session_state["controls"] == []
     assert streamlit.session_state["mappings"] == []
     assert streamlit.session_state["controls_loaded"] is False
-    assert "_workflow_restore_checked" not in streamlit.session_state
+    # The restore guard must stay armed so the freshly-cleared workspace is not
+    # immediately re-hydrated from the backend's latest saved session.
+    assert streamlit.session_state["_workflow_restore_checked"] is True
     assert streamlit.session_state["session_uuid"] != original_uuid
+
+def test_persist_workflow_state_saves_via_api_client(monkeypatch):
+    """Regression: persist_workflow_state referenced get_api_client without a
+    module-level or local import, raising NameError after a successful policy
+    generation (surfaced as a misleading 'Error generating policy')."""
+    streamlit = SimpleNamespace(
+        session_state={
+            "session_uuid": "sess-123",
+            "controls": [{"control_id": "CTRL-1"}],
+            "mappings": [{"control_id": "CTRL-1"}],
+            "framework_name": "FW",
+        }
+    )
+    monkeypatch.setattr(state_init, "st", streamlit)
+
+    saved: dict = {}
+    api = SimpleNamespace(
+        save_session=lambda session_id, payload: saved.update(
+            {"session_id": session_id, "payload": payload}
+        )
+    )
+    monkeypatch.setattr("utils.api_client.get_api_client", lambda: api)
+
+    state_init.persist_workflow_state()
+
+    assert saved["session_id"] == "sess-123"
+    assert saved["payload"]["controls"] == [{"control_id": "CTRL-1"}]
+    assert saved["payload"]["framework_name"] == "FW"
+
+
+def test_persist_workflow_state_swallows_backend_errors(monkeypatch):
+    """Persistence is best-effort: a backend failure must not bubble up and
+    fail the active workflow (e.g. make a successful generation look broken)."""
+    streamlit = SimpleNamespace(session_state={"session_uuid": "sess-err"})
+    monkeypatch.setattr(state_init, "st", streamlit)
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("backend unavailable")
+
+    api = SimpleNamespace(save_session=_boom)
+    monkeypatch.setattr("utils.api_client.get_api_client", lambda: api)
+
+    # Must not raise.
+    state_init.persist_workflow_state()
