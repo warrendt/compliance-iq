@@ -21,6 +21,7 @@ from app.models import (
     PolicyGenerationResponse
 )
 from app.services.sovereignty_service import get_sovereignty_service
+from app.services.policy_catalog_service import get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +100,8 @@ class PolicyGenerationService:
         # Generate policy definitions (invalid/hallucinated GUIDs are stripped)
         # and the control groupings that make this a Regulatory Compliance
         # initiative.
-        policy_definitions, groups, invalid_policy_ids = self._create_policy_definitions(
-            filtered_mappings
+        policy_definitions, groups, invalid_policy_ids, non_includable_ids = (
+            self._create_policy_definitions(filtered_mappings)
         )
 
         unique_invalid = sorted(set(invalid_policy_ids))
@@ -111,6 +112,17 @@ class PolicyGenerationService:
             warnings.append(
                 f"{len(unique_invalid)} invalid policy definition ID(s) dropped "
                 f"(not valid Azure Policy GUIDs): {preview}"
+            )
+
+        unique_non_includable = sorted(set(non_includable_ids))
+        if unique_non_includable:
+            preview = ", ".join(unique_non_includable[:5])
+            if len(unique_non_includable) > 5:
+                preview += ", …"
+            warnings.append(
+                f"{len(unique_non_includable)} non-includable built-in policy(ies) "
+                f"dropped (cannot be part of a custom policy set, e.g. System "
+                f"Policy): {preview}"
             )
 
         # Create metadata
@@ -139,6 +151,7 @@ class PolicyGenerationService:
             included_policies=len(policy_definitions),
             excluded_policies=len(request.mappings) - len(filtered_mappings),
             invalid_policies=len(unique_invalid),
+            excluded_builtin_policies=len(unique_non_includable),
             warnings=warnings
         )
 
@@ -204,7 +217,7 @@ class PolicyGenerationService:
     def _create_policy_definitions(
         self,
         mappings: List[ControlMapping]
-    ) -> tuple[List[PolicyDefinitionReference], List[PolicyDefinitionGroup], List[str]]:
+    ) -> tuple[List[PolicyDefinitionReference], List[PolicyDefinitionGroup], List[str], List[str]]:
         """
         Create policy definition references and control groups from mappings.
 
@@ -219,18 +232,26 @@ class PolicyGenerationService:
         ``PolicyDefinitionNotFound``) and returned separately for honest
         reporting.
 
+        Built-ins the catalog positively classifies as non-includable (e.g.
+        "System Policy") are also dropped — ARM rejects them with "can not be part
+        of a custom policy set", which would break the generated deployment
+        scripts. They are returned separately so callers can report them.
+
         Args:
             mappings: List of control mappings
 
         Returns:
-            Tuple of (policy definition references, control groups, dropped invalid IDs)
+            Tuple of (policy definition references, control groups, dropped
+            invalid IDs, dropped non-includable built-in IDs)
         """
+        catalog = get_policy_catalog_service()
         policy_by_full_id: Dict[str, PolicyDefinitionReference] = {}
         ordered_definitions: List[PolicyDefinitionReference] = []
         groups_by_name: Dict[str, PolicyDefinitionGroup] = {}
         ordered_groups: List[PolicyDefinitionGroup] = []
         used_ref_ids: set[str] = set()
         invalid_ids: List[str] = []
+        non_includable_ids: List[str] = []
 
         for mapping in mappings:
             # Skip if no Azure Policy IDs
@@ -270,9 +291,25 @@ class PolicyGenerationService:
                     )
                     continue
 
+                # Bare GUID for catalog lookup (policy_id may be a full resource ID).
+                policy_guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+
+                # Strip built-ins that cannot be part of a custom policy set (e.g.
+                # "System Policy"). ARM rejects them with "can not be part of a
+                # custom policy set", which would break the generated deployment
+                # scripts. Only dropped when the catalog positively classifies them.
+                if catalog.is_non_includable(policy_guid):
+                    non_includable_ids.append(policy_guid)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping "
+                        f"non-includable built-in '{policy_guid}' "
+                        f"(cannot be part of a custom policy set)"
+                    )
+                    continue
+
                 # Create full policy definition ID
                 full_policy_id = (
-                    f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
+                    f"/providers/Microsoft.Authorization/policyDefinitions/{policy_guid}"
                 )
 
                 # A policy shared across controls is emitted once but joins each
@@ -317,8 +354,12 @@ class PolicyGenerationService:
             f"Created {len(ordered_definitions)} policy definition references "
             f"across {len(groups)} control group(s)"
             + (f", dropped {len(invalid_ids)} invalid" if invalid_ids else "")
+            + (
+                f", dropped {len(non_includable_ids)} non-includable"
+                if non_includable_ids else ""
+            )
         )
-        return ordered_definitions, groups, invalid_ids
+        return ordered_definitions, groups, invalid_ids, non_includable_ids
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:
         """
@@ -481,6 +522,7 @@ output initiativeName string = policyInitiative.name
         initiative_name: str,
         scope_type: str = "subscription",
         enforce_mode: bool = False,
+        location: str = "eastus",
     ) -> Dict[str, str]:
         """
         Generate deployment scripts for Azure CLI and PowerShell.
@@ -491,6 +533,10 @@ output initiativeName string = policyInitiative.name
             scope_type: Deployment scope (subscription, management_group)
             enforce_mode: When False (default), assignments use DoNotEnforce (audit-only).
                           When True, assignments use Default (enforcement enabled).
+            location: Region for the assignment's managed identity. An identity is
+                      mandatory even in DoNotEnforce mode because Regulatory
+                      Compliance initiatives typically contain DeployIfNotExists /
+                      Modify policies, which Azure refuses to assign without one.
 
         Returns:
             Dictionary with 'cli' and 'powershell' script strings
@@ -522,8 +568,29 @@ EOF
         )
         cli_groups_arg = "  --definition-groups policy-groups.json \\\n" if has_groups else ""
 
+        # A stable GUID for the optional Defender for Cloud custom standard.
+        cli_standard_guid = str(uuid.uuid4())
+        safe_display = initiative.properties.display_name.replace('"', '\\"')
+        safe_desc = (initiative.properties.description or "").replace('"', '\\"')
+
         cli_script = f"""#!/bin/bash
 # Deploy {initiative.properties.display_name}
+#
+# Creates three resources (all audit-only by default):
+#   1. the policy set definition (initiative)
+#   2. an assignment (DoNotEnforce + system-assigned identity)
+#   3. a Defender for Cloud custom compliance standard linking the initiative
+#
+# A managed identity is attached to the assignment even in DoNotEnforce mode
+# because Regulatory Compliance initiatives typically contain DeployIfNotExists /
+# Modify policies, which Azure refuses to assign without an identity + location.
+set -euo pipefail
+
+SUBSCRIPTION_ID="${{SUBSCRIPTION_ID:-$(az account show --query id -o tsv)}}"
+SCOPE="/subscriptions/$SUBSCRIPTION_ID"
+LOCATION="${{LOCATION:-{location}}}"
+INITIATIVE_NAME="{initiative_name}"
+ASSIGNMENT_NAME="{initiative_name}-audit"
 
 # Regulatory Compliance initiative: policy references and control groups are
 # supplied as separate arrays.
@@ -531,15 +598,51 @@ cat > policy-definitions.json <<'EOF'
 {policy_definitions_json}
 EOF
 {cli_groups_file}
-# Create policy initiative
+# 1. Create policy initiative (metadata is JSON — a "key=value" shorthand breaks
+#    on values containing spaces such as "Regulatory Compliance").
 az policy set-definition create \\
-  --name "{initiative_name}" \\
-  --display-name "{initiative.properties.display_name}" \\
-  --description "{initiative.properties.description}" \\
+  --name "$INITIATIVE_NAME" \\
+  --display-name "{safe_display}" \\
+  --description "{safe_desc}" \\
   --definitions policy-definitions.json \\
-{cli_groups_arg}  --metadata category="{category}"
+{cli_groups_arg}  --subscription "$SUBSCRIPTION_ID" \\
+  --metadata '{{"category":"{category}"}}'
+echo "Initiative created."
 
-echo "Initiative created successfully"
+# 2. Assign it audit-only, with a system-assigned identity (mandatory for
+#    DeployIfNotExists / Modify policies even under DoNotEnforce).
+SETDEF_ID="$SCOPE/providers/Microsoft.Authorization/policySetDefinitions/$INITIATIVE_NAME"
+az policy assignment create \\
+  --name "$ASSIGNMENT_NAME" \\
+  --display-name "{safe_display} - Assessment (audit-only)" \\
+  --policy-set-definition "$SETDEF_ID" \\
+  --scope "$SCOPE" \\
+  --enforcement-mode DoNotEnforce \\
+  --mi-system-assigned \\
+  --location "$LOCATION"
+echo "Initiative assigned (audit-only)."
+
+# 3. (Optional) Register a Defender for Cloud custom compliance standard so the
+#    initiative appears under Defender for Cloud > Regulatory compliance.
+#    Requires the Microsoft Defender CSPM plan on the scope. The assessments
+#    field must be present ([] is accepted; a null value returns HTTP 400).
+STANDARD_GUID="{cli_standard_guid}"
+cat > defender-standard.json <<EOF
+{{
+  "properties": {{
+    "displayName": "{safe_display}",
+    "description": "{safe_desc}",
+    "cloudProviders": ["Azure"],
+    "assessments": [],
+    "policySetDefinitionId": "$SETDEF_ID"
+  }}
+}}
+EOF
+az rest --method put \\
+  --url "https://management.azure.com$SCOPE/providers/Microsoft.Security/securityStandards/$STANDARD_GUID?api-version=2024-08-01" \\
+  --headers "Content-Type=application/json" \\
+  --body @defender-standard.json
+echo "Defender for Cloud custom standard registered: $STANDARD_GUID"
 """
 
         # ── PowerShell script ─────────────────────────────────────────────
@@ -560,6 +663,9 @@ $groupDefinitions = @'
 param(
     [Parameter(Mandatory=$false)]
     [string]$Scope = "",
+
+    [Parameter(Mandatory=$false)]
+    [string]$Location = "{location}",
 
     [Parameter(Mandatory=$false)]
     [switch]$AuditOnly,
@@ -612,8 +718,10 @@ if ($AssignAfterCreation) {{
                 -DisplayName "{initiative.properties.display_name} - Assessment" `
                 -Scope $TargetScope `
                 -PolicySetDefinition $policySetDef `
-                -EnforcementMode $EnforcementMode
-            Write-Host "Initiative assigned (enforcement: $EnforcementMode)" -ForegroundColor Green
+                -EnforcementMode $EnforcementMode `
+                -IdentityType SystemAssigned `
+                -Location $Location
+            Write-Host "Initiative assigned (enforcement: $EnforcementMode, identity: SystemAssigned @ $Location)" -ForegroundColor Green
         }}
     }} else {{
         Write-Warning "Could not find initiative '{initiative_name}'. Assignment skipped."
@@ -689,6 +797,11 @@ if ($AssignAfterCreation) {{
                         "displayName": display_name,
                         "description": description,
                         "cloudProviders": ["Azure"],
+                        # The 2024-08-01 API rejects a null/omitted assessments
+                        # field (HTTP 400 "Assessments value cannot be null!").
+                        # An empty array is accepted; Defender derives the
+                        # assessments from the linked policy set definition.
+                        "assessments": [],
                         "policySetDefinitionId": "[parameters('policySetDefinitionId')]",
                     },
                 }
@@ -741,9 +854,14 @@ $body = @{{
         displayName           = "{display_name}"
         description           = "{description}"
         cloudProviders        = @("Azure")
+        assessments           = @()
         policySetDefinitionId = $policySetId
     }}
 }} | ConvertTo-Json -Depth 10
+
+# Windows PowerShell 5.1 can serialise an empty @() as null; the securityStandards
+# API rejects a null assessments field (HTTP 400). Normalise to an empty array.
+$body = $body -replace '"assessments":\\s*(null|"")', '"assessments": []'
 
 $path = "$Scope/providers/Microsoft.Security/securityStandards/$standardName`?api-version=2024-08-01"
 

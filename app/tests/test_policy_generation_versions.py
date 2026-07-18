@@ -90,6 +90,7 @@ async def test_mcsb_generation_creates_version_with_all_downloadable_files(monke
     assert kwargs["user_id"] == "user@example.com"
     assert kwargs["metadata"]["source"] == "mcsb_initiative"
     assert {file["name"] for file in kwargs["artifact_payload"]["files"]} == {
+        "README.md",
         "Example_Framework_initiative.json",
         "Example_Framework_initiative.bicep",
         "Deploy-Example_FrameworkInitiative.ps1",

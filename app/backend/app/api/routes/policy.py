@@ -37,6 +37,46 @@ def _json_file(name: str, value: object) -> dict[str, str]:
     return {"name": name, "content": json.dumps(value, indent=2, default=str)}
 
 
+def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[str, str]:
+    """Build a README documenting deploy order and prerequisites for the bundle."""
+    standard_line = (
+        f"3. **Defender for Cloud standard** — `Deploy-{stem}DefenderStandard.ps1` "
+        f"(or the `az rest` step in `deploy-{stem}-initiative.sh`) registers a "
+        "`Microsoft.Security/securityStandards` resource so the initiative appears "
+        "under **Defender for Cloud > Regulatory compliance**.\n"
+        if has_standard
+        else ""
+    )
+    prereq = (
+        "\n## Prerequisite\n\n"
+        "The Defender for Cloud custom standard requires the **Microsoft Defender CSPM** "
+        "plan enabled on the target scope. Without it, the first two steps still work; "
+        "only the Regulatory-compliance surfacing is unavailable.\n"
+        if has_standard
+        else ""
+    )
+    content = (
+        f"# {framework_name} — deployment bundle\n\n"
+        "Deploy the resources in this order (audit-only by default — nothing is "
+        "enforced, blocked, created, or modified):\n\n"
+        "1. **Policy set definition (initiative)** — creates the initiative from "
+        f"`{stem}_initiative.json` / `.bicep`.\n"
+        "2. **Assignment** — assigns the initiative with `DoNotEnforce` and a "
+        "**system-assigned managed identity + location**. The identity is mandatory "
+        "even in audit mode because Regulatory Compliance initiatives typically "
+        "contain DeployIfNotExists / Modify policies, which Azure refuses to assign "
+        "without one.\n"
+        f"{standard_line}"
+        f"{prereq}"
+        "\n## Automatic exclusions\n\n"
+        "Built-in policies that cannot live in a custom policy set are dropped during "
+        "generation so the deploy does not fail:\n\n"
+        "- **System Policy** built-ins (Azure rejects them from custom sets).\n\n"
+        "See `excluded_builtin_policies` in the generation response for the count.\n"
+    )
+    return {"name": "README.md", "content": content}
+
+
 def _mcsb_version_payload(
     request: PolicyGenerationRequest,
     initiative_id: str,
@@ -48,6 +88,7 @@ def _mcsb_version_payload(
     """Create a complete, immutable download bundle for an MCSB generation."""
     stem = _file_stem(request.framework_name)
     files = [
+        _deploy_readme(stem, request.framework_name, standard is not None),
         _json_file(f"{stem}_initiative.json", initiative_json),
         {"name": f"{stem}_initiative.bicep", "content": bicep_template},
         {

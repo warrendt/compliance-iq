@@ -67,6 +67,18 @@ def _tokenize(text: str) -> List[str]:
 # so they are demoted below real enforceable policies during retrieval.
 _NON_ENFORCEABLE_CATEGORY = "regulatory compliance"
 
+# Built-in policies in these categories are internal/reserved and CANNOT be added
+# to a custom policy set definition — ARM rejects the initiative with
+# "can not be part of a custom policy set". Recommending them would produce an
+# initiative whose generated PowerShell/CLI fails at deploy time, so they are
+# excluded from retrieval and stripped at generation. Compared case-folded.
+NON_INCLUDABLE_CATEGORIES = frozenset({"system policy"})
+
+
+def _is_non_includable_category(category: str) -> bool:
+    """True if a built-in in this category cannot be part of a custom policy set."""
+    return (category or "").strip().casefold() in NON_INCLUDABLE_CATEGORIES
+
 
 def _enforcement_weight(category: str, penalty: float) -> float:
     """Ranking multiplier: ``penalty`` for manual-attestation policies, else 1.0."""
@@ -218,6 +230,10 @@ class PolicyCatalogService:
                     * _enforcement_weight(self._definitions[idx]["category"], penalty),
                 )
                 for idx, dot in scores.items()
+                # Never surface built-ins that cannot be part of a custom policy
+                # set (e.g. "System Policy") — recommending them would break the
+                # generated deployment scripts.
+                if not _is_non_includable_category(self._definitions[idx]["category"])
             ),
             key=lambda t: t[1],
             reverse=True,
@@ -238,6 +254,19 @@ class PolicyCatalogService:
         if not self._loaded:
             self.load()
         return self._by_name.get(name)
+
+    def is_non_includable(self, name: str) -> bool:
+        """True if the built-in ``name`` (GUID) is known to be non-includable.
+
+        Returns ``True`` only when the catalog positively identifies the policy
+        as belonging to a non-includable category (e.g. "System Policy"). Unknown
+        GUIDs return ``False`` — the catalog is a snapshot and may not be
+        exhaustive, so we never strip a policy we cannot positively classify.
+        """
+        entry = self.get(name)
+        if not entry:
+            return False
+        return _is_non_includable_category(entry.get("category", ""))
 
     @property
     def count(self) -> int:

@@ -222,6 +222,10 @@ class PolicyGenerationResponse(BaseModel):
         0,
         description="Number of policy definition IDs dropped because they were not valid Azure Policy GUIDs"
     )
+    excluded_builtin_policies: int = Field(
+        0,
+        description="Number of built-in policies dropped because they cannot be part of a custom policy set (e.g. System Policy)"
+    )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 
     model_config = ConfigDict(json_schema_extra={
