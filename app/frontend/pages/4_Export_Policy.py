@@ -487,16 +487,25 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
             "If this continues, ask an administrator to enable the application token store."
         )
     else:
-        # Fetch available scopes
-        if "deploy_scopes" not in st.session_state:
+        # Fetch available scopes (cache the full response so warnings persist)
+        _reload_scopes = st.button("🔄 Reload scopes", key="reload_deploy_scopes",
+                                   help="Re-query Azure for subscriptions and management groups")
+        if _reload_scopes:
+            st.session_state.pop("deploy_scopes_resp", None)
+
+        if "deploy_scopes_resp" not in st.session_state:
             with st.spinner("Loading Azure scopes..."):
                 try:
-                    st.session_state.deploy_scopes = api_client.list_deploy_scopes().get("scopes", [])
+                    st.session_state.deploy_scopes_resp = api_client.list_deploy_scopes()
                 except Exception as _e:
                     st.error(f"❌ Failed to load scopes: {_e}")
-                    st.session_state.deploy_scopes = []
+                    st.session_state.deploy_scopes_resp = {"scopes": [], "warnings": []}
 
-        _scopes = st.session_state.deploy_scopes
+        _scopes_resp = st.session_state.deploy_scopes_resp
+        _scopes = _scopes_resp.get("scopes", [])
+        for _warn in _scopes_resp.get("warnings", []):
+            st.caption(f"⚠️ {_warn}")
+
         if not _scopes:
             st.info("No subscriptions or management groups found for your account.")
         else:

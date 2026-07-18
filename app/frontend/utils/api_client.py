@@ -763,7 +763,7 @@ class APIClient:
         """List subscriptions and management groups visible to the caller."""
         with self._get_client() as client:
             response = client.get(f"{self.base_url}/api/v1/deploy/scopes")
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def validate_deploy(
