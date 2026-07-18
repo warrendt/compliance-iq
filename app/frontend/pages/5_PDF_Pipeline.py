@@ -61,7 +61,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "azure_defender": {
         "icon": "🛡️",
         "label": "Microsoft Defender for Cloud",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -71,7 +71,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "microsoft_365": {
         "icon": "📧",
         "label": "Microsoft 365 Compliance",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -82,7 +82,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "microsoft_purview": {
         "icon": "🔍",
         "label": "Microsoft Purview",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -281,7 +281,7 @@ with st.sidebar:
     _pmeta = _get_platform_meta(_current_platform)
     st.markdown(f"**🎯 Target Platform**")
     st.info(f"{_pmeta['icon']} {_pmeta['label']}")
-    st.page_link("pages/0_🎯_Platform_Selection.py", label="Change Platform")
+    st.page_link("pages/0_Platform_Selection.py", label="Change Platform")
 
     api_url = st.text_input(
         "Backend API URL",

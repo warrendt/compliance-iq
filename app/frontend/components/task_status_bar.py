@@ -36,15 +36,15 @@ _STATUS_ICONS = {
 }
 
 _PAGE_MAP = {
-    "ai_mapping": "pages/2_🤖_AI_Mapping.py",
-    "pdf_extraction": "pages/5_🚀_PDF_Pipeline.py",
-    "pipeline_run": "pages/5_🚀_PDF_Pipeline.py",
-    "policy_generation": "pages/4_📦_Export_Policy.py",
+    "ai_mapping": "pages/2_AI_Mapping.py",
+    "pdf_extraction": "pages/5_PDF_Pipeline.py",
+    "pipeline_run": "pages/5_PDF_Pipeline.py",
+    "policy_generation": "pages/4_Export_Policy.py",
 }
 
 _ORIGIN_LABELS = {
     "pdf_pipeline": "PDF Extraction",
-    "pages/2_🤖_AI_Mapping.py": "AI Mapping",
+    "pages/2_AI_Mapping.py": "AI Mapping",
 }
 
 _NOTIFICATION_COLUMN_WIDTHS = [5, 1.5, 0.75]

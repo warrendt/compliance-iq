@@ -88,13 +88,13 @@ ws_user_key = (auth_user.email if auth_user else "anon")
 # ── Quick actions ──────────────────────────────────────────────────────────
 qa1, qa2, qa3, qa4 = st.columns(4)
 if qa1.button("📁 Upload controls", use_container_width=True):
-    st.switch_page("pages/1_📁_Upload_Controls.py")
+    st.switch_page("pages/1_Upload_Controls.py")
 if qa2.button("🤖 AI mapping", use_container_width=True):
-    st.switch_page("pages/2_🤖_AI_Mapping.py")
+    st.switch_page("pages/2_AI_Mapping.py")
 if qa3.button("🎯 Gap analysis", use_container_width=True):
-    st.switch_page("pages/8_🔀_Diff_Compare.py")
+    st.switch_page("pages/8_Diff_Compare.py")
 if qa4.button("📦 Export policy", use_container_width=True):
-    st.switch_page("pages/4_📦_Export_Policy.py")
+    st.switch_page("pages/4_Export_Policy.py")
 
 st.markdown("---")
 
@@ -230,7 +230,7 @@ with tab_documents:
     else:
         st.info("No documents uploaded yet.")
         if st.button("📄 Upload a document (PDF)", key="ws_goto_pdf"):
-            st.switch_page("pages/5_🚀_PDF_Pipeline.py")
+            st.switch_page("pages/5_PDF_Pipeline.py")
 
 # Controls (stream #5)
 with tab_controls:
@@ -269,7 +269,7 @@ with tab_controls:
     else:
         st.info("No control sets stored yet.")
         if st.button("📁 Load controls", key="ws_goto_upload"):
-            st.switch_page("pages/1_📁_Upload_Controls.py")
+            st.switch_page("pages/1_Upload_Controls.py")
 
 # Mappings (stream #1)
 with tab_mappings:
@@ -290,7 +290,7 @@ with tab_mappings:
     else:
         st.info("No AI mapping results recorded yet.")
         if st.button("🤖 Go to AI Mapping", key="profile_goto_mapping"):
-            st.switch_page("pages/2_🤖_AI_Mapping.py")
+            st.switch_page("pages/2_AI_Mapping.py")
 
 # Changes (stream #2 — edits, audit-only)
 with tab_changes:
@@ -355,7 +355,7 @@ with tab_exports:
     else:
         st.info("No policy exports recorded yet.")
         if st.button("📦 Go to Export", key="profile_goto_export"):
-            st.switch_page("pages/4_📦_Export_Policy.py")
+            st.switch_page("pages/4_Export_Policy.py")
 
 render_footer()
 render_log_viewer()

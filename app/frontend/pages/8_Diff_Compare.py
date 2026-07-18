@@ -279,7 +279,7 @@ if cmp_id:
                 f"✅ Initiative built as **version {build_version_number}**."
             )
             st.page_link(
-                "pages/9_🗂_Version_History.py",
+                "pages/9_Version_History.py",
                 label="Open Version History",
                 icon="🗂",
             )

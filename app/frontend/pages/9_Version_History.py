@@ -66,7 +66,7 @@ if not versions:
         "No versions yet. Generate an MCSB or SLZ initiative from **Export Policy**, "
         "or build a full-union initiative from **Gap Analysis**."
     )
-    st.page_link("pages/4_📦_Export_Policy.py", label="Go to Export Policy", icon="📦")
+    st.page_link("pages/4_Export_Policy.py", label="Go to Export Policy", icon="📦")
     render_footer()
     st.stop()
 

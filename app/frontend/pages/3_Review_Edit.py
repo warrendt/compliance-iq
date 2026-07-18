@@ -37,7 +37,7 @@ st.markdown("---")
 if not st.session_state.mappings:
     st.warning("⚠️ No mappings to review. Please complete the mapping step first.")
     if st.button("Go to AI Mapping"):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
     st.stop()
 
 # Get API client
@@ -360,7 +360,7 @@ col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
     if st.button("← Back to Mapping", use_container_width=True):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
 
 with col_action2:
     # Download current mappings
@@ -377,7 +377,7 @@ with col_action2:
 
 with col_action3:
     if st.button("Continue to Export →", type="primary", use_container_width=True):
-        st.switch_page("pages/4_📦_Export_Policy.py")
+        st.switch_page("pages/4_Export_Policy.py")
 
 # Sidebar
 with st.sidebar:

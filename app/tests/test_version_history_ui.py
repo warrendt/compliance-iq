@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 APP_ROOT = Path(__file__).resolve().parents[1]
-PAGE = APP_ROOT / "frontend" / "pages" / "9_🗂_Version_History.py"
+PAGE = APP_ROOT / "frontend" / "pages" / "9_Version_History.py"
 
 
 def test_version_history_separates_mcsb_slz_and_full_union_streams():

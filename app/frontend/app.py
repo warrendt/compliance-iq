@@ -25,14 +25,14 @@ from components.backend_log_viewer import render_backend_log_viewer
 import httpx
 
 _DEEPLINK_PAGE_MAP = {
-    "Platform_Selection": "pages/0_🎯_Platform_Selection.py",
-    "Upload_Controls": "pages/1_📁_Upload_Controls.py",
-    "AI_Mapping": "pages/2_🤖_AI_Mapping.py",
-    "Review_Edit": "pages/3_✏️_Review_Edit.py",
-    "Export_Policy": "pages/4_📦_Export_Policy.py",
-    "PDF_Pipeline": "pages/5_🚀_PDF_Pipeline.py",
-    "Policy_Explorer": "pages/6_🔍_Policy_Explorer.py",
-    "Profile": "pages/7_👤_Profile.py",
+    "Platform_Selection": "pages/0_Platform_Selection.py",
+    "Upload_Controls": "pages/1_Upload_Controls.py",
+    "AI_Mapping": "pages/2_AI_Mapping.py",
+    "Review_Edit": "pages/3_Review_Edit.py",
+    "Export_Policy": "pages/4_Export_Policy.py",
+    "PDF_Pipeline": "pages/5_PDF_Pipeline.py",
+    "Policy_Explorer": "pages/6_Policy_Explorer.py",
+    "Profile": "pages/7_Profile.py",
 }
 
 # Page configuration
@@ -147,7 +147,7 @@ with st.sidebar:
     platform_name = st.session_state.get('platform_display_name', 'Microsoft Defender for Cloud')
     st.info(platform_name)
     if st.button("Change platform", key="change_platform", use_container_width=True):
-        st.switch_page("pages/0_🎯_Platform_Selection.py")
+        st.switch_page("pages/0_Platform_Selection.py")
 
 # ── Control-tower dashboard ────────────────────────────────────────────────
 st.markdown("---")
@@ -190,15 +190,15 @@ with k2:
 
 # ── Next best action (a single primary action for the whole page) ──────────
 if not _platform_selected:
-    _next_label, _next_page = "Choose platform", "pages/0_🎯_Platform_Selection.py"
+    _next_label, _next_page = "Choose platform", "pages/0_Platform_Selection.py"
 elif len(_controls) == 0:
-    _next_label, _next_page = "Upload controls", "pages/1_📁_Upload_Controls.py"
+    _next_label, _next_page = "Upload controls", "pages/1_Upload_Controls.py"
 elif len(_mappings) == 0:
-    _next_label, _next_page = "Run AI mapping", "pages/2_🤖_AI_Mapping.py"
+    _next_label, _next_page = "Run AI mapping", "pages/2_AI_Mapping.py"
 elif not _has_policy:
-    _next_label, _next_page = "Review & export", "pages/3_✏️_Review_Edit.py"
+    _next_label, _next_page = "Review & export", "pages/3_Review_Edit.py"
 else:
-    _next_label, _next_page = "View export package", "pages/4_📦_Export_Policy.py"
+    _next_label, _next_page = "View export package", "pages/4_Export_Policy.py"
 
 render_section_heading("Your compliance journey")
 st.markdown(

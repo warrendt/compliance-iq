@@ -579,16 +579,16 @@ def render_sidebar():
         st.markdown("---")
 
         # ── Clickable navigation ──
-        st.page_link("app.py", label="🏠 Home", icon=None)
-        st.page_link("pages/1_📁_Upload_Controls.py", label="📁 Upload Controls")
-        st.page_link("pages/2_🤖_AI_Mapping.py", label="🤖 AI Mapping")
-        st.page_link("pages/3_✏️_Review_Edit.py", label="✏️ Review & Edit")
-        st.page_link("pages/4_📦_Export_Policy.py", label="📦 Export Policy")
-        st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Extraction")
-        st.page_link("pages/6_🔍_Policy_Explorer.py", label="🔍 Policy Explorer")
-        st.page_link("pages/8_🔀_Diff_Compare.py", label="🎯 Gap Analysis")
-        st.page_link("pages/9_🗂_Version_History.py", label="🗂 Version History")
-        st.page_link("pages/7_👤_Profile.py", label="🧭 My Workspace")
+        st.page_link("app.py", label="Home", icon=None)
+        st.page_link("pages/1_Upload_Controls.py", label="Upload Controls")
+        st.page_link("pages/2_AI_Mapping.py", label="AI Mapping")
+        st.page_link("pages/3_Review_Edit.py", label="Review & Edit")
+        st.page_link("pages/4_Export_Policy.py", label="Export Policy")
+        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
+        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer")
+        st.page_link("pages/8_Diff_Compare.py", label="Gap Analysis")
+        st.page_link("pages/9_Version_History.py", label="Version History")
+        st.page_link("pages/7_Profile.py", label="My Workspace")
         st.markdown("---")
 
         # ── Progress tracker ──
@@ -604,7 +604,7 @@ def render_sidebar():
         total_steps = 3
         pct = int(steps_done / total_steps * 100)
 
-        st.markdown("#### 📊 Progress")
+        st.markdown("#### Progress")
         st.progress(pct / 100, text=f"{pct}% complete")
 
         step_icons = [
@@ -613,34 +613,27 @@ def render_sidebar():
             ("Generate policy", bool(st.session_state.get("generated_policy"))),
         ]
         for label, done in step_icons:
-            st.markdown(f"{'✅' if done else '⬜'} {label}")
+            st.markdown(f"- {label} — **{'Done' if done else 'To do'}**")
 
         st.markdown("---")
 
         # ── Selected platform ──
-        _platform_icons = {
-            "azure_defender": "🛡️",
-            "microsoft_365": "📧",
-            "microsoft_purview": "🔍",
-        }
         _platform_display = st.session_state.get("platform_display_name", "")
-        _platform_id = st.session_state.get("selected_platform", "azure_defender")
         if _platform_display:
-            _icon = _platform_icons.get(_platform_id, "🎯")
-            st.caption(f"{_icon} **{_platform_display}**")
+            st.caption(f"**{_platform_display}**")
 
         # ── Session metrics ──
         if fw:
-            st.info(f"🗂️ **{fw}**")
+            st.info(f"**{fw}**")
         col1, col2 = st.columns(2)
         col1.metric("Controls", len(controls))
         col2.metric("Mappings", len(mappings))
 
         # ── Developer tools ──
         st.markdown("---")
-        st.checkbox("📡 Show API Logs", key="show_api_logs",
+        st.checkbox("Show API Logs", key="show_api_logs",
                      help="Show request/response log panel at the bottom of each page")
-        st.checkbox("📋 Show Backend Logs", key="show_backend_logs",
+        st.checkbox("Show Backend Logs", key="show_backend_logs",
                      help="Show live application logs from the backend container")
         if st.session_state.get("show_backend_logs"):
             st.selectbox(
@@ -660,7 +653,7 @@ def render_sidebar():
             user = get_current_user()
             if user:
                 st.markdown("---")
-                st.markdown(f"👤 **{user.display_name}**")
+                st.markdown(f"**{user.display_name}**")
                 st.caption(user.email)
                 if "easy_auth_user" in st.session_state:
                     st.link_button(

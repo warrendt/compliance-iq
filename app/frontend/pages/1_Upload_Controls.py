@@ -285,7 +285,7 @@ if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
                 st.markdown("---")
                 st.info("👉 Go to **AI Mapping** to start mapping these controls to MCSB")
                 if st.button("Continue to AI Mapping →", type="primary"):
-                    st.switch_page("pages/2_🤖_AI_Mapping.py")
+                    st.switch_page("pages/2_AI_Mapping.py")
         
         else:
             st.warning("⚠️ Please map all required fields (marked with *)")

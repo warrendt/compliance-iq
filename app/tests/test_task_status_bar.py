@@ -81,11 +81,11 @@ def test_viewing_completed_pdf_task_selects_its_extraction(monkeypatch):
             "job_id": "pdf-1",
             "type": "pdf_extraction",
         },
-        "pages/5_🚀_PDF_Pipeline.py",
+        "pages/5_PDF_Pipeline.py",
     )
 
     assert streamlit.session_state["pdf_extraction_task_to_view"] == "pdf-1"
-    assert selected_pages == ["pages/5_🚀_PDF_Pipeline.py"]
+    assert selected_pages == ["pages/5_PDF_Pipeline.py"]
     assert rerun_calls == ["rerun"]
 
 
@@ -126,7 +126,7 @@ def test_replacing_pdf_task_id_preserves_notification_actions(monkeypatch):
 def test_dismissing_notification_keeps_task_result_available(monkeypatch):
     streamlit = SimpleNamespace(session_state={})
     monkeypatch.setattr(task_manager, "st", streamlit)
-    task_manager.register_task("job-1", "ai_mapping", page_origin="pages/2_🤖_AI_Mapping.py")
+    task_manager.register_task("job-1", "ai_mapping", page_origin="pages/2_AI_Mapping.py")
     notification_id = task_manager.get_task_notifications()[0]["id"]
 
     task_manager.dismiss_task_notification(notification_id)

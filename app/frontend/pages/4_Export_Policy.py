@@ -96,7 +96,7 @@ st.markdown("---")
 if not st.session_state.mappings:
     st.warning("⚠️ No mappings to export. Please complete the mapping and review steps first.")
     if st.button("Go to AI Mapping"):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
     st.stop()
 
 # Determine sovereignty status
@@ -778,7 +778,7 @@ col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
     if st.button("← Back to Review", use_container_width=True):
-        st.switch_page("pages/3_✏️_Review_Edit.py")
+        st.switch_page("pages/3_Review_Edit.py")
 
 with col_action2:
     if st.button("🔄 Start New Mapping", use_container_width=True):
@@ -787,7 +787,7 @@ with col_action2:
         st.session_state.mappings = []
         st.session_state.framework_name = ""
         st.session_state.generated_policy = None
-        st.switch_page("pages/1_📁_Upload_Controls.py")
+        st.switch_page("pages/1_Upload_Controls.py")
 
 with col_action3:
     if st.button("🏠 Go to Home", use_container_width=True):
