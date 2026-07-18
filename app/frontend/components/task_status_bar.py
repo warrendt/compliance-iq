@@ -51,12 +51,12 @@ _NOTIFICATION_COLUMN_WIDTHS = [5, 1.5, 0.75]
 
 
 def render_task_status_bar() -> None:
-    """Render active task progress and a dismissible task notification bell.
+    """Render active task progress inline near the top of a workflow page.
 
-    Call this near the top of every page *after* ``render_sidebar()``.
-    When there are active tasks it polls the backend for updates. Individual
-    workflow pages own their refresh loop so this shared component never
-    interrupts page-local progress rendering.
+    Call this near the top of every page *after* ``render_sidebar()``. When
+    there are active tasks it polls the backend for updates and shows a compact
+    banner. The dismissible notification bell lives in the sidebar
+    (:func:`render_notification_bell`) so it no longer floats in the page body.
     """
     active_tasks = get_active_tasks()
 
@@ -71,8 +71,6 @@ def render_task_status_bar() -> None:
         except Exception:
             pass  # backend may be unavailable
 
-    notifications = get_task_notifications()
-
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
     if active_count > 0:
@@ -85,26 +83,31 @@ def render_task_status_bar() -> None:
         banner_text = f"⏳ **{active_count} active task{'s' if active_count != 1 else ''}:** {' · '.join(summaries)}"
         st.info(banner_text)
 
-    # ── Notification bell ─────────────────────────────────────────────
-    _, bell_column = st.columns([6, 1])
-    with bell_column:
-        with st.popover(_notification_bell_label(len(notifications))):
-            st.markdown("#### Task notifications")
-            if notifications:
-                for notification in notifications:
-                    _render_notification(notification)
-                if st.button("Dismiss all", key="dismiss_all_task_notifications"):
-                    dismiss_all_task_notifications()
-                    st.rerun()
-            else:
-                st.caption("No task notifications yet.")
-
     # ── Active task hint ─────────────────────────────────────────────
     # Do not sleep or rerun here. A shared-header rerun aborts the current
     # page before it can render its own progress card and detailed job events.
     backend_polled_active = [t for t in active_tasks if t.get("poll_backend", True)]
     if backend_polled_active:
         st.caption("🔄 Active tasks are updating on their workflow page.")
+
+
+def render_notification_bell() -> None:
+    """Render the dismissible task-notification bell inside the sidebar.
+
+    Kept separate from :func:`render_task_status_bar` so the bell has a single,
+    consistent home in the shell instead of floating at the top of each page.
+    """
+    notifications = get_task_notifications()
+    with st.popover(_notification_bell_label(len(notifications))):
+        st.markdown("#### Task notifications")
+        if notifications:
+            for notification in notifications:
+                _render_notification(notification)
+            if st.button("Dismiss all", key="dismiss_all_task_notifications"):
+                dismiss_all_task_notifications()
+                st.rerun()
+        else:
+            st.caption("No task notifications yet.")
 
 
 def _notification_bell_label(notification_count: int) -> str:

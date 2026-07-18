@@ -157,3 +157,28 @@ def test_bell_label_includes_retained_notification_count():
 
 def test_notification_layout_reserves_space_for_view_action():
     assert status_bar._NOTIFICATION_COLUMN_WIDTHS == [5, 1.5, 0.75]
+
+
+def test_notification_bell_opens_popover_with_count(monkeypatch):
+    """The sidebar bell surfaces the retained-notification count in its label."""
+    rerun_calls: list[str] = []
+    popover_labels: list[str] = []
+    monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls, popover_labels))
+    monkeypatch.setattr(status_bar, "get_task_notifications", lambda: [])
+
+    status_bar.render_notification_bell()
+
+    assert popover_labels == ["🔔"]
+
+
+def test_status_bar_no_longer_renders_the_floating_bell(monkeypatch):
+    """Regression: the bell moved to the sidebar, so the page-level status bar
+    must not open a notification popover (which previously floated top-right)."""
+    rerun_calls: list[str] = []
+    popover_labels: list[str] = []
+    monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls, popover_labels))
+    monkeypatch.setattr(status_bar, "get_active_tasks", lambda: [])
+
+    status_bar.render_task_status_bar()
+
+    assert popover_labels == []
