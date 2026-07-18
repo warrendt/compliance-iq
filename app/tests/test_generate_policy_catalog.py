@@ -61,6 +61,7 @@ def test_normalize_projects_lean_schema_with_defaults():
         "category": "Uncategorized",
         "mode": "All",
         "requires_parameters": False,
+        "required_parameters": {},
     }
 
 
@@ -108,3 +109,31 @@ def test_requires_parameters_false_when_all_params_have_defaults():
 def test_requires_parameters_false_when_no_parameters():
     out = gen.normalize([{"name": "g1", "display_name": "Parameterless"}])
     assert out[0]["requires_parameters"] is False
+
+
+def test_required_parameters_schema_captured_for_no_default_params():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Needs a vault name",
+                "parameters": {
+                    "vaultName": {
+                        "type": "String",
+                        "metadata": {"description": "Recovery Services vault name"},
+                    },
+                    "vaultLocation": {
+                        "type": "String",
+                        "allowedValues": ["southafricanorth", "westeurope"],
+                    },
+                    "effect": {"type": "String", "defaultValue": "AuditIfNotExists"},
+                },
+            }
+        ]
+    )
+    req = out[0]["required_parameters"]
+    # Only the no-default params are captured; 'effect' (defaulted) is omitted.
+    assert set(req) == {"vaultName", "vaultLocation"}
+    assert req["vaultName"]["type"] == "String"
+    assert req["vaultName"]["description"] == "Recovery Services vault name"
+    assert req["vaultLocation"]["allowed_values"] == ["southafricanorth", "westeurope"]

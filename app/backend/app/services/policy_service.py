@@ -18,7 +18,9 @@ from app.models import (
     PolicyDefinitionReference,
     PolicyDefinitionGroup,
     PolicyGenerationRequest,
-    PolicyGenerationResponse
+    PolicyGenerationResponse,
+    ParameterizedPolicyRequirement,
+    PolicyParameterSpec,
 )
 from app.services.sovereignty_service import get_sovereignty_service
 from app.services.policy_catalog_service import get_policy_catalog_service
@@ -52,6 +54,22 @@ def _sanitize_ref_id(value: str) -> str:
     """Sanitize a string into a safe ``policyDefinitionReferenceId`` fragment."""
     cleaned = re.sub(r"[^0-9A-Za-z._-]+", "_", (value or "").strip()).strip("_")
     return cleaned or "control"
+
+
+def _is_blank(value: Any) -> bool:
+    """True if an operator-supplied parameter value should count as "not provided".
+
+    Treats ``None``, empty/whitespace strings, and empty collections as blank so a
+    parameterized built-in is only included once every required value is actually
+    filled in.
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == ""
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    return False
 
 
 def _sanitize_group_name(value: str) -> str:
@@ -106,7 +124,10 @@ class PolicyGenerationService:
             invalid_policy_ids,
             non_includable_ids,
             parameterized_ids,
-        ) = self._create_policy_definitions(filtered_mappings)
+            requirements,
+        ) = self._create_policy_definitions(
+            filtered_mappings, request.policy_parameter_values
+        )
 
         unique_invalid = sorted(set(invalid_policy_ids))
         if unique_invalid:
@@ -137,8 +158,14 @@ class PolicyGenerationService:
             warnings.append(
                 f"{len(unique_parameterized)} parameterized built-in policy(ies) "
                 f"dropped (require a parameter value with no default, e.g. vault "
-                f"name/region, so ARM would reject the set definition): {preview}"
+                f"name/region, so ARM would reject the set definition). Supply the "
+                f"values to include them: {preview}"
             )
+
+        # Preserve mapping (first-seen) order for a stable UI.
+        parameterized_requirements = [
+            requirements[guid] for guid in parameterized_ids if guid in requirements
+        ]
 
         # Create metadata
         metadata = PolicyInitiativeMetadata(
@@ -168,6 +195,7 @@ class PolicyGenerationService:
             invalid_policies=len(unique_invalid),
             excluded_builtin_policies=len(unique_non_includable),
             excluded_parameterized_policies=len(unique_parameterized),
+            parameterized_requirements=parameterized_requirements,
             warnings=warnings
         )
 
@@ -232,13 +260,15 @@ class PolicyGenerationService:
 
     def _create_policy_definitions(
         self,
-        mappings: List[ControlMapping]
+        mappings: List[ControlMapping],
+        parameter_values: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> tuple[
         List[PolicyDefinitionReference],
         List[PolicyDefinitionGroup],
         List[str],
         List[str],
         List[str],
+        Dict[str, ParameterizedPolicyRequirement],
     ]:
         """
         Create policy definition references and control groups from mappings.
@@ -259,20 +289,25 @@ class PolicyGenerationService:
         of a custom policy set", which would break the generated deployment
         scripts. They are returned separately so callers can report them.
 
-        Built-ins that have a required (no-default) parameter are dropped too:
-        ARM rejects the set definition with ``MissingPolicyParameter`` unless a
-        value is supplied, and the generator cannot invent resource-specific
-        values (vault names, regions, workspace IDs). They are returned separately
-        for honest reporting.
+        Built-ins that have a required (no-default) parameter need a value: ARM
+        rejects the set definition with ``MissingPolicyParameter`` otherwise. If
+        ``parameter_values`` supplies every required parameter for such a built-in,
+        it is INCLUDED with those values baked in as literal reference parameters.
+        Otherwise it is dropped and its required-parameter schema is returned so
+        the caller can prompt for the missing values.
 
         Args:
             mappings: List of control mappings
+            parameter_values: Optional operator-supplied values keyed by policy
+                GUID then parameter name.
 
         Returns:
             Tuple of (policy definition references, control groups, dropped
             invalid IDs, dropped non-includable built-in IDs, dropped
-            parameterized built-in IDs)
+            parameterized built-in IDs, requirements-by-GUID for the dropped
+            parameterized built-ins)
         """
+        parameter_values = parameter_values or {}
         catalog = get_policy_catalog_service()
         policy_by_full_id: Dict[str, PolicyDefinitionReference] = {}
         ordered_definitions: List[PolicyDefinitionReference] = []
@@ -282,6 +317,7 @@ class PolicyGenerationService:
         invalid_ids: List[str] = []
         non_includable_ids: List[str] = []
         parameterized_ids: List[str] = []
+        requirements: Dict[str, ParameterizedPolicyRequirement] = {}
 
         for mapping in mappings:
             # Skip if no Azure Policy IDs
@@ -337,19 +373,55 @@ class PolicyGenerationService:
                     )
                     continue
 
-                # Strip built-ins that have a required (no-default) parameter.
+                # Built-ins with a required (no-default) parameter need a value.
                 # ARM rejects the set definition with "MissingPolicyParameter"
-                # unless a value is supplied, and the generator cannot invent
-                # resource-specific values. Only dropped when the catalog
-                # positively flags them.
+                # otherwise. If the operator supplied every required value we
+                # include the built-in with those values baked in as literal
+                # reference parameters; otherwise we drop it and record its schema
+                # so the caller can prompt. Only applies when the catalog
+                # positively flags the built-in.
+                ref_parameters: Dict[str, Any] = {}
                 if catalog.requires_parameters(policy_guid):
-                    parameterized_ids.append(policy_guid)
-                    logger.warning(
-                        f"Control {mapping.external_control_id}: dropping "
-                        f"parameterized built-in '{policy_guid}' "
-                        f"(has a required parameter with no default value)"
-                    )
-                    continue
+                    required = catalog.get_required_parameters(policy_guid)
+                    supplied = parameter_values.get(policy_guid) or {}
+                    missing = [
+                        pname for pname in required
+                        if _is_blank(supplied.get(pname))
+                    ]
+                    if required and not missing:
+                        ref_parameters = {
+                            pname: {"value": supplied[pname]} for pname in required
+                        }
+                        logger.info(
+                            f"Control {mapping.external_control_id}: including "
+                            f"parameterized built-in '{policy_guid}' with "
+                            f"operator-supplied values for {sorted(required)}"
+                        )
+                    else:
+                        if policy_guid not in parameterized_ids:
+                            parameterized_ids.append(policy_guid)
+                        req = requirements.get(policy_guid)
+                        if req is None:
+                            entry = catalog.get(policy_guid) or {}
+                            req = ParameterizedPolicyRequirement(
+                                policy_id=policy_guid,
+                                display_name=entry.get("display_name") or policy_guid,
+                                control_ids=[],
+                                parameters={
+                                    pname: PolicyParameterSpec(**spec)
+                                    for pname, spec in required.items()
+                                },
+                            )
+                            requirements[policy_guid] = req
+                        if mapping.external_control_id not in req.control_ids:
+                            req.control_ids.append(mapping.external_control_id)
+                        logger.warning(
+                            f"Control {mapping.external_control_id}: dropping "
+                            f"parameterized built-in '{policy_guid}' "
+                            f"(missing required parameter value(s): "
+                            f"{missing or sorted(required)})"
+                        )
+                        continue
 
                 # Create full policy definition ID
                 full_policy_id = (
@@ -380,7 +452,7 @@ class PolicyGenerationService:
                 policy_def = PolicyDefinitionReference(
                     policy_definition_id=full_policy_id,
                     policy_definition_reference_id=ref_id,
-                    parameters={},  # Can be extended to support parameterization
+                    parameters=ref_parameters,
                     group_names=[group_name],
                 )
 
@@ -413,6 +485,7 @@ class PolicyGenerationService:
             invalid_ids,
             non_includable_ids,
             parameterized_ids,
+            requirements,
         )
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:

@@ -10,6 +10,8 @@ from app.models.mapping import (
     MappingRequest
 )
 from app.models.policy import (
+    PolicyParameterSpec,
+    ParameterizedPolicyRequirement,
     PolicyDefinitionReference,
     PolicyDefinitionGroup,
     PolicyInitiativeMetadata,
@@ -66,6 +68,8 @@ __all__ = [
     "MappingJob",
     "MappingRequest",
     # Policy models
+    "PolicyParameterSpec",
+    "ParameterizedPolicyRequirement",
     "PolicyDefinitionReference",
     "PolicyDefinitionGroup",
     "PolicyInitiativeMetadata",

@@ -12,6 +12,43 @@ if TYPE_CHECKING:
     from app.models.mapping import ControlMapping
 
 
+class PolicyParameterSpec(BaseModel):
+    """Schema for a single required (no-default) built-in policy parameter.
+
+    Surfaced to the UI so it can prompt the operator for a concrete value,
+    letting a parameterized built-in be included with user-supplied literals
+    instead of being excluded from the initiative.
+    """
+
+    type: str = Field("String", description="ARM parameter type (String, Array, Integer, Boolean, ...)")
+    description: Optional[str] = Field(None, description="Human-readable help text from the built-in's metadata")
+    allowed_values: Optional[List[Any]] = Field(
+        None, description="Permitted values, when the built-in constrains them (render as a dropdown)"
+    )
+
+
+class ParameterizedPolicyRequirement(BaseModel):
+    """A built-in that needs operator-supplied parameter values to be included.
+
+    Built-ins with a required parameter that has no ``defaultValue`` cannot live
+    in a custom policy set unless a value is supplied (ARM rejects the set
+    definition with ``MissingPolicyParameter``). Rather than silently drop them,
+    the generator returns this so the UI can collect the values and re-generate
+    with them baked in as literal reference parameters.
+    """
+
+    policy_id: str = Field(..., description="Built-in policy definition GUID")
+    display_name: str = Field(..., description="Built-in display name")
+    control_ids: List[str] = Field(
+        default_factory=list,
+        description="External framework control IDs that mapped to this built-in",
+    )
+    parameters: Dict[str, PolicyParameterSpec] = Field(
+        default_factory=dict,
+        description="Required parameters (name -> schema) the operator must supply",
+    )
+
+
 class PolicyDefinitionReference(BaseModel):
     """Reference to an Azure Policy definition within an initiative."""
 
@@ -198,6 +235,15 @@ class PolicyGenerationRequest(BaseModel):
         description="When False (default), assignments use DoNotEnforce (audit-only). "
                     "When True, assignments use Default (enforcement enabled)."
     )
+    policy_parameter_values: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Operator-supplied values for parameterized built-ins, keyed by "
+                    "policy definition GUID then parameter name "
+                    "(e.g. {\"<guid>\": {\"vaultName\": \"rsv-prod\"}}). When all of a "
+                    "built-in's required parameters are supplied, it is included with "
+                    "those values baked in as literal reference parameters instead of "
+                    "being excluded."
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -229,6 +275,10 @@ class PolicyGenerationResponse(BaseModel):
     excluded_parameterized_policies: int = Field(
         0,
         description="Number of built-in policies dropped because they require a parameter value with no default (e.g. vault name/region), which ARM would reject in a custom policy set"
+    )
+    parameterized_requirements: List[ParameterizedPolicyRequirement] = Field(
+        default_factory=list,
+        description="Excluded parameterized built-ins and their required-parameter schemas, so the UI can collect values and re-generate with them included"
     )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 

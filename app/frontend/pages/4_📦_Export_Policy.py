@@ -44,6 +44,121 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         "sovereignty": m.get("sovereignty"),
     }
 
+
+def _render_parameter_form(
+    api_client,
+    requirements: List[Dict[str, Any]],
+    filtered_mappings: List[Dict[str, Any]],
+    min_confidence: float,
+    enforce_mode: bool,
+) -> None:
+    """Prompt for the required values of parameterized built-ins and, on submit,
+    re-generate the initiative with those values baked in.
+
+    ``requirements`` is the backend ``parameterized_requirements`` list: each item
+    has ``policy_id``, ``display_name``, ``control_ids`` and ``parameters``
+    (``{name: {type, description, allowed_values}}``). Built-ins are only included
+    once every required value for them is supplied.
+    """
+    with st.expander(
+        f"⚙️ Include {len(requirements)} parameterized built-in(s) "
+        "(supply required values)",
+        expanded=False,
+    ):
+        st.markdown(
+            "These built-ins were **excluded** because they need a value with no "
+            "default (e.g. a Recovery Services vault name/region). Azure rejects the "
+            "policy set otherwise. Supply every required value for a built-in to "
+            "include it — the values are baked into the initiative as literal "
+            "reference parameters. Leave a built-in blank to keep it excluded."
+        )
+
+        # Seed from any previously supplied values so the form is sticky.
+        existing = dict(st.session_state.get("policy_parameter_values") or {})
+
+        with st.form("param_values_form"):
+            collected: Dict[str, Dict[str, Any]] = {}
+            for req in requirements:
+                policy_id = req.get("policy_id", "")
+                display_name = req.get("display_name") or policy_id
+                control_ids = req.get("control_ids") or []
+                params = req.get("parameters") or {}
+
+                st.markdown(f"**{display_name}**")
+                st.caption(
+                    f"`{policy_id}` · used by: {', '.join(control_ids) or '—'}"
+                )
+                prev = existing.get(policy_id, {})
+                values: Dict[str, Any] = {}
+                for pname, spec in params.items():
+                    spec = spec or {}
+                    allowed = spec.get("allowed_values")
+                    help_txt = spec.get("description") or f"{spec.get('type', 'String')} value"
+                    widget_key = f"param_{policy_id}_{pname}"
+                    if allowed:
+                        options = ["(leave blank)"] + list(allowed)
+                        prev_val = prev.get(pname)
+                        idx = options.index(prev_val) if prev_val in options else 0
+                        choice = st.selectbox(
+                            pname, options, index=idx, key=widget_key, help=help_txt
+                        )
+                        values[pname] = "" if choice == "(leave blank)" else choice
+                    else:
+                        values[pname] = st.text_input(
+                            pname,
+                            value=str(prev.get(pname, "")),
+                            key=widget_key,
+                            help=help_txt,
+                        )
+                collected[policy_id] = values
+                st.markdown("---")
+
+            submitted = st.form_submit_button(
+                "🔁 Re-generate with these values", use_container_width=True
+            )
+
+        if submitted:
+            # Keep only built-ins where EVERY required value is filled — a
+            # partially filled built-in stays excluded (matches backend).
+            merged = dict(existing)
+            for req in requirements:
+                policy_id = req.get("policy_id", "")
+                params = req.get("parameters") or {}
+                vals = collected.get(policy_id, {})
+                if params and all(str(vals.get(p, "")).strip() for p in params):
+                    merged[policy_id] = {p: vals[p] for p in params}
+                else:
+                    merged.pop(policy_id, None)
+
+            st.session_state.policy_parameter_values = merged
+
+            if not merged:
+                st.info("No fully-specified built-ins to include yet.")
+                return
+
+            with st.spinner("Re-generating initiative with supplied values..."):
+                try:
+                    result = api_client.generate_policy_initiative(
+                        mappings=[_to_backend_mapping(m) for m in filtered_mappings],
+                        framework_name=st.session_state.framework_name,
+                        min_confidence=min_confidence,
+                        session_id=st.session_state.session_uuid,
+                        enforce_mode=enforce_mode,
+                        policy_parameter_values=merged,
+                    )
+                    st.session_state.generated_policy = result
+                    st.session_state.policy_generated = True
+                    persist_workflow_state()
+                    st.success(
+                        f"✅ Included {len(merged)} parameterized built-in(s). "
+                        "Initiative re-generated."
+                    )
+                    st.rerun()
+                except httpx.ConnectError:
+                    st.error("❌ Cannot connect to backend. Make sure it's running.")
+                except Exception as _e:
+                    st.error(f"❌ Error re-generating policy: {_e}")
+
 st.set_page_config(
     page_title="Export Policy | ComplianceIQ",
     page_icon="🛡️",
@@ -206,6 +321,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 min_confidence=min_confidence,
                 session_id=st.session_state.session_uuid,
                 enforce_mode=enforce_mode,
+                policy_parameter_values=st.session_state.get("policy_parameter_values") or None,
             )
             
             st.session_state.generated_policy = result
@@ -245,6 +361,27 @@ if st.session_state.generated_policy:
 
     enforce_label = "🔒 Enforcement" if policy.get('enforce_mode') else "🔍 Audit Only"
     st.info(f"**Enforcement Mode:** {enforce_label}")
+
+    # Surface excluded built-ins so the operator knows coverage was trimmed and,
+    # for parameterized ones, that they can opt in by supplying values below.
+    _excl_param = policy.get("excluded_parameterized_policies") or 0
+    _excl_builtin = policy.get("excluded_builtin_policies") or 0
+    _invalid = policy.get("invalid_policies") or 0
+    if _excl_param or _excl_builtin or _invalid:
+        _parts = []
+        if _invalid:
+            _parts.append(f"{_invalid} invalid GUID(s)")
+        if _excl_builtin:
+            _parts.append(f"{_excl_builtin} non-includable built-in(s)")
+        if _excl_param:
+            _parts.append(f"{_excl_param} parameterized built-in(s)")
+        _msg = "⚠️ Excluded from the initiative: " + ", ".join(_parts) + "."
+        if _excl_param:
+            _msg += (
+                " Parameterized built-ins can be included by supplying their required "
+                "values in the **Deploy to Azure** section below."
+            )
+        st.warning(_msg)
     
     st.markdown("---")
     
@@ -530,6 +667,25 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
             "If this continues, ask an administrator to enable the application token store."
         )
     else:
+        # --------------------------------------------------------------
+        # Opt-in: include parameterized built-ins by supplying their
+        # required (no-default) values. These are dropped by default
+        # because ARM rejects the set definition with
+        # "MissingPolicyParameter". Providing every required value re-
+        # generates the initiative with the values baked in as literal
+        # reference parameters, so the built-in deploys cleanly. Gated on
+        # the ARM token because it only matters when the operator intends
+        # to validate/deploy.
+        _requirements = policy.get("parameterized_requirements") or []
+        if _requirements:
+            _render_parameter_form(
+                api_client,
+                _requirements,
+                filtered_mappings,
+                min_confidence,
+                enforce_mode,
+            )
+
         # Fetch available scopes
         if "deploy_scopes" not in st.session_state:
             with st.spinner("Loading Azure scopes..."):

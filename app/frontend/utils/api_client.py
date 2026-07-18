@@ -284,6 +284,7 @@ class APIClient:
         min_confidence: float = 0.7,
         session_id: Optional[str] = None,
         enforce_mode: bool = False,
+        policy_parameter_values: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Generate an Azure Policy initiative.
         
@@ -294,16 +295,23 @@ class APIClient:
             session_id: Session identifier for artifact persistence
             enforce_mode: When False (default), assignments use DoNotEnforce (audit-only).
                           When True, assignments use Default (enforcement enabled).
+            policy_parameter_values: Optional operator-supplied values for
+                          parameterized built-ins, keyed by policy GUID then
+                          parameter name. Supplying every required value for a
+                          built-in includes it (values baked in) instead of
+                          dropping it.
             
         Returns:
             Policy initiative JSON
         """
-        payload = {
+        payload: Dict[str, Any] = {
             "mappings": mappings,
             "framework_name": framework_name,
             "min_confidence_threshold": min_confidence,
             "enforce_mode": enforce_mode,
         }
+        if policy_parameter_values:
+            payload["policy_parameter_values"] = policy_parameter_values
         headers = {}
         if session_id:
             headers["X-Session-ID"] = session_id

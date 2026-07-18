@@ -75,7 +75,9 @@ def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[s
         "- **Parameterized** built-ins with a required parameter that has no default "
         "value (e.g. vault name/region/workspace). ARM rejects the set definition "
         "with `MissingPolicyParameter` unless a value is supplied, and it cannot be "
-        "invented safely.\n\n"
+        "invented safely. To include one, supply its required values on the Export "
+        "Policy page (Deploy to Azure section) and re-generate — the values are baked "
+        "into the initiative as literal reference parameters.\n\n"
         "See `excluded_builtin_policies` and `excluded_parameterized_policies` in the "
         "generation response for the counts.\n"
     )

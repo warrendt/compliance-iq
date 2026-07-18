@@ -68,14 +68,37 @@ def _requires_parameters(item: Dict[str, Any]) -> bool:
     names, regions, workspace IDs), such built-ins are excluded at generation so
     the emitted initiative stays deployable. This flag makes that detectable.
     """
+    return bool(_required_parameter_schema(item))
+
+
+def _required_parameter_schema(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Schema for the parameters that a caller MUST supply (no ``defaultValue``).
+
+    Returns ``{paramName: {"type": ..., "description": ..., "allowed_values": [...]}}``
+    for every parameter lacking a ``defaultValue``. This is what the UI prompts
+    for so the built-in can be included with concrete, user-supplied values
+    instead of being excluded. Parameters that already have a default are omitted
+    — ARM fills those in, so we never need to ask.
+    """
     params = item.get("parameters") or {}
     if not isinstance(params, dict):
-        return False
-    return any(
-        "defaultValue" not in (spec or {})
-        for spec in params.values()
-        if isinstance(spec, dict) or spec is None
-    )
+        return {}
+    schema: Dict[str, Any] = {}
+    for pname, spec in params.items():
+        if not isinstance(spec, dict):
+            continue
+        if "defaultValue" in spec:
+            continue
+        meta = spec.get("metadata") or {}
+        entry: Dict[str, Any] = {"type": spec.get("type") or "String"}
+        desc = (meta.get("description") or meta.get("displayName") or "").strip()
+        if desc:
+            entry["description"] = desc
+        allowed = spec.get("allowedValues")
+        if isinstance(allowed, list) and allowed:
+            entry["allowed_values"] = allowed
+        schema[pname] = entry
+    return schema
 
 
 def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -96,6 +119,7 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if name in seen:
             continue
         seen.add(name)
+        schema = _required_parameter_schema(item)
         out.append(
             {
                 "name": name,
@@ -103,7 +127,8 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "description": (item.get("description") or "").strip(),
                 "category": (item.get("category") or "Uncategorized").strip(),
                 "mode": (item.get("mode") or "All").strip(),
-                "requires_parameters": _requires_parameters(item),
+                "requires_parameters": bool(schema),
+                "required_parameters": schema,
             }
         )
     out.sort(key=lambda d: d["name"])

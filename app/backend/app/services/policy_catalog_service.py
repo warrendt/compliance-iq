@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..config import get_settings
 
@@ -147,6 +147,7 @@ class PolicyCatalogService:
                 "description": (d.get("description") or "").strip(),
                 "category": (d.get("category") or "Uncategorized").strip(),
                 "requires_parameters": bool(d.get("requires_parameters", False)),
+                "required_parameters": d.get("required_parameters") or {},
             }
             for d in definitions
             if (d.get("name") or "").strip() and (d.get("display_name") or "").strip()
@@ -286,6 +287,21 @@ class PolicyCatalogService:
         if not entry:
             return False
         return bool(entry.get("requires_parameters", False))
+
+    def get_required_parameters(self, name: str) -> Dict[str, Any]:
+        """Schema for the parameters a caller must supply for built-in ``name``.
+
+        Returns ``{paramName: {"type": ..., "description": ..., "allowed_values":
+        [...]}}`` for every parameter that has no ``defaultValue`` — i.e. the
+        values the UI must collect so the built-in can be included with concrete,
+        user-supplied literals instead of being excluded. Unknown GUIDs return an
+        empty dict.
+        """
+        entry = self.get(name)
+        if not entry:
+            return {}
+        schema = entry.get("required_parameters") or {}
+        return dict(schema) if isinstance(schema, dict) else {}
 
     @property
     def count(self) -> int:

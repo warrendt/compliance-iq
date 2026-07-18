@@ -117,3 +117,73 @@ def test_generation_keeps_valid_and_strips_both_special_categories():
 
     assert response.included_policies == 1
     assert response.excluded_parameterized_policies == 2
+
+
+# ── opt-in include with operator-supplied values ─────────────────────────────
+
+def test_generation_surfaces_parameter_requirements():
+    service = PolicyGenerationService()
+    request = PolicyGenerationRequest(
+        framework_name="Framework",
+        mappings=[_mapping("CTRL-1", [PARAMETERIZED_GUID])],
+    )
+
+    response = service.generate_initiative(request)
+
+    assert response.excluded_parameterized_policies == 1
+    assert len(response.parameterized_requirements) == 1
+    req = response.parameterized_requirements[0]
+    assert req.policy_id == PARAMETERIZED_GUID
+    assert req.control_ids == ["CTRL-1"]
+    # Backup policy needs a vault name + location, both no-default.
+    assert set(req.parameters) == {"vaultName", "vaultLocation"}
+    assert req.parameters["vaultName"].type == "String"
+
+
+def test_generation_includes_parameterized_when_values_supplied():
+    service = PolicyGenerationService()
+    request = PolicyGenerationRequest(
+        framework_name="Framework",
+        mappings=[_mapping("CTRL-1", [PARAMETERIZED_GUID])],
+        policy_parameter_values={
+            PARAMETERIZED_GUID: {
+                "vaultName": "rsv-prod",
+                "vaultLocation": "southafricanorth",
+            }
+        },
+    )
+
+    response = service.generate_initiative(request)
+
+    assert response.included_policies == 1
+    assert response.excluded_parameterized_policies == 0
+    assert response.parameterized_requirements == []
+    ref = response.initiative.properties.policy_definitions[0]
+    assert PARAMETERIZED_GUID in ref.policy_definition_id
+    # Literal values baked into the reference so the set definition is complete.
+    assert ref.parameters == {
+        "vaultName": {"value": "rsv-prod"},
+        "vaultLocation": {"value": "southafricanorth"},
+    }
+    # And it survives to Azure JSON.
+    azure = response.initiative.to_azure_json()
+    emitted = azure["properties"]["policyDefinitions"][0]["parameters"]
+    assert emitted["vaultName"] == {"value": "rsv-prod"}
+
+
+def test_generation_excludes_when_values_partially_supplied():
+    service = PolicyGenerationService()
+    request = PolicyGenerationRequest(
+        framework_name="Framework",
+        mappings=[_mapping("CTRL-1", [PARAMETERIZED_GUID])],
+        policy_parameter_values={
+            # vaultLocation left blank → not fully satisfied → still excluded.
+            PARAMETERIZED_GUID: {"vaultName": "rsv-prod", "vaultLocation": "  "}
+        },
+    )
+
+    response = service.generate_initiative(request)
+
+    assert response.included_policies == 0
+    assert response.excluded_parameterized_policies == 1
+    assert len(response.parameterized_requirements) == 1
