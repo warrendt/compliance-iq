@@ -33,8 +33,19 @@ ENVIRONMENT="${4:-cae-complianceiq-dev-kz2jze}"
 
 echo "Binding ${DOMAIN} -> ${APP} (rg=${RG}, env=${ENVIRONMENT})"
 
-# Idempotent: 'hostname bind' looks for or creates a managed certificate and
-# binds it (SniEnabled) in a single call when no --certificate is supplied.
+# Step 1 — add the hostname to the app first. A managed certificate cannot be
+# issued until the hostname exists on a container app in the environment
+# (otherwise: RequireCustomHostnameInEnvironment). This validates ownership via
+# the asuid TXT + CNAME records and creates the binding in 'Disabled' state.
+# Idempotent: re-adding an existing hostname is a no-op.
+az containerapp hostname add \
+  --name "$APP" \
+  --resource-group "$RG" \
+  --hostname "$DOMAIN" || true
+
+# Step 2 — issue + bind a free managed certificate (SniEnabled). With no
+# --certificate supplied, 'hostname bind' looks for or creates the managed
+# certificate and binds it in a single call. Issuance can take up to ~20 min.
 az containerapp hostname bind \
   --name "$APP" \
   --resource-group "$RG" \

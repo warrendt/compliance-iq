@@ -59,6 +59,15 @@ Default is empty → **no-op** for any environment that does not set the domain.
 ./scripts/bind-frontend-custom-domain.sh
 ```
 
+This runs two steps: `hostname add` (validates ownership, binding `Disabled`)
+then `hostname bind` (issues + binds a free managed cert, `SniEnabled`). The
+hostname must be added first or issuance fails with
+`RequireCustomHostnameInEnvironment`. Issuance can take up to ~20 minutes.
+
+**Applied in dev:** cert `mc-cae-compliance-app-compliance-i-4852` (DigiCert,
+`CN=app.compliance-iq.net`) issued and bound; `https://app.compliance-iq.net/`
+returns `401` (Easy Auth healthy).
+
 ### 3. Entra reply URL (done)
 
 `https://app.compliance-iq.net/.auth/login/aad/callback` added to app
@@ -73,6 +82,9 @@ az containerapp update -n ca-complianceiq-site -g rg-complianceiq-dev-southafric
 
 The site is env-driven (`docker-entrypoint.d/10-app-url.sh` rewrites `config.js`);
 the placeholder in the repo is intentionally left unchanged (public repo).
+
+**Applied in dev:** live `https://compliance-iq.net/config.js` now serves
+`COMPLIANCEIQ_APP_URL = "https://app.compliance-iq.net"`.
 
 ## Verify
 
