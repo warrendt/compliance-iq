@@ -9,6 +9,8 @@ Resolution order:
 
 from typing import Optional
 import os
+import re
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote, urlsplit
 
 import streamlit as st
@@ -103,7 +105,168 @@ def _get_easy_auth_user() -> Optional[AuthUser]:
 
     if header_user:
         st.session_state["easy_auth_user"] = header_user
+        # Capture the material needed to refresh the ARM access token later.
+        # Easy Auth injects these on the initial page request; Streamlit reruns
+        # over a websocket do not carry fresh headers, so the access token would
+        # otherwise go stale after ~1 hour. We persist the token-store cookie and
+        # the app origin so we can call /.auth/refresh + /.auth/me on demand.
+        st.session_state["easy_auth_expires_on"] = headers.get(
+            "x-ms-token-aad-expires-on", ""
+        )
+        st.session_state["easy_auth_cookie"] = headers.get("cookie", "")
+        st.session_state["easy_auth_origin"] = _derive_auth_origin(headers)
     return header_user
+
+
+# ---------------------------------------------------------------------------
+# ARM access-token refresh (Container Apps token store)
+# ---------------------------------------------------------------------------
+# With the token store enabled, Container Apps auto-refreshes provider tokens.
+# Calling GET /.auth/me returns the current (refreshed) access token; GET
+# /.auth/refresh forces a refresh from the stored refresh token. Both require
+# the user's auth session cookie, which we forward from the captured headers.
+
+_TOKEN_REFRESH_SKEW_SECONDS = 300  # refresh when <5 min of validity remains
+
+
+def _derive_auth_origin(headers: dict[str, str]) -> str:
+    """Return the external ``https://host`` origin for the /.auth endpoints."""
+    host = headers.get("x-forwarded-host", "") or headers.get("host", "")
+    if not host:
+        return ""
+    proto = headers.get("x-forwarded-proto", "") or "https"
+    # x-forwarded-* may be comma-separated lists; take the first entry.
+    host = host.split(",")[0].strip()
+    proto = proto.split(",")[0].strip() or "https"
+    return f"{proto}://{host}"
+
+
+def _parse_expires_on(value: str) -> Optional[datetime]:
+    """Parse an Easy Auth ``expires_on`` timestamp into an aware UTC datetime."""
+    if not value:
+        return None
+    raw = value.strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    # Trim over-long fractional seconds (Easy Auth emits 7 digits) to 6.
+    match = re.match(r"^(.*\.\d{6})\d*(\+\d{2}:\d{2})$", raw)
+    if match:
+        raw = match.group(1) + match.group(2)
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _is_token_expired(
+    expires_on: str, now: Optional[datetime] = None,
+    skew: int = _TOKEN_REFRESH_SKEW_SECONDS,
+) -> bool:
+    """Return True when the token is expired or within ``skew`` of expiring.
+
+    Unknown/unparseable expiry is treated as *not* expired to avoid refresh
+    storms; an explicit reload can still force a refresh.
+    """
+    expiry = _parse_expires_on(expires_on)
+    if expiry is None:
+        return False
+    now = now or datetime.now(timezone.utc)
+    return now >= (expiry - timedelta(seconds=skew))
+
+
+def _extract_token_from_auth_me(payload: object) -> tuple[str, str]:
+    """Pull ``(access_token, expires_on)`` from a /.auth/me JSON payload."""
+    if not isinstance(payload, list) or not payload:
+        return "", ""
+    aad = next(
+        (p for p in payload if isinstance(p, dict)
+         and p.get("provider_name") == "aad"),
+        payload[0] if isinstance(payload[0], dict) else {},
+    )
+    return str(aad.get("access_token", "") or ""), str(aad.get("expires_on", "") or "")
+
+
+def _refresh_easy_auth_token(origin: str, cookie: str, http_get=None) -> tuple[str, str]:
+    """Refresh and return ``(access_token, expires_on)`` from the token store.
+
+    Calls GET /.auth/me (which returns the auto-refreshed token); if the token
+    still looks expired, forces GET /.auth/refresh and re-reads /.auth/me.
+    Returns empty strings on any failure so callers can fall back to the cached
+    token. ``http_get`` is injectable for testing.
+    """
+    if not origin or not cookie:
+        return "", ""
+
+    if http_get is None:
+        import httpx
+
+        def http_get(url: str) -> tuple[int, object]:  # noqa: ANN001
+            resp = httpx.get(url, headers={"Cookie": cookie}, timeout=10.0,
+                             follow_redirects=False)
+            body: object
+            try:
+                body = resp.json()
+            except Exception:  # noqa: BLE001
+                body = None
+            return resp.status_code, body
+
+    def _read_me() -> tuple[str, str]:
+        try:
+            status, body = http_get(f"{origin}/.auth/me")
+        except Exception:  # noqa: BLE001
+            return "", ""
+        if status != 200:
+            return "", ""
+        return _extract_token_from_auth_me(body)
+
+    token, expires_on = _read_me()
+    if token and not _is_token_expired(expires_on):
+        return token, expires_on
+
+    # Force a refresh from the stored refresh token, then re-read.
+    try:
+        http_get(f"{origin}/.auth/refresh")
+    except Exception:  # noqa: BLE001
+        pass
+    refreshed_token, refreshed_expiry = _read_me()
+    if refreshed_token:
+        return refreshed_token, refreshed_expiry
+    return token, expires_on
+
+
+def get_fresh_access_token(force: bool = False) -> Optional[str]:
+    """Return a valid ARM access token, refreshing via the token store if stale.
+
+    Only acts in Easy Auth (production) mode. Falls back to the cached token on
+    any refresh failure so behaviour never regresses. Set ``force=True`` to
+    bypass the expiry check (used by the manual "Reload scopes" action).
+    """
+    user = st.session_state.get("easy_auth_user")
+    if user is None:
+        return None
+
+    expires_on = st.session_state.get("easy_auth_expires_on", "")
+    if not force and user.access_token and not _is_token_expired(expires_on):
+        return user.access_token
+
+    origin = st.session_state.get("easy_auth_origin", "")
+    cookie = st.session_state.get("easy_auth_cookie", "")
+    token, new_expiry = _refresh_easy_auth_token(origin, cookie)
+    if token:
+        user.access_token = token
+        st.session_state["easy_auth_user"] = user
+        st.session_state["easy_auth_expires_on"] = new_expiry
+        return token
+
+    return user.access_token or None
+
+
+def force_token_refresh() -> bool:
+    """Force an ARM token refresh. Returns True when a token is available."""
+    return bool(get_fresh_access_token(force=True))
 
 
 # ---------------------------------------------------------------------------
@@ -231,13 +394,16 @@ def get_backend_auth_headers() -> dict[str, str]:
         return {}
 
     if "easy_auth_user" in st.session_state:
+        # Resolve a fresh (auto-refreshed) ARM token so long-lived sessions do
+        # not forward an expired token that ARM would reject with 401.
+        access_token = get_fresh_access_token() or user.access_token
         headers = {
             "X-MS-CLIENT-PRINCIPAL-NAME": user.email,
         }
         if user.oid:
             headers["X-MS-CLIENT-PRINCIPAL-ID"] = user.oid
-        if user.access_token:
-            headers["X-MS-TOKEN-AAD-ACCESS-TOKEN"] = user.access_token
+        if access_token:
+            headers["X-MS-TOKEN-AAD-ACCESS-TOKEN"] = access_token
         return headers
 
     if user.access_token:
@@ -268,5 +434,6 @@ def require_auth() -> AuthUser:
 
 def logout():
     """Clear cached auth state."""
-    for key in ("easy_auth_user", "msal_user"):
+    for key in ("easy_auth_user", "msal_user", "easy_auth_expires_on",
+                "easy_auth_cookie", "easy_auth_origin"):
         st.session_state.pop(key, None)

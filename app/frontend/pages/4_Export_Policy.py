@@ -489,8 +489,13 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
     else:
         # Fetch available scopes (cache the full response so warnings persist)
         _reload_scopes = st.button("🔄 Reload scopes", key="reload_deploy_scopes",
-                                   help="Re-query Azure for subscriptions and management groups")
+                                   help="Refresh your Azure token and re-query subscriptions and management groups")
         if _reload_scopes:
+            try:
+                from utils.auth import force_token_refresh
+                force_token_refresh()
+            except Exception:
+                pass
             st.session_state.pop("deploy_scopes_resp", None)
 
         if "deploy_scopes_resp" not in st.session_state:
