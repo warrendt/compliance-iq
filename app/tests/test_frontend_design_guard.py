@@ -177,3 +177,39 @@ def test_api_client_exposes_singular_upload_and_export_getters():
     profile = PROFILE.read_text(encoding="utf-8")
     assert "api.get_user_upload(" in profile
     assert "api.get_user_export(" in profile
+
+
+def test_static_reference_getters_are_cached():
+    """Static catalog reads are wrapped in st.cache_data so navigation reruns
+    stop re-hitting the backend for unchanging reference data. They use the
+    ``_self`` param so the cache key excludes the client instance."""
+    src = API_CLIENT.read_text(encoding="utf-8")
+    for method in (
+        "get_mcsb_controls",
+        "get_mcsb_domains",
+        "get_sovereignty_summary",
+        "get_sovereignty_objectives",
+        "get_sovereignty_archetypes",
+    ):
+        assert (
+            f"    @st.cache_data(ttl=3600, show_spinner=False)\n    def {method}(_self)"
+            in src
+        ), f"{method} must be cached with @st.cache_data and take _self"
+
+
+def test_api_client_reuses_a_shared_connection_pool():
+    """_get_client must route through the shared no-op-close transport so
+    per-call clients reuse one keep-alive pool instead of a fresh handshake."""
+    src = API_CLIENT.read_text(encoding="utf-8")
+    assert "class _SharedHTTPTransport(httpx.HTTPTransport)" in src
+    assert "transport=_get_shared_transport()" in src
+
+
+def test_brand_lockup_has_inline_layout_to_prevent_fouc():
+    """The sidebar brand markup carries inline layout styles so the name and
+    tagline stack correctly on first paint, before the injected stylesheet
+    applies (regression: they briefly rendered run-together on one line)."""
+    src = THEME.read_text(encoding="utf-8")
+    assert 'class="ciq-brand-text" style="display:flex;flex-direction:column' in src
+    assert 'class="ciq-brand-name" style=' in src
+    assert 'class="ciq-brand-tag" style=' in src
