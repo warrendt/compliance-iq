@@ -130,3 +130,33 @@ def test_shipped_snapshot_loads_full_catalog():
     # A customer-managed-keys query should surface CMK encryption policies.
     top = svc.search("encrypt data at rest customer managed keys storage", top_n=5)
     assert any("customer-managed keys" in c.display_name.lower() for c in top)
+
+
+# ── exists / available (built-in existence checks for deploy safety) ──────────
+
+def test_exists_true_for_known_guid(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path))
+    assert svc.exists("11111111-1111-1111-1111-111111111111") is True
+
+
+def test_exists_accepts_full_resource_id(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path))
+    full = "/providers/Microsoft.Authorization/policyDefinitions/22222222-2222-2222-2222-222222222222"
+    assert svc.exists(full) is True
+
+
+def test_exists_false_for_unknown_guid(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path))
+    assert svc.exists("aeedaca3-0f56-429f-945d-8bb66bd06841") is False
+    assert svc.exists("") is False
+
+
+def test_available_true_when_loaded(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path))
+    assert svc.available is True
+
+
+def test_available_false_when_snapshot_missing(tmp_path):
+    svc = PolicyCatalogService(data_path=str(tmp_path / "missing.json"))
+    assert svc.available is False
+    assert svc.exists("11111111-1111-1111-1111-111111111111") is False
