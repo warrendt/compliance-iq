@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -24,8 +25,11 @@ init_session_state()
 render_task_status_bar()
 
 # Header
-st.title("🔍 Policy Explorer")
-st.markdown("Browse policy definitions, initiatives, and assignments in your Azure tenant")
+render_page_header(
+    "Policy explorer",
+    eyebrow="Enforce",
+    description="Browse policy definitions, initiatives, and assignments in your Azure tenant.",
+)
 st.markdown("---")
 
 # Auth check

@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -342,7 +343,11 @@ if not st.session_state.pdf_extraction:
             break
 
 # ── Main content ──────────────────────────────────────────────────────────
-st.title("📄 PDF Control Extraction")
+render_page_header(
+    "PDF control extraction",
+    eyebrow="Govern",
+    description="Extract compliance controls from a source PDF into a structured control set.",
+)
 
 if notice := st.session_state.pop("workflow_restored_notice", None):
     st.success(f"🔄 {notice}")

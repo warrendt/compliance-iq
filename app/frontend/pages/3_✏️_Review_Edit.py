@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state, restore_workflow_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -24,8 +25,11 @@ render_sidebar()
 render_task_status_bar()
 
 # Header
-st.title("✏️ Review & Edit Mappings")
-st.markdown("Review and refine the AI-generated mappings before exporting")
+render_page_header(
+    "Review & edit mappings",
+    eyebrow="Map",
+    description="Review and refine the AI-generated mappings before exporting.",
+)
 
 st.markdown("---")
 

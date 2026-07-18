@@ -16,6 +16,7 @@ import streamlit as st
 
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
 
@@ -34,13 +35,14 @@ api = get_api_client()
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
-st.markdown('<div class="main-header">🗂 Version History</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-header">Every generated MCSB initiative, SLZ initiative, '
-    'and full-union initiative is saved here as an immutable version. Download '
-    'a bundle or revert to any previous version — reverting always creates a '
-    'new version.</div>',
-    unsafe_allow_html=True,
+render_page_header(
+    "Version history",
+    eyebrow="Report",
+    description=(
+        "Every generated MCSB initiative, SLZ initiative, and full-union initiative "
+        "is saved here as an immutable version. Download a bundle or revert to any "
+        "previous version — reverting always creates a new version."
+    ),
 )
 
 

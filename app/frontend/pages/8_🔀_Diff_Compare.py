@@ -14,6 +14,7 @@ import streamlit as st
 
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from components.task_status_bar import render_task_status_bar
 
@@ -34,23 +35,25 @@ api = get_api_client()
 
 _BUCKETS = ["matched", "partial-overlap", "gap", "extra"]
 _BUCKET_META = {
-    "matched": {"label": "Matched", "icon": "🟢", "color": "#107C10",
+    "matched": {"label": "Matched", "variant": "success", "color": "#15803D",
                 "help": "Internal control fully covered by the external framework."},
-    "partial-overlap": {"label": "Partial", "icon": "🟠", "color": "#D83B01",
+    "partial-overlap": {"label": "Partial", "variant": "warning", "color": "#B45309",
                         "help": "Internal control only partially covered."},
-    "gap": {"label": "Gap", "icon": "🔴", "color": "#A4262C",
+    "gap": {"label": "Gap", "variant": "danger", "color": "#B42318",
             "help": "Internal control with no external equivalent."},
-    "extra": {"label": "Extra", "icon": "🔵", "color": "#0078D4",
+    "extra": {"label": "Extra", "variant": "info", "color": "#2563EB",
               "help": "External control with no internal equivalent."},
 }
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
-st.markdown('<div class="main-header">🎯 Gap Analysis</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-header">See how your internal controls measure up against an '
-    'external framework — what is matched, partially covered, missing, or extra.</div>',
-    unsafe_allow_html=True,
+render_page_header(
+    "Gap analysis",
+    eyebrow="Report",
+    description=(
+        "See how your internal controls measure up against an external framework — "
+        "what is matched, partially covered, missing, or extra."
+    ),
 )
 
 # ── Session keys ──────────────────────────────────────────────────────────────
@@ -179,7 +182,7 @@ if cmp_id:
         cols = st.columns(len(_BUCKETS))
         for col, bucket in zip(cols, _BUCKETS):
             meta = _BUCKET_META[bucket]
-            col.metric(f"{meta['icon']} {meta['label']}", counts.get(bucket, 0),
+            col.metric(meta['label'], counts.get(bucket, 0),
                        help=meta["help"])
 
         # Filter + table
@@ -188,14 +191,14 @@ if cmp_id:
             "Show buckets",
             options=_BUCKETS,
             default=_BUCKETS,
-            format_func=lambda b: f"{_BUCKET_META[b]['icon']} {_BUCKET_META[b]['label']}",
+            format_func=lambda b: _BUCKET_META[b]['label'],
         )
         rows = [m for m in matches if m.get("bucket") in selected_buckets]
         if rows:
             df = pd.DataFrame([
                 {
-                    "Bucket": f"{_BUCKET_META.get(m.get('bucket'), {}).get('icon', '')} "
-                              f"{_BUCKET_META.get(m.get('bucket'), {}).get('label', m.get('bucket'))}",
+                    "Bucket": _BUCKET_META.get(m.get('bucket'), {}).get(
+                        'label', m.get('bucket')),
                     "Internal ID": m.get("internal_control_id") or "—",
                     "Internal control": m.get("internal_control_title") or "—",
                     "External ID": m.get("external_control_id") or "—",
@@ -326,7 +329,7 @@ with st.expander("🕓 Previous comparisons"):
         for item in history:
             c = item.get("counts", {}) or {}
             summary = " · ".join(
-                f"{_BUCKET_META[b]['icon']} {c.get(b, 0)}" for b in _BUCKETS
+                f"{_BUCKET_META[b]['label']}: {c.get(b, 0)}" for b in _BUCKETS
             )
             label = (
                 f"**{item.get('externalFrameworkName') or item.get('externalFramework', '?')}** "

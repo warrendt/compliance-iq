@@ -5,6 +5,7 @@ AI Mapping Page - Map controls to MCSB using AI.
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state, restore_workflow_state
 from utils.task_manager import (
     cancel_task,
@@ -48,8 +49,11 @@ if not st.session_state.mapping_in_progress:
         st.session_state.mapping_job_id = active_mapping_job
 
 # Header
-st.title("🤖 AI Control Mapping")
-st.markdown("Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies")
+render_page_header(
+    "AI control mapping",
+    eyebrow="Map",
+    description="Use AI to automatically map your controls to the Microsoft Cloud Security Benchmark and Sovereign Landing Zone policies.",
+)
 
 st.markdown("---")
 

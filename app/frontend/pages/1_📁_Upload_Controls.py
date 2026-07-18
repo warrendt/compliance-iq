@@ -7,6 +7,7 @@ import pandas as pd
 import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -32,8 +33,11 @@ for key in ["control_id_col", "control_name_col", "description_col", "domain_col
         st.session_state[key] = ""
 
 # Header
-st.title("📁 Upload Framework Controls")
-st.markdown("Import your compliance framework controls from CSV or Excel files.")
+render_page_header(
+    "Upload framework controls",
+    eyebrow="Govern",
+    description="Import your compliance framework controls from CSV or Excel files.",
+)
 
 st.markdown("---")
 

@@ -12,6 +12,7 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -83,8 +84,11 @@ if st.session_state.generated_policy is None:
         st.warning(f"Recent generated policies could not be restored: {exc}")
 
 # Header
-st.title("📦 Export Azure Policy Initiative")
-st.markdown("Generate and download Azure Policy initiatives — MCSB and Sovereign Landing Zone")
+render_page_header(
+    "Export Azure Policy initiative",
+    eyebrow="Enforce",
+    description="Generate and download Azure Policy initiatives — MCSB and Sovereign Landing Zone.",
+)
 
 st.markdown("---")
 

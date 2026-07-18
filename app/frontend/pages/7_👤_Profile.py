@@ -10,6 +10,7 @@ import json
 import streamlit as st
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from utils.auth import get_current_user
 from components.log_viewer import render_log_viewer
@@ -68,10 +69,13 @@ render_sidebar()
 # ── Auth check ─────────────────────────────────────────────────────────────
 auth_user = get_current_user()
 
-st.markdown("## 🧭 My Workspace")
-st.markdown(
-    "Your one-stop compliance workspace — every document, control set, mapping, "
-    "edit, and policy you build is captured here for your tenant."
+render_page_header(
+    "My workspace",
+    eyebrow="Report",
+    description=(
+        "Your one-stop compliance workspace — every document, control set, mapping, "
+        "edit, and policy you build is captured here for your tenant."
+    ),
 )
 st.markdown("---")
 
@@ -204,7 +208,7 @@ with tab_history:
             }
             icon = icon_map.get(item.get("type", ""), "📋")
             summary = item.get("summary", item.get("type", "event"))
-            st.markdown(f"{icon} **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"{icon} **{summary}** &nbsp; <small style='color:var(--neutral-fg-3)'>{ts}</small>", unsafe_allow_html=True)
     else:
         st.info("No activity recorded yet. Start by uploading a compliance framework.")
 
@@ -219,7 +223,7 @@ with tab_documents:
             rows = up.get("rowCount", 0)
             size_kb = round((up.get("fileSize", 0) or 0) / 1024, 1)
             c1, c2, c3 = st.columns([3, 1, 1])
-            c1.markdown(f"📄 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c1.markdown(f"📄 **{fname}** &nbsp;<small style='color:var(--neutral-fg-3)'>v{version}</small>", unsafe_allow_html=True)
             c2.caption(f"{rows} controls · {size_kb} KB")
             c3.caption(ts)
             st.divider()
@@ -239,7 +243,7 @@ with tab_controls:
             count = up.get("controlCount", up.get("rowCount", 0))
             up_id = up.get("id", "")
             c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
-            c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:#888'>v{version}</small>", unsafe_allow_html=True)
+            c1.markdown(f"📋 **{fname}** &nbsp;<small style='color:var(--neutral-fg-3)'>v{version}</small>", unsafe_allow_html=True)
             c2.caption(f"{count} controls")
             c3.caption(ts)
             cache_key = f"ws_ctrl:{ws_user_key}:{up_id}"
@@ -296,7 +300,7 @@ with tab_changes:
         for item in changes:
             ts = item.get("timestamp", "")[:19].replace("T", " ")
             summary = item.get("summary", "Edit")
-            st.markdown(f"✏️ **{summary}** &nbsp; <small style='color:#888'>{ts}</small>", unsafe_allow_html=True)
+            st.markdown(f"✏️ **{summary}** &nbsp; <small style='color:var(--neutral-fg-3)'>{ts}</small>", unsafe_allow_html=True)
             st.divider()
     else:
         st.info("No edits recorded yet. Changes you make in Review & Edit appear here.")
