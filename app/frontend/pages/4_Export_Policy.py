@@ -127,11 +127,18 @@ def _regenerate_with_parameters(
 ) -> Dict[str, Any]:
     """Re-generate the initiative with opt-in parameterized built-ins included.
 
-    Bakes ``param_values`` in as literal reference parameters, updates the
-    generated policy in session state, and returns the fresh response so the
-    caller can validate or deploy the initiative that now includes them.
+    Bakes ``param_values`` in as literal reference parameters and returns the
+    fresh response so the caller can validate or deploy the initiative that now
+    includes them.
+
+    This is intentionally **transient**: it does NOT overwrite
+    ``st.session_state.generated_policy``. The persisted base initiative always
+    excludes the parameterized built-ins (they need a no-default value ARM
+    would reject), so the downloadable package stays deployable and the
+    "include" opt-in never becomes a one-way door — clearing the supplied
+    values reverts validate/deploy to the base on the next run.
     """
-    result = api_client.generate_policy_initiative(
+    return api_client.generate_policy_initiative(
         mappings=[_to_backend_mapping(m) for m in filtered_mappings],
         framework_name=st.session_state.framework_name,
         min_confidence=min_confidence,
@@ -139,10 +146,6 @@ def _regenerate_with_parameters(
         enforce_mode=enforce_mode,
         policy_parameter_values=param_values,
     )
-    st.session_state.generated_policy = result
-    st.session_state.policy_generated = True
-    persist_workflow_state()
-    return result
 
 st.set_page_config(
     page_title="Export Policy | ComplianceIQ",
@@ -309,7 +312,6 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 min_confidence=min_confidence,
                 session_id=st.session_state.session_uuid,
                 enforce_mode=enforce_mode,
-                policy_parameter_values=st.session_state.get("policy_parameter_values") or None,
             )
             
             st.session_state.generated_policy = result
@@ -793,6 +795,7 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 assign=do_assign,
                                 assignment_display_name=initiative_name if do_assign else None,
                                 assignment_description=initiative_description if do_assign else "",
+                                enforce_mode=enforce_mode,
                             )
                             st.success("✅ Initiative deployed successfully!")
                             if dr.get("assignment"):

@@ -27,6 +27,35 @@ _MAX_REFERENCE_CHECKS = 200
 _REFERENCE_CONCURRENCY = 8
 
 
+def _build_assignment_body(
+    *,
+    policy_set_definition_id: str,
+    display_name: str,
+    description: str = "",
+    enforce_mode: bool = False,
+    location: str = "eastus",
+) -> dict[str, Any]:
+    """Build the ARM policy-assignment request body.
+
+    Always attaches a system-assigned identity + ``location`` because they are
+    mandatory when the initiative contains ``DeployIfNotExists``/``Modify``
+    policies (ARM 400s otherwise, even under ``DoNotEnforce``) and are harmless
+    for audit-only initiatives. ``enforce_mode`` False (default) yields
+    ``DoNotEnforce`` so effects are never applied while compliance is still
+    assessed.
+    """
+    return {
+        "location": location,
+        "identity": {"type": "SystemAssigned"},
+        "properties": {
+            "policyDefinitionId": policy_set_definition_id,
+            "displayName": display_name,
+            "description": description,
+            "enforcementMode": "Default" if enforce_mode else "DoNotEnforce",
+        },
+    }
+
+
 class PolicyDeployService:
     """Thin wrapper around Azure Resource Manager policy APIs."""
 
@@ -261,19 +290,29 @@ class PolicyDeployService:
         policy_set_definition_id: str,
         display_name: str,
         description: str = "",
+        enforce_mode: bool = False,
+        location: str = "eastus",
     ) -> dict[str, Any]:
-        """Assign a policy set definition at *scope*."""
+        """Assign a policy set definition at *scope*.
+
+        A system-assigned identity + location are always attached: they are
+        mandatory when the initiative contains ``DeployIfNotExists``/``Modify``
+        policies (ARM rejects the assignment otherwise, even under
+        ``DoNotEnforce``) and are harmless for audit-only initiatives. When
+        *enforce_mode* is False (default) the assignment uses ``DoNotEnforce``
+        so effects are never applied — compliance is still assessed.
+        """
         url = (
             f"{_ARM_BASE}/{scope.lstrip('/')}/providers/Microsoft.Authorization"
             f"/policyAssignments/{assignment_name}?api-version={_API_VERSION_POLICY}"
         )
-        body = {
-            "properties": {
-                "policyDefinitionId": policy_set_definition_id,
-                "displayName": display_name,
-                "description": description,
-            }
-        }
+        body = _build_assignment_body(
+            policy_set_definition_id=policy_set_definition_id,
+            display_name=display_name,
+            description=description,
+            enforce_mode=enforce_mode,
+            location=location,
+        )
         async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
             resp = await c.put(url, headers=self._headers, json=body)
             resp.raise_for_status()

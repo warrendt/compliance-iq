@@ -144,6 +144,18 @@ class DeployRequest(BaseModel):
     assign: bool = Field(False, description="Also create a policy assignment")
     assignment_display_name: Optional[str] = None
     assignment_description: Optional[str] = ""
+    enforce_mode: bool = Field(
+        False,
+        description="When False (default), the assignment is created with "
+        "DoNotEnforce (audit-only): compliance is assessed but effects are "
+        "never applied or remediated.",
+    )
+    location: str = Field(
+        "eastus",
+        description="Region for the assignment's system-assigned identity "
+        "(mandatory when the initiative contains DeployIfNotExists/Modify "
+        "policies, even under DoNotEnforce).",
+    )
 
 
 @router.post("/initiative")
@@ -172,6 +184,8 @@ async def deploy_initiative(
                 policy_set_definition_id=definition_id,
                 display_name=req.assignment_display_name or req.initiative_name,
                 description=req.assignment_description or "",
+                enforce_mode=req.enforce_mode,
+                location=req.location,
             )
         except Exception as exc:
             logger.error("deploy_assignment_failed", exc_info=exc)
