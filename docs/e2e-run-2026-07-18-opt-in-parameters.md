@@ -115,3 +115,59 @@ Redeploy prior images if needed:
 ## Commit
 
 `8966173` — Add opt-in parameter values to include parameterized built-ins.
+
+---
+
+## Update 2026-07-19 — collection moved INTO Validate/Deploy
+
+Per the requirement *"ask the user to fill in vaultName/vaultLocation/sourceRegion/
+targetRegion in the validation step … separate the policies out of the export UNLESS
+the user opts to validate"*, the opt-in value collection was rewired out of a standalone
+"Re-generate with these values" button and folded directly into the token-gated
+**Validate** and **Deploy** actions. Parameterized built-ins remain excluded from the
+downloadable export by default; they are only re-included when the operator supplies
+values and clicks Validate or Deploy (both of which already require the ARM token).
+
+### Behaviour
+
+```mermaid
+flowchart TD
+    A[Deploy to Azure section<br/>token present] --> B{parameterized_requirements?}
+    B -- none --> S[Scope + Validate/Deploy<br/>use exported initiative as-is]
+    B -- yes --> C[Expander: collect required values]
+    C --> D[satisfied_parameter_values<br/>all-or-nothing per built-in]
+    D --> V{Validate / Deploy clicked}
+    V -- with values --> R[_regenerate_with_parameters<br/>bake literal reference params] --> Body[Use regenerated body]
+    V -- no values --> Body2[Use exported initiative body]
+    Body --> ARM[validate_deploy / deploy_initiative_to_azure]
+    Body2 --> ARM
+```
+
+### Changes
+
+| Area | File | Change |
+|------|------|--------|
+| Frontend helper | `app/frontend/utils/policy_parameters.py` (new) | Pure `satisfied_parameter_values(requirements, raw)` — returns only built-ins whose every required value is non-blank. Unit-testable without Streamlit. |
+| Frontend page | `app/frontend/pages/4_Export_Policy.py` | Replaced `_render_parameter_form` (separate st.form + "Re-generate" button) with `_collect_required_parameters` (inline sticky inputs in an expander) + `_regenerate_with_parameters`. Validate and Deploy now re-generate with supplied values before calling ARM, and Validate shows an `N included / M excluded` caption. |
+| Tests | `app/tests/test_policy_parameter_selection.py` (new) | 9 cases for `satisfied_parameter_values`: all-filled → included; partial/whitespace/missing → excluded; empty requirements; no-params / no-policy_id skipped; numeric + "0" kept as non-blank. |
+
+### Tests (green)
+
+- `test_policy_parameter_selection.py` — **9 passed**.
+- Parameter group (`test_policy_parameter_selection` + `test_parameterized_policy_filtering` + `test_api_client_generate_params`) — **21 passed**.
+- Full `app/tests` — **453 passed**, **11 failed**, **8 errors**. All 11 failures are the pre-existing `test_state_management.py` `init_session_state()` arg-mismatch (fail on clean `main`, unrelated — being addressed in a separate session). All 8 errors are pre-existing `e2e/` Playwright `FileNotFoundError` (no browser in this env). No new failures introduced.
+
+Run:
+```bash
+AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com/ ENABLE_AUTH=false \
+  PYTHONPATH=app/backend:app/frontend .venv/bin/python -m pytest \
+  app/tests/test_policy_parameter_selection.py -q
+```
+
+### Status
+
+- Code committed: `af2f62f` — *Wire parameterized built-in values into Validate/Deploy*.
+- **NOT deployed** and **NOT live-verified** yet. Redeploying the frontend and exercising
+  the Validate button (with/without supplied vault/region values) against the real ARM
+  token requires an interactive MFA re-login and may reset the operator's current Easy
+  Auth session — deferred pending operator go-ahead. **[UNVERIFIED — live]**
