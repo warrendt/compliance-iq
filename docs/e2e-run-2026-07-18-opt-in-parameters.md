@@ -115,3 +115,177 @@ Redeploy prior images if needed:
 ## Commit
 
 `8966173` — Add opt-in parameter values to include parameterized built-ins.
+
+---
+
+## Update 2026-07-19 — collection moved INTO Validate/Deploy
+
+Per the requirement *"ask the user to fill in vaultName/vaultLocation/sourceRegion/
+targetRegion in the validation step … separate the policies out of the export UNLESS
+the user opts to validate"*, the opt-in value collection was rewired out of a standalone
+"Re-generate with these values" button and folded directly into the token-gated
+**Validate** and **Deploy** actions. Parameterized built-ins remain excluded from the
+downloadable export by default; they are only re-included when the operator supplies
+values and clicks Validate or Deploy (both of which already require the ARM token).
+
+### Behaviour
+
+```mermaid
+flowchart TD
+    A[Deploy to Azure section<br/>token present] --> B{parameterized_requirements?}
+    B -- none --> S[Scope + Validate/Deploy<br/>use exported initiative as-is]
+    B -- yes --> C[Expander: collect required values]
+    C --> D[satisfied_parameter_values<br/>all-or-nothing per built-in]
+    D --> V{Validate / Deploy clicked}
+    V -- with values --> R[_regenerate_with_parameters<br/>bake literal reference params] --> Body[Use regenerated body]
+    V -- no values --> Body2[Use exported initiative body]
+    Body --> ARM[validate_deploy / deploy_initiative_to_azure]
+    Body2 --> ARM
+```
+
+### Changes
+
+| Area | File | Change |
+|------|------|--------|
+| Frontend helper | `app/frontend/utils/policy_parameters.py` (new) | Pure `satisfied_parameter_values(requirements, raw)` — returns only built-ins whose every required value is non-blank. Unit-testable without Streamlit. |
+| Frontend page | `app/frontend/pages/4_Export_Policy.py` | Replaced `_render_parameter_form` (separate st.form + "Re-generate" button) with `_collect_required_parameters` (inline sticky inputs in an expander) + `_regenerate_with_parameters`. Validate and Deploy now re-generate with supplied values before calling ARM, and Validate shows an `N included / M excluded` caption. |
+| Tests | `app/tests/test_policy_parameter_selection.py` (new) | 9 cases for `satisfied_parameter_values`: all-filled → included; partial/whitespace/missing → excluded; empty requirements; no-params / no-policy_id skipped; numeric + "0" kept as non-blank. |
+
+### Tests (green)
+
+- `test_policy_parameter_selection.py` — **9 passed**.
+- Parameter group (`test_policy_parameter_selection` + `test_parameterized_policy_filtering` + `test_api_client_generate_params`) — **21 passed**.
+- Full `app/tests` — **453 passed**, **11 failed**, **8 errors**. All 11 failures are the pre-existing `test_state_management.py` `init_session_state()` arg-mismatch (fail on clean `main`, unrelated — being addressed in a separate session). All 8 errors are pre-existing `e2e/` Playwright `FileNotFoundError` (no browser in this env). No new failures introduced.
+
+Run:
+```bash
+AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com/ ENABLE_AUTH=false \
+  PYTHONPATH=app/backend:app/frontend .venv/bin/python -m pytest \
+  app/tests/test_policy_parameter_selection.py -q
+```
+
+### Status
+
+- Code committed: `af2f62f` — *Wire parameterized built-in values into Validate/Deploy*.
+- **NOT deployed** and **NOT live-verified** yet. Redeploying the frontend and exercising
+  the Validate button (with/without supplied vault/region values) against the real ARM
+  token requires an interactive MFA re-login and may reset the operator's current Easy
+  Auth session — deferred pending operator go-ahead. **[UNVERIFIED — live]**
+
+---
+
+## Live-verify 2026-07-19 — PASSED (deployed dev app + real ARM)
+
+Frontend redeployed (rev `…azd-1784447979`, Healthy·100%) and exercised through the
+Playwright-driven browser against the live dev Container Apps environment. Signed in as
+`wadutoit@…` (Easy Auth, SSO — no MFA re-prompt this run).
+
+### Results
+
+| Check | Outcome |
+|-------|---------|
+| ARM token present | `/.auth/me` → `access_token` with `aud = https://management.azure.com` ✅ |
+| Deploy scope discovery | Target-scope selector populated (`Subscription: ME-…-wadutoit-3`). The earlier `/deploy/scopes` **500 / "No subscriptions found"** did **not** reproduce with a fresh token ✅ |
+| Validate — no values supplied | Caption **"Parameterized built-ins: 0 included, 1 still excluded"**; **10 policies · 4 groups · 10 references verified · 0 unresolved**; *Validation passed — no changes were made to your tenant* ✅ |
+| Validate — values supplied | Caption **"Parameterized built-ins: 1 included, 0 still excluded"**; **11 policies · 4 groups · 11 references verified · 0 unresolved**; *Validation passed* ✅ |
+| Server-side corroboration | Backend log: `POST /api/v1/deploy/validate → 200 OK` (~347 ms), Easy Auth user forwarded ✅ |
+
+The delta is the proof: supplying the excluded built-in's required values re-includes it as
+a literal-parameter policy — **10 → 11 policies, 10 → 11 references verified** — and it
+passes real ARM validation. Both round-trips were dry-run (`no changes were made`).
+
+The single excluded built-in in this dataset was **"Configure disaster recovery on virtual
+machines by enabling replication via Azure Site Recovery"** (`ac34a73f-…`, used by control
+D3), requiring `sourceRegion`, `vaultId`, `targetRegion`, `vaultResourceGroupId`,
+`targetResourceGroupId` (all-or-nothing).
+
+### Not done (gated)
+
+- **Deploy** was **not** clicked — it writes to the real tenant and is gated on explicit
+  operator go-ahead + confirmed scope (per E2E brief step 6).
+
+```mermaid
+flowchart LR
+  G[Generate initiative] --> X["Parameterized built-in excluded<br/>10 policies"]
+  X --> D[Deploy to Azure section<br/>ARM token gate ✅]
+  D -->|Validate, no values| V0["0 included / 1 excluded<br/>10 refs · passed"]
+  D -->|supply 5 values → Validate| V1["1 included / 0 excluded<br/>11 refs · passed"]
+```
+
+---
+
+## Deploy post-mortem + fixes — 2026-07-19 (PASSED)
+
+The gated audit-only Deploy (E2E step 6) surfaced **four real bugs** on the first live
+tenant write. All four are now fixed, tested, redeployed, and a genuinely clean audit-only
+initiative + assignment was created and verified.
+
+### The bugs
+
+1. **Base `generated_policy` contamination.** `_regenerate_with_parameters` overwrote and
+   persisted `st.session_state.generated_policy`, so any *Validate-with-values* permanently
+   replaced the clean base initiative with the parameterized version. Later Deploys read the
+   contaminated state.
+2. **Sticky-param leak.** The base **Generate** call passed
+   `policy_parameter_values=st.session_state.get(...)`, so once values were supplied they
+   were baked into *every* subsequent generation.
+3. **One-way door.** Once the built-in was included, the backend `parameterized_requirements`
+   list emptied → the "➕ Include…" expander disappeared → the only UI path to clear the
+   sticky values was gone. The built-in could never be excluded again in-session.
+4. **Assignment missing identity/location (pre-existing).** `create_assignment` sent no
+   `identity`/`location`. Assigning any initiative containing `DeployIfNotExists`/`Modify`
+   policies returns ARM **400** (identity is mandatory even under `DoNotEnforce`). This was
+   the 502 seen on the first Deploy: the set definition was created, the assignment 400'd →
+   partial write (later deleted during cleanup).
+
+### The fixes (commit on this branch)
+
+- **Base Generate** no longer reads the sticky param store → base initiative is always the
+  clean, exclude-by-default one, so `parameterized_requirements` stays populated and the
+  expander never disappears (bugs 2 + 3).
+- **`_regenerate_with_parameters` is transient** → it returns a fresh body for validate/deploy
+  only and never mutates/persists `generated_policy` (bug 1).
+- **`create_assignment` always attaches a `SystemAssigned` identity + `location`** and sets
+  `enforcementMode` from the operator's Audit/Enforce toggle (`DoNotEnforce` = audit-only:
+  compliance is still assessed, effects never applied — verified against Microsoft docs).
+  `enforce_mode`/`location` are threaded through the deploy route + API client (bug 4).
+- Tests: `test_policy_deploy_assignment.py` (pure `_build_assignment_body` cases) +
+  `test_export_generate_state.py` (source-level regression guards for the two frontend paths).
+  Full suite: **460 passed** (11 pre-existing state-mgmt fails deselected).
+
+### Verified clean deploy (audit-only, subscription scope)
+
+Redeployed backend + frontend (`azd deploy`, no provision). Easy Auth intact
+(`RedirectToLoginPage`, token store on); ARM token `aud=management.azure.com`.
+
+| Resource | Name | Key properties |
+|---|---|---|
+| Policy set definition | `dubai-cyber-security-strategy-2023-compliance` | Custom · **10 policy definitions** (parameterized built-in excluded, no placeholder IDs) |
+| Policy assignment | `dubai-cyber-security-strategy-2023-compliance-assignment` | **`enforcementMode=DoNotEnforce`** (audit-only) · **`identity=SystemAssigned`** · linked to the initiative |
+
+Server-side: `POST /api/v1/deploy/initiative → 200 OK` (~7.4 s), Easy Auth user forwarded.
+Validate gate immediately before Deploy reported **10 policies · 4 groups · 10 references
+verified · 0 unresolved · 0 included / 1 excluded**.
+
+> Scope/subscription/tenant identifiers are intentionally omitted from this doc per the
+> public-repo policy (no environment-specific IDs committed).
+
+### Rollback (if needed)
+
+```bash
+az policy assignment delete -n dubai-cyber-security-strategy-2023-compliance-assignment \
+  --scope /subscriptions/<subscription-id>
+az policy set-definition delete -n dubai-cyber-security-strategy-2023-compliance \
+  --subscription <subscription-id>
+```
+
+```mermaid
+flowchart LR
+  A[Deploy w/ old code] --> B["502: set-def created,<br/>assignment 400 (no identity)"]
+  B --> C[Cleanup: delete botched set-def]
+  C --> D[Fix 4 bugs + tests]
+  D --> E["Redeploy backend + frontend"]
+  E --> F["Generate → clean base (10 policies)"]
+  F --> G["Validate gate: 10 refs · 0 included · 0 unresolved"]
+  G --> H["Deploy → set-def (10) + assignment<br/>DoNotEnforce + SystemAssigned ✅"]
+```

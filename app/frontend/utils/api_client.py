@@ -823,18 +823,28 @@ class APIClient:
         assign: bool = False,
         assignment_display_name: Optional[str] = None,
         assignment_description: str = "",
+        enforce_mode: bool = False,
+        location: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Deploy a policy set definition (and optionally assign it)."""
+        """Deploy a policy set definition (and optionally assign it).
+
+        ``enforce_mode`` controls the assignment's enforcement: when False
+        (default) the assignment is created with ``DoNotEnforce`` (audit-only —
+        compliance is still assessed, effects are never applied/remediated).
+        """
         payload: Dict[str, Any] = {
             "scope": scope,
             "initiative_name": initiative_name,
             "initiative_body": initiative_body,
             "assign": assign,
+            "enforce_mode": enforce_mode,
         }
         if assignment_display_name:
             payload["assignment_display_name"] = assignment_display_name
         if assignment_description:
             payload["assignment_description"] = assignment_description
+        if location:
+            payload["location"] = location
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/deploy/initiative",
