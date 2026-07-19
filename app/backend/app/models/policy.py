@@ -12,6 +12,43 @@ if TYPE_CHECKING:
     from app.models.mapping import ControlMapping
 
 
+class PolicyParameterSpec(BaseModel):
+    """Schema for a single required (no-default) built-in policy parameter.
+
+    Surfaced to the UI so it can prompt the operator for a concrete value,
+    letting a parameterized built-in be included with user-supplied literals
+    instead of being excluded from the initiative.
+    """
+
+    type: str = Field("String", description="ARM parameter type (String, Array, Integer, Boolean, ...)")
+    description: Optional[str] = Field(None, description="Human-readable help text from the built-in's metadata")
+    allowed_values: Optional[List[Any]] = Field(
+        None, description="Permitted values, when the built-in constrains them (render as a dropdown)"
+    )
+
+
+class ParameterizedPolicyRequirement(BaseModel):
+    """A built-in that needs operator-supplied parameter values to be included.
+
+    Built-ins with a required parameter that has no ``defaultValue`` cannot live
+    in a custom policy set unless a value is supplied (ARM rejects the set
+    definition with ``MissingPolicyParameter``). Rather than silently drop them,
+    the generator returns this so the UI can collect the values and re-generate
+    with them baked in as literal reference parameters.
+    """
+
+    policy_id: str = Field(..., description="Built-in policy definition GUID")
+    display_name: str = Field(..., description="Built-in display name")
+    control_ids: List[str] = Field(
+        default_factory=list,
+        description="External framework control IDs that mapped to this built-in",
+    )
+    parameters: Dict[str, PolicyParameterSpec] = Field(
+        default_factory=dict,
+        description="Required parameters (name -> schema) the operator must supply",
+    )
+
+
 class PolicyDefinitionReference(BaseModel):
     """Reference to an Azure Policy definition within an initiative."""
 
@@ -27,14 +64,48 @@ class PolicyDefinitionReference(BaseModel):
         default_factory=dict,
         description="Parameter values for this policy"
     )
+    group_names: List[str] = Field(
+        default_factory=list,
+        description="Names of the policyDefinitionGroups (controls) this policy belongs to"
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
             "policyDefinitionReferenceId": "SAMA-AC-01",
-            "parameters": {}
+            "parameters": {},
+            "groupNames": ["SAMA_AC_01"]
         }
     })
+
+
+class PolicyDefinitionGroup(BaseModel):
+    """A control grouping inside a Regulatory Compliance initiative.
+
+    Grouping is what turns a flat policy set definition into a
+    Regulatory-Compliance-style initiative: each group represents one control of
+    the source framework and the member policies reference it via ``groupNames``.
+    """
+
+    name: str = Field(..., description="Unique group name (sanitized control ID)")
+    display_name: Optional[str] = Field(
+        None, description="Human-readable group name (control ID + title)"
+    )
+    category: Optional[str] = Field(
+        None, description="Compliance domain / category for this control"
+    )
+    description: Optional[str] = Field(None, description="Group description")
+
+    def to_azure_json(self) -> Dict[str, Any]:
+        """Emit the Azure ``policyDefinitionGroups`` entry (omitting empty fields)."""
+        group: Dict[str, Any] = {"name": self.name}
+        if self.display_name:
+            group["displayName"] = self.display_name
+        if self.category:
+            group["category"] = self.category
+        if self.description:
+            group["description"] = self.description
+        return group
 
 
 class PolicyInitiativeMetadata(BaseModel):
@@ -68,6 +139,10 @@ class PolicyInitiativeProperties(BaseModel):
     policy_definitions: List[PolicyDefinitionReference] = Field(
         ...,
         description="List of policy definitions in this initiative"
+    )
+    policy_definition_groups: List[PolicyDefinitionGroup] = Field(
+        default_factory=list,
+        description="Control groupings that make this a Regulatory Compliance initiative"
     )
 
     model_config = ConfigDict(json_schema_extra={
@@ -105,28 +180,38 @@ class PolicyInitiative(BaseModel):
         Returns:
             Dict: Azure Policy initiative JSON
         """
-        return {
-            "properties": {
-                "displayName": self.properties.display_name,
-                "description": self.properties.description,
-                "metadata": {
-                    "category": self.properties.metadata.category,
-                    "source": self.properties.metadata.source,
-                    "version": self.properties.metadata.version,
-                    "generatedDate": self.properties.metadata.generated_date.isoformat(),
-                    "frameworkName": self.properties.metadata.framework_name,
-                    "frameworkVersion": self.properties.metadata.framework_version
-                },
-                "policyDefinitions": [
-                    {
-                        "policyDefinitionId": pd.policy_definition_id,
-                        "policyDefinitionReferenceId": pd.policy_definition_reference_id,
-                        "parameters": pd.parameters
-                    }
-                    for pd in self.properties.policy_definitions
-                ]
+        policy_definitions: List[Dict[str, Any]] = []
+        for pd in self.properties.policy_definitions:
+            entry: Dict[str, Any] = {
+                "policyDefinitionId": pd.policy_definition_id,
+                "policyDefinitionReferenceId": pd.policy_definition_reference_id,
+                "parameters": pd.parameters,
             }
+            if pd.group_names:
+                entry["groupNames"] = pd.group_names
+            policy_definitions.append(entry)
+
+        properties: Dict[str, Any] = {
+            "displayName": self.properties.display_name,
+            "description": self.properties.description,
+            "metadata": {
+                "category": self.properties.metadata.category,
+                "source": self.properties.metadata.source,
+                "version": self.properties.metadata.version,
+                "generatedDate": self.properties.metadata.generated_date.isoformat(),
+                "frameworkName": self.properties.metadata.framework_name,
+                "frameworkVersion": self.properties.metadata.framework_version
+            },
+            "policyDefinitions": policy_definitions,
         }
+
+        if self.properties.policy_definition_groups:
+            properties["policyDefinitionGroups"] = [
+                group.to_azure_json()
+                for group in self.properties.policy_definition_groups
+            ]
+
+        return {"properties": properties}
 
 
 class PolicyGenerationRequest(BaseModel):
@@ -149,6 +234,15 @@ class PolicyGenerationRequest(BaseModel):
         False,
         description="When False (default), assignments use DoNotEnforce (audit-only). "
                     "When True, assignments use Default (enforcement enabled)."
+    )
+    policy_parameter_values: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Operator-supplied values for parameterized built-ins, keyed by "
+                    "policy definition GUID then parameter name "
+                    "(e.g. {\"<guid>\": {\"vaultName\": \"rsv-prod\"}}). When all of a "
+                    "built-in's required parameters are supplied, it is included with "
+                    "those values baked in as literal reference parameters instead of "
+                    "being excluded."
     )
 
     model_config = ConfigDict(json_schema_extra={
@@ -173,6 +267,18 @@ class PolicyGenerationResponse(BaseModel):
     invalid_policies: int = Field(
         0,
         description="Number of policy definition IDs dropped because they were not valid Azure Policy GUIDs"
+    )
+    excluded_builtin_policies: int = Field(
+        0,
+        description="Number of built-in policies dropped because they cannot be part of a custom policy set (e.g. System Policy)"
+    )
+    excluded_parameterized_policies: int = Field(
+        0,
+        description="Number of built-in policies dropped because they require a parameter value with no default (e.g. vault name/region), which ARM would reject in a custom policy set"
+    )
+    parameterized_requirements: List[ParameterizedPolicyRequirement] = Field(
+        default_factory=list,
+        description="Excluded parameterized built-ins and their required-parameter schemas, so the UI can collect values and re-generate with them included"
     )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
 

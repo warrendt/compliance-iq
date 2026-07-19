@@ -40,6 +40,18 @@ class _FakeCatalog:
         segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
         return segment in self._names
 
+    def is_non_includable(self, name):
+        return False
+
+    def requires_parameters(self, name):
+        return False
+
+    def get(self, name):
+        return None
+
+    def get_required_parameters(self, name):
+        return {}
+
 
 def _mapping(control_id: str, policy_ids: list[str], confidence: float = 0.9) -> ControlMapping:
     return ControlMapping(
@@ -60,7 +72,7 @@ def _mapping(control_id: str, policy_ids: list[str], confidence: float = 0.9) ->
 def test_create_defs_drops_nonexistent_builtin():
     service = PolicyGenerationService()
     catalog = _FakeCatalog([REAL_GUID])
-    defs, dropped = service._create_policy_definitions(
+    defs, _groups, dropped, _ni, _pz, _rq = service._create_policy_definitions(
         [_mapping("CTRL-1", [REAL_GUID, FAKE_GUID])], catalog=catalog
     )
     ids = [d.policy_definition_id for d in defs]
@@ -73,7 +85,7 @@ def test_create_defs_keeps_all_when_catalog_unavailable():
     """Graceful degradation: a missing/empty catalog must not drop everything."""
     service = PolicyGenerationService()
     catalog = _FakeCatalog([], available=False)
-    defs, dropped = service._create_policy_definitions(
+    defs, _groups, dropped, _ni, _pz, _rq = service._create_policy_definitions(
         [_mapping("CTRL-1", [REAL_GUID, FAKE_GUID])], catalog=catalog
     )
     ids = [d.policy_definition_id for d in defs]
@@ -86,7 +98,7 @@ def test_create_defs_keeps_all_when_catalog_unavailable():
 def test_create_defs_still_drops_malformed_when_catalog_unavailable():
     service = PolicyGenerationService()
     catalog = _FakeCatalog([], available=False)
-    defs, dropped = service._create_policy_definitions(
+    defs, _groups, dropped, _ni, _pz, _rq = service._create_policy_definitions(
         [_mapping("CTRL-1", ["Not A Guid - Azure Policy", REAL_GUID])], catalog=catalog
     )
     assert dropped == ["Not A Guid - Azure Policy"]

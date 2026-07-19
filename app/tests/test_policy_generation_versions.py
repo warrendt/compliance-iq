@@ -62,6 +62,11 @@ async def test_mcsb_generation_creates_version_with_all_downloadable_files(monke
             "powershell": "New-AzPolicySetDefinition",
             "cli": "az policy set-definition create",
         },
+        generate_security_standard=lambda initiative, name: {
+            "standard_name": "00000000-0000-0000-0000-000000000000",
+            "arm_template": "{}",
+            "powershell": "Invoke-AzRestMethod",
+        },
     )
     create_version = AsyncMock(
         return_value={"id": "version-1", "version_number": 1, "semantic_version": "1.0.0"}
@@ -85,11 +90,14 @@ async def test_mcsb_generation_creates_version_with_all_downloadable_files(monke
     assert kwargs["user_id"] == "user@example.com"
     assert kwargs["metadata"]["source"] == "mcsb_initiative"
     assert {file["name"] for file in kwargs["artifact_payload"]["files"]} == {
+        "README.md",
         "Example_Framework_initiative.json",
         "Example_Framework_initiative.bicep",
         "Deploy-Example_FrameworkInitiative.ps1",
         "deploy-Example_Framework-initiative.sh",
         "Example_Framework_mappings.json",
+        "Example_Framework_defender_standard.json",
+        "Deploy-Example_FrameworkDefenderStandard.ps1",
     }
 
 

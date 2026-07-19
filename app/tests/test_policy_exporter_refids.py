@@ -30,6 +30,18 @@ def _accept_all_guids(monkeypatch):
         def exists(self, name):  # noqa: D401 - trivial stub
             return True
 
+        def is_non_includable(self, name):
+            return False
+
+        def requires_parameters(self, name):
+            return False
+
+        def get(self, name):
+            return None
+
+        def get_required_parameters(self, name):
+            return {}
+
     monkeypatch.setattr(
         "app.services.policy_service.get_policy_catalog_service",
         lambda: _AllCatalog(),

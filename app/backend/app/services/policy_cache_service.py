@@ -21,6 +21,25 @@ GUID_RE = re.compile(
 )
 
 
+def _is_stub_description(display_name: str, description: str) -> bool:
+    """True when a policy's description adds no information over its name.
+
+    Microsoft "Managed Control" / Regulatory Compliance policies (``CMA_*``)
+    carry a description that just repeats the display name, optionally prefixed
+    with a ``CMA_xxxx -`` code. Azure itself provides no richer text for them,
+    so surfacing that line reads like a bare ID rather than an explanation.
+    """
+    name = (display_name or "").strip()
+    desc = (description or "").strip()
+    if not desc:
+        return True
+    if name and desc.casefold() == name.casefold():
+        return True
+    # e.g. "CMA_0259 - Establish a secure software development program"
+    stripped = re.sub(r"^CMA_\S+\s*-\s*", "", desc, flags=re.IGNORECASE).strip()
+    return bool(name) and stripped.casefold() == name.casefold()
+
+
 def _portal_definition_url(policy_id: str) -> str:
     """Build a stable Azure Portal deep link to a built-in policy definition."""
     definition_id = f"/providers/Microsoft.Authorization/policyDefinitions/{policy_id}"
@@ -113,10 +132,13 @@ class PolicyCacheService:
     @staticmethod
     def _from_catalog(policy_id: str, definition: Dict[str, str]) -> Dict[str, Any]:
         """Build a detail dict from a local catalog definition."""
+        _display = definition.get("display_name", "")
+        _desc = definition.get("description", "")
         return {
             "policy_id": policy_id,
-            "display_name": definition.get("display_name", ""),
-            "description": definition.get("description", ""),
+            "display_name": _display,
+            "description": _desc,
+            "description_is_stub": _is_stub_description(_display, _desc),
             "category": definition.get("category", ""),
             "learn_url": _portal_definition_url(policy_id),
             "cached_at": datetime.now(timezone.utc).isoformat(),
@@ -166,10 +188,13 @@ class PolicyCacheService:
 
     @staticmethod
     def _doc_to_detail(doc: Dict[str, Any]) -> Dict[str, Any]:
+        _display = doc.get("display_name", "")
+        _desc = doc.get("description", "")
         return {
             "policy_id": doc.get("policy_id", doc.get("id", "")),
-            "display_name": doc.get("display_name", ""),
-            "description": doc.get("description", ""),
+            "display_name": _display,
+            "description": _desc,
+            "description_is_stub": _is_stub_description(_display, _desc),
             "category": doc.get("category", ""),
             "learn_url": doc.get("learn_url", ""),
             "cached_at": doc.get("cached_at", ""),

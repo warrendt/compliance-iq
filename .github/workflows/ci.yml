@@ -59,5 +59,8 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/app/frontend
         run: |
-          python -m pytest app/tests/test_state_init_helpers.py --noconftest -v
+          python -m pytest \
+            app/tests/test_state_init_helpers.py \
+            app/tests/test_policy_display.py \
+            --noconftest -v
 

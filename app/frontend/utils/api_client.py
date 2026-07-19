@@ -15,6 +15,10 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 _MAX_LOG_ENTRIES = 100
 
+# Backend /api/v1/policy/details caps policy_ids at 100 per request; the client
+# chunks larger lists into batches of this size and merges the results.
+_POLICY_DETAILS_BATCH_SIZE = 100
+
 
 def _ensure_log() -> deque:
     """Return the session-scoped API log deque."""
@@ -346,6 +350,7 @@ class APIClient:
         min_confidence: float = 0.7,
         session_id: Optional[str] = None,
         enforce_mode: bool = False,
+        policy_parameter_values: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Generate an Azure Policy initiative.
         
@@ -356,16 +361,23 @@ class APIClient:
             session_id: Session identifier for artifact persistence
             enforce_mode: When False (default), assignments use DoNotEnforce (audit-only).
                           When True, assignments use Default (enforcement enabled).
+            policy_parameter_values: Optional operator-supplied values for
+                          parameterized built-ins, keyed by policy GUID then
+                          parameter name. Supplying every required value for a
+                          built-in includes it (values baked in) instead of
+                          dropping it.
             
         Returns:
             Policy initiative JSON
         """
-        payload = {
+        payload: Dict[str, Any] = {
             "mappings": mappings,
             "framework_name": framework_name,
             "min_confidence_threshold": min_confidence,
             "enforce_mode": enforce_mode,
         }
+        if policy_parameter_values:
+            payload["policy_parameter_values"] = policy_parameter_values
         headers = {}
         if session_id:
             headers["X-Session-ID"] = session_id
@@ -382,20 +394,41 @@ class APIClient:
     def get_policy_details(self, policy_ids: List[str]) -> Dict[str, Any]:
         """Batch-lookup Azure Policy details by GUID (cached).
 
+        The backend caps each request at ``_POLICY_DETAILS_BATCH_SIZE`` GUIDs,
+        so requests are split into chunks and the results are merged. Without
+        this, initiatives with more than 100 policies would 422 and the UI
+        would fall back to showing bare GUIDs instead of policy names.
+
         Args:
             policy_ids: List of Azure Policy definition GUIDs
 
         Returns:
             Dict with 'policies' key mapping GUIDs to detail dicts
         """
+        if not policy_ids:
+            return {"requested": 0, "found": 0, "policies": {}}
+
+        chunks = [
+            policy_ids[i : i + _POLICY_DETAILS_BATCH_SIZE]
+            for i in range(0, len(policy_ids), _POLICY_DETAILS_BATCH_SIZE)
+        ]
+
+        merged_policies: Dict[str, Any] = {}
         with self._get_client() as client:
-            response = client.post(
-                f"{self.base_url}/api/v1/policy/details",
-                json={"policy_ids": policy_ids},
-                timeout=60.0,
-            )
-            response.raise_for_status()
-            return response.json()
+            for chunk in chunks:
+                response = client.post(
+                    f"{self.base_url}/api/v1/policy/details",
+                    json={"policy_ids": chunk},
+                    timeout=60.0,
+                )
+                response.raise_for_status()
+                merged_policies.update(response.json().get("policies", {}))
+
+        return {
+            "requested": len(policy_ids),
+            "found": len(merged_policies),
+            "policies": merged_policies,
+        }
 
     # --- Sovereignty / SLZ endpoints ---
 
@@ -769,7 +802,7 @@ class APIClient:
     def validate_deploy(
         self, scope: str, initiative_name: str, initiative_body: dict
     ) -> Dict[str, Any]:
-        """Dry-run validation of an initiative deployment."""
+        """Non-destructive validation of an initiative (no tenant writes)."""
         with self._get_client() as client:
             response = client.post(
                 f"{self.base_url}/api/v1/deploy/validate",

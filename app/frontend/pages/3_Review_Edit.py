@@ -11,6 +11,7 @@ from utils.state_init import init_session_state, restore_workflow_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
+from components.policy_display import render_policy_list
 
 st.set_page_config(
     page_title="Review & Edit | ComplianceIQ",
@@ -233,29 +234,7 @@ else:
             # Azure Policies
             if mapping.get('azure_policy_ids'):
                 st.markdown("#### 🎯 Recommended Azure Policies")
-                # Batch-fetch display names from cache
-                _pids = mapping['azure_policy_ids']
-                _cache_key = f"_policy_detail_cache_{hash(tuple(_pids))}"
-                if _cache_key not in st.session_state:
-                    try:
-                        st.session_state[_cache_key] = api_client.get_policy_details(_pids).get("policies", {})
-                    except Exception:
-                        st.session_state[_cache_key] = {}
-                _details = st.session_state[_cache_key]
-                for policy_id in _pids:
-                    _pd = _details.get(policy_id)
-                    if _pd and _pd.get("display_name"):
-                        _url = _pd.get("learn_url", "")
-                        _title = f"**{_pd['display_name']}**"
-                        if _url:
-                            _title += f" ([docs]({_url}))"
-                        st.markdown(f"- {_title}")
-                        _desc = _pd.get("description")
-                        if _desc:
-                            st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;{_desc}")
-                        st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;`{policy_id}`")
-                    else:
-                        st.code(policy_id, language="text")
+                render_policy_list(api_client, mapping['azure_policy_ids'])
             
             # Sovereignty mapping
             sov = mapping.get('sovereignty')

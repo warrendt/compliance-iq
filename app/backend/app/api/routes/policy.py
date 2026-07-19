@@ -37,35 +37,98 @@ def _json_file(name: str, value: object) -> dict[str, str]:
     return {"name": name, "content": json.dumps(value, indent=2, default=str)}
 
 
+def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[str, str]:
+    """Build a README documenting deploy order and prerequisites for the bundle."""
+    standard_line = (
+        f"3. **Defender for Cloud standard** — `Deploy-{stem}DefenderStandard.ps1` "
+        f"(or the `az rest` step in `deploy-{stem}-initiative.sh`) registers a "
+        "`Microsoft.Security/securityStandards` resource so the initiative appears "
+        "under **Defender for Cloud > Regulatory compliance**.\n"
+        if has_standard
+        else ""
+    )
+    prereq = (
+        "\n## Prerequisite\n\n"
+        "The Defender for Cloud custom standard requires the **Microsoft Defender CSPM** "
+        "plan enabled on the target scope. Without it, the first two steps still work; "
+        "only the Regulatory-compliance surfacing is unavailable.\n"
+        if has_standard
+        else ""
+    )
+    content = (
+        f"# {framework_name} — deployment bundle\n\n"
+        "Deploy the resources in this order (audit-only by default — nothing is "
+        "enforced, blocked, created, or modified):\n\n"
+        "1. **Policy set definition (initiative)** — creates the initiative from "
+        f"`{stem}_initiative.json` / `.bicep`.\n"
+        "2. **Assignment** — assigns the initiative with `DoNotEnforce` and a "
+        "**system-assigned managed identity + location**. The identity is mandatory "
+        "even in audit mode because Regulatory Compliance initiatives typically "
+        "contain DeployIfNotExists / Modify policies, which Azure refuses to assign "
+        "without one.\n"
+        f"{standard_line}"
+        f"{prereq}"
+        "\n## Automatic exclusions\n\n"
+        "Built-in policies that cannot live in a custom policy set are dropped during "
+        "generation so the deploy does not fail:\n\n"
+        "- **System Policy** built-ins (Azure rejects them from custom sets).\n"
+        "- **Parameterized** built-ins with a required parameter that has no default "
+        "value (e.g. vault name/region/workspace). ARM rejects the set definition "
+        "with `MissingPolicyParameter` unless a value is supplied, and it cannot be "
+        "invented safely. To include one, supply its required values on the Export "
+        "Policy page (Deploy to Azure section) and re-generate — the values are baked "
+        "into the initiative as literal reference parameters.\n\n"
+        "See `excluded_builtin_policies` and `excluded_parameterized_policies` in the "
+        "generation response for the counts.\n"
+    )
+    return {"name": "README.md", "content": content}
+
+
 def _mcsb_version_payload(
     request: PolicyGenerationRequest,
     initiative_id: str,
     initiative_json: dict,
     bicep_template: str,
     scripts: dict,
+    standard: Optional[dict] = None,
 ) -> dict:
     """Create a complete, immutable download bundle for an MCSB generation."""
     stem = _file_stem(request.framework_name)
+    files = [
+        _deploy_readme(stem, request.framework_name, standard is not None),
+        _json_file(f"{stem}_initiative.json", initiative_json),
+        {"name": f"{stem}_initiative.bicep", "content": bicep_template},
+        {
+            "name": f"Deploy-{stem}Initiative.ps1",
+            "content": scripts["powershell"],
+        },
+        {
+            "name": f"deploy-{stem}-initiative.sh",
+            "content": scripts.get("cli", ""),
+        },
+        _json_file(
+            f"{stem}_mappings.json",
+            [mapping.model_dump(mode="json") for mapping in request.mappings],
+        ),
+    ]
+    if standard:
+        files.extend(
+            [
+                {
+                    "name": f"{stem}_defender_standard.json",
+                    "content": standard["arm_template"],
+                },
+                {
+                    "name": f"Deploy-{stem}DefenderStandard.ps1",
+                    "content": standard["powershell"],
+                },
+            ]
+        )
     return {
         "artifact_type": "mcsb_initiative",
         "framework_name": request.framework_name,
         "initiative_id": initiative_id,
-        "files": [
-            _json_file(f"{stem}_initiative.json", initiative_json),
-            {"name": f"{stem}_initiative.bicep", "content": bicep_template},
-            {
-                "name": f"Deploy-{stem}Initiative.ps1",
-                "content": scripts["powershell"],
-            },
-            {
-                "name": f"deploy-{stem}-initiative.sh",
-                "content": scripts.get("cli", ""),
-            },
-            _json_file(
-                f"{stem}_mappings.json",
-                [mapping.model_dump(mode="json") for mapping in request.mappings],
-            ),
-        ],
+        "files": files,
         "omitted_files": [],
     }
 
@@ -149,6 +212,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         scripts = policy_service.generate_deployment_script(
             response.initiative, initiative_name, enforce_mode=request.enforce_mode
         )
+        standard = policy_service.generate_security_standard(
+            response.initiative, initiative_name
+        )
 
         result = response.model_dump()
         result["initiative_id"] = f"{initiative_name}-compliance"
@@ -156,6 +222,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
         result["bicep_template"] = bicep_template
         result["powershell_script"] = scripts["powershell"]
         result["cli_script"] = scripts.get("cli", "")
+        result["defender_standard_name"] = standard["standard_name"]
+        result["defender_standard_template"] = standard["arm_template"]
+        result["defender_standard_script"] = standard["powershell"]
 
         version = await version_service.create_version(
             user_id=user.email,
@@ -165,6 +234,7 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
                 initiative_json=initiative_json,
                 bicep_template=bicep_template,
                 scripts=scripts,
+                standard=standard,
             ),
             metadata={
                 "source": "mcsb_initiative",
@@ -192,6 +262,9 @@ async def generate_policy_initiative(request: PolicyGenerationRequest,
             "bicep_template": bicep_template,
             "powershell_script": scripts["powershell"],
             "cli_script": scripts.get("cli", ""),
+            "defender_standard_name": standard["standard_name"],
+            "defender_standard_template": standard["arm_template"],
+            "defender_standard_script": standard["powershell"],
             "enforce_mode": request.enforce_mode,
             "mappings_count": len(request.mappings),
             "included_policies": response.included_policies,

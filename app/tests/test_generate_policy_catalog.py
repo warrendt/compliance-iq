@@ -60,6 +60,8 @@ def test_normalize_projects_lean_schema_with_defaults():
         "description": "",
         "category": "Uncategorized",
         "mode": "All",
+        "requires_parameters": False,
+        "required_parameters": {},
     }
 
 
@@ -71,3 +73,67 @@ def test_build_catalog_header():
     assert cat["source"] == "test"
     assert cat["definitions"][0]["name"] == "g1"
     assert "generated_at" in cat and "api_version" in cat
+
+
+def test_requires_parameters_true_when_param_lacks_default():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Needs a vault name",
+                "parameters": {
+                    "vaultName": {"type": "String"},
+                    "effect": {"type": "String", "defaultValue": "AuditIfNotExists"},
+                },
+            }
+        ]
+    )
+    assert out[0]["requires_parameters"] is True
+
+
+def test_requires_parameters_false_when_all_params_have_defaults():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "All defaulted",
+                "parameters": {
+                    "effect": {"type": "String", "defaultValue": "Audit"},
+                },
+            }
+        ]
+    )
+    assert out[0]["requires_parameters"] is False
+
+
+def test_requires_parameters_false_when_no_parameters():
+    out = gen.normalize([{"name": "g1", "display_name": "Parameterless"}])
+    assert out[0]["requires_parameters"] is False
+
+
+def test_required_parameters_schema_captured_for_no_default_params():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Needs a vault name",
+                "parameters": {
+                    "vaultName": {
+                        "type": "String",
+                        "metadata": {"description": "Recovery Services vault name"},
+                    },
+                    "vaultLocation": {
+                        "type": "String",
+                        "allowedValues": ["southafricanorth", "westeurope"],
+                    },
+                    "effect": {"type": "String", "defaultValue": "AuditIfNotExists"},
+                },
+            }
+        ]
+    )
+    req = out[0]["required_parameters"]
+    # Only the no-default params are captured; 'effect' (defaulted) is omitted.
+    assert set(req) == {"vaultName", "vaultLocation"}
+    assert req["vaultName"]["type"] == "String"
+    assert req["vaultName"]["description"] == "Recovery Services vault name"
+    assert req["vaultLocation"]["allowed_values"] == ["southafricanorth", "westeurope"]

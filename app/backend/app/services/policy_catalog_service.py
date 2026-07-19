@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..config import get_settings
 
@@ -60,6 +60,31 @@ def _tokenize(text: str) -> List[str]:
         t for t in _TOKEN_RE.findall((text or "").lower())
         if len(t) > 1 and t not in _STOPWORDS
     ]
+
+
+# Azure groups Microsoft "Managed Control" (CMA_*) manual-attestation policies
+# under this category. They carry no enforcement logic (no audit/deny effect),
+# so they are demoted below real enforceable policies during retrieval.
+_NON_ENFORCEABLE_CATEGORY = "regulatory compliance"
+
+# Built-in policies in these categories are internal/reserved and CANNOT be added
+# to a custom policy set definition — ARM rejects the initiative with
+# "can not be part of a custom policy set". Recommending them would produce an
+# initiative whose generated PowerShell/CLI fails at deploy time, so they are
+# excluded from retrieval and stripped at generation. Compared case-folded.
+NON_INCLUDABLE_CATEGORIES = frozenset({"system policy"})
+
+
+def _is_non_includable_category(category: str) -> bool:
+    """True if a built-in in this category cannot be part of a custom policy set."""
+    return (category or "").strip().casefold() in NON_INCLUDABLE_CATEGORIES
+
+
+def _enforcement_weight(category: str, penalty: float) -> float:
+    """Ranking multiplier: ``penalty`` for manual-attestation policies, else 1.0."""
+    if (category or "").strip().casefold() == _NON_ENFORCEABLE_CATEGORY:
+        return penalty
+    return 1.0
 
 
 class PolicyCatalogService:
@@ -121,6 +146,8 @@ class PolicyCatalogService:
                 "display_name": (d.get("display_name") or "").strip(),
                 "description": (d.get("description") or "").strip(),
                 "category": (d.get("category") or "Uncategorized").strip(),
+                "requires_parameters": bool(d.get("requires_parameters", False)),
+                "required_parameters": d.get("required_parameters") or {},
             }
             for d in definitions
             if (d.get("name") or "").strip() and (d.get("display_name") or "").strip()
@@ -196,10 +223,19 @@ class PolicyCatalogService:
             for doc_idx in self._inverted.get(term, ()):  # postings list
                 scores[doc_idx] = scores.get(doc_idx, 0.0) + qw * self._doc_terms[doc_idx][term]
 
+        penalty = settings.policy_catalog_regulatory_penalty
         ranked = sorted(
             (
-                (idx, dot / (q_norm * self._doc_norms[idx]))
+                (
+                    idx,
+                    (dot / (q_norm * self._doc_norms[idx]))
+                    * _enforcement_weight(self._definitions[idx]["category"], penalty),
+                )
                 for idx, dot in scores.items()
+                # Never surface built-ins that cannot be part of a custom policy
+                # set (e.g. "System Policy") — recommending them would break the
+                # generated deployment scripts.
+                if not _is_non_includable_category(self._definitions[idx]["category"])
             ),
             key=lambda t: t[1],
             reverse=True,
@@ -220,6 +256,52 @@ class PolicyCatalogService:
         if not self._loaded:
             self.load()
         return self._by_name.get(name)
+
+    def is_non_includable(self, name: str) -> bool:
+        """True if the built-in ``name`` (GUID) is known to be non-includable.
+
+        Returns ``True`` only when the catalog positively identifies the policy
+        as belonging to a non-includable category (e.g. "System Policy"). Unknown
+        GUIDs return ``False`` — the catalog is a snapshot and may not be
+        exhaustive, so we never strip a policy we cannot positively classify.
+        """
+        entry = self.get(name)
+        if not entry:
+            return False
+        return _is_non_includable_category(entry.get("category", ""))
+
+    def requires_parameters(self, name: str) -> bool:
+        """True if the built-in ``name`` (GUID) has a required (no-default) parameter.
+
+        Such a built-in cannot be referenced in a custom policy set without
+        supplying a value: ARM rejects the set definition with
+        ``MissingPolicyParameter``. The generator has no way to invent
+        resource-specific values (vault names, regions, workspace IDs), so these
+        are excluded at generation to keep the emitted initiative deployable.
+
+        Returns ``True`` only when the catalog positively flags the entry.
+        Unknown GUIDs return ``False`` — the snapshot may not be exhaustive, so we
+        never strip a policy we cannot positively classify.
+        """
+        entry = self.get(name)
+        if not entry:
+            return False
+        return bool(entry.get("requires_parameters", False))
+
+    def get_required_parameters(self, name: str) -> Dict[str, Any]:
+        """Schema for the parameters a caller must supply for built-in ``name``.
+
+        Returns ``{paramName: {"type": ..., "description": ..., "allowed_values":
+        [...]}}`` for every parameter that has no ``defaultValue`` — i.e. the
+        values the UI must collect so the built-in can be included with concrete,
+        user-supplied literals instead of being excluded. Unknown GUIDs return an
+        empty dict.
+        """
+        entry = self.get(name)
+        if not entry:
+            return {}
+        schema = entry.get("required_parameters") or {}
+        return dict(schema) if isinstance(schema, dict) else {}
 
     def exists(self, name: str) -> bool:
         """Return True if *name* is a real Azure built-in policy definition GUID.

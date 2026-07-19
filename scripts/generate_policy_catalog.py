@@ -47,7 +47,7 @@ DEFAULT_OUTPUT = (
 _AZ_QUERY = (
     "[?policyType=='BuiltIn'].{name:name, display_name:displayName, "
     "description:description, category:metadata.category, mode:mode, "
-    "version:metadata.version}"
+    "version:metadata.version, parameters:parameters}"
 )
 
 
@@ -55,6 +55,50 @@ def _is_deprecated(item: Dict[str, Any]) -> bool:
     display = (item.get("display_name") or item.get("displayName") or "")
     version = (item.get("version") or "")
     return display.startswith("[Deprecated]") or "deprecated" in version.lower()
+
+
+def _requires_parameters(item: Dict[str, Any]) -> bool:
+    """True if the definition has at least one parameter without a default value.
+
+    A built-in whose parameters all carry a ``defaultValue`` can be referenced in
+    a custom policy set with no ``parameters`` block. One that has a parameter
+    *without* a default cannot: ARM rejects the set definition with
+    ``MissingPolicyParameter`` unless a value (or pass-through) is supplied.
+    Because the generator has no way to invent resource-specific values (vault
+    names, regions, workspace IDs), such built-ins are excluded at generation so
+    the emitted initiative stays deployable. This flag makes that detectable.
+    """
+    return bool(_required_parameter_schema(item))
+
+
+def _required_parameter_schema(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Schema for the parameters that a caller MUST supply (no ``defaultValue``).
+
+    Returns ``{paramName: {"type": ..., "description": ..., "allowed_values": [...]}}``
+    for every parameter lacking a ``defaultValue``. This is what the UI prompts
+    for so the built-in can be included with concrete, user-supplied values
+    instead of being excluded. Parameters that already have a default are omitted
+    — ARM fills those in, so we never need to ask.
+    """
+    params = item.get("parameters") or {}
+    if not isinstance(params, dict):
+        return {}
+    schema: Dict[str, Any] = {}
+    for pname, spec in params.items():
+        if not isinstance(spec, dict):
+            continue
+        if "defaultValue" in spec:
+            continue
+        meta = spec.get("metadata") or {}
+        entry: Dict[str, Any] = {"type": spec.get("type") or "String"}
+        desc = (meta.get("description") or meta.get("displayName") or "").strip()
+        if desc:
+            entry["description"] = desc
+        allowed = spec.get("allowedValues")
+        if isinstance(allowed, list) and allowed:
+            entry["allowed_values"] = allowed
+        schema[pname] = entry
+    return schema
 
 
 def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -75,6 +119,7 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if name in seen:
             continue
         seen.add(name)
+        schema = _required_parameter_schema(item)
         out.append(
             {
                 "name": name,
@@ -82,6 +127,8 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "description": (item.get("description") or "").strip(),
                 "category": (item.get("category") or "Uncategorized").strip(),
                 "mode": (item.get("mode") or "All").strip(),
+                "requires_parameters": bool(schema),
+                "required_parameters": schema,
             }
         )
     out.sort(key=lambda d: d["name"])
