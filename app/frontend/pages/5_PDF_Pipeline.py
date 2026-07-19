@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -60,7 +61,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "azure_defender": {
         "icon": "🛡️",
         "label": "Microsoft Defender for Cloud",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -70,7 +71,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "microsoft_365": {
         "icon": "📧",
         "label": "Microsoft 365 Compliance",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -81,7 +82,7 @@ _PLATFORM_META: dict[str, _PlatformMeta] = {
     "microsoft_purview": {
         "icon": "🔍",
         "label": "Microsoft Purview",
-        "next_page": "pages/2_🤖_AI_Mapping.py",
+        "next_page": "pages/2_AI_Mapping.py",
         "next_label": "🤖 AI Mapping",
         "guidance": (
             "Controls are loaded! Navigate to **🤖 AI Mapping** (Page 2) "
@@ -280,7 +281,7 @@ with st.sidebar:
     _pmeta = _get_platform_meta(_current_platform)
     st.markdown(f"**🎯 Target Platform**")
     st.info(f"{_pmeta['icon']} {_pmeta['label']}")
-    st.page_link("pages/0_🎯_Platform_Selection.py", label="Change Platform")
+    st.page_link("pages/0_Platform_Selection.py", label="Change Platform")
 
     api_url = st.text_input(
         "Backend API URL",
@@ -342,7 +343,11 @@ if not st.session_state.pdf_extraction:
             break
 
 # ── Main content ──────────────────────────────────────────────────────────
-st.title("📄 PDF Control Extraction")
+render_page_header(
+    "PDF control extraction",
+    eyebrow="Govern",
+    description="Extract compliance controls from a source PDF into a structured control set.",
+)
 
 if notice := st.session_state.pop("workflow_restored_notice", None):
     st.success(f"🔄 {notice}")

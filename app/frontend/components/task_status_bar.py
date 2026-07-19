@@ -36,27 +36,24 @@ _STATUS_ICONS = {
 }
 
 _PAGE_MAP = {
-    "ai_mapping": "pages/2_🤖_AI_Mapping.py",
-    "pdf_extraction": "pages/5_🚀_PDF_Pipeline.py",
-    "pipeline_run": "pages/5_🚀_PDF_Pipeline.py",
-    "policy_generation": "pages/4_📦_Export_Policy.py",
+    "ai_mapping": "pages/2_AI_Mapping.py",
+    "pdf_extraction": "pages/5_PDF_Pipeline.py",
+    "pipeline_run": "pages/5_PDF_Pipeline.py",
+    "policy_generation": "pages/4_Export_Policy.py",
 }
 
 _ORIGIN_LABELS = {
     "pdf_pipeline": "PDF Extraction",
-    "pages/2_🤖_AI_Mapping.py": "AI Mapping",
+    "pages/2_AI_Mapping.py": "AI Mapping",
 }
 
-_NOTIFICATION_COLUMN_WIDTHS = [5, 1.5, 0.75]
-
-
 def render_task_status_bar() -> None:
-    """Render active task progress and a dismissible task notification bell.
+    """Render active task progress inline near the top of a workflow page.
 
-    Call this near the top of every page *after* ``render_sidebar()``.
-    When there are active tasks it polls the backend for updates. Individual
-    workflow pages own their refresh loop so this shared component never
-    interrupts page-local progress rendering.
+    Call this near the top of every page *after* ``render_sidebar()``. When
+    there are active tasks it polls the backend for updates and shows a compact
+    banner. The dismissible notification bell lives in the sidebar
+    (:func:`render_notification_bell`) so it no longer floats in the page body.
     """
     active_tasks = get_active_tasks()
 
@@ -71,8 +68,6 @@ def render_task_status_bar() -> None:
         except Exception:
             pass  # backend may be unavailable
 
-    notifications = get_task_notifications()
-
     # ── Compact banner ────────────────────────────────────────────────
     active_count = len(active_tasks)
     if active_count > 0:
@@ -85,26 +80,31 @@ def render_task_status_bar() -> None:
         banner_text = f"⏳ **{active_count} active task{'s' if active_count != 1 else ''}:** {' · '.join(summaries)}"
         st.info(banner_text)
 
-    # ── Notification bell ─────────────────────────────────────────────
-    _, bell_column = st.columns([6, 1])
-    with bell_column:
-        with st.popover(_notification_bell_label(len(notifications))):
-            st.markdown("#### Task notifications")
-            if notifications:
-                for notification in notifications:
-                    _render_notification(notification)
-                if st.button("Dismiss all", key="dismiss_all_task_notifications"):
-                    dismiss_all_task_notifications()
-                    st.rerun()
-            else:
-                st.caption("No task notifications yet.")
-
     # ── Active task hint ─────────────────────────────────────────────
     # Do not sleep or rerun here. A shared-header rerun aborts the current
     # page before it can render its own progress card and detailed job events.
     backend_polled_active = [t for t in active_tasks if t.get("poll_backend", True)]
     if backend_polled_active:
         st.caption("🔄 Active tasks are updating on their workflow page.")
+
+
+def render_notification_bell() -> None:
+    """Render the dismissible task-notification bell inside the sidebar.
+
+    Kept separate from :func:`render_task_status_bar` so the bell has a single,
+    consistent home in the shell instead of floating at the top of each page.
+    """
+    notifications = get_task_notifications()
+    with st.popover(_notification_bell_label(len(notifications))):
+        st.markdown("#### Task notifications")
+        if notifications:
+            for notification in notifications:
+                _render_notification(notification)
+            if st.button("Dismiss all", key="dismiss_all_task_notifications"):
+                dismiss_all_task_notifications()
+                st.rerun()
+        else:
+            st.caption("No task notifications yet.")
 
 
 def _notification_bell_label(notification_count: int) -> str:
@@ -121,23 +121,26 @@ def _render_notification(notification: dict) -> None:
     description = notification["description"] or label
     source = _ORIGIN_LABELS.get(notification["page_origin"], notification["page_origin"] or "this session")
 
-    content_column, view_column, dismiss_column = st.columns(_NOTIFICATION_COLUMN_WIDTHS)
-    with content_column:
-        st.markdown(f"{icon} **{description}**")
-        st.caption(f"{event.capitalize()} · Started on {source} · {notification['occurred_at'][:19]}")
-    with view_column:
-        page = _PAGE_MAP.get(notification["type"])
-        if event == "completed" and task and page:
-            if st.button(
-                "View",
-                key=f"view_notification_{notification['id']}",
-                use_container_width=True,
-            ):
-                _view_task(task, page)
-    with dismiss_column:
-        if st.button("✕", key=f"dismiss_notification_{notification['id']}"):
-            dismiss_task_notification(notification["id"])
-            st.rerun()
+    # Laid out without ``st.columns``: the bell lives inside a sidebar column,
+    # and Streamlit forbids nesting columns anywhere in the sidebar.
+    st.markdown(f"{icon} **{description}**")
+    st.caption(f"{event.capitalize()} · Started on {source} · {notification['occurred_at'][:19]}")
+
+    page = _PAGE_MAP.get(notification["type"])
+    if event == "completed" and task and page:
+        if st.button(
+            "View",
+            key=f"view_notification_{notification['id']}",
+            use_container_width=True,
+        ):
+            _view_task(task, page)
+    if st.button(
+        "Dismiss",
+        key=f"dismiss_notification_{notification['id']}",
+        use_container_width=True,
+    ):
+        dismiss_task_notification(notification["id"])
+        st.rerun()
 
 
 def _view_task(task: dict, page: str) -> None:

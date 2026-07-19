@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform &amp; architecture — ComplianceIQ</title>
+  <meta name="description" content="How ComplianceIQ works: an AI mapping pipeline from regulatory controls to Azure Policy and Microsoft Defender guidance, deployed on Azure Container Apps, Azure OpenAI, and Cosmos DB." />
+  <meta name="theme-color" content="#0d2036" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ComplianceIQ — platform &amp; architecture" />
+  <meta property="og:description" content="An AI pipeline from regulatory controls to deployable Azure Policy and Defender guidance." />
+  <meta property="og:image" content="assets/logo-full.png" />
+
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png" />
+  <link rel="icon" href="assets/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preload" href="styles.css" as="style" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============================== NAV ============================== -->
+  <header class="site-header" id="top">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="index.html" aria-label="ComplianceIQ home">
+        <img class="brand__mark" src="assets/logo-icon-white.png" alt="" width="34" height="38" />
+        <span class="brand__name">Compliance<span class="brand__name-accent">IQ</span></span>
+      </a>
+
+      <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Toggle navigation menu">
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+      </button>
+
+      <div class="nav__menu" id="navMenu">
+        <ul class="nav__links">
+          <li><a href="platform.html" aria-current="page">Platform</a></li>
+          <li><a href="frameworks.html">Frameworks</a></li>
+          <li><a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a></li>
+        </ul>
+        <div class="nav__actions">
+          <a class="nav__signin" data-app-link href="#">Sign in</a>
+          <a class="btn btn--primary btn--sm" data-repo-deploy href="https://github.com/warrendt/compliance-iq">Get started</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- ============================== SUBHERO ============================== -->
+    <section class="subhero">
+      <div class="subhero__inner">
+        <p class="subhero__eyebrow">Platform</p>
+        <h1 class="subhero__title">One intelligent pipeline, <span class="text-accent-light">controls to cloud</span>.</h1>
+        <p class="subhero__sub">
+          ComplianceIQ reads your regulatory controls, maps them to Azure Policy and Microsoft
+          Defender for Cloud guidance with AI, and hands you a deployable initiative, all running
+          on an Azure-native, Entra-secured stack.
+        </p>
+        <div class="subhero__cta">
+          <a class="btn btn--primary" data-repo-deploy href="https://github.com/warrendt/compliance-iq">
+            Deploy it yourself
+            <svg class="btn__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn--ghost" data-repo-link href="https://github.com/warrendt/compliance-iq">View source on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== TARGET PLATFORMS ============================== -->
+    <section class="section">
+      <div class="section__inner">
+        <div class="section__head">
+          <p class="section__eyebrow">Targets</p>
+          <h2 class="section__title">Three Microsoft compliance platforms</h2>
+          <p class="section__lede">Map a control once, then generate configuration for the Microsoft platform that enforces it.</p>
+        </div>
+
+        <div class="platforms">
+          <article class="pfcard">
+            <div class="pfcard__icon pfcard__icon--defender" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 3l7 4v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V7l7-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.6 12.2l2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3 class="pfcard__name">Microsoft Defender for Cloud</h3>
+            <p class="pfcard__desc">Deploy compliance controls as Azure Policy initiatives with Sovereign Landing Zone support for data-residency requirements.</p>
+            <ul class="pfcard__caps">
+              <li>Azure Policy initiatives</li>
+              <li>Defender for Cloud recommendations</li>
+              <li>Sovereign Landing Zone policies (L1–L3)</li>
+              <li>MCSB control mapping</li>
+            </ul>
+          </article>
+
+          <article class="pfcard">
+            <div class="pfcard__icon pfcard__icon--m365" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3 class="pfcard__name">Microsoft 365 Compliance</h3>
+            <p class="pfcard__desc">Map controls to Microsoft 365 protection policies, managed through the Microsoft Graph API.</p>
+            <ul class="pfcard__caps">
+              <li>Data Loss Prevention (DLP)</li>
+              <li>Conditional Access</li>
+              <li>Device compliance (Intune)</li>
+              <li>Information Protection</li>
+            </ul>
+          </article>
+
+          <article class="pfcard">
+            <div class="pfcard__icon pfcard__icon--purview" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15.8 15.8L21 21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+            <h3 class="pfcard__name">Microsoft Purview</h3>
+            <p class="pfcard__desc">Map controls to unified data governance: sensitivity labels, retention, DLP, eDiscovery, and records management.</p>
+            <ul class="pfcard__caps">
+              <li>Sensitivity labels</li>
+              <li>Purview DLP policies</li>
+              <li>Retention labels &amp; policies</li>
+              <li>eDiscovery &amp; records management</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== ARCHITECTURE ============================== -->
+    <section class="section section--soft">
+      <div class="section__inner">
+        <div class="section__head">
+          <p class="section__eyebrow">Architecture</p>
+          <h2 class="section__title">How it fits together</h2>
+          <p class="section__lede">A Streamlit front end talks to a FastAPI service that orchestrates Azure OpenAI and persists mappings to Cosmos DB.</p>
+        </div>
+
+        <div class="arch" role="img" aria-label="System architecture: a Streamlit frontend on port 8501 calls a FastAPI backend on port 8000 over REST. The backend calls Azure OpenAI for structured-output mapping and reads and writes mapping history to Azure Cosmos DB.">
+          <div class="archbox archbox--frontend">
+            <span class="archbox__tag">Frontend · :8501</span>
+            <p class="archbox__label">Streamlit web app</p>
+            <p class="archbox__items">Home · AI Mapping · Review · Export · PDF Pipeline · Policy Explorer</p>
+          </div>
+
+          <div class="arch__conn"><span class="arch__conn-label">REST API</span></div>
+
+          <div class="archbox archbox--backend">
+            <span class="archbox__tag">Backend · :8000</span>
+            <p class="archbox__label">FastAPI service</p>
+            <p class="archbox__items">MCSB Loader · AI Mapping · Sovereignty SLZ · Policy Generator · PDF Extractor · Persistence</p>
+          </div>
+
+          <div class="arch__split" aria-hidden="true"><span></span><span></span></div>
+
+          <div class="arch__row">
+            <div class="archbox archbox--ai">
+              <span class="archbox__tag">AI</span>
+              <p class="archbox__label">Azure OpenAI</p>
+              <p class="archbox__items">Structured-output control mapping</p>
+            </div>
+            <div class="archbox archbox--data">
+              <span class="archbox__tag">Data</span>
+              <p class="archbox__label">Azure Cosmos DB</p>
+              <p class="archbox__items">Mapping history &amp; session persistence</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== AZURE INFRASTRUCTURE ============================== -->
+    <section class="section">
+      <div class="section__inner">
+        <div class="section__head">
+          <p class="section__eyebrow">Infrastructure</p>
+          <h2 class="section__title">Deployed on Azure, via Bicep</h2>
+          <p class="section__lede">One <code>azd up</code> provisions the full stack behind a private network with Entra ID at the front door.</p>
+        </div>
+
+        <ul class="infra">
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">▤</span><div><strong>Azure Container Apps</strong><span>Frontend + backend, scaled independently</span></div></li>
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">✷</span><div><strong>Azure OpenAI</strong><span>Structured-output completions</span></div></li>
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">◱</span><div><strong>Azure Cosmos DB</strong><span>NoSQL session &amp; mapping storage</span></div></li>
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">⬒</span><div><strong>Azure Container Registry</strong><span>Private image registry</span></div></li>
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">⬡</span><div><strong>VNet + private endpoints</strong><span>No public data-plane exposure</span></div></li>
+          <li class="infra__item"><span class="infra__ico" aria-hidden="true">◈</span><div><strong>Entra ID authentication</strong><span>Sign-in gated at the app front door</span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================== CTA BAND ============================== -->
+    <section class="ctaband">
+      <div class="ctaband__inner">
+        <div>
+          <h2 class="ctaband__title">Run ComplianceIQ in your own tenant</h2>
+          <p class="ctaband__text">The full toolkit (catalogs, AI agent, and deployable initiatives) is open source.</p>
+        </div>
+        <div class="ctaband__actions">
+          <a class="btn btn--primary" data-repo-deploy href="https://github.com/warrendt/compliance-iq">Deployment guide</a>
+          <a class="btn btn--ghost" data-repo-link href="https://github.com/warrendt/compliance-iq">GitHub repository</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================== FOOTER ============================== -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <div class="site-footer__brand">
+        <a class="site-footer__logo" href="index.html" aria-label="ComplianceIQ home">
+          <img src="assets/logo-icon-white.png" alt="" width="30" height="34" />
+          <span class="brand__name">Compliance<span class="brand__name-accent">IQ</span></span>
+        </a>
+        <p class="site-footer__tag">Azure-native. AI-powered. Audit-ready.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <a href="platform.html">Platform</a>
+        <a href="frameworks.html">Frameworks</a>
+        <a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a>
+        <a data-app-link href="#">Sign in</a>
+      </nav>
+    </div>
+    <p class="site-footer__legal">&copy; <span id="year"></span> ComplianceIQ. All rights reserved.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

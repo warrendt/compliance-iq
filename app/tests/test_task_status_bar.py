@@ -81,11 +81,11 @@ def test_viewing_completed_pdf_task_selects_its_extraction(monkeypatch):
             "job_id": "pdf-1",
             "type": "pdf_extraction",
         },
-        "pages/5_🚀_PDF_Pipeline.py",
+        "pages/5_PDF_Pipeline.py",
     )
 
     assert streamlit.session_state["pdf_extraction_task_to_view"] == "pdf-1"
-    assert selected_pages == ["pages/5_🚀_PDF_Pipeline.py"]
+    assert selected_pages == ["pages/5_PDF_Pipeline.py"]
     assert rerun_calls == ["rerun"]
 
 
@@ -126,7 +126,7 @@ def test_replacing_pdf_task_id_preserves_notification_actions(monkeypatch):
 def test_dismissing_notification_keeps_task_result_available(monkeypatch):
     streamlit = SimpleNamespace(session_state={})
     monkeypatch.setattr(task_manager, "st", streamlit)
-    task_manager.register_task("job-1", "ai_mapping", page_origin="pages/2_🤖_AI_Mapping.py")
+    task_manager.register_task("job-1", "ai_mapping", page_origin="pages/2_AI_Mapping.py")
     notification_id = task_manager.get_task_notifications()[0]["id"]
 
     task_manager.dismiss_task_notification(notification_id)
@@ -155,5 +155,53 @@ def test_bell_label_includes_retained_notification_count():
     assert status_bar._notification_bell_label(3) == "🔔 3"
 
 
-def test_notification_layout_reserves_space_for_view_action():
-    assert status_bar._NOTIFICATION_COLUMN_WIDTHS == [5, 1.5, 0.75]
+def test_notification_render_avoids_nested_columns_in_sidebar(monkeypatch):
+    """Regression: the bell lives inside a sidebar column, and Streamlit forbids
+    nesting columns anywhere in the sidebar. Rendering a retained notification
+    must therefore never call ``st.columns`` (previously it crashed the app when
+    any task notification existed)."""
+    def _no_columns(*args, **kwargs):
+        raise AssertionError("st.columns must not be used inside the sidebar bell")
+
+    stub = _streamlit_stub([], [])
+    stub.columns = _no_columns
+    monkeypatch.setattr(status_bar, "st", stub)
+    monkeypatch.setattr(status_bar, "get_task", lambda job_id: {"job_id": job_id, "type": "ai_mapping"})
+
+    status_bar._render_notification(
+        {
+            "id": "n1",
+            "job_id": "job-1",
+            "event": "completed",
+            "status": "completed",
+            "type": "ai_mapping",
+            "description": "Mapping finished",
+            "page_origin": "ai_mapping",
+            "occurred_at": "2026-07-18T10:00:00Z",
+        }
+    )
+
+
+def test_notification_bell_opens_popover_with_count(monkeypatch):
+    """The sidebar bell surfaces the retained-notification count in its label."""
+    rerun_calls: list[str] = []
+    popover_labels: list[str] = []
+    monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls, popover_labels))
+    monkeypatch.setattr(status_bar, "get_task_notifications", lambda: [])
+
+    status_bar.render_notification_bell()
+
+    assert popover_labels == ["🔔"]
+
+
+def test_status_bar_no_longer_renders_the_floating_bell(monkeypatch):
+    """Regression: the bell moved to the sidebar, so the page-level status bar
+    must not open a notification popover (which previously floated top-right)."""
+    rerun_calls: list[str] = []
+    popover_labels: list[str] = []
+    monkeypatch.setattr(status_bar, "st", _streamlit_stub(rerun_calls, popover_labels))
+    monkeypatch.setattr(status_bar, "get_active_tasks", lambda: [])
+
+    status_bar.render_task_status_bar()
+
+    assert popover_labels == []

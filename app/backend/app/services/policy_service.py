@@ -135,8 +135,9 @@ class PolicyGenerationService:
             if len(unique_invalid) > 5:
                 preview += ", …"
             warnings.append(
-                f"{len(unique_invalid)} invalid policy definition ID(s) dropped "
-                f"(not valid Azure Policy GUIDs): {preview}"
+                f"{len(unique_invalid)} policy definition ID(s) dropped — not "
+                f"valid GUIDs or not found in the Azure built-in policy catalog "
+                f"(ARM would reject them as PolicyDefinitionNotFound): {preview}"
             )
 
         unique_non_includable = sorted(set(non_includable_ids))
@@ -262,6 +263,7 @@ class PolicyGenerationService:
         self,
         mappings: List[ControlMapping],
         parameter_values: Optional[Dict[str, Dict[str, Any]]] = None,
+        catalog: Optional[Any] = None,
     ) -> tuple[
         List[PolicyDefinitionReference],
         List[PolicyDefinitionGroup],
@@ -280,9 +282,16 @@ class PolicyGenerationService:
         group names of every control it maps to (mirrors the pipeline builder).
 
         Any ``azure_policy_ids`` entry that is not a well-formed Azure Policy
-        definition GUID is dropped (it would be rejected by ARM as
-        ``PolicyDefinitionNotFound``) and returned separately for honest
-        reporting.
+        definition GUID, or that is well-formed but does **not** correspond to a
+        real Azure built-in policy definition, is dropped. Both cases are
+        rejected by ARM as ``PolicyDefinitionNotFound`` and would fail the entire
+        initiative deployment, so they are stripped here and returned separately
+        for honest reporting.
+
+        Existence is checked against the shipped Azure built-in policy catalog
+        (the same corpus the AI mapping engine draws candidates from, so any
+        legitimately-selected GUID is present). When the catalog is unavailable
+        the existence check is skipped and only GUID format is enforced.
 
         Built-ins the catalog positively classifies as non-includable (e.g.
         "System Policy") are also dropped — ARM rejects them with "can not be part
@@ -300,6 +309,7 @@ class PolicyGenerationService:
             mappings: List of control mappings
             parameter_values: Optional operator-supplied values keyed by policy
                 GUID then parameter name.
+            catalog: Optional catalog service (injected for testing)
 
         Returns:
             Tuple of (policy definition references, control groups, dropped
@@ -308,7 +318,9 @@ class PolicyGenerationService:
             parameterized built-ins)
         """
         parameter_values = parameter_values or {}
-        catalog = get_policy_catalog_service()
+        if catalog is None:
+            catalog = get_policy_catalog_service()
+        enforce_existence = bool(getattr(catalog, "available", False))
         policy_by_full_id: Dict[str, PolicyDefinitionReference] = {}
         ordered_definitions: List[PolicyDefinitionReference] = []
         groups_by_name: Dict[str, PolicyDefinitionGroup] = {}
@@ -359,6 +371,19 @@ class PolicyGenerationService:
 
                 # Bare GUID for catalog lookup (policy_id may be a full resource ID).
                 policy_guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+
+                # Strip well-formed GUIDs that are not real built-in policy
+                # definitions — ARM returns PolicyDefinitionNotFound for these
+                # and fails the whole initiative.
+                if enforce_existence and not catalog.exists(policy_guid):
+                    invalid_ids.append(policy_id)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping Azure "
+                        f"Policy definition ID '{policy_id}' — not found in the "
+                        f"Azure built-in policy catalog (would fail ARM as "
+                        f"PolicyDefinitionNotFound)"
+                    )
+                    continue
 
                 # Strip built-ins that cannot be part of a custom policy set (e.g.
                 # "System Policy"). ARM rejects them with "can not be part of a

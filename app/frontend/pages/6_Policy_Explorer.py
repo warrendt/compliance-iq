@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import init_session_state
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
@@ -24,8 +25,19 @@ init_session_state()
 render_task_status_bar()
 
 # Header
-st.title("🔍 Policy Explorer")
-st.markdown("Browse policy definitions, initiatives, and assignments in your Azure tenant")
+render_page_header(
+    "Policy explorer",
+    eyebrow="Enforce · BETA",
+    description="Browse policy definitions, initiatives, and assignments in your Azure tenant.",
+)
+st.markdown(
+    '<span style="display:inline-block;padding:2px 10px;border-radius:999px;'
+    'background:#FFF4CE;color:#7A5B00;border:1px solid #F2D98B;'
+    'font-size:0.72rem;font-weight:700;letter-spacing:0.06em;">BETA</span> '
+    '<span style="color:var(--neutral-fg-3);font-size:0.85rem;">'
+    'This feature is under active development and may not work reliably yet.</span>',
+    unsafe_allow_html=True,
+)
 st.markdown("---")
 
 # Auth check

@@ -100,7 +100,7 @@ def test_generation_reports_invalid_ids_in_warnings():
     assert response.invalid_policies == 1
     assert response.included_policies == 0
     assert any(
-        "invalid policy definition id" in w.lower() for w in response.warnings
+        "policy definition id(s) dropped" in w.lower() for w in response.warnings
     )
     assert any(INVALID_TITLE_1 in w for w in response.warnings)
 

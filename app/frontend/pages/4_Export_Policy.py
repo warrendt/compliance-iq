@@ -12,6 +12,7 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
+from utils.components import render_page_header
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -198,8 +199,11 @@ if st.session_state.generated_policy is None:
         st.warning(f"Recent generated policies could not be restored: {exc}")
 
 # Header
-st.title("📦 Export Azure Policy Initiative")
-st.markdown("Generate and download Azure Policy initiatives — MCSB and Sovereign Landing Zone")
+render_page_header(
+    "Export Azure Policy initiative",
+    eyebrow="Enforce",
+    description="Generate and download Azure Policy initiatives — MCSB and Sovereign Landing Zone.",
+)
 
 st.markdown("---")
 
@@ -207,7 +211,7 @@ st.markdown("---")
 if not st.session_state.mappings:
     st.warning("⚠️ No mappings to export. Please complete the mapping and review steps first.")
     if st.button("Go to AI Mapping"):
-        st.switch_page("pages/2_🤖_AI_Mapping.py")
+        st.switch_page("pages/2_AI_Mapping.py")
     st.stop()
 
 # Determine sovereignty status
@@ -686,16 +690,30 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                 enforce_mode,
             )
 
-        # Fetch available scopes
-        if "deploy_scopes" not in st.session_state:
+        # Fetch available scopes (cache the full response so warnings persist)
+        _reload_scopes = st.button("🔄 Reload scopes", key="reload_deploy_scopes",
+                                   help="Refresh your Azure token and re-query subscriptions and management groups")
+        if _reload_scopes:
+            try:
+                from utils.auth import force_token_refresh
+                force_token_refresh()
+            except Exception:
+                pass
+            st.session_state.pop("deploy_scopes_resp", None)
+
+        if "deploy_scopes_resp" not in st.session_state:
             with st.spinner("Loading Azure scopes..."):
                 try:
-                    st.session_state.deploy_scopes = api_client.list_deploy_scopes().get("scopes", [])
+                    st.session_state.deploy_scopes_resp = api_client.list_deploy_scopes()
                 except Exception as _e:
                     st.error(f"❌ Failed to load scopes: {_e}")
-                    st.session_state.deploy_scopes = []
+                    st.session_state.deploy_scopes_resp = {"scopes": [], "warnings": []}
 
-        _scopes = st.session_state.deploy_scopes
+        _scopes_resp = st.session_state.deploy_scopes_resp
+        _scopes = _scopes_resp.get("scopes", [])
+        for _warn in _scopes_resp.get("warnings", []):
+            st.caption(f"⚠️ {_warn}")
+
         if not _scopes:
             st.info("No subscriptions or management groups found for your account.")
         else:
@@ -990,7 +1008,7 @@ col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
     if st.button("← Back to Review", use_container_width=True):
-        st.switch_page("pages/3_✏️_Review_Edit.py")
+        st.switch_page("pages/3_Review_Edit.py")
 
 with col_action2:
     if st.button("🔄 Start New Mapping", use_container_width=True):
@@ -999,7 +1017,7 @@ with col_action2:
         st.session_state.mappings = []
         st.session_state.framework_name = ""
         st.session_state.generated_policy = None
-        st.switch_page("pages/1_📁_Upload_Controls.py")
+        st.switch_page("pages/1_Upload_Controls.py")
 
 with col_action3:
     if st.button("🏠 Go to Home", use_container_width=True):

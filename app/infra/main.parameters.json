@@ -43,6 +43,9 @@
     },
     "authTenantId": {
       "value": "${AUTH_TENANT_ID=}"
+    },
+    "frontendCustomDomain": {
+      "value": "${FRONTEND_CUSTOM_DOMAIN=}"
     }
   }
 }

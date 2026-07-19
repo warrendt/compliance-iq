@@ -5,8 +5,8 @@ from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ROOT = APP_ROOT / "frontend"
-PDF_PAGE = FRONTEND_ROOT / "pages" / "5_🚀_PDF_Pipeline.py"
-MAPPING_PAGE = FRONTEND_ROOT / "pages" / "2_🤖_AI_Mapping.py"
+PDF_PAGE = FRONTEND_ROOT / "pages" / "5_PDF_Pipeline.py"
+MAPPING_PAGE = FRONTEND_ROOT / "pages" / "2_AI_Mapping.py"
 
 
 def test_streamlit_version_supports_fragments():

@@ -15,6 +15,38 @@ os.environ.setdefault("ENABLE_AUTH", "false")
 from app.models import ControlMapping, PolicyGenerationRequest
 from app.services.policy_service import PolicyGenerationService
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _accept_all_guids(monkeypatch):
+    """Grouping is orthogonal to built-in existence; stub the catalog so every
+    well-formed placeholder GUID is treated as a real, includable built-in."""
+
+    class _AllCatalog:
+        available = True
+
+        def exists(self, name):
+            return True
+
+        def is_non_includable(self, name):
+            return False
+
+        def requires_parameters(self, name):
+            return False
+
+        def get(self, name):
+            return None
+
+        def get_required_parameters(self, name):
+            return {}
+
+    monkeypatch.setattr(
+        "app.services.policy_service.get_policy_catalog_service",
+        lambda: _AllCatalog(),
+    )
+
+
 G1 = "11111111-1111-1111-1111-111111111111"
 G2 = "22222222-2222-2222-2222-222222222222"
 G3 = "33333333-3333-3333-3333-333333333333"

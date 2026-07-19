@@ -83,6 +83,58 @@ def _on_response(response: httpx.Response) -> None:
         pass  # outside Streamlit context (e.g. tests)
 
 
+def _raise_for_status_with_detail(response: httpx.Response) -> None:
+    """Raise a clear error carrying the backend's ``detail`` on 4xx/5xx.
+
+    ``httpx.Response.raise_for_status`` surfaces only the status line (e.g.
+    "Server error '502 Bad Gateway'"), hiding the FastAPI ``{"detail": ...}``
+    body — which for deploy failures is the real ARM error (e.g.
+    ``PolicyDefinitionNotFound``). Extract it so the UI shows the true cause.
+    """
+    if response.status_code < 400:
+        return
+    detail = None
+    try:
+        body = response.json()
+        if isinstance(body, dict):
+            detail = body.get("detail")
+    except Exception:
+        detail = None
+    if detail:
+        raise RuntimeError(str(detail))
+    response.raise_for_status()
+
+
+class _SharedHTTPTransport(httpx.HTTPTransport):
+    """An ``httpx`` transport whose connection pool outlives per-request clients.
+
+    ``httpx.Client.close()`` (called when a ``with client:`` block exits) closes
+    the client's transport. We deliberately build a fresh, lightweight
+    ``httpx.Client`` per request so each call carries only the *current* user's
+    auth headers — the ``APIClient`` is a process-wide ``@st.cache_resource``
+    singleton shared across sessions, so a single mutable pooled client would
+    risk leaking one user's token onto another user's request. Sharing one
+    underlying connection pool (this transport) across those per-call clients
+    keeps TCP/TLS keep-alive reuse without that risk. Overriding ``close`` to a
+    no-op stops a finished request from tearing down the shared pool; the pool
+    is released when the process exits.
+    """
+
+    def close(self) -> None:  # keep the shared pool alive across requests
+        pass
+
+
+_shared_transport: Optional[_SharedHTTPTransport] = None
+
+
+def _get_shared_transport() -> _SharedHTTPTransport:
+    """Return the process-wide shared connection pool, creating it on first use."""
+    global _shared_transport
+    if _shared_transport is None:
+        _shared_transport = _SharedHTTPTransport()
+    return _shared_transport
+
+
 class APIClient:
     """Client for interacting with the AI Mapping Agent backend API."""
     
@@ -97,7 +149,13 @@ class APIClient:
         self.timeout = 120.0  # Default timeout (2 minutes for AI operations)
         
     def _get_client(self) -> httpx.Client:
-        """Get an HTTP client with configured timeout, auth headers, and logging."""
+        """Return a per-call HTTP client that reuses a shared connection pool.
+
+        Auth headers are resolved on every call so each request carries the
+        current user's token, while all clients share one keep-alive connection
+        pool (see :class:`_SharedHTTPTransport`) so navigation reruns no longer
+        pay a fresh TCP/TLS handshake per backend call.
+        """
         headers: Dict[str, str] = {}
         try:
             from utils.auth import get_backend_auth_headers
@@ -108,6 +166,7 @@ class APIClient:
         return httpx.Client(
             timeout=self.timeout,
             headers=headers,
+            transport=_get_shared_transport(),
             event_hooks={"response": [_on_response]},
         )
     
@@ -122,14 +181,20 @@ class APIClient:
             response.raise_for_status()
             return response.json()
     
-    def get_mcsb_controls(self) -> List[Dict[str, Any]]:
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_mcsb_controls(_self) -> List[Dict[str, Any]]:
         """Get all MCSB controls.
-        
+
+        Cached: the MCSB catalog is static reference data, so this avoids a
+        backend round-trip on every rerun/navigation. Cache keyed only on the
+        endpoint (``_self`` is excluded from the cache key by the leading
+        underscore).
+
         Returns:
             List of MCSB controls
         """
-        with self._get_client() as client:
-            response = client.get(f"{self.base_url}/api/v1/mapping/mcsb/controls")
+        with _self._get_client() as client:
+            response = client.get(f"{_self.base_url}/api/v1/mapping/mcsb/controls")
             response.raise_for_status()
             data = response.json()
             # Backend wraps the list in {"controls": [...]}
@@ -137,14 +202,15 @@ class APIClient:
                 return data["controls"]
             return data
     
-    def get_mcsb_domains(self) -> List[str]:
-        """Get all MCSB domains.
-        
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_mcsb_domains(_self) -> List[str]:
+        """Get all MCSB domains (cached static reference data).
+
         Returns:
             List of MCSB domain names
         """
-        with self._get_client() as client:
-            response = client.get(f"{self.base_url}/api/v1/mapping/mcsb/domains")
+        with _self._get_client() as client:
+            response = client.get(f"{_self.base_url}/api/v1/mapping/mcsb/domains")
             response.raise_for_status()
             data = response.json()
             if isinstance(data, dict) and "domains" in data:
@@ -366,24 +432,27 @@ class APIClient:
 
     # --- Sovereignty / SLZ endpoints ---
 
-    def get_sovereignty_summary(self) -> Dict[str, Any]:
-        """Get SLZ policy data summary."""
-        with self._get_client() as client:
-            response = client.get(f"{self.base_url}/api/v1/sovereignty/summary")
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_sovereignty_summary(_self) -> Dict[str, Any]:
+        """Get SLZ policy data summary (cached static reference data)."""
+        with _self._get_client() as client:
+            response = client.get(f"{_self.base_url}/api/v1/sovereignty/summary")
             response.raise_for_status()
             return response.json()
 
-    def get_sovereignty_objectives(self) -> List[Dict[str, Any]]:
-        """Get all sovereignty control objectives."""
-        with self._get_client() as client:
-            response = client.get(f"{self.base_url}/api/v1/sovereignty/objectives")
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_sovereignty_objectives(_self) -> List[Dict[str, Any]]:
+        """Get all sovereignty control objectives (cached static reference data)."""
+        with _self._get_client() as client:
+            response = client.get(f"{_self.base_url}/api/v1/sovereignty/objectives")
             response.raise_for_status()
             return response.json()
 
-    def get_sovereignty_archetypes(self) -> List[Dict[str, Any]]:
-        """Get SLZ archetypes."""
-        with self._get_client() as client:
-            response = client.get(f"{self.base_url}/api/v1/sovereignty/archetypes")
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_sovereignty_archetypes(_self) -> List[Dict[str, Any]]:
+        """Get SLZ archetypes (cached static reference data)."""
+        with _self._get_client() as client:
+            response = client.get(f"{_self.base_url}/api/v1/sovereignty/archetypes")
             response.raise_for_status()
             return response.json()
 
@@ -727,7 +796,7 @@ class APIClient:
         """List subscriptions and management groups visible to the caller."""
         with self._get_client() as client:
             response = client.get(f"{self.base_url}/api/v1/deploy/scopes")
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def validate_deploy(
@@ -743,7 +812,7 @@ class APIClient:
                     "initiative_body": initiative_body,
                 },
             )
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def deploy_initiative_to_azure(
@@ -771,7 +840,7 @@ class APIClient:
                 f"{self.base_url}/api/v1/deploy/initiative",
                 json=payload,
             )
-            response.raise_for_status()
+            _raise_for_status_with_detail(response)
             return response.json()
 
     def list_policy_definitions_arm(
@@ -1006,6 +1075,48 @@ class APIClient:
                 return response.json()
         except Exception:
             return []
+
+    def get_user_upload(self, upload_id: str) -> Dict[str, Any]:
+        """Fetch a single stored control set (including its parsed ``controls``).
+
+        Used by the workspace to rebuild a downloadable CSV on demand.
+
+        Returns:
+            The upload detail dict, or an empty dict on any failure.
+        """
+        try:
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/uploads/{upload_id}",
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return {}
+
+    def get_user_export(
+        self, export_id: str, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Fetch a single export artifact including its downloadable ``content``.
+
+        Args:
+            export_id: The export/artifact id.
+            session_id: Optional partition hint for an efficient point read.
+
+        Returns:
+            The export detail dict, or an empty dict on any failure.
+        """
+        try:
+            params = {"session_id": session_id} if session_id else None
+            with self._get_client() as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/user/exports/{export_id}",
+                    params=params,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return {}
 
     # ── Control comparison (diff) ─────────────────────────────────────────
 

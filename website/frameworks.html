@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supported frameworks — ComplianceIQ</title>
+  <meta name="description" content="The seven regulatory frameworks ComplianceIQ supports — SAMA, ADHICS, NCA, NDMO, and the Saudi, South African, and Oman government controls — and how each is mapped to Azure Policy and deployed as an audit-only initiative." />
+  <meta name="theme-color" content="#0d2036" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ComplianceIQ — supported frameworks" />
+  <meta property="og:description" content="Seven regional compliance frameworks mapped to Azure Policy and Microsoft Defender for Cloud." />
+  <meta property="og:image" content="assets/logo-full.png" />
+
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png" />
+  <link rel="icon" href="assets/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preload" href="styles.css" as="style" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============================== NAV ============================== -->
+  <header class="site-header" id="top">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="index.html" aria-label="ComplianceIQ home">
+        <img class="brand__mark" src="assets/logo-icon-white.png" alt="" width="34" height="38" />
+        <span class="brand__name">Compliance<span class="brand__name-accent">IQ</span></span>
+      </a>
+
+      <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Toggle navigation menu">
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+        <span class="nav__toggle-bar"></span>
+      </button>
+
+      <div class="nav__menu" id="navMenu">
+        <ul class="nav__links">
+          <li><a href="platform.html">Platform</a></li>
+          <li><a href="frameworks.html" aria-current="page">Frameworks</a></li>
+          <li><a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a></li>
+        </ul>
+        <div class="nav__actions">
+          <a class="nav__signin" data-app-link href="#">Sign in</a>
+          <a class="btn btn--primary btn--sm" data-repo-deploy href="https://github.com/warrendt/compliance-iq">Get started</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- ============================== SUBHERO ============================== -->
+    <section class="subhero">
+      <div class="subhero__inner">
+        <p class="subhero__eyebrow">Frameworks</p>
+        <h1 class="subhero__title">Seven regulatory frameworks, <span class="text-accent-light">deployment-ready</span>.</h1>
+        <p class="subhero__sub">
+          ComplianceIQ ships curated catalogs for financial, healthcare, and government standards
+          across the Gulf and Africa. Every control is mapped to Azure Policy and Microsoft Defender
+          for Cloud, then packaged as an initiative you can deploy in audit-only mode.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================== HOW THEY'RE MANAGED ============================== -->
+    <section class="section">
+      <div class="section__inner">
+        <div class="section__head">
+          <p class="section__eyebrow">Lifecycle</p>
+          <h2 class="section__title">How frameworks are managed &amp; deployed</h2>
+          <p class="section__lede">From a curated control catalog to an audit-only Azure Policy initiative in four steps.</p>
+        </div>
+
+        <div class="how__flow">
+          <article class="hcard">
+            <div class="hcard__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="40" height="40"><rect x="10" y="6" width="24" height="34" rx="3" fill="none" stroke="#10243E" stroke-width="2"/><path d="M14 16h16M14 22h16M14 28h10" stroke="#0F6CBD" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3 class="hcard__title">1. Curated catalog</h3>
+            <p class="hcard__text">Each framework maps every control to Azure Policy definition IDs, Defender for Cloud categories, and evidence examples.</p>
+          </article>
+
+          <div class="how__arrow" aria-hidden="true">→</div>
+
+          <article class="hcard">
+            <div class="hcard__icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="42" height="42"><g fill="none" stroke="#0F6CBD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M26 14a7 7 0 00-7 7 6 6 0 00-3 11 6 6 0 006 8 6 6 0 0011 2V16a5 5 0 00-7-2z"/><path d="M38 14a7 7 0 017 7 6 6 0 013 11 6 6 0 01-6 8 6 6 0 01-11 2V16a5 5 0 017-2z"/><path d="M32 16v34"/></g></svg>
+            </div>
+            <h3 class="hcard__title">2. AI mapping</h3>
+            <p class="hcard__text">Upload a new framework and the AI agent maps its controls to the Microsoft Cloud Security Benchmark and Azure guidance.</p>
+          </article>
+
+          <div class="how__arrow" aria-hidden="true">→</div>
+
+          <article class="hcard">
+            <div class="hcard__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="40" height="40"><path d="M24 5l14 8v9c0 9-6 15.5-14 18-8-2.5-14-9-14-18v-9l14-8z" fill="none" stroke="#0F6CBD" stroke-width="2" stroke-linejoin="round"/><path d="M17 24l5 5 9-10" fill="none" stroke="#10243E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3 class="hcard__title">3. Deployable initiative</h3>
+            <p class="hcard__text">Mappings become an Azure Policy set definition in the <code>framework/</code> directory, with every GUID validated against live Azure data.</p>
+          </article>
+
+          <div class="how__arrow" aria-hidden="true">→</div>
+
+          <article class="hcard hcard--accent">
+            <div class="hcard__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="40" height="40"><path d="M8 26l6 6 12-16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 30l4 2 12-16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></svg>
+            </div>
+            <h3 class="hcard__title">4. Audit-first rollout</h3>
+            <p class="hcard__text">Initiatives deploy in <strong>DoNotEnforce</strong> mode and report compliance in Microsoft Defender for Cloud. No blocking, no surprises.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== FRAMEWORK LIST ============================== -->
+    <section class="section section--soft">
+      <div class="section__inner">
+        <div class="section__head">
+          <p class="section__eyebrow">Catalog</p>
+          <h2 class="section__title">The seven supported frameworks</h2>
+          <p class="section__lede">Region-specific standards, each with a ready-made policy initiative.</p>
+        </div>
+
+        <ul class="fwlist">
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="sama">SAMA</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">SAMA Cybersecurity Framework</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Saudi Arabia</span>
+                  <span class="chip chip--sector">Financial</span>
+                  <span class="chip chip--count">48 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">The Saudi Central Bank (SAMA) Cyber Security Framework for regulated banks, insurers, and financial-market institutions.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="adhics">ADHICS</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">Abu Dhabi Healthcare Information &amp; Cyber Security v2</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Abu Dhabi</span>
+                  <span class="chip chip--sector">Healthcare</span>
+                  <span class="chip chip--count">50 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">Abu Dhabi's Healthcare Information and Cyber Security Standard (v2) governing protection of health-sector information systems and data.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="ksa">KSA</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">Saudi Arabia Government Cloud Security Controls</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Saudi Arabia</span>
+                  <span class="chip chip--sector">Government</span>
+                  <span class="chip chip--count">58 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">Consolidated Saudi government cloud security controls spanning national cybersecurity and public-sector cloud requirements.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="ndmo">NDMO</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">NDMO Data Management &amp; Personal Data Protection</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Saudi Arabia</span>
+                  <span class="chip chip--sector">Data governance</span>
+                  <span class="chip chip--count">38 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">Saudi National Data Management Office standards covering data management and personal data protection across 15 control domains.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="nca">NCA</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">NCA Critical Systems Cybersecurity Controls (CSCC)</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Saudi Arabia</span>
+                  <span class="chip chip--sector">Government / CNI</span>
+                  <span class="chip chip--count">49 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">Saudi National Cybersecurity Authority Critical Systems Cybersecurity Controls (CSCC-1:2019) for critical national infrastructure.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="rsa">RSA</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">South African Government Cloud Security Controls</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">South Africa</span>
+                  <span class="chip chip--sector">Government</span>
+                  <span class="chip chip--count">56 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">South African government cloud security controls covering national digital-governance and public-sector data requirements.</p>
+          </li>
+
+          <li class="fwrow">
+            <div class="fwrow__head">
+              <span class="fwrow__mark" data-fw="oman">OMAN</span>
+              <div class="fwrow__titles">
+                <h3 class="fwrow__title">Oman Government Cloud Security Controls</h3>
+                <div class="fwrow__chips">
+                  <span class="chip chip--region">Oman</span>
+                  <span class="chip chip--sector">Government</span>
+                  <span class="chip chip--count">53 policies</span>
+                </div>
+              </div>
+            </div>
+            <p class="fwrow__desc">Oman Government cloud security controls based on the Cyber Defense Centre (CDC) cloud security framework.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================== DEPLOYMENT IN PRACTICE ============================== -->
+    <section class="section">
+      <div class="section__inner section__inner--narrow">
+        <div class="section__head">
+          <p class="section__eyebrow">In practice</p>
+          <h2 class="section__title">Deploy every initiative in one command</h2>
+          <p class="section__lede">The <code>framework/</code> directory holds deployable policy JSON for all seven frameworks, plus tooling to keep GUIDs accurate.</p>
+        </div>
+
+        <div class="codecard">
+          <div class="codecard__bar" aria-hidden="true">
+            <span class="codecard__dot"></span><span class="codecard__dot"></span><span class="codecard__dot"></span>
+            <span class="codecard__file">framework/</span>
+          </div>
+          <pre class="code"><code><span class="c-comment"># Deploy all 7 initiatives to your Azure subscription</span>
+cd framework/
+./DeployAllInitiatives.ps1 -TenantId &lt;tenant-id&gt; -SubscriptionId &lt;subscription-id&gt;
+
+<span class="c-comment"># Pre-flight: validate every policy GUID against live Azure data</span>
+python3 validate_guids.py</code></pre>
+        </div>
+
+        <div class="notes">
+          <div class="note">
+            <span class="note__ico" aria-hidden="true">🛡️</span>
+            <p><strong>Audit-only by default.</strong> Initiatives are assigned in <code>DoNotEnforce</code> mode: they evaluate resources and report compliance state, but never block deployments or trigger auto-remediation. Safe for production subscriptions.</p>
+          </div>
+          <div class="note">
+            <span class="note__ico" aria-hidden="true">✓</span>
+            <p><strong>GUID validation built in.</strong> <code>validate_guids.py</code> checks every policy GUID against the full set of Azure built-in policies, and <code>DeployAllInitiatives.ps1</code> runs it automatically as a pre-flight step before each deployment.</p>
+          </div>
+          <div class="note">
+            <span class="note__ico" aria-hidden="true">◱</span>
+            <p><strong>Monitored in Defender for Cloud.</strong> Once deployed, each initiative surfaces its compliance posture in Microsoft Defender for Cloud, ready for audit evidence and reporting.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== CTA BAND ============================== -->
+    <section class="ctaband">
+      <div class="ctaband__inner">
+        <div>
+          <h2 class="ctaband__title">Map your own framework</h2>
+          <p class="ctaband__text">Bring a PDF or control spreadsheet and let the AI agent do the mapping.</p>
+        </div>
+        <div class="ctaband__actions">
+          <a class="btn btn--primary" data-app-link href="#">Start mapping</a>
+          <a class="btn btn--ghost" data-repo-link href="https://github.com/warrendt/compliance-iq">Browse the catalogs</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================== FOOTER ============================== -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <div class="site-footer__brand">
+        <a class="site-footer__logo" href="index.html" aria-label="ComplianceIQ home">
+          <img src="assets/logo-icon-white.png" alt="" width="30" height="34" />
+          <span class="brand__name">Compliance<span class="brand__name-accent">IQ</span></span>
+        </a>
+        <p class="site-footer__tag">Azure-native. AI-powered. Audit-ready.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <a href="platform.html">Platform</a>
+        <a href="frameworks.html">Frameworks</a>
+        <a data-repo-link href="https://github.com/warrendt/compliance-iq">Resources</a>
+        <a data-app-link href="#">Sign in</a>
+      </nav>
+    </div>
+    <p class="site-footer__legal">&copy; <span id="year"></span> ComplianceIQ. All rights reserved.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

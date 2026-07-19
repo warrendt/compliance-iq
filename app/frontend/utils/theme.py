@@ -14,49 +14,77 @@ The public helpers keep their historical names (``inject_azure_theme``,
 ``inject_fluent_theme`` is provided as a forward-looking alias.
 """
 
+import base64
+from functools import lru_cache
+from pathlib import Path
+
 import streamlit as st
 
+# ── Brand assets ───────────────────────────────────────────────────────────
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+_LOGO_ICON_PATH = _ASSETS_DIR / "logo-icon.png"
+_LOGO_FULL_PATH = _ASSETS_DIR / "logo.png"
 
-# ── Fluent 2 design tokens + component styling ─────────────────────────────
+
+@lru_cache(maxsize=2)
+def _logo_data_uri(icon: bool = True) -> str:
+    """Return a brand logo as a base64 PNG data URI, or ``""`` if missing."""
+    path = _LOGO_ICON_PATH if icon else _LOGO_FULL_PATH
+    try:
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except OSError:
+        return ""
+
+
+# ── ComplianceIQ brand design tokens + component styling ───────────────────
 FLUENT_CSS = """
 <style>
-    /* ───────────── Fluent 2 design tokens ───────────── */
+    /* ───────────── ComplianceIQ brand design tokens ───────────── */
     :root {
-        /* Brand ramp (Microsoft blue) */
-        --brand-primary: #0F6CBD;          /* colorBrandBackground */
-        --brand-hover:   #115EA3;          /* colorBrandBackgroundHover */
-        --brand-pressed: #0E4775;          /* colorBrandBackgroundPressed */
-        --brand-selected:#0F548C;
-        --brand-tint:    #EBF3FC;          /* colorBrandBackground2 (subtle) */
-        --brand-tint-2:  #CFE4FA;
-        --brand-foreground: #0F6CBD;       /* colorBrandForegroundLink */
+        /* ComplianceIQ shell navy (governance / structure / strong text) */
+        --brand-navy:    #0B2545;          /* organising shell colour */
+        --brand-navy-2:  #12315A;          /* navy hover / raised navy */
+        --brand-navy-3:  #163459;          /* navy accent */
+
+        /* Intelligence blue ramp (action / AI / selected state) */
+        --brand-primary: #2563EB;          /* primary action / AI mapping */
+        --brand-hover:   #1D4FD7;          /* action hover */
+        --brand-pressed: #1A44BB;          /* action pressed */
+        --brand-selected:#1D4FD7;
+        --brand-tint:    #EAF3FF;          /* light-blue selected surface */
+        --brand-tint-2:  #D6E6FF;
+        --brand-foreground: #2563EB;       /* link colour */
 
         /* Neutral ramp (structural majority) */
-        --neutral-fg-1:  #242424;          /* colorNeutralForeground1 */
-        --neutral-fg-2:  #424242;          /* colorNeutralForeground2 */
-        --neutral-fg-3:  #616161;          /* colorNeutralForeground3 */
-        --neutral-fg-disabled: #BDBDBD;
-        --neutral-bg-1:  #FFFFFF;          /* canvas */
-        --neutral-bg-2:  #FAFAFA;          /* layer / nav */
-        --neutral-bg-3:  #F5F5F5;          /* subtle layer */
-        --neutral-bg-4:  #F0F0F0;
-        --neutral-stroke-1: #D1D1D1;       /* colorNeutralStroke1 */
-        --neutral-stroke-2: #E0E0E0;       /* colorNeutralStroke2 */
-        --neutral-stroke-subtle: #EBEBEB;
+        --neutral-fg-1:  #0B2545;          /* strong text = brand navy */
+        --neutral-fg-2:  #33404F;          /* body text */
+        --neutral-fg-3:  #52606D;          /* muted / supporting text */
+        --neutral-fg-disabled: #A9B4C0;
+        --neutral-bg-1:  #FFFFFF;          /* card / panel surface */
+        --neutral-bg-2:  #F1F5FA;          /* layer / nav */
+        --neutral-bg-3:  #F8FAFC;          /* app canvas / subtle layer */
+        --neutral-bg-4:  #EAF0F7;
+        --neutral-stroke-1: #C6D2E1;       /* input / strong divider */
+        --neutral-stroke-2: #D9E2EC;       /* card / divider outline */
+        --neutral-stroke-subtle: #E6EDF4;
+
+        /* App canvas (page background behind white cards) */
+        --app-canvas:    #F8FAFC;
 
         /* Shared / semantic status colors */
-        --status-success:    #0E700E;
-        --status-success-bg: #E7F5E7;
-        --status-success-stroke: #9FD89F;
-        --status-warning:    #BC4B09;
-        --status-warning-bg: #FCF4D6;
-        --status-warning-stroke: #F2D98E;
-        --status-danger:     #C50F1F;
-        --status-danger-bg:  #FDE7E9;
-        --status-danger-stroke: #F1A9AF;
-        --status-info:       #0F6CBD;
-        --status-info-bg:    #EBF3FC;
-        --status-info-stroke: #B4D6FA;
+        --status-success:    #15803D;      /* verified / high confidence */
+        --status-success-bg: #E7F6ED;
+        --status-success-stroke: #A7DFBE;
+        --status-warning:    #B45309;      /* needs review */
+        --status-warning-bg: #FDF1E3;
+        --status-warning-stroke: #F2D0A0;
+        --status-danger:     #B42318;      /* control gap / blocking error */
+        --status-danger-bg:  #FDECEA;
+        --status-danger-stroke: #F3B4AE;
+        --status-info:       #2563EB;      /* azure policy / info */
+        --status-info-bg:    #EAF3FF;
+        --status-info-stroke: #B9D3FB;
 
         /* Shape — corner radii (small, Fluent uses 4-8px) */
         --radius-sm: 3px;
@@ -84,7 +112,7 @@ FLUENT_CSS = """
         font-family: var(--font-family);
         color: var(--neutral-fg-1);
     }
-    .stApp { background-color: var(--neutral-bg-1); }
+    .stApp { background-color: var(--app-canvas); }
 
     /* Type ramp — keep corners crisp, Fluent weights */
     h1 { font-size: 1.75rem; font-weight: 600; line-height: 2.25rem;
@@ -96,20 +124,25 @@ FLUENT_CSS = """
     h4, h5, h6 { font-weight: 600; color: var(--neutral-fg-2); }
     p, li, label, .stMarkdown { color: var(--neutral-fg-2); }
 
-    /* ───────────── Suite header (M365 top bar) ───────────── */
+    /* ───────────── Suite header (ComplianceIQ brand bar) ───────────── */
     header[data-testid="stHeader"] {
-        background: var(--brand-primary);
+        background: var(--brand-navy);
         height: var(--suite-header-height);
         box-shadow: var(--elevation-2);
     }
     header[data-testid="stHeader"]::before {
-        content: "\\01F6E1\\FE0F  ComplianceIQ";
+        content: "ComplianceIQ";
         position: absolute;
         left: 1rem;
         top: 0;
         height: var(--suite-header-height);
         display: flex;
         align-items: center;
+        padding-left: 28px;
+        background-image: url("__LOGO_ICON_URI__");
+        background-repeat: no-repeat;
+        background-position: left center;
+        background-size: 20px 20px;
         color: #FFFFFF;
         font-family: var(--font-family);
         font-size: 0.95rem;
@@ -152,6 +185,47 @@ FLUENT_CSS = """
         background: var(--neutral-bg-2);
         border-right: 1px solid var(--neutral-stroke-2);
     }
+    /* Brand lockup: compact icon + wordmark (replaces the raster gradient tile) */
+    .ciq-brand {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.15rem 0.1rem 0.35rem;
+    }
+    .ciq-brand-mark {
+        width: 38px; height: 38px; flex: 0 0 38px;
+        border-radius: 9px; display: block;
+        box-shadow: var(--elevation-1, 0 1px 2px rgba(11,37,69,0.18));
+    }
+    .ciq-brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+    .ciq-brand-name {
+        font-family: var(--font-family); font-weight: 700; font-size: 1.05rem;
+        color: var(--neutral-fg-1); letter-spacing: -0.01em;
+    }
+    .ciq-brand-tag {
+        font-size: 0.68rem; color: var(--neutral-fg-3);
+        letter-spacing: 0.01em; margin-top: 1px;
+    }
+    /* Keep the brand lockup and the notification bell on ONE line. Streamlit
+       columns wrap-stack vertically inside the narrow sidebar, which is what
+       dropped the bell under the heading; force the brand row to never wrap and
+       pin the bell hard against the right edge, aligned with the heading. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div {
+        min-width: 0;
+    }
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) > div:last-child {
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    /* Compact the bell trigger so it reads as an icon button, not a wide bar. */
+    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"]:has(.ciq-brand) [data-testid="stPopover"] button {
+        padding: 0.2rem 0.45rem; min-height: 0;
+    }
     [data-testid="stSidebar"] * {
         color: var(--neutral-fg-2);
     }
@@ -166,6 +240,9 @@ FLUENT_CSS = """
         margin: 0.6rem 0;
     }
     /* Nav items (st.page_link) — Fluent list rows with selected accent bar */
+    [data-testid="stSidebar"] [data-testid="stPageLink"] {
+        margin: 2px 0;
+    }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
         border-radius: var(--radius-md);
@@ -399,6 +476,107 @@ FLUENT_CSS = """
         background: var(--status-info-bg);    border-color: var(--status-info-stroke); }
     .fluent-badge.neutral { color: var(--neutral-fg-2);
         background: var(--neutral-bg-3);      border-color: var(--neutral-stroke-2); }
+    /* Optional leading status dot inside a badge */
+    .fluent-badge .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; display: inline-block;
+    }
+
+    /* ───────────── Shared components (ComplianceIQ primitives) ───────────── */
+    /* Page header: eyebrow → title → description */
+    .ciq-page-header { margin: 0 0 1rem 0; }
+    .ciq-eyebrow {
+        display: inline-block;
+        font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em;
+        text-transform: uppercase; color: var(--brand-primary);
+        margin-bottom: 0.4rem;
+    }
+    .ciq-page-title {
+        font-size: 1.9rem; font-weight: 600; line-height: 2.3rem;
+        color: var(--neutral-fg-1); letter-spacing: -0.01em; margin: 0 0 0.3rem 0;
+    }
+    .ciq-page-desc {
+        font-size: 0.95rem; color: var(--neutral-fg-3);
+        margin: 0; max-width: 68ch; line-height: 1.5;
+    }
+
+    /* Section heading */
+    .ciq-section-heading {
+        font-size: 1.05rem; font-weight: 600; color: var(--neutral-fg-1);
+        margin: 1.5rem 0 0.6rem 0; padding-bottom: 0.35rem;
+        border-bottom: 1px solid var(--neutral-stroke-2);
+    }
+
+    /* Lifecycle stepper: Govern → Map → Enforce → Report */
+    .ciq-stepper {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 0.4rem; margin: 0 0 1.25rem 0;
+    }
+    .ciq-step {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.3rem 0.7rem; border-radius: var(--radius-pill);
+        font-size: 0.8rem; font-weight: 600;
+        background: var(--neutral-bg-3); color: var(--neutral-fg-3);
+        border: 1px solid var(--neutral-stroke-2);
+    }
+    .ciq-step .num {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%;
+        font-size: 0.7rem; background: var(--neutral-stroke-2);
+        color: var(--neutral-fg-2);
+    }
+    .ciq-step.active {
+        background: var(--brand-tint); color: var(--brand-primary);
+        border-color: var(--status-info-stroke);
+    }
+    .ciq-step.active .num { background: var(--brand-primary); color: #FFFFFF; }
+    .ciq-step.done {
+        background: #EAF0F7; color: var(--brand-navy);
+        border-color: var(--neutral-stroke-2);
+    }
+    .ciq-step.done .num { background: var(--brand-navy); color: #FFFFFF; }
+    .ciq-step-sep { color: var(--neutral-fg-disabled); font-size: 0.9rem; }
+
+    /* Metric / KPI card */
+    .ciq-metric-card {
+        background: var(--neutral-bg-1); border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg); padding: 1rem 1.1rem;
+        box-shadow: var(--elevation-2); height: 100%;
+    }
+    .ciq-metric-label {
+        font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+        text-transform: uppercase; color: var(--neutral-fg-3); margin: 0;
+    }
+    .ciq-metric-value {
+        font-size: 2rem; font-weight: 600; line-height: 2.3rem;
+        color: var(--neutral-fg-1); margin: 0.2rem 0;
+    }
+    .ciq-metric-sub { font-size: 0.82rem; color: var(--neutral-fg-3); margin: 0; }
+
+    /* Selection card (framework / platform choices) */
+    .ciq-select-card {
+        background: var(--neutral-bg-1); border: 1px solid var(--neutral-stroke-2);
+        border-radius: var(--radius-lg); padding: 1rem 1.1rem;
+        box-shadow: var(--elevation-2); height: 100%;
+    }
+    .ciq-select-card.selected {
+        border-color: var(--brand-primary); background: var(--brand-tint);
+        box-shadow: 0 0 0 1px var(--brand-primary), var(--elevation-4);
+    }
+    .ciq-select-title {
+        font-size: 1rem; font-weight: 600; color: var(--neutral-fg-1);
+        margin: 0 0 0.25rem 0;
+    }
+    .ciq-select-desc { font-size: 0.85rem; color: var(--neutral-fg-3); margin: 0; }
+
+    /* Empty state */
+    .ciq-empty {
+        text-align: center; padding: 2.5rem 1.5rem;
+        border: 1px dashed var(--neutral-stroke-1); border-radius: var(--radius-lg);
+        background: var(--neutral-bg-3); color: var(--neutral-fg-3);
+    }
+    .ciq-empty h4 { color: var(--neutral-fg-1); margin: 0 0 0.4rem 0; }
+    .ciq-empty p { margin: 0; font-size: 0.9rem; }
 
     /* ───────────── Links ───────────── */
     a { color: var(--brand-foreground); }
@@ -422,8 +600,9 @@ FLUENT_CSS = """
 
 
 def inject_fluent_theme():
-    """Inject the Microsoft 365 / Fluent 2 themed CSS into the current page."""
-    st.markdown(FLUENT_CSS, unsafe_allow_html=True)
+    """Inject the ComplianceIQ brand-themed CSS into the current page."""
+    css = FLUENT_CSS.replace("__LOGO_ICON_URI__", _logo_data_uri(icon=True))
+    st.markdown(css, unsafe_allow_html=True)
 
 
 # Backwards-compatible alias — pages import ``inject_azure_theme``.
@@ -434,22 +613,49 @@ def inject_azure_theme():
 
 def render_sidebar():
     """Render a consistent Fluent-styled left navigation across all pages."""
+    from components.task_status_bar import render_notification_bell
+
     with st.sidebar:
-        st.markdown("### 🛡️ ComplianceIQ")
-        st.caption("Compliance · Microsoft 365 & Azure")
+        _icon_uri = _logo_data_uri(icon=True)
+        # Brand lockup and the notification bell share one row so the bell sits
+        # inline with the heading on the right edge of the sidebar.
+        brand_col, bell_col = st.columns([0.78, 0.22], vertical_alignment="center")
+        with brand_col:
+            if _icon_uri:
+                st.markdown(
+                    # Inline styles mirror the .ciq-brand* rules so the lockup
+                    # lays out correctly on the very first paint, before the
+                    # injected stylesheet parses (prevents the brief flash where
+                    # the name and tagline render run-together on one line).
+                    '<div class="ciq-brand" style="display:flex;align-items:center;gap:0.6rem;">'
+                    f'<img class="ciq-brand-mark" src="{_icon_uri}" alt="ComplianceIQ" '
+                    'width="38" height="38" decoding="sync" '
+                    'style="width:38px;height:38px;flex:0 0 38px;border-radius:8px;" />'
+                    '<div class="ciq-brand-text" style="display:flex;flex-direction:column;line-height:1.15;min-width:0;">'
+                    '<span class="ciq-brand-name" style="display:block;font-weight:700;">ComplianceIQ</span>'
+                    '<span class="ciq-brand-tag" style="display:block;font-size:0.72rem;opacity:0.7;">'
+                    'Compliance · Microsoft 365 &amp; Azure</span>'
+                    '</div></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown("### ComplianceIQ")
+                st.caption("Compliance · Microsoft 365 & Azure")
+        with bell_col:
+            render_notification_bell()
         st.markdown("---")
 
         # ── Clickable navigation ──
-        st.page_link("app.py", label="🏠 Home", icon=None)
-        st.page_link("pages/1_📁_Upload_Controls.py", label="📁 Upload Controls")
-        st.page_link("pages/2_🤖_AI_Mapping.py", label="🤖 AI Mapping")
-        st.page_link("pages/3_✏️_Review_Edit.py", label="✏️ Review & Edit")
-        st.page_link("pages/4_📦_Export_Policy.py", label="📦 Export Policy")
-        st.page_link("pages/5_🚀_PDF_Pipeline.py", label="🚀 PDF Extraction")
-        st.page_link("pages/6_🔍_Policy_Explorer.py", label="🔍 Policy Explorer")
-        st.page_link("pages/8_🔀_Diff_Compare.py", label="🎯 Gap Analysis")
-        st.page_link("pages/9_🗂_Version_History.py", label="🗂 Version History")
-        st.page_link("pages/7_👤_Profile.py", label="🧭 My Workspace")
+        st.page_link("app.py", label="Home", icon=None)
+        st.page_link("pages/1_Upload_Controls.py", label="Upload Controls")
+        st.page_link("pages/5_PDF_Pipeline.py", label="PDF Extraction")
+        st.page_link("pages/2_AI_Mapping.py", label="AI Mapping")
+        st.page_link("pages/3_Review_Edit.py", label="Review & Edit")
+        st.page_link("pages/4_Export_Policy.py", label="Export Policy")
+        st.page_link("pages/6_Policy_Explorer.py", label="Policy Explorer · BETA")
+        st.page_link("pages/8_Diff_Compare.py", label="Gap Analysis")
+        st.page_link("pages/9_Version_History.py", label="Version History")
+        st.page_link("pages/7_Profile.py", label="My Workspace")
         st.markdown("---")
 
         # ── Progress tracker ──
@@ -465,7 +671,7 @@ def render_sidebar():
         total_steps = 3
         pct = int(steps_done / total_steps * 100)
 
-        st.markdown("#### 📊 Progress")
+        st.markdown("#### Progress")
         st.progress(pct / 100, text=f"{pct}% complete")
 
         step_icons = [
@@ -474,34 +680,27 @@ def render_sidebar():
             ("Generate policy", bool(st.session_state.get("generated_policy"))),
         ]
         for label, done in step_icons:
-            st.markdown(f"{'✅' if done else '⬜'} {label}")
+            st.markdown(f"- {label} — **{'Done' if done else 'To do'}**")
 
         st.markdown("---")
 
         # ── Selected platform ──
-        _platform_icons = {
-            "azure_defender": "🛡️",
-            "microsoft_365": "📧",
-            "microsoft_purview": "🔍",
-        }
         _platform_display = st.session_state.get("platform_display_name", "")
-        _platform_id = st.session_state.get("selected_platform", "azure_defender")
         if _platform_display:
-            _icon = _platform_icons.get(_platform_id, "🎯")
-            st.caption(f"{_icon} **{_platform_display}**")
+            st.caption(f"**{_platform_display}**")
 
         # ── Session metrics ──
         if fw:
-            st.info(f"🗂️ **{fw}**")
+            st.info(f"**{fw}**")
         col1, col2 = st.columns(2)
         col1.metric("Controls", len(controls))
         col2.metric("Mappings", len(mappings))
 
         # ── Developer tools ──
         st.markdown("---")
-        st.checkbox("📡 Show API Logs", key="show_api_logs",
+        st.checkbox("Show API Logs", key="show_api_logs",
                      help="Show request/response log panel at the bottom of each page")
-        st.checkbox("📋 Show Backend Logs", key="show_backend_logs",
+        st.checkbox("Show Backend Logs", key="show_backend_logs",
                      help="Show live application logs from the backend container")
         if st.session_state.get("show_backend_logs"):
             st.selectbox(
@@ -513,7 +712,6 @@ def render_sidebar():
             )
 
         st.markdown("---")
-        st.caption("Made by **Warren DT**")
 
         # ── Authenticated user ──
         try:
@@ -522,7 +720,7 @@ def render_sidebar():
             user = get_current_user()
             if user:
                 st.markdown("---")
-                st.markdown(f"👤 **{user.display_name}**")
+                st.markdown(f"**{user.display_name}**")
                 st.caption(user.email)
                 if "easy_auth_user" in st.session_state:
                     st.link_button(
@@ -538,12 +736,15 @@ def render_sidebar():
 
 
 def render_footer():
-    """Render the page footer with branding."""
+    """Render the product footer with support / privacy / Azure links."""
     st.markdown(
         '<div class="wdt-footer">'
-        "<strong>ComplianceIQ — AI Control Mapping Agent</strong><br>"
-        "Made by <strong>Warren DT</strong> &nbsp;|&nbsp; "
-        "Powered by Azure OpenAI &bull; MCSB &bull; Sovereign Landing Zone"
+        "<strong>ComplianceIQ</strong> — AI control mapping for Microsoft 365 &amp; Azure"
+        "<br>"
+        '<a href="/">Product</a> &nbsp;&bull;&nbsp; '
+        '<a href="mailto:support@complianceiq.app">Support</a> &nbsp;&bull;&nbsp; '
+        '<a href="/">Privacy</a> &nbsp;&bull;&nbsp; '
+        '<a href="https://learn.microsoft.com/azure/governance/policy/">Azure Policy</a>'
         "</div>",
         unsafe_allow_html=True,
     )

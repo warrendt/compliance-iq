@@ -303,6 +303,31 @@ class PolicyCatalogService:
         schema = entry.get("required_parameters") or {}
         return dict(schema) if isinstance(schema, dict) else {}
 
+    def exists(self, name: str) -> bool:
+        """Return True if *name* is a real Azure built-in policy definition GUID.
+
+        Accepts a bare GUID or a full
+        ``/providers/Microsoft.Authorization/policyDefinitions/<guid>`` id and
+        checks only the trailing definition segment.
+        """
+        if not name:
+            return False
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self.get(segment) is not None
+
+    @property
+    def available(self) -> bool:
+        """True when a non-empty built-in catalog is loaded.
+
+        Existence checks (``exists``) are only meaningful when the catalog
+        actually loaded; if the snapshot is missing/empty this is ``False`` so
+        callers can fall back to format-only validation rather than dropping
+        every policy reference.
+        """
+        if not self._loaded:
+            self.load()
+        return len(self._definitions) > 0
+
     @property
     def count(self) -> int:
         if not self._loaded:

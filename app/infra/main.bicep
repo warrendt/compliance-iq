@@ -46,6 +46,9 @@ param authTenantId string = ''
 @description('Entra ID app registration client secret for Easy Auth token store and delegated ARM tokens')
 param authClientSecret string = ''
 
+@description('Optional custom domain to bind to the frontend app (e.g. app.compliance-iq.net). Leave empty to skip. Requires the CNAME + asuid TXT records to already exist in DNS before deployment.')
+param frontendCustomDomain string = ''
+
 @description('Developer public IP address for resource firewall rules (empty to keep fully private)')
 param devPublicIpAddress string = ''
 
@@ -191,6 +194,19 @@ module containerAppsEnvironment './core/container-apps-environment.bicep' = {
   }
 }
 
+// Free managed certificate for the frontend custom domain (only when set).
+// DNS records (CNAME + asuid TXT on Cloudflare) must exist before deploying.
+module frontendCert './core/frontend-custom-domain.bicep' = if (!empty(frontendCustomDomain)) {
+  name: 'frontend-cert'
+  scope: resourceGroup
+  params: {
+    environmentName: containerAppsEnvironment.outputs.name
+    location: location
+    tags: tags
+    customDomain: frontendCustomDomain
+  }
+}
+
 // Backend Container App
 module backendApp './core/container-app.bicep' = {
   name: 'backend-app'
@@ -281,6 +297,14 @@ module frontendApp './core/container-app.bicep' = {
     authClientId: authClientId
     authTenantId: authTenantId
     authClientSecret: authClientSecret
+    unauthenticatedClientAction: 'AllowAnonymous'
+    customDomains: !empty(frontendCustomDomain) ? [
+      {
+        name: frontendCustomDomain
+        bindingType: 'SniEnabled'
+        certificateId: frontendCert.outputs.certificateId
+      }
+    ] : []
     environmentVariables: [
       {
         name: 'BACKEND_URL'
@@ -388,6 +412,7 @@ output COSMOS_DB_DATABASE_NAME string = cosmos.outputs.databaseName
 
 output BACKEND_URI string = backendApp.outputs.uri
 output FRONTEND_URI string = frontendApp.outputs.uri
+output FRONTEND_CUSTOM_DOMAIN_URI string = !empty(frontendCustomDomain) ? 'https://${frontendCustomDomain}' : ''
 
 output SERVICE_BACKEND_NAME string = backendApp.outputs.name
 output SERVICE_FRONTEND_NAME string = frontendApp.outputs.name

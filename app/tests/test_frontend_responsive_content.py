@@ -4,11 +4,11 @@ from pathlib import Path
 
 
 APP_ROOT = Path(__file__).resolve().parents[1]
-UPLOAD_PAGE = APP_ROOT / "frontend" / "pages" / "1_📁_Upload_Controls.py"
-MAPPING_PAGE = APP_ROOT / "frontend" / "pages" / "2_🤖_AI_Mapping.py"
-POLICY_EXPLORER_PAGE = APP_ROOT / "frontend" / "pages" / "6_🔍_Policy_Explorer.py"
-EXPORT_POLICY_PAGE = APP_ROOT / "frontend" / "pages" / "4_📦_Export_Policy.py"
-REVIEW_EDIT_PAGE = APP_ROOT / "frontend" / "pages" / "3_✏️_Review_Edit.py"
+UPLOAD_PAGE = APP_ROOT / "frontend" / "pages" / "1_Upload_Controls.py"
+MAPPING_PAGE = APP_ROOT / "frontend" / "pages" / "2_AI_Mapping.py"
+POLICY_EXPLORER_PAGE = APP_ROOT / "frontend" / "pages" / "6_Policy_Explorer.py"
+EXPORT_POLICY_PAGE = APP_ROOT / "frontend" / "pages" / "4_Export_Policy.py"
+REVIEW_EDIT_PAGE = APP_ROOT / "frontend" / "pages" / "3_Review_Edit.py"
 
 
 def test_upload_example_uses_a_responsive_dataframe():
@@ -42,7 +42,7 @@ def test_mapping_only_offers_cancellation_for_an_active_job():
 
 
 def test_pdf_clear_cancels_all_active_backend_jobs_and_mapping_shows_safe_limit():
-    pdf_source = (APP_ROOT / "frontend" / "pages" / "5_🚀_PDF_Pipeline.py").read_text()
+    pdf_source = (APP_ROOT / "frontend" / "pages" / "5_PDF_Pipeline.py").read_text()
     mapping_source = MAPPING_PAGE.read_text()
 
     assert 'get_tasks_by_type("pdf_extraction")' in pdf_source

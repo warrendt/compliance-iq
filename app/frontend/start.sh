@@ -1,29 +1,32 @@
 #!/bin/sh
-set -u
+set -eu
 
 mkdir -p /tmp/nginx-proxy-temp /tmp/nginx-client-temp /tmp/nginx-fastcgi-temp /tmp/nginx-uwsgi-temp /tmp/nginx-scgi-temp
 
-# Supervise Streamlit. nginx runs in the foreground as PID 1, so if the
-# Streamlit process ever exits the container would otherwise stay "healthy"
-# (nginx alive) while every request proxied to 127.0.0.1:8502 returns 502/404
-# indefinitely, recoverable only by a manual redeploy. Restarting Streamlit
-# whenever it exits keeps the app self-healing: users see a brief reconnect
-# instead of a permanently wedged container.
-run_streamlit() {
+# Supervise Streamlit: nginx (foreground) proxies to 127.0.0.1:8502, so if the
+# Streamlit process ever exits nginx would otherwise serve 502s forever. This
+# loop relaunches Streamlit within ~1s of any exit, making the frontend
+# self-heal instead of getting stuck behind a permanent "Connection error".
+streamlit_pidfile=/tmp/streamlit.pid
+
+streamlit_supervisor() {
     while true; do
-        echo "[start.sh] starting Streamlit on 127.0.0.1:8502"
-        streamlit run app.py --server.port=8502 --server.address=127.0.0.1
-        status=$?
-        echo "[start.sh] Streamlit exited (status $status); restarting in 2s" >&2
-        sleep 2
+        echo "[start.sh] launching Streamlit on 127.0.0.1:8502"
+        streamlit run app.py --server.port=8502 --server.address=127.0.0.1 &
+        child=$!
+        echo "$child" > "$streamlit_pidfile"
+        wait "$child" || true
+        echo "[start.sh] Streamlit exited; restarting in 1s" >&2
+        sleep 1
     done
 }
 
-run_streamlit &
-streamlit_supervisor_pid=$!
+streamlit_supervisor &
+supervisor_pid=$!
 
 cleanup() {
-    kill "$streamlit_supervisor_pid" 2>/dev/null || true
+    kill "$supervisor_pid" 2>/dev/null || true
+    [ -f "$streamlit_pidfile" ] && kill "$(cat "$streamlit_pidfile")" 2>/dev/null || true
 }
 
 trap cleanup INT TERM EXIT

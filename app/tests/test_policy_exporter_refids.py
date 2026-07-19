@@ -12,8 +12,40 @@ os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://dummy.openai.azure.com/"
 os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt")
 os.environ.setdefault("ENABLE_AUTH", "false")
 
+import pytest
+
 from app.models import ControlMapping, PolicyGenerationRequest
 from app.services.policy_service import PolicyGenerationService, _sanitize_ref_id
+
+
+@pytest.fixture(autouse=True)
+def _accept_all_guids(monkeypatch):
+    """These tests exercise reference-id uniqueness with placeholder GUIDs, a
+    concern orthogonal to built-in existence. Stub the catalog so the existence
+    filter treats every well-formed GUID as real."""
+
+    class _AllCatalog:
+        available = True
+
+        def exists(self, name):  # noqa: D401 - trivial stub
+            return True
+
+        def is_non_includable(self, name):
+            return False
+
+        def requires_parameters(self, name):
+            return False
+
+        def get(self, name):
+            return None
+
+        def get_required_parameters(self, name):
+            return {}
+
+    monkeypatch.setattr(
+        "app.services.policy_service.get_policy_catalog_service",
+        lambda: _AllCatalog(),
+    )
 
 G1 = "11111111-1111-1111-1111-111111111111"
 G2 = "22222222-2222-2222-2222-222222222222"

@@ -13,11 +13,25 @@ param cpu string = '0.5'
 param memory string = '1Gi'
 param containerRegistryName string = ''
 
+@description('Custom domain bindings for ingress. Each item: { name, bindingType, certificateId }. Empty by default.')
+param customDomains array = []
+
 // Authentication (Easy Auth v2) – only applied when authClientId is set
 param authClientId string = ''
 param authTenantId string = ''
 @secure()
 param authClientSecret string = ''
+
+// Easy Auth behaviour for unauthenticated callers. The frontend uses
+// 'AllowAnonymous' so it can render a branded landing page before sign-in;
+// the backend keeps the default forced-login redirect.
+@allowed([
+  'RedirectToLoginPage'
+  'AllowAnonymous'
+  'Return401'
+  'Return403'
+])
+param unauthenticatedClientAction string = 'RedirectToLoginPage'
 
 var authEnabled = !empty(authClientId)
 var containerSecrets = concat(
@@ -67,6 +81,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         targetPort: containerPort
         transport: 'http'
         allowInsecure: false
+        customDomains: customDomains
         traffic: [
           {
             latestRevision: true
@@ -128,7 +143,7 @@ resource authConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (a
       enabled: true
     }
     globalValidation: {
-      unauthenticatedClientAction: 'RedirectToLoginPage'
+      unauthenticatedClientAction: unauthenticatedClientAction
       redirectToProvider: 'azureactivedirectory'
     }
     identityProviders: {

@@ -146,8 +146,23 @@ def _build_groups(
     return groups
 
 
-def _build_policies(mappings: list[ControlPolicyMapping]) -> list[dict]:
-    """Build policyDefinitions array with group assignments."""
+def _build_policies(
+    mappings: list[ControlPolicyMapping],
+    catalog: Optional[object] = None,
+) -> list[dict]:
+    """Build policyDefinitions array with group assignments.
+
+    Drops policy definition IDs that are either malformed or that do not
+    correspond to a real Azure built-in policy definition — ARM rejects both as
+    ``PolicyDefinitionNotFound`` and fails the whole initiative. Existence is
+    checked against the shipped built-in policy catalog; when the catalog is
+    unavailable only GUID format is enforced.
+    """
+    if catalog is None:
+        from app.services.policy_catalog_service import get_policy_catalog_service
+        catalog = get_policy_catalog_service()
+    enforce_existence = bool(getattr(catalog, "available", False))
+
     policy_refs: list[dict] = []
     seen_combos: set[str] = set()
 
@@ -166,6 +181,15 @@ def _build_policies(mappings: list[ControlPolicyMapping]) -> list[dict]:
                 logger.warning(
                     f"Control {mapping.control_id}: dropping invalid Azure Policy "
                     f"definition ID '{pid}' (not a valid GUID)"
+                )
+                continue
+
+            # Strip well-formed GUIDs that are not real built-in definitions.
+            if enforce_existence and not catalog.exists(pid):
+                logger.warning(
+                    f"Control {mapping.control_id}: dropping Azure Policy "
+                    f"definition ID '{pid}' — not found in the Azure built-in "
+                    f"policy catalog (would fail ARM as PolicyDefinitionNotFound)"
                 )
                 continue
 
