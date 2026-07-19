@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.components import render_page_header
+from utils.components import render_page_header, render_success_effect
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -556,7 +556,7 @@ if extraction:
                         )
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
-                    st.balloons()
+                    render_success_effect(f"Loaded {len(loaded_controls)} controls")
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")

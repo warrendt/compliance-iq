@@ -7,7 +7,7 @@ import pandas as pd
 import io
 from typing import Optional, List, Dict
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.components import render_page_header
+from utils.components import render_page_header, render_success_effect
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -266,7 +266,7 @@ if uploaded_file is not None or st.session_state.get("uploaded_df") is not None:
                                 f"Controls are loaded, but could not be saved for recovery: {exc}"
                             )
                         st.success(f"✅ Loaded {len(controls)} controls from **{framework_name}**")
-                        st.balloons()
+                        render_success_effect(f"Loaded {len(controls)} controls")
             
             with col_clear:
                 if st.button("🗑️ Clear Upload", use_container_width=True):

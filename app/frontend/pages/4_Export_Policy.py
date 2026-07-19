@@ -12,7 +12,7 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.components import render_page_header
+from utils.components import render_page_header, render_success_effect
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -321,7 +321,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 "✅ Policy initiative generated successfully and saved as "
                 f"Version {result.get('semantic_version', '—')}."
             )
-            st.balloons()
+            render_success_effect("Initiative generated")
 
         except httpx.ConnectError:
             st.error("❌ Cannot connect to backend. Make sure it's running.")
@@ -878,7 +878,7 @@ else:
                     "✅ SLZ initiatives generated and saved as "
                     f"Version {slz_result.get('semantic_version', '—')}."
                 )
-                st.balloons()
+                render_success_effect("SLZ initiatives generated")
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend.")
             except Exception as e:
