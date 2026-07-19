@@ -171,3 +171,43 @@ AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com/ ENABLE_AUTH=false \
   the Validate button (with/without supplied vault/region values) against the real ARM
   token requires an interactive MFA re-login and may reset the operator's current Easy
   Auth session — deferred pending operator go-ahead. **[UNVERIFIED — live]**
+
+---
+
+## Live-verify 2026-07-19 — PASSED (deployed dev app + real ARM)
+
+Frontend redeployed (rev `…azd-1784447979`, Healthy·100%) and exercised through the
+Playwright-driven browser against the live dev Container Apps environment. Signed in as
+`wadutoit@…` (Easy Auth, SSO — no MFA re-prompt this run).
+
+### Results
+
+| Check | Outcome |
+|-------|---------|
+| ARM token present | `/.auth/me` → `access_token` with `aud = https://management.azure.com` ✅ |
+| Deploy scope discovery | Target-scope selector populated (`Subscription: ME-…-wadutoit-3`). The earlier `/deploy/scopes` **500 / "No subscriptions found"** did **not** reproduce with a fresh token ✅ |
+| Validate — no values supplied | Caption **"Parameterized built-ins: 0 included, 1 still excluded"**; **10 policies · 4 groups · 10 references verified · 0 unresolved**; *Validation passed — no changes were made to your tenant* ✅ |
+| Validate — values supplied | Caption **"Parameterized built-ins: 1 included, 0 still excluded"**; **11 policies · 4 groups · 11 references verified · 0 unresolved**; *Validation passed* ✅ |
+| Server-side corroboration | Backend log: `POST /api/v1/deploy/validate → 200 OK` (~347 ms), Easy Auth user forwarded ✅ |
+
+The delta is the proof: supplying the excluded built-in's required values re-includes it as
+a literal-parameter policy — **10 → 11 policies, 10 → 11 references verified** — and it
+passes real ARM validation. Both round-trips were dry-run (`no changes were made`).
+
+The single excluded built-in in this dataset was **"Configure disaster recovery on virtual
+machines by enabling replication via Azure Site Recovery"** (`ac34a73f-…`, used by control
+D3), requiring `sourceRegion`, `vaultId`, `targetRegion`, `vaultResourceGroupId`,
+`targetResourceGroupId` (all-or-nothing).
+
+### Not done (gated)
+
+- **Deploy** was **not** clicked — it writes to the real tenant and is gated on explicit
+  operator go-ahead + confirmed scope (per E2E brief step 6).
+
+```mermaid
+flowchart LR
+  G[Generate initiative] --> X["Parameterized built-in excluded<br/>10 policies"]
+  X --> D[Deploy to Azure section<br/>ARM token gate ✅]
+  D -->|Validate, no values| V0["0 included / 1 excluded<br/>10 refs · passed"]
+  D -->|supply 5 values → Validate| V1["1 included / 0 excluded<br/>11 refs · passed"]
+```
