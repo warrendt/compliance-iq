@@ -82,6 +82,87 @@ def test_clear_workflow_state_uses_fresh_mutable_objects():
     assert s["policy_decisions"] == {}
 
 
+class _WidgetBoundState(dict):
+    """dict that mimics Streamlit forbidding assignment to widget-backed keys.
+
+    Assigning to a key in ``widget_keys`` raises (as Streamlit does once the
+    widget is instantiated), while deletion is always allowed — matching real
+    ``st.session_state`` semantics.
+    """
+
+    def __init__(self, widget_keys, exc_type=RuntimeError):
+        super().__init__()
+        self._widget_keys = set(widget_keys)
+        self._exc_type = exc_type
+
+    def __setitem__(self, key, value):
+        if key in self._widget_keys and key in self:
+            raise self._exc_type(
+                f"st.session_state.{key} cannot be modified after the widget "
+                f"with key {key} is instantiated."
+            )
+        super().__setitem__(key, value)
+
+
+def test_clear_workflow_state_survives_widget_backed_keys():
+    """Regression: Clear Workspace must not crash when a widget-backed key
+    (e.g. ``show_api_logs``) has already been instantiated this run.
+
+    Assigning a default into such a key raises in Streamlit; the fix falls back
+    to deleting the key so the widget re-initialises from its own default.
+    """
+    state_init.st.session_state = _WidgetBoundState(
+        widget_keys=("show_api_logs", "show_backend_logs", "backend_log_poll_interval")
+    )
+    state_init.init_session_state()
+    s = state_init.st.session_state
+    # Simulate the widgets having been rendered with non-default values.
+    dict.__setitem__(s, "show_api_logs", True)
+    dict.__setitem__(s, "backend_log_poll_interval", 60)
+    s["controls"] = [{"control_id": "A"}]
+
+    # Must not raise despite the instantiated widget keys.
+    state_init.clear_workflow_state()
+
+    # Non-widget keys are reset in place.
+    assert s["controls"] == []
+    # Widget-backed keys are deleted so they re-init from widget defaults.
+    assert "show_api_logs" not in s
+    assert "show_backend_logs" not in s
+    assert "backend_log_poll_interval" not in s
+    # The rest of the clear contract still holds.
+    assert s["_workflow_restore_checked"] is True
+    assert s["session_uuid"]
+
+
+def test_clear_workflow_state_catches_streamlit_api_exception(monkeypatch):
+    """The widget-error fallback catches the real ``StreamlitAPIException``.
+
+    Injects a fake ``streamlit.errors`` module so the lazily-resolved exception
+    type is exercised, then confirms a raising assignment is caught (not
+    propagated) and the offending key is deleted.
+    """
+    class _FakeStreamlitAPIException(RuntimeError):
+        pass
+
+    fake_errors = types.ModuleType("streamlit.errors")
+    fake_errors.StreamlitAPIException = _FakeStreamlitAPIException
+    monkeypatch.setitem(sys.modules, "streamlit.errors", fake_errors)
+
+    state_init.st.session_state = _WidgetBoundState(
+        widget_keys=("show_api_logs",), exc_type=_FakeStreamlitAPIException
+    )
+    state_init.init_session_state()
+    s = state_init.st.session_state
+    dict.__setitem__(s, "show_api_logs", True)
+
+    widget_errors = state_init._widget_state_error()
+    assert widget_errors == (_FakeStreamlitAPIException,)
+
+    state_init.clear_workflow_state()
+    assert "show_api_logs" not in s
+
+
 def test_persist_workflow_state_saves_session(monkeypatch):
     """Regression: persist_workflow_state must not raise NameError.
 

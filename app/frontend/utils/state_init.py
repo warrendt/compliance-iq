@@ -127,6 +127,36 @@ def restore_workflow_state() -> None:
     )
 
 
+def _widget_state_error() -> tuple:
+    """Exception type(s) Streamlit raises when a ``session_state`` key bound to
+    an already-instantiated widget is reassigned.
+
+    Resolved lazily so the hermetic ``streamlit`` stub used in unit tests (which
+    has no ``errors`` submodule) still imports cleanly; falls back to the broad
+    ``Exception`` base in that case.
+    """
+    try:
+        from streamlit.errors import StreamlitAPIException
+
+        return (StreamlitAPIException,)
+    except Exception:
+        return (Exception,)
+
+
+def _reset_state_key(key: str, default: Any, widget_errors: tuple) -> None:
+    """Reset one ``session_state`` key to ``default``.
+
+    Assigns a fresh deep copy of the default. If ``key`` is bound to a widget
+    already instantiated this run, Streamlit forbids assignment and raises, so we
+    fall back to deleting the key — the widget then re-initialises from its own
+    default on the next rerun (the idiomatic widget-reset pattern).
+    """
+    try:
+        st.session_state[key] = copy.deepcopy(default)
+    except widget_errors:
+        st.session_state.pop(key, None)
+
+
 def clear_workflow_state() -> None:
     """Reset the workflow to a clean slate for a brand-new session.
 
@@ -135,9 +165,15 @@ def clear_workflow_state() -> None:
     issues a new ``session_uuid`` so persisted state is kept separate, and
     re-arms the one-shot restore guard so the fresh session is not immediately
     re-hydrated from the backend.
+
+    Widget-backed keys (e.g. ``show_api_logs``) cannot be assigned once their
+    widget has been instantiated in the current run, so those are deleted
+    instead and re-initialise from their widget defaults on the following rerun.
+    The caller is expected to ``st.rerun()`` after clearing.
     """
+    widget_errors = _widget_state_error()
     for key, default in SESSION_DEFAULTS.items():
-        st.session_state[key] = copy.deepcopy(default)
+        _reset_state_key(key, default, widget_errors)
     for key in _TRANSIENT_STATE_KEYS:
         st.session_state.pop(key, None)
     st.session_state["session_uuid"] = str(uuid.uuid4())
