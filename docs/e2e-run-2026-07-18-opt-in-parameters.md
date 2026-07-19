@@ -211,3 +211,81 @@ flowchart LR
   D -->|Validate, no values| V0["0 included / 1 excluded<br/>10 refs · passed"]
   D -->|supply 5 values → Validate| V1["1 included / 0 excluded<br/>11 refs · passed"]
 ```
+
+---
+
+## Deploy post-mortem + fixes — 2026-07-19 (PASSED)
+
+The gated audit-only Deploy (E2E step 6) surfaced **four real bugs** on the first live
+tenant write. All four are now fixed, tested, redeployed, and a genuinely clean audit-only
+initiative + assignment was created and verified.
+
+### The bugs
+
+1. **Base `generated_policy` contamination.** `_regenerate_with_parameters` overwrote and
+   persisted `st.session_state.generated_policy`, so any *Validate-with-values* permanently
+   replaced the clean base initiative with the parameterized version. Later Deploys read the
+   contaminated state.
+2. **Sticky-param leak.** The base **Generate** call passed
+   `policy_parameter_values=st.session_state.get(...)`, so once values were supplied they
+   were baked into *every* subsequent generation.
+3. **One-way door.** Once the built-in was included, the backend `parameterized_requirements`
+   list emptied → the "➕ Include…" expander disappeared → the only UI path to clear the
+   sticky values was gone. The built-in could never be excluded again in-session.
+4. **Assignment missing identity/location (pre-existing).** `create_assignment` sent no
+   `identity`/`location`. Assigning any initiative containing `DeployIfNotExists`/`Modify`
+   policies returns ARM **400** (identity is mandatory even under `DoNotEnforce`). This was
+   the 502 seen on the first Deploy: the set definition was created, the assignment 400'd →
+   partial write (later deleted during cleanup).
+
+### The fixes (commit on this branch)
+
+- **Base Generate** no longer reads the sticky param store → base initiative is always the
+  clean, exclude-by-default one, so `parameterized_requirements` stays populated and the
+  expander never disappears (bugs 2 + 3).
+- **`_regenerate_with_parameters` is transient** → it returns a fresh body for validate/deploy
+  only and never mutates/persists `generated_policy` (bug 1).
+- **`create_assignment` always attaches a `SystemAssigned` identity + `location`** and sets
+  `enforcementMode` from the operator's Audit/Enforce toggle (`DoNotEnforce` = audit-only:
+  compliance is still assessed, effects never applied — verified against Microsoft docs).
+  `enforce_mode`/`location` are threaded through the deploy route + API client (bug 4).
+- Tests: `test_policy_deploy_assignment.py` (pure `_build_assignment_body` cases) +
+  `test_export_generate_state.py` (source-level regression guards for the two frontend paths).
+  Full suite: **460 passed** (11 pre-existing state-mgmt fails deselected).
+
+### Verified clean deploy (audit-only, subscription scope)
+
+Redeployed backend + frontend (`azd deploy`, no provision). Easy Auth intact
+(`RedirectToLoginPage`, token store on); ARM token `aud=management.azure.com`.
+
+| Resource | Name | Key properties |
+|---|---|---|
+| Policy set definition | `dubai-cyber-security-strategy-2023-compliance` | Custom · **10 policy definitions** (parameterized built-in excluded, no placeholder IDs) |
+| Policy assignment | `dubai-cyber-security-strategy-2023-compliance-assignment` | **`enforcementMode=DoNotEnforce`** (audit-only) · **`identity=SystemAssigned`** · linked to the initiative |
+
+Server-side: `POST /api/v1/deploy/initiative → 200 OK` (~7.4 s), Easy Auth user forwarded.
+Validate gate immediately before Deploy reported **10 policies · 4 groups · 10 references
+verified · 0 unresolved · 0 included / 1 excluded**.
+
+> Scope/subscription/tenant identifiers are intentionally omitted from this doc per the
+> public-repo policy (no environment-specific IDs committed).
+
+### Rollback (if needed)
+
+```bash
+az policy assignment delete -n dubai-cyber-security-strategy-2023-compliance-assignment \
+  --scope /subscriptions/<subscription-id>
+az policy set-definition delete -n dubai-cyber-security-strategy-2023-compliance \
+  --subscription <subscription-id>
+```
+
+```mermaid
+flowchart LR
+  A[Deploy w/ old code] --> B["502: set-def created,<br/>assignment 400 (no identity)"]
+  B --> C[Cleanup: delete botched set-def]
+  C --> D[Fix 4 bugs + tests]
+  D --> E["Redeploy backend + frontend"]
+  E --> F["Generate → clean base (10 policies)"]
+  F --> G["Validate gate: 10 refs · 0 included · 0 unresolved"]
+  G --> H["Deploy → set-def (10) + assignment<br/>DoNotEnforce + SystemAssigned ✅"]
+```
