@@ -27,9 +27,9 @@
 set -euo pipefail
 
 DOMAIN="${1:-app.compliance-iq.net}"
-APP="${2:-ca-frontend-ciq-dev-kz2jze}"
+APP="${2:-<frontend-container-app>}"
 RG="${3:-rg-complianceiq-dev-southafricanorth}"
-ENVIRONMENT="${4:-cae-complianceiq-dev-kz2jze}"
+ENVIRONMENT="${4:-<container-app-environment>}"
 
 echo "Binding ${DOMAIN} -> ${APP} (rg=${RG}, env=${ENVIRONMENT})"
 

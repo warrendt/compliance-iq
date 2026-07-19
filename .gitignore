@@ -47,3 +47,7 @@ framework/.env.ps1
 .env
 *.env.local
 framework/.policy-guid-cache.json
+
+# Playwright MCP session artifacts + E2E evidence screenshots (never commit)
+.playwright-mcp/
+/e2e-*.png
