@@ -112,7 +112,8 @@ def test_clear_workflow_state_survives_widget_backed_keys():
     to deleting the key so the widget re-initialises from its own default.
     """
     state_init.st.session_state = _WidgetBoundState(
-        widget_keys=("show_api_logs", "show_backend_logs", "backend_log_poll_interval")
+        widget_keys=("show_api_logs", "show_backend_logs", "backend_log_poll_interval"),
+        exc_type=state_init._widget_state_error()[0],
     )
     state_init.init_session_state()
     s = state_init.st.session_state
