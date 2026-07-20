@@ -196,6 +196,11 @@ class PolicyInitiative(BaseModel):
             "description": self.properties.description,
             "metadata": {
                 "category": self.properties.metadata.category,
+                # Onboards the initiative to Microsoft Defender for Cloud so it
+                # surfaces under Regulatory compliance (evaluated 24-48h after
+                # assignment). Documented flag; see
+                # learn.microsoft.com/azure/defender-for-cloud/create-custom-recommendations.
+                "ASC": "true",
                 "source": self.properties.metadata.source,
                 "version": self.properties.metadata.version,
                 "generatedDate": self.properties.metadata.generated_date.isoformat(),
