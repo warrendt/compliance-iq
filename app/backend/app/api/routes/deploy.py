@@ -156,6 +156,15 @@ class DeployRequest(BaseModel):
         "(mandatory when the initiative contains DeployIfNotExists/Modify "
         "policies, even under DoNotEnforce).",
     )
+    trigger_scan: bool = Field(
+        True,
+        description="After a successful assignment, trigger an on-demand Azure "
+        "Policy compliance evaluation (az policy state trigger-scan) so "
+        "compliance results — and the Defender for Cloud regulatory-compliance "
+        "dashboard — refresh without waiting for the ~24h automatic cycle. "
+        "Only subscription/resource-group scopes are supported; skipped "
+        "otherwise. Best-effort: never fails the deploy.",
+    )
 
 
 @router.post("/initiative")
@@ -194,10 +203,18 @@ async def deploy_initiative(
                 detail=f"Initiative created but assignment failed: {exc}",
             )
 
+    # A compliance scan only makes sense once an assignment exists to evaluate.
+    # It is best-effort — trigger_compliance_scan never raises — so a failed or
+    # unsupported scan does not fail an otherwise-successful deploy.
+    scan = None
+    if assignment is not None and req.trigger_scan:
+        scan = await svc.trigger_compliance_scan(req.scope)
+
     return {
         "status": "deployed",
         "definition": definition,
         "assignment": assignment,
+        "scan": scan,
     }
 
 

@@ -817,6 +817,23 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                             st.success("✅ Initiative deployed successfully!")
                             if dr.get("assignment"):
                                 st.success("✅ Policy assignment created.")
+                                scan = dr.get("scan") or {}
+                                if scan.get("triggered"):
+                                    st.info(
+                                        "🔄 On-demand compliance scan triggered — "
+                                        "Azure Policy is re-evaluating now. Compliance "
+                                        "results (and the Defender for Cloud "
+                                        "regulatory-compliance view) refresh in the "
+                                        "background; allow time for evaluation to finish."
+                                    )
+                                elif scan.get("skipped"):
+                                    st.caption(f"ℹ️ Compliance scan skipped — {scan.get('reason', '')}")
+                                elif scan:
+                                    st.caption(
+                                        f"⚠️ Compliance scan could not be triggered — "
+                                        f"{scan.get('reason', 'unknown error')} "
+                                        "(the assignment was still created successfully)."
+                                    )
                             with st.expander("ARM Response"):
                                 st.json(dr)
                         except Exception as _e:

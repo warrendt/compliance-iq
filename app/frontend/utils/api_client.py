@@ -825,12 +825,18 @@ class APIClient:
         assignment_description: str = "",
         enforce_mode: bool = False,
         location: Optional[str] = None,
+        trigger_scan: bool = True,
     ) -> Dict[str, Any]:
         """Deploy a policy set definition (and optionally assign it).
 
         ``enforce_mode`` controls the assignment's enforcement: when False
         (default) the assignment is created with ``DoNotEnforce`` (audit-only —
         compliance is still assessed, effects are never applied/remediated).
+
+        ``trigger_scan`` (default True) asks the backend to fire an on-demand
+        compliance evaluation after a successful assignment so results refresh
+        without waiting for Azure Policy's ~24h cycle. Best-effort and only for
+        subscription/resource-group scopes.
         """
         payload: Dict[str, Any] = {
             "scope": scope,
@@ -838,6 +844,7 @@ class APIClient:
             "initiative_body": initiative_body,
             "assign": assign,
             "enforce_mode": enforce_mode,
+            "trigger_scan": trigger_scan,
         }
         if assignment_display_name:
             payload["assignment_display_name"] = assignment_display_name
