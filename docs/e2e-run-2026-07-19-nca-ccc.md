@@ -287,6 +287,35 @@ new failures.
 
 ---
 
+## 9. Enhancement — app-driven deploys now trigger an on-demand compliance scan (DEPLOYED)
+
+Previously only the standalone `framework/DeployAllInitiatives.ps1` ran
+`Start-AzPolicyComplianceScan`; the app's own **Deploy** path
+(`POST /api/v1/deploy/initiative`) did not, so an app-driven audit-only
+assignment waited on Azure Policy's ~24h automatic cycle before compliance —
+and the Defender for Cloud regulatory-compliance view — refreshed.
+
+**Change (PR #27):** `PolicyDeployService.trigger_compliance_scan(scope)` POSTs
+Policy Insights `triggerEvaluation` (`api-version=2019-10-01`), wired into
+`/deploy/initiative` to fire automatically **after a successful assignment**
+(opt-out via `trigger_scan=false`), surfaced in the Export Policy UI.
+
+| Property | Behaviour |
+| --- | --- |
+| Scope support | Subscription + resource group only — **management groups are unsupported by ARM**, so a management-group scope is *skipped* (verified against MS REST reference), not errored |
+| Failure mode | **Best-effort** — `trigger_compliance_scan` never raises; a failed/unsupported scan cannot fail the deploy |
+| Async | ARM returns `202 Accepted`; the app does not poll to completion |
+| Tests | `test_policy_deploy_scan.py` — 12 cases (scope classifier, skip-without-network, success/RG/error transport, route gating + opt-out) |
+
+> **What it does and does not speed up:** the scan refreshes **Azure Policy
+> compliance results** on demand. It does **not** make Defender first *surface*
+> a custom standard instantly — that remains gated on Defender's ingestion cycle
+> and the `ASC:"true"` onboarding flag (PR #28). Deployed to dev
+> (backend rev `azd-1784541768`, clean boot; frontend redeployed, Easy Auth
+> `RedirectToLoginPage` re-verified).
+
+---
+
 ## Outstanding / next actions
 
 1. Merge PR #27 (contains: balloons→checkmark effect, Cosmos log-noise fix,
