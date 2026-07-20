@@ -80,3 +80,25 @@ def test_standard_name_can_be_supplied():
     )
     assert standard["standard_name"] == fixed
     assert fixed in standard["powershell"]
+
+
+def test_initiative_json_carries_asc_onboarding_flag():
+    """The initiative metadata must carry ``"ASC":"true"`` so Defender for Cloud
+    onboards it to Regulatory compliance (controls surface 24-48h later)."""
+    _svc, initiative = _initiative()
+    azure_json = initiative.to_azure_json()
+    assert azure_json["properties"]["metadata"]["ASC"] == "true"
+
+
+def test_export_paths_carry_asc_flag():
+    """bicep, CLI (bash) and PowerShell deploy scripts must all set ASC=true on
+    the initiative metadata — otherwise the initiative shows as *Custom (legacy)*
+    and never surfaces under Regulatory compliance."""
+    svc, initiative = _initiative()
+
+    bicep = svc.export_as_bicep(initiative, "test_framework")
+    assert "ASC: 'true'" in bicep
+
+    scripts = svc.generate_deployment_script(initiative, "test_framework")
+    assert '"ASC":"true"' in scripts["cli"]
+    assert 'ASC="true"' in scripts["powershell"]

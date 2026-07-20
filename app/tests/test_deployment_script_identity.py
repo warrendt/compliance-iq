@@ -54,7 +54,7 @@ def test_cli_metadata_is_json_not_key_value_shorthand():
     # "key=value" shorthand breaks on the space in "Regulatory Compliance".
     cli = _scripts()["cli"]
     assert '--metadata category=' not in cli
-    assert '--metadata \'{"category":"Regulatory Compliance"}\'' in cli
+    assert '--metadata \'{"category":"Regulatory Compliance","ASC":"true"}\'' in cli
 
 
 def test_cli_creates_audit_assignment_with_identity():

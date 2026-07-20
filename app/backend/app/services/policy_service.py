@@ -623,6 +623,7 @@ resource policyInitiative 'Microsoft.Authorization/policySetDefinitions@2021-06-
     policyType: 'Custom'
     metadata: {{
       category: '{props.metadata.category}'
+      ASC: 'true'
       source: '{props.metadata.source}'
       version: '{props.metadata.version}'
       frameworkName: '{props.metadata.framework_name}'
@@ -751,14 +752,15 @@ cat > policy-definitions.json <<'EOF'
 EOF
 {cli_groups_file}
 # 1. Create policy initiative (metadata is JSON — a "key=value" shorthand breaks
-#    on values containing spaces such as "Regulatory Compliance").
+#    on values containing spaces such as "Regulatory Compliance"). The "ASC":"true"
+#    flag onboards the initiative to Defender for Cloud > Regulatory compliance.
 az policy set-definition create \\
   --name "$INITIATIVE_NAME" \\
   --display-name "{safe_display}" \\
   --description "{safe_desc}" \\
   --definitions policy-definitions.json \\
 {cli_groups_arg}  --subscription "$SUBSCRIPTION_ID" \\
-  --metadata '{{"category":"{category}"}}'
+  --metadata '{{"category":"{category}","ASC":"true"}}'
 echo "Initiative created."
 
 # 2. Assign it audit-only, with a system-assigned identity (mandatory for
@@ -837,7 +839,9 @@ $policyDefinitions = @'
 {ps_groups_block}
 # Create policy initiative
 # -Metadata takes a JSON string (Az.Resources 10.x); a raw hashtable is rejected.
-$metadata = @{{category="{category}"}} | ConvertTo-Json -Compress
+# The "ASC":"true" flag onboards the initiative to Defender for Cloud > Regulatory
+# compliance (evaluated 24-48h after the initiative is assigned).
+$metadata = [ordered]@{{category="{category}"; ASC="true"}} | ConvertTo-Json -Compress
 New-AzPolicySetDefinition `
   -Name "{initiative_name}" `
   -DisplayName "{initiative.properties.display_name}" `
