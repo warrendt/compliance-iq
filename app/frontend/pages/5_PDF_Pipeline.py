@@ -173,6 +173,21 @@ def _apply_pdf_extraction_status(task_id: str, status: dict) -> str:
                 "total_controls": result.get("total_controls", 0),
             },
         )
+
+        # Record the PDF extraction to the user's workspace (best-effort).
+        try:
+            get_api_client().record_upload(
+                file_name=st.session_state.get("pdf_file_name") or "document.pdf",
+                file_type="application/pdf",
+                category="pdf_extraction",
+                row_count=result.get("total_controls", 0),
+                column_names=[],
+                controls=result.get("controls", []),
+                metadata={"framework": result.get("framework_name")},
+            )
+        except Exception:
+            pass  # activity logging is best-effort
+
         return "completed"
 
     if status.get("status") in {"failed", "cancelled"}:
