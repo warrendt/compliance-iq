@@ -38,7 +38,9 @@ long timeouts (600s) and `proxy_request_buffering off` for large PDF uploads.
 - **Never** `azd provision` / `azd up` — blocked by landing-zone policy
   `Deny-Subnet-Without-Nsg`.
 - After `azd deploy frontend`, re-check frontend Easy Auth
-  (`unauthenticatedClientAction`) — a deploy can reset it.
+  (`unauthenticatedClientAction`) **and** that `globalValidation.excludedPaths`
+  still contains `/api`, `/api/`, `/api/*` — a deploy can drop either. Patch with
+  api-version `2025-10-02-preview` (see `deploy-runbook.md` §1a).
 - To enable ARM-token auth on the backend, set
   `AZURE_AD_ACCEPTED_AUDIENCES=https://management.azure.com,https://management.azure.com/`
   on `ca-backend-*` (env var or Bicep), then redeploy/restart the revision.

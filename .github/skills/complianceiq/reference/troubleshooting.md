@@ -16,11 +16,14 @@
 - `GET /api/v1/health` is the quickest end-to-end proxy check (`ciq.py health`).
 
 ## Bearer header not reaching the backend
-Frontend Easy Auth is AllowAnonymous, so an ARM-audience bearer should pass
-through anonymously. If it doesn't, verify Easy Auth didn't get reset to
-`RedirectToLoginPage` and that nginx passes `Authorization` (it does in the
-committed config). Smoke test: `ciq.py health` then a tiny PDF through
-`ciq.py run`.
+Frontend Easy Auth runs `unauthenticatedClientAction = RedirectToLoginPage`, so
+it 302-redirects `/api` bearer calls to the login page unless the `/api` paths
+are in `globalValidation.excludedPaths`. If `ciq.py health` returns HTML or a
+redirect, confirm `excludedPaths` still contains `/api`, `/api/`, `/api/*`
+(a deploy can drop them). Patch it back with api-version `2025-10-02-preview`
+(see `auth.md` / `deploy-runbook.md` §1a). Also confirm nginx passes
+`Authorization` (it does in the committed config). Smoke test: `ciq.py health`
+then a tiny PDF through `ciq.py run`.
 
 ## Status/artifacts 404 after a successful run (replica mismatch)
 **Known caveat.** The pipeline job store `_jobs` is **in-memory per replica**,

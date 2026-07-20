@@ -29,13 +29,37 @@ boot. Code-only redeploy:
 ```
 azd deploy frontend --no-prompt
 ```
-After deploy, re-assert Easy Auth (a deploy can reset it). Current design is
-AllowAnonymous with app-level `require_login()`, so confirm it is still
-`AllowAnonymous` (or the intended value):
+
+## 1a. Let Easy Auth pass `/api` through to nginx (REQUIRED)
+The frontend runs Container Apps **Easy Auth** with
+`globalValidation.unauthenticatedClientAction = RedirectToLoginPage`. Left alone,
+Easy Auth 302-redirects the skill's `/api` bearer requests to the login page
+**before** they reach nginx, so the CLI never talks to the backend. Add the
+`/api` paths to `globalValidation.excludedPaths` so Easy Auth bypasses them (the
+backend still validates the ARM bearer itself on protected routes).
+
+The token store uses a **user-assigned managed identity**
+(`tokenStore.azureBlobStorage.blobContainerUri` + `managedIdentityResourceId`),
+so you **must** use api-version `2025-10-02-preview`; the stable `2024-03-01`
+rejects the managed-identity token store (`SasUrlSettingName ... must be set`).
+GET the current config, add the excluded paths, PUT it back — preserving the
+existing `tokenStore` block:
 ```
-az containerapp auth show -n <frontend-app> -g <rg> \
-  --query "globalValidation.unauthenticatedClientAction"
+AUTHCFG=/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.App/containerApps/<frontend-app>/authConfigs/current
+API=2025-10-02-preview
+
+az rest --method GET --url "https://management.azure.com${AUTHCFG}?api-version=${API}" > /tmp/authcfg.json
+# add "excludedPaths": ["/api","/api/","/api/*"] under properties.globalValidation, keep tokenStore intact
+az rest --method PUT --url "https://management.azure.com${AUTHCFG}?api-version=${API}" \
+  --headers "Content-Type=application/json" --body @/tmp/authcfg.json
 ```
+Verify:
+```
+az rest --method GET --url "https://management.azure.com${AUTHCFG}?api-version=${API}" \
+  --query "properties.globalValidation.{action:unauthenticatedClientAction,excluded:excludedPaths}"
+```
+Re-check after every `azd deploy frontend` — a deploy can drop the excludedPaths
+or flip `unauthenticatedClientAction` back to `AllowAnonymous`.
 
 ## 2. Allow ARM-audience tokens on the backend
 Add the accepted-audiences env var (creates a new revision). Bicep would be
@@ -67,6 +91,7 @@ python .github/skills/complianceiq/scripts/ciq.py scopes           # 200 => bear
 
 ## Rollback
 - Remove the env var: `az containerapp update -n <backend-app> -g <rg> --remove-env-vars AZURE_AD_ACCEPTED_AUDIENCES` (reverts backend to app-audience-only; empty set = skip aud check).
+- Remove the `/api` excludedPaths from the frontend authConfig (PUT the config back with `excludedPaths` cleared, api-version `2025-10-02-preview`) to re-lock `/api` behind Easy Auth.
 - Redeploy the previous frontend image, or unset `BACKEND_URL` to strip the /api
   proxy (start.sh removes the block when `BACKEND_URL` is empty).
 

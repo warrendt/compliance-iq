@@ -40,16 +40,22 @@ in `_get_issuer_urls()`, so v1 ARM tokens pass issuer validation.
 > was an explicit, approved decision.
 
 ## Frontend Easy Auth state
-Frontend Easy Auth is configured **AllowAnonymous**; the app gates access itself
-via `require_login()` (renders a branded landing page, then `/.auth/login/aad`).
-Because Easy Auth is AllowAnonymous, an inbound `Authorization: Bearer` with an
-ARM audience (which does **not** match the frontend app) passes through
-anonymously to nginx → backend instead of being rejected. Verify this during a
-smoke test (see `troubleshooting.md`).
+Frontend Easy Auth runs with
+`globalValidation.unauthenticatedClientAction = RedirectToLoginPage`. Left alone,
+Easy Auth **302-redirects** any unauthenticated request — including the skill's
+`/api` bearer calls (the ARM audience does not match the frontend app) — to the
+login page **before** it reaches nginx. To let the skill through, the `/api`
+paths are added to `globalValidation.excludedPaths`
+(`["/api","/api/","/api/*"]`), so Easy Auth bypasses them and forwards the
+`Authorization` header to nginx → backend, which then validates the ARM bearer
+itself. The app still gates its own Streamlit UI via `require_login()`.
 
-After `azd deploy frontend`, re-check the frontend auth config: a deploy can
-reset `unauthenticatedClientAction`. The token store uses a **user-assigned
-managed identity** against blob storage (shared-key access is denied by policy).
+Patch the excludedPaths with api-version `2025-10-02-preview` — the token store
+uses a **user-assigned managed identity** against blob storage (shared-key
+access is denied by policy), and the stable `2024-03-01` api-version rejects that
+token store. After every `azd deploy frontend`, re-check the frontend auth
+config: a deploy can drop the excludedPaths or reset
+`unauthenticatedClientAction`. See `deploy-runbook.md` §1a for the exact commands.
 
 ## What the caller needs
 - `az login` completed, correct subscription selected (`az account show`).
