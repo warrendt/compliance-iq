@@ -76,6 +76,34 @@ def _get_issuer_urls() -> list[str]:
     ]
 
 
+def _get_accepted_audiences() -> set[str]:
+    """Return the set of token audiences the backend will accept.
+
+    Combines the app's own audience (``AZURE_AD_AUDIENCE`` or, failing that,
+    ``AZURE_AD_CLIENT_ID``) with any extra values in the comma-separated
+    ``AZURE_AD_ACCEPTED_AUDIENCES`` env var. The extra list lets the backend
+    accept ARM-scoped tokens (``https://management.azure.com``) obtained from
+    ``az account get-access-token``, so a single delegated token can both
+    authenticate the caller and be reused for ARM deploy calls.
+
+    An empty set means "do not verify the audience" (legacy loose behaviour
+    when nothing is configured); signature and issuer are still verified.
+    """
+    values: set[str] = set()
+
+    base = os.getenv("AZURE_AD_AUDIENCE") or os.getenv("AZURE_AD_CLIENT_ID")
+    if base:
+        values.add(base.strip())
+
+    extra = os.getenv("AZURE_AD_ACCEPTED_AUDIENCES", "")
+    for item in extra.split(","):
+        item = item.strip()
+        if item:
+            values.add(item)
+
+    return values
+
+
 async def _fetch_jwks() -> dict:
     """Retrieve JSON Web Key Set, with in-memory caching."""
     global _jwks_cache, _jwks_cache_ts
@@ -110,10 +138,7 @@ async def _validate_token(token: str) -> dict:
     """Validate a JWT issued by Entra ID and return its claims."""
     global _jwks_cache_ts
 
-    audience = os.getenv(
-        "AZURE_AD_AUDIENCE",
-        os.getenv("AZURE_AD_CLIENT_ID", ""),
-    )
+    accepted_audiences = _get_accepted_audiences()
 
     # Decode header to get the key id
     try:
@@ -135,18 +160,28 @@ async def _validate_token(token: str) -> dict:
         if not signing_key:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Signing key not found in JWKS")
 
+    # Verify signature + issuer with jose; verify audience ourselves so we can
+    # accept more than one audience (e.g. the app plus ARM tokens).
     try:
         claims = jwt.decode(
             token,
             signing_key,
             algorithms=["RS256"],
-            audience=audience,
             issuer=_get_issuer_urls(),
-            options={"verify_at_hash": False},
+            options={"verify_at_hash": False, "verify_aud": False},
         )
     except JWTError as exc:
         logger.warning("jwt_validation_failed", error=str(exc))
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Token validation failed: {exc}")
+
+    if accepted_audiences:
+        token_aud = claims.get("aud", "")
+        if token_aud not in accepted_audiences:
+            logger.warning("jwt_audience_rejected", aud=token_aud)
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "Token audience not accepted",
+            )
 
     return claims
 
