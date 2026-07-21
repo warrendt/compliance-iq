@@ -6,11 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-import logging
 
 from app.config import get_settings
 from app.api.routes import health, mapping, policy, sovereignty, pipeline, deploy, platform, m365, purview, session, user, comparison, version
-from app.logging_config import configure_logging, get_logger
+from app.logging_config import configure_logging, get_logger, quiet_noisy_loggers
 from app.monitoring import app_insights
 from app.db import cosmos_client
 from app.middleware import (
@@ -27,12 +26,8 @@ settings = get_settings()
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
 
-# Suppress noisy library loggers
-for noisy_logger in [
-    "azure.identity", "azure.core", "httpcore", "httpx",
-    "openai._base_client", "urllib3", "msal"
-]:
-    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+# Suppress noisy library loggers (SDK HTTP header dumps, token chatter)
+quiet_noisy_loggers()
 
 # Create FastAPI app
 app = FastAPI(

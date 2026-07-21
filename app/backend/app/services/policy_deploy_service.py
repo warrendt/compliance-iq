@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 _ARM_BASE = "https://management.azure.com"
 _API_VERSION_POLICY = "2023-04-01"
+# Policy Insights on-demand evaluation (maps to `az policy state trigger-scan`).
+_API_VERSION_POLICY_INSIGHTS = "2019-10-01"
+_MGMT_GROUP_PREFIX = "/providers/microsoft.management/managementgroups/"
 _TIMEOUT = 30.0
 
 # Characters ARM rejects in a policy set definition name.
@@ -54,6 +57,27 @@ def _build_assignment_body(
             "enforcementMode": "Default" if enforce_mode else "DoNotEnforce",
         },
     }
+
+
+def _scan_supported_scope(scope: str) -> str | None:
+    """Return the scope to trigger an on-demand compliance scan on, or None.
+
+    Azure Policy Insights ``triggerEvaluation`` only supports **subscription**
+    and **resource-group** scopes — management groups are not supported. Given
+    an arbitrary ARM scope this returns the resource-group scope when the input
+    names one, otherwise the subscription scope, or ``None`` when no supported
+    scan scope can be derived (e.g. a management-group scope).
+    """
+    s = (scope or "").strip().rstrip("/")
+    if not s or s.lower().startswith(_MGMT_GROUP_PREFIX):
+        return None
+    parts = [p for p in s.split("/") if p]
+    if len(parts) >= 2 and parts[0].lower() == "subscriptions":
+        sub = f"/subscriptions/{parts[1]}"
+        if len(parts) >= 4 and parts[2].lower() == "resourcegroups":
+            return f"{sub}/resourceGroups/{parts[3]}"
+        return sub
+    return None
 
 
 class PolicyDeployService:
@@ -317,6 +341,70 @@ class PolicyDeployService:
             resp = await c.put(url, headers=self._headers, json=body)
             resp.raise_for_status()
             return resp.json()
+
+    # ------------------------------------------------------------------
+    # Trigger on-demand compliance scan (best-effort)
+    # ------------------------------------------------------------------
+
+    async def trigger_compliance_scan(self, scope: str) -> dict[str, Any]:
+        """Trigger an on-demand Azure Policy compliance evaluation at *scope*.
+
+        Equivalent to ``az policy state trigger-scan`` (Policy Insights
+        ``triggerEvaluation``). This nudges Azure Policy to re-evaluate resources
+        against their assignments now instead of waiting for the ~24h automatic
+        cycle, refreshing the compliance results that Defender for Cloud's
+        Regulatory-compliance dashboard consumes.
+
+        Only subscription and resource-group scopes are supported by ARM
+        (management groups are not), so an unsupported scope is *skipped* rather
+        than erroring. The evaluation is a long-running async operation: ARM
+        returns ``202 Accepted`` immediately and we do not poll it to completion.
+
+        Best-effort by design — it NEVER raises. A failed or unsupported scan
+        must not fail the deploy that triggered it. Returns a structured result::
+
+            {"triggered": bool, "skipped": bool, "scope": str | None,
+             "status_code": int | None, "location": str | None, "reason": str}
+        """
+        scan_scope = _scan_supported_scope(scope)
+        if scan_scope is None:
+            return {
+                "triggered": False,
+                "skipped": True,
+                "scope": None,
+                "reason": (
+                    "On-demand compliance scan supports only subscription and "
+                    "resource-group scopes; management groups are not supported "
+                    "by Azure Policy Insights."
+                ),
+            }
+
+        url = (
+            f"{_ARM_BASE}/{scan_scope.lstrip('/')}/providers/Microsoft.PolicyInsights"
+            f"/policyStates/latest/triggerEvaluation"
+            f"?api-version={_API_VERSION_POLICY_INSIGHTS}"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
+                resp = await c.post(url, headers=self._headers)
+                resp.raise_for_status()
+            return {
+                "triggered": True,
+                "skipped": False,
+                "scope": scan_scope,
+                "status_code": resp.status_code,
+                "location": resp.headers.get("location"),
+            }
+        except Exception as exc:  # noqa: BLE001 — best-effort, never fail the deploy
+            logger.warning(
+                "trigger_compliance_scan_failed scope=%s", scan_scope, exc_info=exc
+            )
+            return {
+                "triggered": False,
+                "skipped": False,
+                "scope": scan_scope,
+                "reason": str(exc),
+            }
 
     # ------------------------------------------------------------------
     # Read existing policies (for explorer)

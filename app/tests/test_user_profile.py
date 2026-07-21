@@ -239,3 +239,91 @@ async def test_get_history_excludes_session_autosaves_by_default():
         )
         assert "c.resourceType = @resourceType" in captured["query"]
         assert "c.resourceType <> 'session'" not in captured["query"]
+
+
+# ---------------------------------------------------------------------------
+# GET /user/mappings — route registration + behaviour
+# ---------------------------------------------------------------------------
+
+def test_get_mappings_route_is_registered():
+    """Regression: GET /user/mappings must be a registered route.
+
+    The handler existed but lost its ``@router.get`` decorator in a merge,
+    so the frontend workspace 'Mappings' tab hit 405 and always showed empty.
+    """
+    from app.api.routes.user import router
+
+    matches = [
+        r for r in router.routes
+        if getattr(r, "path", None) == "/user/mappings"
+        and "GET" in getattr(r, "methods", set())
+    ]
+    assert matches, "GET /user/mappings is not registered on the user router"
+
+
+@pytest.mark.asyncio
+async def test_get_mappings_db_unavailable():
+    """get_mappings should raise 503 when Cosmos DB is unavailable."""
+    from fastapi import HTTPException, Request
+
+    mock_user = User(oid="abc", email="dev@example.com", name="Dev User")
+    mock_request = MagicMock(spec=Request)
+
+    with patch("app.api.routes.user.cosmos_client") as mock_cosmos:
+        mock_cosmos.database = None
+
+        from app.api.routes.user import get_mappings
+        with pytest.raises(HTTPException) as exc_info:
+            await get_mappings(request=mock_request, limit=10, user=mock_user)
+
+        assert exc_info.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_get_mappings_returns_items_ordered():
+    """get_mappings should query mapping-results for the user, newest first."""
+    from fastapi import Request
+
+    mock_user = User(oid="abc", email="dev@example.com", name="Dev User")
+    mock_request = MagicMock(spec=Request)
+    captured = {}
+
+    async def _capture(container, query=None, parameters=None, partition_key=None):
+        captured["container"] = container
+        captured["query"] = query
+        captured["parameters"] = parameters
+        return [{"id": "m1", "controlName": "AC-1", "confidence": 0.9}]
+
+    with patch("app.api.routes.user.cosmos_client") as mock_cosmos:
+        mock_cosmos.database = MagicMock()
+        mock_cosmos.ensure_container = AsyncMock()
+        mock_cosmos.query_documents = AsyncMock(side_effect=_capture)
+
+        from app.api.routes.user import get_mappings
+        result = await get_mappings(request=mock_request, limit=10, user=mock_user)
+
+        assert result == [{"id": "m1", "controlName": "AC-1", "confidence": 0.9}]
+        assert captured["container"] == "mapping-results"
+        assert "ORDER BY c.timestamp DESC" in captured["query"]
+        assert captured["parameters"] == [
+            {"name": "@userId", "value": "dev@example.com"}
+        ]
+
+
+@pytest.mark.asyncio
+async def test_get_mappings_returns_empty_on_query_failure():
+    """get_mappings should return an empty list when the query fails."""
+    from fastapi import Request
+
+    mock_user = User(oid="abc", email="dev@example.com", name="Dev User")
+    mock_request = MagicMock(spec=Request)
+
+    with patch("app.api.routes.user.cosmos_client") as mock_cosmos:
+        mock_cosmos.database = MagicMock()
+        mock_cosmos.ensure_container = AsyncMock()
+        mock_cosmos.query_documents = AsyncMock(side_effect=Exception("DB error"))
+
+        from app.api.routes.user import get_mappings
+        result = await get_mappings(request=mock_request, limit=10, user=mock_user)
+
+        assert result == []

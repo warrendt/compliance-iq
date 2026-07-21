@@ -78,8 +78,8 @@ infra-level Easy Auth config).
 
 | Service | New revision | State |
 |---------|--------------|-------|
-| backend | `ca-backend-ciq-dev-kz2jze--azd-1784410037` | Healthy · Running · 100% |
-| frontend | `ca-frontend-ciq-dev-kz2jze--azd-1784410215` | Healthy · Running · 100% |
+| backend | `<backend-revision>` | Healthy · Running · 100% |
+| frontend | `<frontend-revision>` | Healthy · Running · 100% |
 
 Backend logged `Application startup complete` cleanly (new models/imports load).
 
@@ -109,7 +109,7 @@ built-ins are no longer placed in the set and Validate no longer attempts a crea
 ## Rollback
 
 Redeploy prior images if needed:
-`crcomplianceiqdevkz2jze.azurecr.io/compliance-iq/backend-dev:azd-deploy-1784037321`,
+`<acr>.azurecr.io/compliance-iq/backend-dev:azd-deploy-1784037321`,
 `.../frontend-dev:azd-deploy-1784037516` (via `az containerapp update --image`).
 
 ## Commit
@@ -178,14 +178,14 @@ AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com/ ENABLE_AUTH=false \
 
 Frontend redeployed (rev `…azd-1784447979`, Healthy·100%) and exercised through the
 Playwright-driven browser against the live dev Container Apps environment. Signed in as
-`wadutoit@…` (Easy Auth, SSO — no MFA re-prompt this run).
+`<operator>@…` (Easy Auth, SSO — no MFA re-prompt this run).
 
 ### Results
 
 | Check | Outcome |
 |-------|---------|
 | ARM token present | `/.auth/me` → `access_token` with `aud = https://management.azure.com` ✅ |
-| Deploy scope discovery | Target-scope selector populated (`Subscription: ME-…-wadutoit-3`). The earlier `/deploy/scopes` **500 / "No subscriptions found"** did **not** reproduce with a fresh token ✅ |
+| Deploy scope discovery | Target-scope selector populated (`Subscription: <subscription-name>`). The earlier `/deploy/scopes` **500 / "No subscriptions found"** did **not** reproduce with a fresh token ✅ |
 | Validate — no values supplied | Caption **"Parameterized built-ins: 0 included, 1 still excluded"**; **10 policies · 4 groups · 10 references verified · 0 unresolved**; *Validation passed — no changes were made to your tenant* ✅ |
 | Validate — values supplied | Caption **"Parameterized built-ins: 1 included, 0 still excluded"**; **11 policies · 4 groups · 11 references verified · 0 unresolved**; *Validation passed* ✅ |
 | Server-side corroboration | Backend log: `POST /api/v1/deploy/validate → 200 OK` (~347 ms), Easy Auth user forwarded ✅ |

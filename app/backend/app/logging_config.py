@@ -142,6 +142,36 @@ def get_logger(name: str) -> structlog.BoundLogger:
     return structlog.get_logger(name)
 
 
+# Third-party loggers that emit verbose per-request noise (full HTTP header
+# dumps, token chatter) at INFO/DEBUG. ``azure.cosmos`` is listed explicitly
+# because the Cosmos SDK routes HTTP logging through its own
+# ``CosmosHttpLoggingPolicy`` under ``azure.cosmos`` — it is NOT a child of
+# ``azure.core``, so quieting ``azure.core`` alone leaves Cosmos header dumps in
+# the logs.
+NOISY_LOGGERS: tuple[str, ...] = (
+    "azure",              # umbrella: covers azure.cosmos, azure.core, azure.identity, …
+    "azure.core",
+    "azure.cosmos",
+    "azure.identity",
+    "httpcore",
+    "httpx",
+    "openai._base_client",
+    "urllib3",
+    "msal",
+)
+
+
+def quiet_noisy_loggers(level: int = logging.WARNING) -> None:
+    """Raise the threshold of chatty third-party loggers to ``level``.
+
+    Keeps application logs clean in Azure (Log Analytics / container logs) by
+    suppressing SDK request/response header dumps while preserving warnings and
+    errors from those libraries.
+    """
+    for name in NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(level)
+
+
 class ContextFilter(logging.Filter):
     """Filter to add context to log records"""
     

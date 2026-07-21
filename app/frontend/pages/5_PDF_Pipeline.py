@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 from utils.api_client import APIClient, get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.components import render_page_header
+from utils.components import render_page_header, render_success_effect
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -173,6 +173,21 @@ def _apply_pdf_extraction_status(task_id: str, status: dict) -> str:
                 "total_controls": result.get("total_controls", 0),
             },
         )
+
+        # Record the PDF extraction to the user's workspace (best-effort).
+        try:
+            get_api_client().record_upload(
+                file_name=st.session_state.get("pdf_file_name") or "document.pdf",
+                file_type="application/pdf",
+                category="pdf_extraction",
+                row_count=result.get("total_controls", 0),
+                column_names=[],
+                controls=result.get("controls", []),
+                metadata={"framework": result.get("framework_name")},
+            )
+        except Exception:
+            pass  # activity logging is best-effort
+
         return "completed"
 
     if status.get("status") in {"failed", "cancelled"}:
@@ -556,7 +571,7 @@ if extraction:
                         )
 
                     st.success(f"✅ Loaded {len(loaded_controls)} controls from **{framework_name}**")
-                    st.balloons()
+                    render_success_effect(f"Loaded {len(loaded_controls)} controls")
 
                     st.markdown("---")
                     st.markdown("### ➡️ Next Steps")

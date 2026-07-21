@@ -12,7 +12,7 @@ import pandas as pd
 from typing import Dict, Any, List
 from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
-from utils.components import render_page_header
+from utils.components import render_page_header, render_success_effect
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -321,7 +321,24 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
                 "✅ Policy initiative generated successfully and saved as "
                 f"Version {result.get('semantic_version', '—')}."
             )
-            st.balloons()
+            render_success_effect("Initiative generated")
+
+            # Record the export to the user's workspace (best-effort).
+            try:
+                get_api_client().record_export(
+                    framework=st.session_state.framework_name,
+                    artifact_type="mcsb_initiative",
+                    control_count=len(filtered_mappings),
+                    file_name=f"{st.session_state.framework_name}_initiative.json",
+                    session_id=st.session_state.session_uuid,
+                    metadata={
+                        "initiativeId": result.get("initiative_id"),
+                        "semanticVersion": result.get("semantic_version"),
+                        "enforceMode": enforce_mode,
+                    },
+                )
+            except Exception:
+                pass  # activity logging is best-effort
 
         except httpx.ConnectError:
             st.error("❌ Cannot connect to backend. Make sure it's running.")
@@ -800,6 +817,23 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                             st.success("✅ Initiative deployed successfully!")
                             if dr.get("assignment"):
                                 st.success("✅ Policy assignment created.")
+                                scan = dr.get("scan") or {}
+                                if scan.get("triggered"):
+                                    st.info(
+                                        "🔄 On-demand compliance scan triggered — "
+                                        "Azure Policy is re-evaluating now. Compliance "
+                                        "results (and the Defender for Cloud "
+                                        "regulatory-compliance view) refresh in the "
+                                        "background; allow time for evaluation to finish."
+                                    )
+                                elif scan.get("skipped"):
+                                    st.caption(f"ℹ️ Compliance scan skipped — {scan.get('reason', '')}")
+                                elif scan:
+                                    st.caption(
+                                        f"⚠️ Compliance scan could not be triggered — "
+                                        f"{scan.get('reason', 'unknown error')} "
+                                        "(the assignment was still created successfully)."
+                                    )
                             with st.expander("ARM Response"):
                                 st.json(dr)
                         except Exception as _e:
@@ -878,7 +912,7 @@ else:
                     "✅ SLZ initiatives generated and saved as "
                     f"Version {slz_result.get('semantic_version', '—')}."
                 )
-                st.balloons()
+                render_success_effect("SLZ initiatives generated")
             except httpx.ConnectError:
                 st.error("❌ Cannot connect to backend.")
             except Exception as e:

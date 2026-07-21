@@ -285,6 +285,9 @@ async def get_upload_detail(
         "controlCount": doc.get("controlCount", 0),
         "timestamp": doc.get("timestamp", ""),
     }
+
+
+@router.get("/mappings", response_model=List[Dict[str, Any]])
 async def get_mappings(
     request: Request,
     limit: int = 50,

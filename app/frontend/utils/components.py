@@ -14,6 +14,7 @@ never emoji or ad-hoc per-page colours.
 from __future__ import annotations
 
 import html
+import secrets
 from typing import Iterable, Optional, Sequence, Tuple
 
 import streamlit as st
@@ -172,6 +173,53 @@ def section_heading_html(text: str) -> str:
     return f'<div class="ciq-section-heading">{html.escape(text)}</div>'
 
 
+def success_effect_html(message: str = "", token: str = "fx") -> str:
+    """Return a one-shot success animation: a brand-green draw-in checkmark ring.
+
+    A deliberately understated, enterprise-appropriate replacement for
+    ``st.balloons()`` — an animated SVG tick that draws itself inside a ring in
+    the ``--status-success`` brand green, then fades out (~1.8s). The overlay is
+    ``position: fixed`` and ``pointer-events: none`` so it never blocks the UI,
+    and it honours ``prefers-reduced-motion`` by drawing statically. ``token``
+    keys the animation so each success re-triggers a fresh draw on rerun.
+    """
+    tok = html.escape(token, quote=True)
+    label = html.escape(message or "Done", quote=True)
+    return (
+        f'<div class="ciq-success-fx" data-fx="{tok}" role="status" '
+        f'aria-label="{label}">'
+        '<svg class="ciq-success-fx__mark" viewBox="0 0 52 52" '
+        'xmlns="http://www.w3.org/2000/svg">'
+        '<circle class="ciq-success-fx__ring" cx="26" cy="26" r="23" '
+        'fill="none"/>'
+        '<path class="ciq-success-fx__check" fill="none" '
+        'd="M15 27 l7.5 7.5 l15 -16.5"/>'
+        '</svg></div>'
+        '<style>'
+        '.ciq-success-fx{position:fixed;inset:0;display:flex;'
+        'align-items:center;justify-content:center;pointer-events:none;'
+        'z-index:1000000;animation:ciq-fx-fade 1.8s ease forwards;}'
+        '.ciq-success-fx__mark{width:104px;height:104px;'
+        'filter:drop-shadow(0 8px 20px rgba(11,37,69,.20));}'
+        '.ciq-success-fx__ring{stroke:var(--status-success,#15803D);'
+        'stroke-width:2.5;stroke-dasharray:145;stroke-dashoffset:145;'
+        'animation:ciq-fx-ring .5s cubic-bezier(.65,0,.45,1) forwards;}'
+        '.ciq-success-fx__check{stroke:var(--status-success,#15803D);'
+        'stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;'
+        'stroke-dasharray:48;stroke-dashoffset:48;'
+        'animation:ciq-fx-check .35s .45s cubic-bezier(.65,0,.45,1) forwards;}'
+        '@keyframes ciq-fx-ring{to{stroke-dashoffset:0}}'
+        '@keyframes ciq-fx-check{to{stroke-dashoffset:0}}'
+        '@keyframes ciq-fx-fade{0%{opacity:0}8%{opacity:1}70%{opacity:1}'
+        '100%{opacity:0}}'
+        '@media (prefers-reduced-motion:reduce){'
+        '.ciq-success-fx{animation:ciq-fx-fade 1.4s ease forwards;}'
+        '.ciq-success-fx__ring,.ciq-success-fx__check{animation:none;'
+        'stroke-dashoffset:0;}}'
+        '</style>'
+    )
+
+
 # ── Streamlit render wrappers ───────────────────────────────────────────────
 def render_status_badge(kind: str, label: str, dot: bool = False) -> None:
     st.markdown(status_badge_html(kind, label, dot=dot), unsafe_allow_html=True)
@@ -211,3 +259,15 @@ def render_section_heading(text: str) -> None:
 
 def render_empty_state(title: str, message: str = "") -> None:
     st.markdown(empty_state_html(title, message), unsafe_allow_html=True)
+
+
+def render_success_effect(message: str = "", toast: bool = True) -> None:
+    """Play the on-brand success animation (checkmark ring) + optional toast.
+
+    Drop-in replacement for ``st.balloons()``. ``message`` is surfaced as a
+    ``st.toast`` (with a ✅ icon) and as the overlay's accessible label.
+    """
+    token = secrets.token_hex(4)
+    st.markdown(success_effect_html(message, token=token), unsafe_allow_html=True)
+    if toast and message:
+        st.toast(message, icon="✅")

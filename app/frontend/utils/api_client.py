@@ -825,12 +825,18 @@ class APIClient:
         assignment_description: str = "",
         enforce_mode: bool = False,
         location: Optional[str] = None,
+        trigger_scan: bool = True,
     ) -> Dict[str, Any]:
         """Deploy a policy set definition (and optionally assign it).
 
         ``enforce_mode`` controls the assignment's enforcement: when False
         (default) the assignment is created with ``DoNotEnforce`` (audit-only —
         compliance is still assessed, effects are never applied/remediated).
+
+        ``trigger_scan`` (default True) asks the backend to fire an on-demand
+        compliance evaluation after a successful assignment so results refresh
+        without waiting for Azure Policy's ~24h cycle. Best-effort and only for
+        subscription/resource-group scopes.
         """
         payload: Dict[str, Any] = {
             "scope": scope,
@@ -838,6 +844,7 @@ class APIClient:
             "initiative_body": initiative_body,
             "assign": assign,
             "enforce_mode": enforce_mode,
+            "trigger_scan": trigger_scan,
         }
         if assignment_display_name:
             payload["assignment_display_name"] = assignment_display_name
@@ -1085,6 +1092,132 @@ class APIClient:
                 return response.json()
         except Exception:
             return []
+
+    # ── Workspace activity recording (best-effort writers) ────────────────────
+    # These persist the logged-in user's pipeline milestones (uploads, AI
+    # mappings, exports, edits) so the "My Workspace" page reflects everything
+    # they do in their tenant. All are best-effort: any failure returns None
+    # and never blocks the UI. Identity is server-stamped from the Easy Auth
+    # principal, so a client cannot forge another user's activity.
+
+    def record_upload(
+        self,
+        *,
+        file_name: str,
+        file_type: str = "text/csv",
+        category: str = "document",
+        file_size: int = 0,
+        row_count: int = 0,
+        column_names: Optional[List[str]] = None,
+        controls: Optional[List[Dict[str, Any]]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Record a document upload or control-set load for the current user.
+
+        Best-effort: returns None on any failure so it never blocks the UI.
+        """
+        payload: Dict[str, Any] = {
+            "fileName": file_name,
+            "fileType": file_type,
+            "category": category,
+            "fileSize": file_size,
+            "rowCount": row_count,
+            "columnNames": column_names or [],
+            "metadata": metadata or {},
+        }
+        if controls is not None:
+            payload["controls"] = controls
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/user/uploads",
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def record_mappings(
+        self,
+        *,
+        framework: str,
+        mappings: List[Dict[str, Any]],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Record a batch of AI mapping results for the current user."""
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/user/mappings",
+                    json={
+                        "framework": framework,
+                        "mappings": mappings,
+                        "metadata": metadata or {},
+                    },
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def record_export(
+        self,
+        *,
+        framework: str,
+        artifact_type: str = "initiative",
+        control_count: int = 0,
+        file_name: str = "",
+        file_size: int = 0,
+        session_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Record a generated/exported policy artifact for the current user."""
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/user/exports",
+                    json={
+                        "framework": framework,
+                        "artifactType": artifact_type,
+                        "controlCount": control_count,
+                        "fileName": file_name,
+                        "fileSize": file_size,
+                        "sessionId": session_id,
+                        "metadata": metadata or {},
+                    },
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
+
+    def record_activity(
+        self,
+        *,
+        action: str,
+        summary: str,
+        resource_type: str = "edit",
+        resource_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Record a generic activity (e.g. an edit) into the unified feed."""
+        try:
+            with self._get_client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/user/activity",
+                    json={
+                        "action": action,
+                        "summary": summary,
+                        "resourceType": resource_type,
+                        "resourceId": resource_id,
+                        "metadata": metadata or {},
+                    },
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception:
+            return None
 
     def get_user_upload(self, upload_id: str) -> Dict[str, Any]:
         """Fetch a single stored control set (including its parsed ``controls``).
