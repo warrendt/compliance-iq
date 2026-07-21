@@ -1049,6 +1049,9 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
         mappings: List[ControlMapping],
         framework_name: str,
         allowed_locations: Optional[List[str]] = None,
+        country_or_region: Optional[str] = None,
+        jurisdiction_profile: Optional[Dict[str, Any]] = None,
+        resolution_choices: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Generate SLZ-specific policy initiatives targeting management group archetypes.
@@ -1079,11 +1082,11 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
             else:
                 level_mappings["L1"].append(m)
 
-        # Collect SLZ policy names referenced across all mappings
-        all_slz_policy_names = set()
-        for m in mappings:
-            if m.sovereignty and m.sovereignty.slz_policy_names:
-                all_slz_policy_names.update(m.sovereignty.slz_policy_names)
+        resolution_choices = resolution_choices or []
+        incomplete_resolutions = [
+            choice for choice in resolution_choices
+            if choice.get("status") != "complete"
+        ]
 
         # Build per-archetype artifacts
         archetypes = sovereignty_service.get_all_archetypes()
@@ -1111,6 +1114,75 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
                 if m.sovereignty and m.sovereignty.slz_policy_names:
                     slz_names.update(m.sovereignty.slz_policy_names)
 
+            policy_defs_by_id: Dict[str, Dict[str, Any]] = {}
+            resolved_aliases: Dict[str, str] = {}
+            unresolved_aliases = set()
+
+            def add_policy_reference(policy_id: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+                """Add a unique, deployable policy reference to this initiative."""
+                if not _is_valid_policy_guid(policy_id):
+                    return
+                definition_id = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+                reference = policy_defs_by_id.setdefault(
+                    definition_id,
+                    {
+                        "policyDefinitionId": (
+                            "/providers/Microsoft.Authorization/policyDefinitions/"
+                            f"{definition_id}"
+                        ),
+                        "policyDefinitionReferenceId": _sanitize_ref_id(
+                            f"slz_{definition_id}"
+                        )[:64],
+                        "parameters": {},
+                    },
+                )
+                if parameters:
+                    reference["parameters"].update(parameters)
+
+            for policy_id in sorted(policy_ids):
+                add_policy_reference(policy_id)
+
+            for alias in sorted(slz_names):
+                resolved = sovereignty_service.resolve_policy_alias(alias)
+                if not resolved:
+                    unresolved_aliases.add(alias)
+                    continue
+                if resolved["required_parameters"]:
+                    if alias not in {
+                        "allowed-locations",
+                        "allowed-locations-for-resource-groups",
+                    } or not allowed_locations:
+                        unresolved_aliases.add(alias)
+                    continue
+                resolved_aliases[alias] = str(resolved["policy_definition_id"])
+                add_policy_reference(str(resolved["policy_definition_id"]))
+
+            if allowed_locations:
+                location_parameter = {
+                    "listOfAllowedLocations": {
+                        "value": "[parameters('listOfAllowedLocations')]",
+                    }
+                }
+                for alias in (
+                    "allowed-locations",
+                    "allowed-locations-for-resource-groups",
+                ):
+                    resolved = sovereignty_service.resolve_policy_alias(alias)
+                    if not resolved:
+                        unresolved_aliases.add(alias)
+                        continue
+                    unresolved_aliases.discard(alias)
+                    resolved_aliases[alias] = str(resolved["policy_definition_id"])
+                    add_policy_reference(
+                        str(resolved["policy_definition_id"]),
+                        location_parameter,
+                    )
+
+            policy_defs = [
+                policy_defs_by_id[policy_id]
+                for policy_id in sorted(policy_defs_by_id)
+            ]
+
             # Build initiative JSON
             display_name = f"{framework_name} - SLZ {archetype.display_name or arch_name} Initiative"
             description = (
@@ -1119,13 +1191,19 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
                 f"Sovereignty level: {arch_level}."
             )
 
-            policy_defs = []
-            for pid in sorted(policy_ids):
-                policy_defs.append({
-                    "policyDefinitionId": f"/providers/Microsoft.Authorization/policyDefinitions/{pid}",
-                    "policyDefinitionReferenceId": pid[:50],
-                    "parameters": {}
-                })
+            initiative_parameters: Dict[str, Any] = {}
+            if allowed_locations:
+                initiative_parameters["listOfAllowedLocations"] = {
+                    "type": "Array",
+                    "metadata": {
+                        "displayName": "Allowed locations",
+                        "description": (
+                            "The locations allowed for resources and resource groups "
+                            "by the bound residency policy references."
+                        ),
+                    },
+                    "defaultValue": allowed_locations,
+                }
 
             initiative_json = {
                 "properties": {
@@ -1137,23 +1215,15 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
                         "frameworkName": framework_name,
                         "sovereigntyLevel": arch_level,
                         "targetArchetype": arch_name,
-                        "slzPolicies": sorted(slz_names),
+                        "jurisdiction": country_or_region,
+                        "jurisdictionProfile": jurisdiction_profile or {},
+                        "resolvedSovereigntyPolicies": resolved_aliases,
+                        "unresolvedSovereigntyPolicies": sorted(unresolved_aliases),
                     },
-                    "parameters": {},
+                    "parameters": initiative_parameters,
                     "policyDefinitions": policy_defs,
                 }
             }
-
-            # Add allowed locations parameter if provided
-            if allowed_locations:
-                initiative_json["properties"]["parameters"]["listOfAllowedLocations"] = {
-                    "type": "Array",
-                    "metadata": {
-                        "displayName": "Allowed locations",
-                        "description": "The list of locations that can be specified when deploying resources.",
-                    },
-                    "defaultValue": allowed_locations,
-                }
 
             # Generate Bicep
             bicep = self._generate_slz_bicep(
@@ -1180,13 +1250,21 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
                 "sovereignty_level": arch_level,
                 "control_count": len(applicable),
                 "policy_count": len(policy_defs),
-                "slz_policy_names": sorted(slz_names),
+                "resolved_slz_policies": resolved_aliases,
+                "unresolved_slz_policies": sorted(unresolved_aliases),
                 "initiative_json": initiative_json,
                 "bicep_template": bicep,
                 "deployment_scripts": scripts,
             }
 
         # Summary
+        unresolved_policy_aliases = sorted(
+            {
+                alias
+                for artifact in archetype_artifacts.values()
+                for alias in artifact["unresolved_slz_policies"]
+            }
+        )
         summary = {
             "framework_name": framework_name,
             "total_mappings": len(mappings),
@@ -1194,6 +1272,16 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
             "level_distribution": {k: len(v) for k, v in level_mappings.items()},
             "archetypes_generated": list(archetype_artifacts.keys()),
             "allowed_locations": allowed_locations,
+            "country_or_region": country_or_region,
+            "jurisdiction_profile": jurisdiction_profile or {},
+            "resolution_choices": resolution_choices,
+            "unresolved_resolution_choices": incomplete_resolutions,
+            "unresolved_sovereignty_policies": unresolved_policy_aliases,
+            "sovereignty_coverage_state": (
+                "unresolved"
+                if not allowed_locations or incomplete_resolutions
+                else "partially_resolved"
+            ),
         }
 
         logger.info(
@@ -1220,11 +1308,23 @@ Write-Host "Defender CSPM plan is enabled and assessments have been evaluated." 
         """Generate Bicep template for an SLZ initiative."""
 
         locations_param = ""
+        policy_set_parameters = ""
         if allowed_locations:
             locations_str = ", ".join(f"'{loc}'" for loc in allowed_locations)
             locations_param = f"""
 @description('Allowed Azure regions for data residency (SO-1)')
 param allowedLocations array = [{locations_str}]
+"""
+            policy_set_parameters = """    parameters: {
+      listOfAllowedLocations: {
+        type: 'Array'
+        metadata: {
+          displayName: 'Allowed locations'
+          description: 'Locations enforced by the residency policy references.'
+        }
+        defaultValue: allowedLocations
+      }
+    }
 """
 
         bicep = f"""// Sovereign Landing Zone Policy Initiative
@@ -1255,13 +1355,27 @@ resource policyInitiative 'Microsoft.Authorization/policySetDefinitions@2021-06-
       sovereigntyLevel: '{sovereignty_level}'
       targetArchetype: '{archetype_name}'
     }}
+{policy_set_parameters}
     policyDefinitions: [
 """
         for pd in policy_defs:
+            parameters = pd.get("parameters") or {}
+            if parameters:
+                parameter_lines = []
+                for name, value in sorted(parameters.items()):
+                    escaped_value = str(value.get("value", "")).replace("'", "''")
+                    parameter_lines.append(
+                        f"          {name}: {{ value: '{escaped_value}' }}"
+                    )
+                parameter_block = f"""parameters: {{
+{chr(10).join(parameter_lines)}
+        }}"""
+            else:
+                parameter_block = "parameters: {}"
             bicep += f"""      {{
         policyDefinitionId: '{pd["policyDefinitionId"]}'
         policyDefinitionReferenceId: '{pd["policyDefinitionReferenceId"]}'
-        parameters: {{}}
+        {parameter_block}
       }}
 """
 

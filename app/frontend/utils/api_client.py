@@ -486,6 +486,9 @@ class APIClient:
         mappings: List[Dict[str, Any]],
         framework_name: str,
         allowed_locations: Optional[List[str]] = None,
+        country_or_region: Optional[str] = None,
+        jurisdiction_profile: Optional[Dict[str, Any]] = None,
+        resolution_choices: Optional[List[Dict[str, Any]]] = None,
         session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate SLZ per-archetype policy initiatives.
@@ -493,7 +496,10 @@ class APIClient:
         Args:
             mappings: Control mappings (must contain sovereignty data)
             framework_name: Compliance framework name
-            allowed_locations: Optional Azure regions for data residency
+            allowed_locations: Confirmed Azure regions for data residency
+            country_or_region: Confirmed document jurisdiction
+            jurisdiction_profile: Source-backed profile recommendation selected by the operator
+            resolution_choices: Policy, configuration, evidence, or exception selections
             session_id: Session identifier for artifact persistence
 
         Returns:
@@ -505,6 +511,12 @@ class APIClient:
         }
         if allowed_locations:
             payload["allowed_locations"] = allowed_locations
+        if country_or_region:
+            payload["country_or_region"] = country_or_region
+        if jurisdiction_profile:
+            payload["jurisdiction_profile"] = jurisdiction_profile
+        if resolution_choices:
+            payload["resolution_choices"] = resolution_choices
 
         headers = {}
         if session_id:
@@ -516,6 +528,16 @@ class APIClient:
                 f"{self.base_url}/api/v1/policy/generate/slz",
                 json=payload,
                 headers=headers,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_jurisdiction_profile(self, country_or_region: str) -> Dict[str, Any]:
+        """Get a source-backed Azure-region recommendation for a jurisdiction."""
+        with self._get_client() as client:
+            response = client.get(
+                f"{self.base_url}/api/v1/policy/jurisdiction-profile",
+                params={"country_or_region": country_or_region},
             )
             response.raise_for_status()
             return response.json()

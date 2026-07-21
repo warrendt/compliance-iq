@@ -122,6 +122,7 @@
   "policy_definitions": [
     {
       "name": "allowed-locations",
+      "policy_definition_id": "e56962a6-4747-49cd-b67b-bf8b01975c4c",
       "display_name": "Allowed locations",
       "description": "This policy enables you to restrict the locations your organization can specify when deploying resources.",
       "effect": "Deny",
@@ -144,6 +145,7 @@
     },
     {
       "name": "allowed-locations-for-resource-groups",
+      "policy_definition_id": "e765b5de-1225-4ba3-bd56-1ac6695af988",
       "display_name": "Allowed locations for resource groups",
       "description": "This policy enables you to restrict the locations your organization can create resource groups in.",
       "effect": "Deny",
@@ -539,6 +541,27 @@
       "source_file": "builtin"
     },
     {
+      "name": "guest-attestation-health",
+      "policy_definition_id": "f6358610-e532-4236-b178-4c65865eb262",
+      "display_name": "[Preview]: Virtual machines guest attestation status should be healthy",
+      "description": "Audit boot-attestation health for Trusted Launch virtual machines with the Guest Attestation extension.",
+      "effect": "Audit",
+      "sovereignty_level": "L3",
+      "sovereignty_objectives": [
+        "SO-4"
+      ],
+      "service_category": "Compute",
+      "policy_type": "BuiltIn",
+      "mode": "All",
+      "metadata": {
+        "category": "Security Center"
+      },
+      "parameters": {},
+      "parameter_names": [],
+      "policy_rule": {},
+      "source_file": "azure_policy_catalog"
+    },
+    {
       "name": "disk-os-trustedlaunch",
       "display_name": "Disks and OS image should support TrustedLaunch",
       "description": "Ensure managed disks and OS images support Trusted Launch.",
@@ -652,7 +675,8 @@
   ],
   "archetypes": [
     {
-      "name": "Sovereign Root",
+      "name": "sovereign_root",
+      "display_name": "Sovereign Root",
       "description": "Top-level management group. Inherits ALZ root and adds sovereignty global policies.",
       "parent": "alz_root",
       "sovereignty_level": "L1",
@@ -661,7 +685,8 @@
       ]
     },
     {
-      "name": "Confidential Corp",
+      "name": "confidential_corp",
+      "display_name": "Confidential Corp",
       "description": "Connected workloads requiring confidential computing protections.",
       "parent": "sovereign_root",
       "sovereignty_level": "L3",
@@ -670,7 +695,8 @@
       ]
     },
     {
-      "name": "Confidential Online",
+      "name": "confidential_online",
+      "display_name": "Confidential Online",
       "description": "Internet-facing workloads requiring confidential computing protections.",
       "parent": "sovereign_root",
       "sovereignty_level": "L3",
@@ -679,7 +705,8 @@
       ]
     },
     {
-      "name": "Public",
+      "name": "public",
+      "display_name": "Public",
       "description": "Standard non-sovereign workloads with basic guardrails.",
       "parent": "sovereign_root",
       "sovereignty_level": "L1",
