@@ -88,28 +88,28 @@ SERVICE_CATEGORY_PATTERNS = {
 # SLZ Archetype definitions
 SLZ_ARCHETYPES = {
     "sovereign_root": {
-        "name": "Sovereign Root",
+        "display_name": "Sovereign Root",
         "description": "Top-level management group. Inherits ALZ root and adds sovereignty global policies.",
         "parent": "alz_root",
         "sovereignty_level": "L1",
         "key_assignments": ["Enforce-Sovereign-Global"],
     },
     "confidential_corp": {
-        "name": "Confidential Corp",
+        "display_name": "Confidential Corp",
         "description": "Connected workloads requiring confidential computing protections.",
         "parent": "sovereign_root",
         "sovereignty_level": "L3",
         "key_assignments": ["Enforce-Sovereign-Conf"],
     },
     "confidential_online": {
-        "name": "Confidential Online",
+        "display_name": "Confidential Online",
         "description": "Internet-facing workloads requiring confidential computing protections.",
         "parent": "sovereign_root",
         "sovereignty_level": "L3",
         "key_assignments": ["Enforce-Sovereign-Conf"],
     },
     "public": {
-        "name": "Public",
+        "display_name": "Public",
         "description": "Standard non-sovereign workloads with basic guardrails.",
         "parent": "sovereign_root",
         "sovereignty_level": "L1",
@@ -397,9 +397,27 @@ def build_slz_data(raw: Dict[str, List[Dict]]) -> Dict[str, Any]:
     # Enrich archetypes with static metadata
     archetypes = []
     for arch_raw in raw["archetype_definitions"]:
-        arch_name = arch_raw["name"]
+        raw_name = arch_raw["name"]
+        arch_name = next(
+            (
+                key
+                for key, metadata in SLZ_ARCHETYPES.items()
+                if raw_name.casefold()
+                in {key.casefold(), metadata["display_name"].casefold()}
+            ),
+            raw_name,
+        )
         static_meta = SLZ_ARCHETYPES.get(arch_name, {})
-        merged = {**arch_raw, **static_meta} if static_meta else arch_raw
+        merged = (
+            {
+                **arch_raw,
+                **static_meta,
+                "name": arch_name,
+                "display_name": static_meta.get("display_name", raw_name),
+            }
+            if static_meta
+            else arch_raw
+        )
         archetypes.append(merged)
 
     # If no archetypes were parsed from files, use our static definitions

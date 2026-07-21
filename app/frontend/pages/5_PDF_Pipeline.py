@@ -560,6 +560,9 @@ if extraction:
                     # Save to session state — same format as CSV upload (Page 1)
                     st.session_state.controls = loaded_controls
                     st.session_state.framework_name = framework_name
+                    st.session_state.country_or_region = extraction.get("country_or_region") or ""
+                    st.session_state.jurisdiction_profile = {}
+                    st.session_state.sovereignty_resolutions = []
                     st.session_state.mappings = []  # Reset any previous mappings
                     st.session_state.controls_loaded = True
                     st.session_state.upload_source = "pdf"

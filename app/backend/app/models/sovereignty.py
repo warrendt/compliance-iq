@@ -49,6 +49,10 @@ class SLZPolicyDefinition(BaseModel):
     """A Sovereign Landing Zone policy definition."""
 
     name: str = Field(..., description="Policy name/identifier")
+    policy_definition_id: Optional[str] = Field(
+        None,
+        description="Canonical Azure Policy definition GUID when this alias is deployable",
+    )
     display_name: str = Field(..., description="Human-readable policy name")
     description: str = Field(default="", description="Policy description")
     effect: str = Field(default="Audit", description="Policy effect (Audit, Deny, etc.)")

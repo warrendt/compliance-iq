@@ -1,7 +1,8 @@
 {
   "archetypes": [
     {
-      "name": "Sovereign Root",
+      "name": "sovereign_root",
+      "display_name": "Sovereign Root",
       "description": "Top-level management group. Inherits ALZ root and adds sovereignty global policies.",
       "parent": "alz_root",
       "sovereignty_level": "L1",
@@ -10,7 +11,8 @@
       ]
     },
     {
-      "name": "Confidential Corp",
+      "name": "confidential_corp",
+      "display_name": "Confidential Corp",
       "description": "Connected workloads requiring confidential computing protections.",
       "parent": "sovereign_root",
       "sovereignty_level": "L3",
@@ -19,7 +21,8 @@
       ]
     },
     {
-      "name": "Confidential Online",
+      "name": "confidential_online",
+      "display_name": "Confidential Online",
       "description": "Internet-facing workloads requiring confidential computing protections.",
       "parent": "sovereign_root",
       "sovereignty_level": "L3",
@@ -28,7 +31,8 @@
       ]
     },
     {
-      "name": "Public",
+      "name": "public",
+      "display_name": "Public",
       "description": "Standard non-sovereign workloads with basic guardrails.",
       "parent": "sovereign_root",
       "sovereignty_level": "L1",

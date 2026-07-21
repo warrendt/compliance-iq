@@ -18,6 +18,7 @@ from app.models.sovereignty import (
     SovereigntyControlObjective,
     SovereigntyLevel,
 )
+from app.services.policy_catalog_service import get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,38 @@ class SovereigntyService:
         """Look up a single policy by name."""
         self._ensure_loaded()
         return self._policies_by_name.get(name)
+
+    def resolve_policy_alias(self, name: str) -> Optional[Dict[str, object]]:
+        """Resolve an SLZ alias to a catalog-validated Azure Policy definition."""
+        policy = self.get_policy_by_name(name)
+        if not policy:
+            return None
+
+        catalog = get_policy_catalog_service()
+        policy_id = policy.policy_definition_id
+        if policy_id and catalog.exists(policy_id):
+            definition = catalog.get(policy_id)
+        else:
+            candidates = catalog.search(policy.display_name, top_n=10)
+            candidate = next(
+                (
+                    item
+                    for item in candidates
+                    if item.display_name.casefold() == policy.display_name.casefold()
+                ),
+                None,
+            )
+            definition = catalog.get(candidate.name) if candidate else None
+            policy_id = candidate.name if candidate else None
+
+        if not definition or not policy_id:
+            return None
+
+        return {
+            "policy_definition_id": policy_id,
+            "display_name": definition["display_name"],
+            "required_parameters": definition.get("required_parameters") or {},
+        }
 
     def search_policies(self, query: str) -> List[SLZPolicyDefinition]:
         """Full-text search across policy names and descriptions."""

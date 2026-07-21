@@ -116,7 +116,7 @@ async def test_slz_generation_creates_version_with_every_archetype_file(monkeypa
         }
     }
     service = SimpleNamespace(
-        generate_slz_initiatives=lambda mappings, framework_name, allowed_locations: generated_archetypes
+        generate_slz_initiatives=lambda **_: generated_archetypes
     )
     create_version = AsyncMock(
         return_value={"id": "version-2", "version_number": 2, "semantic_version": "1.0.0"}
@@ -148,6 +148,7 @@ async def test_slz_generation_creates_version_with_every_archetype_file(monkeypa
         "slz_sovereign_root_initiative.bicep",
         "deploy_slz_sovereign_root.sh",
         "Deploy-slz_sovereign_root.ps1",
+        "slz_sovereignty_manifest.json",
     }
 
 

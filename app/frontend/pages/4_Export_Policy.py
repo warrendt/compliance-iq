@@ -857,12 +857,56 @@ else:
     col_slz1, col_slz2 = st.columns(2)
 
     with col_slz1:
+        country_or_region = st.text_input(
+            "Document Jurisdiction",
+            value=st.session_state.get("country_or_region", ""),
+            help="Confirm or correct the country or region extracted from the scanned document.",
+        ).strip()
+        st.session_state.country_or_region = country_or_region
+
+        jurisdiction_profile: Dict[str, Any] = {}
+        if country_or_region:
+            try:
+                jurisdiction_profile = api_client.get_jurisdiction_profile(country_or_region)
+                st.session_state.jurisdiction_profile = jurisdiction_profile
+            except httpx.HTTPError as exc:
+                st.error(f"Could not load a regional profile: {exc}")
+                jurisdiction_profile = {
+                    "status": "unknown",
+                    "guidance": "Select the permitted locations and record the residency rationale.",
+                }
+
+        suggested_locations = jurisdiction_profile.get("suggested_locations") or []
+        restricted_locations = jurisdiction_profile.get("restricted_locations") or []
+        if jurisdiction_profile.get("status") == "known":
+            st.caption(
+                f"Suggested by the **{jurisdiction_profile.get('display_name')}** profile. "
+                "Confirm or override before generating an enforceable residency guardrail."
+            )
+            if restricted_locations:
+                st.caption(
+                    "Restricted or scenario-specific locations available for manual review: "
+                    f"`{', '.join(restricted_locations)}`."
+                )
+        elif country_or_region:
+            st.warning(
+                jurisdiction_profile.get(
+                    "guidance",
+                    "No regional profile is available. Select permitted locations explicitly.",
+                )
+            )
+
         slz_allowed_locations = st.text_input(
             "Allowed Locations (comma-separated)",
-            value="southafricanorth,southafricawest",
-            help="Azure regions for data-residency policies (e.g. southafricanorth,southafricawest)"
+            value=",".join(suggested_locations),
+            help="Confirmed Azure regions bound to Allowed locations and Allowed locations for resource groups.",
         )
-        locations_list = [loc.strip() for loc in slz_allowed_locations.split(",") if loc.strip()] if slz_allowed_locations else None
+        locations_list = [loc.strip() for loc in slz_allowed_locations.split(",") if loc.strip()]
+        locations_confirmed = st.checkbox(
+            "I confirm these are the permitted Azure locations for this export",
+            value=False,
+            help="ComplianceIQ will bind these values to enforceable residency policy references.",
+        )
 
     with col_slz2:
         slz_min_confidence = st.slider(
@@ -870,6 +914,59 @@ else:
             min_value=0.0, max_value=1.0, value=0.6, step=0.05,
             help="Only include SLZ mappings with confidence >= this value"
         )
+        st.markdown("**Sovereignty resolution choices**")
+        key_custody_path = st.selectbox(
+            "Key custody",
+            [
+                "Select a path",
+                "Managed HSM CMK/BYOK",
+                "External Key Management",
+                "Purview HYOK/DKE",
+                "Manual or contractual evidence",
+                "Not applicable to selected controls",
+            ],
+            help="Select the key-custody route rather than treating a CMK mapping as complete by default.",
+        )
+        key_custody_evidence = st.text_input(
+            "Key custody resource or evidence",
+            help="Managed HSM resource ID, EKM integration, Purview configuration, or evidence reference.",
+        )
+        confidential_compute_path = st.selectbox(
+            "Confidential compute",
+            [
+                "Select a path",
+                "Guest attestation and confidential workload guardrails",
+                "Custom confidential VM SKU/resource-type guardrail",
+                "Manual configuration evidence",
+                "Not applicable to selected controls",
+            ],
+            help="Record how confidential-compute requirements are enforced or evidenced.",
+        )
+        confidential_compute_evidence = st.text_input(
+            "Confidential compute scope or evidence",
+            help="Workload scope, allowed confidential SKUs, attestation configuration, or evidence reference.",
+        )
+
+    def _resolution_status(path: str, evidence: str) -> str:
+        if path == "Not applicable to selected controls":
+            return "complete"
+        return "complete" if path != "Select a path" and evidence.strip() else "unresolved"
+
+    sovereignty_resolutions = [
+        {
+            "requirement": "key_custody",
+            "path": key_custody_path,
+            "evidence_or_resource": key_custody_evidence.strip(),
+            "status": _resolution_status(key_custody_path, key_custody_evidence),
+        },
+        {
+            "requirement": "confidential_compute",
+            "path": confidential_compute_path,
+            "evidence_or_resource": confidential_compute_evidence.strip(),
+            "status": _resolution_status(confidential_compute_path, confidential_compute_evidence),
+        },
+    ]
+    st.session_state.sovereignty_resolutions = sovereignty_resolutions
 
     # Filter sovereignty mappings by confidence
     slz_export_mappings = [
@@ -899,24 +996,37 @@ else:
         st.session_state.slz_generated = None
 
     if st.button("🏛️ Generate SLZ Initiatives", type="primary", use_container_width=True):
-        with st.spinner("Generating per-archetype SLZ policy initiatives..."):
-            try:
-                slz_result = api_client.generate_slz_initiatives(
-                    mappings=[_to_backend_mapping(m) for m in slz_export_mappings],
-                    framework_name=st.session_state.framework_name,
-                    allowed_locations=locations_list,
-                    session_id=st.session_state.session_uuid,
-                )
-                st.session_state.slz_generated = slz_result
-                st.success(
-                    "✅ SLZ initiatives generated and saved as "
-                    f"Version {slz_result.get('semantic_version', '—')}."
-                )
-                render_success_effect("SLZ initiatives generated")
-            except httpx.ConnectError:
-                st.error("❌ Cannot connect to backend.")
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+        if not locations_list:
+            st.warning(
+                "Select permitted Azure locations to create enforceable residency guardrails. "
+                "No default region is applied."
+            )
+        elif not locations_confirmed:
+            st.warning(
+                "Confirm the selected locations or override them before generating the SLZ export."
+            )
+        else:
+            with st.spinner("Generating per-archetype SLZ policy initiatives..."):
+                try:
+                    slz_result = api_client.generate_slz_initiatives(
+                        mappings=[_to_backend_mapping(m) for m in slz_export_mappings],
+                        framework_name=st.session_state.framework_name,
+                        allowed_locations=locations_list,
+                        country_or_region=country_or_region or None,
+                        jurisdiction_profile=jurisdiction_profile or None,
+                        resolution_choices=sovereignty_resolutions,
+                        session_id=st.session_state.session_uuid,
+                    )
+                    st.session_state.slz_generated = slz_result
+                    st.success(
+                        "✅ SLZ initiatives generated and saved as "
+                        f"Version {slz_result.get('semantic_version', '—')}."
+                    )
+                    render_success_effect("SLZ initiatives generated")
+                except httpx.ConnectError:
+                    st.error("❌ Cannot connect to backend.")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
 
     # Display generated SLZ artifacts
     if st.session_state.slz_generated:

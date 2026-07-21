@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
 from app.services import version_service
+from app.services.jurisdiction_profile_service import get_jurisdiction_profile_service
 from app.auth.azure_ad_auth import User, get_current_user
 from app.db import cosmos_client
 
@@ -158,6 +159,13 @@ def _slz_version_payload(
                 {"name": f"Deploy-{stem}.ps1", "content": scripts.get("powershell", "")},
             ]
         )
+
+    files.append(
+        _json_file(
+            "slz_sovereignty_manifest.json",
+            archetypes.get("summary", {}),
+        )
+    )
 
     return {
         "artifact_type": "slz_initiative",
@@ -398,8 +406,28 @@ class SLZGenerationRequest(BaseModel):
     mappings: List[ControlMapping] = Field(..., description="Control mappings with sovereignty data")
     allowed_locations: Optional[List[str]] = Field(
         default=None,
-        description="Allowed Azure regions for data residency (e.g. ['southafricanorth','southafricawest'])"
+        description="Confirmed Azure regions for data residency",
     )
+    country_or_region: Optional[str] = Field(
+        default=None,
+        description="Jurisdiction detected from the source document and confirmed by the operator",
+    )
+    jurisdiction_profile: Optional[dict] = Field(
+        default=None,
+        description="Source-backed regional recommendation selected or overridden by the operator",
+    )
+    resolution_choices: List[dict] = Field(
+        default_factory=list,
+        description="Recorded sovereignty policy, configuration, evidence, or exception choices",
+    )
+
+
+@router.get("/jurisdiction-profile")
+async def get_jurisdiction_profile(
+    country_or_region: str = Query(..., min_length=1, max_length=200),
+):
+    """Return a source-backed regional recommendation for a scanned jurisdiction."""
+    return get_jurisdiction_profile_service().recommend(country_or_region)
 
 
 @router.post("/generate/slz")
@@ -435,6 +463,9 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             mappings=sov_mappings,
             framework_name=request.framework_name,
             allowed_locations=request.allowed_locations,
+            country_or_region=request.country_or_region,
+            jurisdiction_profile=request.jurisdiction_profile,
+            resolution_choices=request.resolution_choices,
         )
 
         response_data = {
@@ -460,6 +491,10 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
                 "archetype_count": len(
                     result.get("archetype_artifacts", result)
                 ),
+                "country_or_region": request.country_or_region,
+                "sovereignty_coverage_state": (
+                    result.get("summary", {}).get("sovereignty_coverage_state")
+                ),
             },
         )
         response_data["version_id"] = version["id"]
@@ -477,6 +512,9 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             "archetypes": result,
             "mappings_count": len(request.mappings),
             "sovereignty_mappings_count": len(sov_mappings),
+            "country_or_region": request.country_or_region,
+            "jurisdiction_profile": request.jurisdiction_profile or {},
+            "resolution_choices": request.resolution_choices,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         persisted_id = await _persist_artifact(artifact_doc)
