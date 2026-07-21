@@ -21,6 +21,16 @@ _SUCCESS_STATUSES = frozenset({"completed"})
 # must be configured to accept this (AZURE_AD_ACCEPTED_AUDIENCES) for deploy.
 ARM_RESOURCE = "https://management.azure.com"
 
+# Azure Policy hard limits enforced by the ARM ``policySetDefinitions`` REST API
+# (api-version 2023-04-01). Exceeding either yields an HTTP 400 at deploy time:
+#   - description > 512 chars                  -> "The value ... exceeds ... 512"
+#   - a policyDefinition ref with >16 groups   -> InvalidPolicySetDefinitionGroups
+# The pipeline's report-grade initiative can exceed both for large frameworks
+# (e.g. SAMA: 857-char description, one policy in 19 groups), so we clamp at the
+# deploy boundary. Confirmed directly from ARM 400 responses.
+ARM_DESCRIPTION_MAX = 512
+ARM_GROUPNAMES_MAX = 16
+
 
 def api_url(base_url: str, path: str) -> str:
     """Join the frontend base URL with an API ``path`` under ``/api/v1``.
@@ -55,14 +65,279 @@ def default_initiative_name(framework_name: Optional[str]) -> str:
     return name.replace(" ", "_").lower() or "compliance_framework"
 
 
+def _first(mapping: Mapping[str, Any], *keys: str, default: Any = None) -> Any:
+    """Return the first present key from ``mapping`` (case variants), else default."""
+    for k in keys:
+        if k in mapping and mapping[k] is not None:
+            return mapping[k]
+    return default
+
+
+def normalize_initiative_for_deploy(initiative: Mapping[str, Any]) -> dict:
+    """Return a REST-deployable ``policySetDefinitions`` body from a pipeline
+    initiative artifact.
+
+    The pipeline's ``files.initiative`` is shaped for PowerShell
+    (``New-AzPolicySetDefinition``): ``PolicyDefinitionId``,
+    ``PolicyDefinitionReferenceId``, ``GroupNames`` (PascalCase). The ARM REST
+    API — used by ``/deploy/validate`` and ``/deploy/initiative`` — requires
+    camelCase (``policyDefinitionId`` ...), so ARM silently drops the PascalCase
+    keys and validation fails with "missing policyDefinitionId".
+
+    This converts to camelCase and stamps ``metadata.ASC = "true"`` (the legacy
+    flag that surfaces a custom initiative under Defender for Cloud > Regulatory
+    compliance, matching the backend ``to_azure_json()``). It is idempotent: a
+    body already in camelCase passes through unchanged apart from the ASC stamp.
+    """
+    props = initiative.get("properties") if isinstance(initiative.get("properties"), Mapping) else initiative
+
+    defs = []
+    for pd in props.get("policyDefinitions") or []:
+        if not isinstance(pd, Mapping):
+            continue
+        group_names = _first(pd, "groupNames", "GroupNames", default=[]) or []
+        # ARM rejects a reference listing >16 groups; keep the first 16.
+        if len(group_names) > ARM_GROUPNAMES_MAX:
+            group_names = list(group_names)[:ARM_GROUPNAMES_MAX]
+        defs.append({
+            "policyDefinitionId": _first(pd, "policyDefinitionId", "PolicyDefinitionId"),
+            "policyDefinitionReferenceId": _first(pd, "policyDefinitionReferenceId", "PolicyDefinitionReferenceId"),
+            "parameters": _first(pd, "parameters", "Parameters", default={}) or {},
+            "groupNames": group_names,
+        })
+
+    groups = []
+    for g in props.get("policyDefinitionGroups") or []:
+        if not isinstance(g, Mapping):
+            continue
+        group = {"name": _first(g, "name", "Name")}
+        display = _first(g, "displayName", "DisplayName")
+        desc = _first(g, "description", "Description")
+        if display is not None:
+            group["displayName"] = display
+        if desc is not None:
+            group["description"] = desc
+        groups.append(group)
+
+    metadata = dict(props.get("metadata") or {})
+    metadata.setdefault("category", "Regulatory Compliance")
+    metadata["ASC"] = "true"
+
+    description = props.get("description", "") or ""
+    if len(description) > ARM_DESCRIPTION_MAX:
+        description = description[:ARM_DESCRIPTION_MAX]
+
+    return {
+        "properties": {
+            "displayName": props.get("displayName"),
+            "description": description,
+            "policyType": "Custom",
+            "metadata": metadata,
+            "parameters": props.get("parameters") or {},
+            "policyDefinitions": defs,
+            "policyDefinitionGroups": groups,
+        }
+    }
+
+
+def arm_safety_warnings(initiative: Mapping[str, Any]) -> list:
+    """Return human-readable warnings for any ARM limits that
+    :func:`normalize_initiative_for_deploy` will silently clamp.
+
+    Lets the CLI tell the user *before* deploy that content was trimmed to fit
+    Azure Policy limits (e.g. a description shortened, or group associations
+    dropped from an over-referenced policy), rather than hiding the loss.
+    """
+    props = initiative.get("properties") if isinstance(initiative.get("properties"), Mapping) else initiative
+    warnings = []
+
+    description = props.get("description") or props.get("Description") or ""
+    if len(description) > ARM_DESCRIPTION_MAX:
+        warnings.append(
+            f"Initiative description is {len(description)} chars; truncated to "
+            f"the ARM limit of {ARM_DESCRIPTION_MAX}."
+        )
+
+    for pd in props.get("policyDefinitions") or props.get("PolicyDefinitions") or []:
+        if not isinstance(pd, Mapping):
+            continue
+        ref = _first(pd, "policyDefinitionReferenceId", "PolicyDefinitionReferenceId", default="?")
+        gn = _first(pd, "groupNames", "GroupNames", default=[]) or []
+        if len(gn) > ARM_GROUPNAMES_MAX:
+            warnings.append(
+                f"Policy '{ref}' is grouped under {len(gn)} controls; ARM allows "
+                f"{ARM_GROUPNAMES_MAX}, so {len(gn) - ARM_GROUPNAMES_MAX} group "
+                f"association(s) will be dropped for this policy."
+            )
+
+    return warnings
+
+
 def extract_initiative(artifacts: Mapping[str, Any]) -> Optional[dict]:
-    """Return the Azure initiative JSON from a ``/pipeline/artifacts`` payload."""
+    """Return a REST-deployable Azure initiative from a ``/pipeline/artifacts``
+    payload (normalized to camelCase + ASC-stamped)."""
     files = artifacts.get("files") if isinstance(artifacts, Mapping) else None
     if isinstance(files, Mapping):
         initiative = files.get("initiative")
         if isinstance(initiative, dict):
-            return initiative
+            return normalize_initiative_for_deploy(initiative)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# Parameterized built-ins (required, no-default parameters)
+#
+# A built-in with a required (no ``defaultValue``) parameter cannot be referenced
+# in a custom policy set without a concrete value: ARM rejects the whole set
+# definition with ``MissingPolicyParameter``. The application handles this in
+# ``policy_service.generate_initiative`` — it *includes* the built-in when the
+# operator supplies every required value, otherwise excludes it. The skill mirrors
+# that: it surfaces each such policy + its required parameter schema so the user
+# can decide, per policy, to supply a value or exclude it. Nothing is dropped
+# silently.
+# --------------------------------------------------------------------------- #
+
+def _guid_of(policy_id: Optional[str]) -> Optional[str]:
+    """Return the definition GUID (last path segment) of a policyDefinitionId."""
+    if not policy_id:
+        return None
+    return str(policy_id).rstrip("/").rsplit("/", 1)[-1] or None
+
+
+def required_params_from_definition(definition: Mapping[str, Any]) -> dict:
+    """Return ``{paramName: schema}`` for parameters of an ``az policy definition
+    show`` object that have **no** ``defaultValue`` (i.e. required).
+
+    ``schema`` keeps the fields useful for prompting the user: ``type``,
+    ``description``, ``allowedValues``, ``strongType``.
+    """
+    params = definition.get("parameters") if isinstance(definition, Mapping) else None
+    if not isinstance(params, Mapping):
+        return {}
+    required: dict = {}
+    for name, spec in params.items():
+        if not isinstance(spec, Mapping) or "defaultValue" in spec:
+            continue
+        meta = spec.get("metadata") if isinstance(spec.get("metadata"), Mapping) else {}
+        required[name] = {
+            "type": spec.get("type"),
+            "description": meta.get("description"),
+            "allowedValues": spec.get("allowedValues"),
+            "strongType": meta.get("strongType"),
+        }
+    return required
+
+
+def parameterized_references(
+    initiative: Mapping[str, Any],
+    required_by_guid: Mapping[str, Mapping[str, Any]],
+) -> list:
+    """List references in ``initiative`` whose built-in needs required params.
+
+    ``required_by_guid`` maps a definition GUID to its required-parameter schema
+    (see :func:`required_params_from_definition`). Returns one entry per affected
+    reference: ``{referenceId, policyId, guid, required}``.
+    """
+    props = initiative.get("properties") if isinstance(initiative.get("properties"), Mapping) else initiative
+    out = []
+    for pd in props.get("policyDefinitions") or []:
+        if not isinstance(pd, Mapping):
+            continue
+        pid = _first(pd, "policyDefinitionId", "PolicyDefinitionId")
+        guid = _guid_of(pid)
+        required = required_by_guid.get(guid) if guid else None
+        if required:
+            out.append({
+                "referenceId": _first(pd, "policyDefinitionReferenceId", "PolicyDefinitionReferenceId"),
+                "policyId": pid,
+                "guid": guid,
+                "required": dict(required),
+            })
+    return out
+
+
+def _coerce_param_value(value: Any, schema: Mapping[str, Any]) -> Any:
+    """Coerce a user-supplied string into the parameter's declared type.
+
+    Only the common cases are handled: ``Array`` splits a comma-separated string
+    into a list; ``Integer``/``Boolean`` are parsed; everything else passes
+    through. A value that is already a list/dict is returned unchanged.
+    """
+    if isinstance(value, (list, dict)):
+        return value
+    ptype = str((schema or {}).get("type") or "").lower()
+    if ptype == "array":
+        return [v.strip() for v in str(value).split(",") if v.strip()]
+    if ptype == "integer":
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+    if ptype == "boolean":
+        return str(value).strip().lower() in {"true", "1", "yes"}
+    return value
+
+
+def apply_parameter_resolutions(
+    initiative: Mapping[str, Any],
+    *,
+    required_by_guid: Mapping[str, Mapping[str, Any]],
+    values: Optional[Mapping[str, Mapping[str, Any]]] = None,
+    exclude: Optional[Iterable[str]] = None,
+) -> tuple:
+    """Resolve required-parameter built-ins per the user's choices.
+
+    - ``values``: ``{guid: {paramName: value}}`` — bake these in as literal
+      reference parameters (``{"value": ...}``), coerced to the declared type.
+    - ``exclude``: GUIDs whose references should be dropped entirely.
+
+    Returns ``(new_initiative, unresolved)`` where ``unresolved`` lists any
+    reference still missing a required value and not excluded — the caller must
+    refuse to deploy while ``unresolved`` is non-empty (never silently drop).
+    """
+    values = values or {}
+    exclude = set(exclude or ())
+    props = initiative.get("properties") if isinstance(initiative.get("properties"), Mapping) else initiative
+    src_defs = props.get("policyDefinitions") or []
+
+    new_defs = []
+    unresolved = []
+    for pd in src_defs:
+        if not isinstance(pd, Mapping):
+            new_defs.append(pd)
+            continue
+        pid = _first(pd, "policyDefinitionId", "PolicyDefinitionId")
+        guid = _guid_of(pid)
+        required = required_by_guid.get(guid) if guid else None
+
+        if guid in exclude:
+            continue  # user chose to drop this policy
+
+        if not required:
+            new_defs.append(dict(pd))
+            continue
+
+        supplied = values.get(guid) or {}
+        missing = [p for p in required if p not in supplied]
+        if missing:
+            unresolved.append({
+                "referenceId": _first(pd, "policyDefinitionReferenceId", "PolicyDefinitionReferenceId"),
+                "guid": guid,
+                "missing": missing,
+                "required": dict(required),
+            })
+            continue  # leave out until resolved; reported to caller
+
+        ref = dict(pd)
+        params = dict(ref.get("parameters") or {})
+        for pname, schema in required.items():
+            params[pname] = {"value": _coerce_param_value(supplied[pname], schema)}
+        ref["parameters"] = params
+        new_defs.append(ref)
+
+    new_props = dict(props)
+    new_props["policyDefinitions"] = new_defs
+    return {"properties": new_props}, unresolved
 
 
 def summarize_status(status: Mapping[str, Any]) -> str:

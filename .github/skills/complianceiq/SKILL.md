@@ -93,9 +93,11 @@ option and make the destructive one explicit.
 
 ```
 python scripts/ciq.py scopes                       # list subs / mgmt groups
+python scripts/ciq.py preflight --job-id <id>       # built-ins needing a value
 python scripts/ciq.py validate --job-id <id> --scope <arm-scope>   # dry run
 python scripts/ciq.py deploy   --job-id <id> --scope <arm-scope> \
-    [--assign] [--enforce] [--location eastus]
+    [--assign] [--enforce] [--location eastus] \
+    [--set-policy-param 'GUID:name=value'] [--exclude-policy GUID]
 ```
 
 Ask, in order:
@@ -103,16 +105,24 @@ Ask, in order:
    `az account show` matches the intended subscription.
 2. **Validate first?** — yes (recommended). Run `validate` and resolve any
    structural errors before deploying.
-3. **Definition-only or assign now?** — `--assign` also creates a policy
+3. **Parameterized built-ins** — run `preflight`. Some built-ins declare a
+   **required parameter with no default** (e.g. `logAnalytics`,
+   `listOfAllowedLocations`); ARM rejects the whole set definition
+   (`MissingPolicyParameter`) unless each is given a value or excluded. **Show the
+   user the affected policies and their parameter schema, then ask per policy** to
+   supply a value (`--set-policy-param 'GUID:name=value'`) or exclude it
+   (`--exclude-policy GUID`). Never drop one silently — `deploy` refuses to run
+   while any is unresolved. This mirrors the app's `generate_initiative`.
+4. **Definition-only or assign now?** — `--assign` also creates a policy
    assignment. Without it, only the initiative/policy definitions are created.
-4. **Enforcement** — **audit-only / DoNotEnforce is the default and the
+5. **Enforcement** — **audit-only / DoNotEnforce is the default and the
    recommendation.** Only pass `--enforce` when the user explicitly wants active
    enforcement (DeployIfNotExists/Modify effects will remediate/deny). State
    this trade-off in one line before they choose.
-5. **Identity location** — required whenever the initiative contains
+6. **Identity location** — required whenever the initiative contains
    DeployIfNotExists or Modify policies (a managed identity is created even
    under DoNotEnforce). Ask for the region (`--location`, default `eastus`).
-6. **Refresh / Defender** — after assignment, Azure Policy compliance
+7. **Refresh / Defender** — after assignment, Azure Policy compliance
    evaluation is asynchronous (can take ~30 min); tell the user results are not
    instant and offer to trigger a re-evaluation. The exported initiative is
    already stamped with the `ASC` metadata that surfaces it under Defender for

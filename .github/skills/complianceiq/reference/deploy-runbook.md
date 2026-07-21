@@ -89,6 +89,46 @@ python .github/skills/complianceiq/scripts/ciq.py scopes           # 200 => bear
 - `scopes` returning 200 proves the ARM bearer is accepted on an **authenticated**
   route (i.e. step 2 worked and Easy Auth passed the header through).
 
+## 4. Deploy an initiative to Azure / Defender for Cloud
+
+The pipeline's `files.initiative` is a **report-grade** artifact, not an
+ARM-ready body. The skill's `deploy`/`validate` normalize it before sending:
+camelCase keys, `metadata.ASC="true"` (Defender onboarding), description clamped
+to 512 chars, and each policy's `groupNames` capped to 16 (ARM hard limits —
+clamps are printed to stderr as warnings).
+
+Some built-ins declare a **required parameter with no default** (e.g.
+`logAnalytics`, `listOfAllowedLocations`). ARM rejects the whole set definition
+(`MissingPolicyParameter`) unless every such policy is either given a value or
+excluded — mirroring the app's `generate_initiative`. Always **preflight** first:
+
+```
+# List built-ins that need a value before deploying
+python .github/skills/complianceiq/scripts/ciq.py preflight --job-id <id>
+
+# Validate (dry run) — warns about any unresolved parameterized built-ins
+python .github/skills/complianceiq/scripts/ciq.py validate --job-id <id> \
+  --scope /subscriptions/<sub>
+
+# Deploy audit-only (DoNotEnforce) + assign, resolving the parameterized ones:
+python .github/skills/complianceiq/scripts/ciq.py deploy --job-id <id> \
+  --scope /subscriptions/<sub> --assign --location <region> \
+  --set-policy-param '<guid>:listOfAllowedLocations=<region1>,<region2>' \
+  --exclude-policy <guid-of-a-policy-to-drop>
+```
+
+- Deploy **refuses** to run while a required-param built-in is unresolved and not
+  excluded (never silently dropped). `validate` only warns.
+- `--set-policy-param 'GUID:name=value'` (repeatable) supplies a value (Array
+  values are comma-separated). `--exclude-policy GUID` (repeatable) drops a policy.
+- Audit-only is the default (`enforce_mode=False` → `DoNotEnforce`); pass
+  `--enforce` only when the operator explicitly wants enforcement.
+- `--location` is required whenever any included policy is DeployIfNotExists/Modify
+  (an identity is created even under DoNotEnforce).
+- Verify: `az policy set-definition show --name <name> --subscription <sub>` and
+  `az policy assignment show --name <name>-assignment --scope /subscriptions/<sub>`.
+  Defender surfaces the initiative under Regulatory compliance ~24–48h after assign.
+
 ## Rollback
 - Remove the env var: `az containerapp update -n <backend-app> -g <rg> --remove-env-vars AZURE_AD_ACCEPTED_AUDIENCES` (reverts backend to app-audience-only; empty set = skip aud check).
 - Remove the `/api` excludedPaths from the frontend authConfig (PUT the config back with `excludedPaths` cleared, api-version `2025-10-02-preview`) to re-lock `/api` behind Easy Auth.

@@ -118,6 +118,109 @@ def resolve_base_url(args: argparse.Namespace) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Parameterized built-in resolution
+# ---------------------------------------------------------------------------
+
+_REQUIRED_PARAM_CACHE: dict[str, dict] = {}
+
+
+def _unique_policy_guids(body: dict) -> list[str]:
+    props = body.get("properties", body) if isinstance(body, dict) else {}
+    guids = []
+    for pd in props.get("policyDefinitions") or []:
+        if isinstance(pd, dict):
+            g = core._guid_of(pd.get("policyDefinitionId"))
+            if g and g not in guids:
+                guids.append(g)
+    return guids
+
+
+def resolve_required_params(guids: list[str]) -> dict[str, dict]:
+    """Map each built-in GUID to its required (no-default) parameter schema.
+
+    Resolved live from ARM (``az policy definition show``) so the skill never
+    depends on a bundled snapshot. Unknown/custom GUIDs (not resolvable as a
+    built-in) are treated as having no required parameters — matching the backend
+    catalog's "never strip a policy we can't positively flag" stance.
+    """
+    out: dict[str, dict] = {}
+    for guid in guids:
+        if guid in _REQUIRED_PARAM_CACHE:
+            required = _REQUIRED_PARAM_CACHE[guid]
+        else:
+            try:
+                raw = _az(["policy", "definition", "show", "--name", guid, "-o", "json"])
+                required = core.required_params_from_definition(json.loads(raw))
+            except CiqError:
+                required = {}
+            _REQUIRED_PARAM_CACHE[guid] = required
+        if required:
+            out[guid] = required
+    return out
+
+
+def _parse_policy_param(spec: str) -> tuple[str, str, str]:
+    """Parse ``GUID:paramName=value`` into ``(guid, name, value)``."""
+    if ":" not in spec or "=" not in spec.split(":", 1)[1]:
+        raise CiqError(f"--set-policy-param must be 'GUID:paramName=value', got {spec!r}")
+    guid, rest = spec.split(":", 1)
+    name, value = rest.split("=", 1)
+    return guid.strip(), name.strip(), value
+
+
+def _collect_param_choices(args) -> tuple[dict, set]:
+    """Build ``(values, exclude)`` from ``--set-policy-param`` / ``--exclude-policy``."""
+    values: dict[str, dict] = {}
+    for spec in getattr(args, "set_policy_param", None) or []:
+        guid, name, value = _parse_policy_param(spec)
+        values.setdefault(guid, {})[name] = value
+    exclude = {g.strip() for g in getattr(args, "exclude_policy", None) or []}
+    return values, exclude
+
+
+def _resolve_parameterized(body: dict, args, *, strict: bool) -> dict:
+    """Apply the user's parameter choices to ``body`` and report/enforce gaps.
+
+    ``strict`` (deploy) raises when a required-param built-in is left unresolved
+    and not excluded; non-strict (validate) only warns and validates the resolved
+    subset. Nothing is dropped without being reported.
+    """
+    guids = _unique_policy_guids(body)
+    required_by_guid = resolve_required_params(guids)
+    if not required_by_guid:
+        return body
+
+    values, exclude = _collect_param_choices(args)
+    resolved, unresolved = core.apply_parameter_resolutions(
+        body, required_by_guid=required_by_guid, values=values, exclude=exclude
+    )
+
+    for guid in exclude:
+        if guid in required_by_guid:
+            print(f"info: excluding policy {guid} (user choice).", file=sys.stderr)
+    for guid, params in values.items():
+        if guid in required_by_guid:
+            print(f"info: policy {guid} parameterized with {sorted(params)}.", file=sys.stderr)
+
+    if unresolved:
+        lines = [
+            f"{u['guid']} (ref {u['referenceId']}) needs {u['missing']}"
+            for u in unresolved
+        ]
+        detail = "; ".join(lines)
+        if strict:
+            raise CiqError(
+                "Unresolved required parameters — supply values with "
+                "--set-policy-param 'GUID:name=value' or drop with "
+                f"--exclude-policy GUID. Pending: {detail}. "
+                "Run 'ciq preflight' to see each parameter's schema."
+            )
+        print(f"warning: validating without {len(unresolved)} parameterized "
+              f"policy(ies): {detail}", file=sys.stderr)
+    return resolved
+
+
+# ---------------------------------------------------------------------------
 # HTTP helpers (stdlib only)
 # ---------------------------------------------------------------------------
 
@@ -260,11 +363,21 @@ def cmd_scopes(args: argparse.Namespace) -> int:
 
 
 def _load_initiative(base: str, token: Optional[str], args) -> tuple[dict, str]:
-    """Return ``(initiative_body, initiative_name)`` from a job id or a file."""
+    """Return ``(initiative_body, initiative_name)`` from a job id or a file.
+
+    Any ARM-limit clamping (see :func:`ciq_core.arm_safety_warnings`) is reported
+    to stderr so the user knows content was trimmed before it is deployed.
+    """
     if args.initiative_file:
-        body = json.loads(Path(args.initiative_file).read_text())
+        raw = json.loads(Path(args.initiative_file).read_text())
+        for w in core.arm_safety_warnings(raw) if isinstance(raw, dict) else []:
+            print(f"warning: {w}", file=sys.stderr)
+        body = core.normalize_initiative_for_deploy(raw) if isinstance(raw, dict) else raw
     elif args.job_id:
         artifacts = get_json(base, f"/pipeline/artifacts/{args.job_id}", token)
+        raw = artifacts.get("files", {}).get("initiative") if isinstance(artifacts, dict) else None
+        for w in core.arm_safety_warnings(raw) if isinstance(raw, dict) else []:
+            print(f"warning: {w}", file=sys.stderr)
         body = core.extract_initiative(artifacts)
         if body is None:
             raise CiqError("No initiative JSON in artifacts for that job.")
@@ -282,8 +395,31 @@ def cmd_validate(args: argparse.Namespace) -> int:
     body, name = _load_initiative(base, token, args)
     if not core.is_valid_scope(args.scope):
         raise CiqError(f"Invalid ARM scope: {args.scope}")
+    body = _resolve_parameterized(body, args, strict=False)
     payload = core.build_validate_body(args.scope, name, body, not args.no_check_references)
     print(json.dumps(post_json(base, "/deploy/validate", token, payload), indent=2))
+    return 0
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Report built-ins that need required (no-default) parameters before deploy.
+
+    Prints, per affected policy, the reference id, GUID, and each required
+    parameter's schema (type/description/allowedValues) so the user can decide to
+    supply a value (``--set-policy-param``) or exclude it (``--exclude-policy``).
+    """
+    base = resolve_base_url(args)
+    token = get_token()
+    body, name = _load_initiative(base, token, args)
+    guids = _unique_policy_guids(body)
+    required_by_guid = resolve_required_params(guids)
+    refs = core.parameterized_references(body, required_by_guid)
+    print(json.dumps({
+        "initiative_name": name,
+        "total_policies": len(guids),
+        "parameterized_count": len(refs),
+        "parameterized": refs,
+    }, indent=2))
     return 0
 
 
@@ -293,6 +429,7 @@ def cmd_deploy(args: argparse.Namespace) -> int:
     body, name = _load_initiative(base, token, args)
     if not core.is_valid_scope(args.scope):
         raise CiqError(f"Invalid ARM scope: {args.scope}")
+    body = _resolve_parameterized(body, args, strict=True)
     payload = core.build_deploy_body(
         args.scope,
         name,
@@ -358,7 +495,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--initiative-file")
     p.add_argument("--initiative-name")
     p.add_argument("--no-check-references", action="store_true")
+    p.add_argument("--set-policy-param", action="append", metavar="GUID:name=value",
+                   help="Supply a required parameter for a built-in (repeatable)")
+    p.add_argument("--exclude-policy", action="append", metavar="GUID",
+                   help="Exclude a built-in from the initiative (repeatable)")
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser("preflight",
+                       help="List built-ins needing required parameters before deploy")
+    _add_common(p)
+    p.add_argument("--job-id")
+    p.add_argument("--initiative-file")
+    p.add_argument("--initiative-name")
+    p.set_defaults(func=cmd_preflight)
 
     p = sub.add_parser("deploy", help="Deploy an initiative (audit-only unless --enforce)")
     _add_common(p)
@@ -371,6 +520,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--location", default="eastus", help="Identity region for DINE/Modify policies")
     p.add_argument("--assignment-display-name")
     p.add_argument("--assignment-description")
+    p.add_argument("--set-policy-param", action="append", metavar="GUID:name=value",
+                   help="Supply a required parameter for a built-in (repeatable)")
+    p.add_argument("--exclude-policy", action="append", metavar="GUID",
+                   help="Exclude a built-in from the initiative (repeatable)")
     p.set_defaults(func=cmd_deploy)
 
     return parser
