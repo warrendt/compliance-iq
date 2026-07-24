@@ -262,6 +262,29 @@ class PolicyGenerationRequest(BaseModel):
     })
 
 
+class ManualControlEntry(BaseModel):
+    """A control that Azure Policy cannot enforce, routed to the manual register.
+
+    These controls are deliberately excluded from the generated initiative
+    (their ``azure_policy_ids`` are empty) and surfaced here as a completely
+    separate section so operators can track them for manual attestation.
+    """
+
+    control_id: str = Field(..., description="External framework control ID")
+    control_name: str = Field("", description="External framework control name")
+    control_type: str = Field(
+        "", description="Nature of the control (Policy/Contractual/Operational/…)"
+    )
+    coverage_category: str = Field(
+        ...,
+        description="Coverage taxonomy: B_AzureConfig, C_Process, or D_MicrosoftAttestation",
+    )
+    mcsb_control_id: str = Field("", description="Associated MCSB control ID, if any")
+    reason: str = Field(
+        ..., description="Why the control is not Azure-Policy enforceable"
+    )
+
+
 class PolicyGenerationResponse(BaseModel):
     """Response model for policy generation."""
 
@@ -286,6 +309,16 @@ class PolicyGenerationResponse(BaseModel):
         description="Excluded parameterized built-ins and their required-parameter schemas, so the UI can collect values and re-generate with them included"
     )
     warnings: List[str] = Field(default_factory=list, description="Warning messages")
+
+    manual_controls: List[ManualControlEntry] = Field(
+        default_factory=list,
+        description="Controls that Azure Policy cannot enforce — excluded from the "
+        "initiative and listed here as a separate manual-attestation register",
+    )
+    coverage_summary: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Per-coverage-category counts and the Azure-enforceable share",
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from app.models import PolicyGenerationRequest, PolicyGenerationResponse, ControlMapping
 from app.services import get_policy_service
 from app.services import version_service
+from app.services import coverage
 from app.services.jurisdiction_profile_service import get_jurisdiction_profile_service
 from app.auth.azure_ad_auth import User, get_current_user
 from app.db import cosmos_client
@@ -38,7 +39,12 @@ def _json_file(name: str, value: object) -> dict[str, str]:
     return {"name": name, "content": json.dumps(value, indent=2, default=str)}
 
 
-def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[str, str]:
+def _deploy_readme(
+    stem: str,
+    framework_name: str,
+    has_standard: bool,
+    coverage_counts: Optional[dict] = None,
+) -> dict[str, str]:
     """Build a README documenting deploy order and prerequisites for the bundle."""
     standard_line = (
         f"3. **Defender for Cloud standard** — `Deploy-{stem}DefenderStandard.ps1` "
@@ -56,6 +62,30 @@ def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[s
         if has_standard
         else ""
     )
+    coverage_section = ""
+    if coverage_counts:
+        total = coverage_counts.get("total", 0)
+        pct = coverage_counts.get("azure_enforceable_pct", 0.0)
+        rows = [
+            ("A — Azure Policy enforceable", coverage_counts.get("A_AzurePolicy", 0)),
+            ("B — Azure configurable (no policy)", coverage_counts.get("B_AzureConfig", 0)),
+            ("C — Process / legal / organisational", coverage_counts.get("C_Process", 0)),
+            ("D — Microsoft-operated (attestation)", coverage_counts.get("D_MicrosoftAttestation", 0)),
+        ]
+        if coverage_counts.get("unclassified", 0):
+            rows.append(("Unclassified (legacy)", coverage_counts["unclassified"]))
+        table = "\n".join(f"| {label} | {count} |" for label, count in rows)
+        coverage_section = (
+            "\n## Coverage summary\n\n"
+            f"Of {total} control(s), **{coverage_counts.get('A_AzurePolicy', 0)} "
+            f"({pct}%)** are enforceable via Azure Policy and included in the "
+            "initiative. The rest are not Azure-Policy enforceable and are listed "
+            f"in `{stem}_manual_controls.csv` for manual attestation — they are "
+            "**not** false-mapped to a catch-all policy.\n\n"
+            "| Coverage category | Controls |\n"
+            "| --- | --- |\n"
+            f"{table}\n"
+        )
     content = (
         f"# {framework_name} — deployment bundle\n\n"
         "Deploy the resources in this order (audit-only by default — nothing is "
@@ -71,6 +101,7 @@ def _deploy_readme(stem: str, framework_name: str, has_standard: bool) -> dict[s
         "without one.\n"
         f"{standard_line}"
         f"{prereq}"
+        f"{coverage_section}"
         "\n## Automatic exclusions\n\n"
         "Built-in policies that cannot live in a custom policy set are dropped during "
         "generation so the deploy does not fail:\n\n"
@@ -97,8 +128,11 @@ def _mcsb_version_payload(
 ) -> dict:
     """Create a complete, immutable download bundle for an MCSB generation."""
     stem = _file_stem(request.framework_name)
+    coverage_counts = coverage.coverage_summary(request.mappings)
     files = [
-        _deploy_readme(stem, request.framework_name, standard is not None),
+        _deploy_readme(
+            stem, request.framework_name, standard is not None, coverage_counts
+        ),
         _json_file(f"{stem}_initiative.json", initiative_json),
         {"name": f"{stem}_initiative.bicep", "content": bicep_template},
         {
@@ -113,6 +147,10 @@ def _mcsb_version_payload(
             f"{stem}_mappings.json",
             [mapping.model_dump(mode="json") for mapping in request.mappings],
         ),
+        {
+            "name": f"{stem}_manual_controls.csv",
+            "content": coverage.manual_controls_csv(request.mappings),
+        },
     ]
     if standard:
         files.extend(
@@ -473,6 +511,8 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             "total_mappings": len(request.mappings),
             "sovereignty_mappings": len(sov_mappings),
             "archetypes": result,
+            "manual_controls": coverage.manual_register_rows(request.mappings),
+            "coverage_summary": coverage.coverage_summary(request.mappings),
         }
 
         version = await version_service.create_version(

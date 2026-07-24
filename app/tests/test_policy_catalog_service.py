@@ -226,3 +226,59 @@ def test_available_false_when_snapshot_missing(tmp_path):
     svc = PolicyCatalogService(data_path=str(tmp_path / "missing.json"))
     assert svc.available is False
     assert svc.exists("11111111-1111-1111-1111-111111111111") is False
+
+
+_EFFECT_CATALOG = {
+    "count": 4,
+    "definitions": [
+        {
+            "name": "a0000000-0000-0000-0000-000000000000",
+            "display_name": "Real enforceable audit policy",
+            "description": "Audits a resource configuration.",
+            "category": "Security Center",
+            "effect": "AuditIfNotExists",
+        },
+        {
+            "name": "b0000000-0000-0000-0000-000000000000",
+            "display_name": "Manual attestation control filed under Regulatory Compliance",
+            "description": "Microsoft managed control.",
+            "category": "Regulatory Compliance",
+            "effect": "Manual",
+        },
+        {
+            "name": "c0000000-0000-0000-0000-000000000000",
+            "display_name": "Manual placeholder NOT filed under Regulatory Compliance",
+            "description": "Placeholder whose category alone would not flag it.",
+            "category": "Security Center",
+            "effect": "Manual",
+        },
+        {
+            "name": "d0000000-0000-0000-0000-000000000000",
+            "display_name": "Disabled no-op policy",
+            "description": "Does nothing on its own.",
+            "category": "General",
+            "effect": "Disabled",
+        },
+    ],
+}
+
+
+def test_is_non_enforceable_by_category_and_effect(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path, _EFFECT_CATALOG))
+    # Enforceable audit effect + real category -> enforceable.
+    assert svc.is_non_enforceable("a0000000-0000-0000-0000-000000000000") is False
+    # Manual + Regulatory Compliance -> non-enforceable (category signal).
+    assert svc.is_non_enforceable("b0000000-0000-0000-0000-000000000000") is True
+    # Manual effect but a *real* category -> non-enforceable via the EFFECT
+    # signal alone, which the category filter would have missed.
+    assert svc.is_non_enforceable("c0000000-0000-0000-0000-000000000000") is True
+    # Disabled effect is a no-op -> non-enforceable.
+    assert svc.is_non_enforceable("d0000000-0000-0000-0000-000000000000") is True
+    # Unknown GUIDs are never stripped (snapshot may be incomplete).
+    assert svc.is_non_enforceable("ffffffff-ffff-ffff-ffff-ffffffffffff") is False
+
+
+def test_effect_stored_on_ingest(tmp_path):
+    svc = PolicyCatalogService(data_path=_write_catalog(tmp_path, _EFFECT_CATALOG))
+    entry = svc.get("a0000000-0000-0000-0000-000000000000")
+    assert entry is not None and entry["effect"] == "AuditIfNotExists"

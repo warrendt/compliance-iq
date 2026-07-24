@@ -22,6 +22,7 @@ from app.models import (
     ParameterizedPolicyRequirement,
     PolicyParameterSpec,
 )
+from app.services import coverage
 from app.services.sovereignty_service import get_sovereignty_service
 from app.services.policy_catalog_service import get_policy_catalog_service
 
@@ -125,6 +126,7 @@ class PolicyGenerationService:
             non_includable_ids,
             parameterized_ids,
             requirements,
+            non_enforceable_ids,
         ) = self._create_policy_definitions(
             filtered_mappings, request.policy_parameter_values
         )
@@ -149,6 +151,17 @@ class PolicyGenerationService:
                 f"{len(unique_non_includable)} non-includable built-in policy(ies) "
                 f"dropped (cannot be part of a custom policy set, e.g. System "
                 f"Policy): {preview}"
+            )
+
+        unique_non_enforceable = sorted(set(non_enforceable_ids))
+        if unique_non_enforceable:
+            preview = ", ".join(unique_non_enforceable[:5])
+            if len(unique_non_enforceable) > 5:
+                preview += ", …"
+            warnings.append(
+                f"{len(unique_non_enforceable)} non-enforceable 'Regulatory "
+                f"Compliance' built-in policy(ies) dropped (manual-attestation "
+                f"placeholders with no audit/deny effect): {preview}"
             )
 
         unique_parameterized = sorted(set(parameterized_ids))
@@ -197,7 +210,9 @@ class PolicyGenerationService:
             excluded_builtin_policies=len(unique_non_includable),
             excluded_parameterized_policies=len(unique_parameterized),
             parameterized_requirements=parameterized_requirements,
-            warnings=warnings
+            warnings=warnings,
+            manual_controls=coverage.manual_register_rows(request.mappings),
+            coverage_summary=coverage.coverage_summary(request.mappings),
         )
 
         logger.info(
@@ -231,11 +246,26 @@ class PolicyGenerationService:
             logger.debug("Including all policies (include_all=True)")
             return mappings, warnings
 
-        # Filter by confidence
+        # Filter by confidence and coverage.
         filtered = []
         excluded_count = 0
+        coverage_excluded = 0
 
         for mapping in mappings:
+            # Coverage gate: a control explicitly classified as non-enforceable
+            # (B_AzureConfig / C_Process / D_MicrosoftAttestation) never belongs in
+            # the initiative — it is routed to the manual register instead. Legacy
+            # mappings with coverage_category=None fall through to confidence-only
+            # gating, preserving existing behaviour.
+            coverage_category = getattr(mapping, "coverage_category", None)
+            if coverage_category is not None and coverage_category != "A_AzurePolicy":
+                coverage_excluded += 1
+                logger.debug(
+                    f"Excluded {mapping.external_control_id} from initiative "
+                    f"(coverage {coverage_category} — routed to manual register)"
+                )
+                continue
+
             if mapping.confidence_score >= min_confidence:
                 filtered.append(mapping)
             else:
@@ -244,6 +274,12 @@ class PolicyGenerationService:
                     f"Excluded {mapping.external_control_id} "
                     f"(confidence {mapping.confidence_score:.2f} < {min_confidence})"
                 )
+
+        if coverage_excluded > 0:
+            warnings.append(
+                f"{coverage_excluded} control(s) routed to the manual register "
+                f"(not Azure-Policy enforceable)"
+            )
 
         if excluded_count > 0:
             warnings.append(
@@ -315,7 +351,8 @@ class PolicyGenerationService:
             Tuple of (policy definition references, control groups, dropped
             invalid IDs, dropped non-includable built-in IDs, dropped
             parameterized built-in IDs, requirements-by-GUID for the dropped
-            parameterized built-ins)
+            parameterized built-ins, dropped non-enforceable "Regulatory
+            Compliance" built-in IDs)
         """
         parameter_values = parameter_values or {}
         if catalog is None:
@@ -328,6 +365,7 @@ class PolicyGenerationService:
         used_ref_ids: set[str] = set()
         invalid_ids: List[str] = []
         non_includable_ids: List[str] = []
+        non_enforceable_ids: List[str] = []
         parameterized_ids: List[str] = []
         requirements: Dict[str, ParameterizedPolicyRequirement] = {}
 
@@ -395,6 +433,20 @@ class PolicyGenerationService:
                         f"Control {mapping.external_control_id}: dropping "
                         f"non-includable built-in '{policy_guid}' "
                         f"(cannot be part of a custom policy set)"
+                    )
+                    continue
+
+                # Strip "Regulatory Compliance" placeholders (Microsoft Managed
+                # Control / manual-attestation). They are includable but carry no
+                # enforcement logic (no audit/deny/DINE effect), so an initiative
+                # built on them looks covered while enforcing nothing. Only dropped
+                # when the catalog positively classifies them.
+                if getattr(catalog, "is_non_enforceable", None) and catalog.is_non_enforceable(policy_guid):
+                    non_enforceable_ids.append(policy_guid)
+                    logger.warning(
+                        f"Control {mapping.external_control_id}: dropping "
+                        f"non-enforceable 'Regulatory Compliance' built-in "
+                        f"'{policy_guid}' (no enforcement logic)"
                     )
                     continue
 
@@ -503,6 +555,10 @@ class PolicyGenerationService:
                 f", dropped {len(parameterized_ids)} parameterized"
                 if parameterized_ids else ""
             )
+            + (
+                f", dropped {len(non_enforceable_ids)} non-enforceable"
+                if non_enforceable_ids else ""
+            )
         )
         return (
             ordered_definitions,
@@ -511,6 +567,7 @@ class PolicyGenerationService:
             non_includable_ids,
             parameterized_ids,
             requirements,
+            non_enforceable_ids,
         )
 
     def validate_initiative(self, initiative: PolicyInitiative) -> tuple[bool, List[str]]:

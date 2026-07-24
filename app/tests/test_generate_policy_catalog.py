@@ -60,9 +60,75 @@ def test_normalize_projects_lean_schema_with_defaults():
         "description": "",
         "category": "Uncategorized",
         "mode": "All",
+        "effect": "",
         "requires_parameters": False,
         "required_parameters": {},
     }
+
+
+def test_extract_effect_literal():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Denies something",
+                "policyRule": {"if": {}, "then": {"effect": "Deny"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == "Deny"
+
+
+def test_extract_effect_resolves_parameter_reference_default():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Audits by default",
+                "parameters": {
+                    "effect": {
+                        "type": "String",
+                        "defaultValue": "AuditIfNotExists",
+                        "allowedValues": ["AuditIfNotExists", "Disabled"],
+                    }
+                },
+                "policyRule": {"if": {}, "then": {"effect": "[parameters('effect')]"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == "AuditIfNotExists"
+
+
+def test_extract_effect_manual_placeholder():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Manual attestation control",
+                "policyRule": {"if": {}, "then": {"effect": "Manual"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == "Manual"
+
+
+def test_extract_effect_empty_when_parameterized_without_default():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "No resolvable default",
+                "parameters": {"effect": {"type": "String"}},
+                "policyRule": {"if": {}, "then": {"effect": "[parameters('effect')]"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == ""
+
+
+def test_extract_effect_empty_when_no_policy_rule():
+    out = gen.normalize([{"name": "g1", "display_name": "Ruleless"}])
+    assert out[0]["effect"] == ""
 
 
 def test_build_catalog_header():

@@ -67,6 +67,12 @@ def _tokenize(text: str) -> List[str]:
 # so they are demoted below real enforceable policies during retrieval.
 _NON_ENFORCEABLE_CATEGORY = "regulatory compliance"
 
+# Enforcement effects that do nothing on their own. ``Manual`` is the attestation
+# placeholder (CMA_* controls); ``Disabled`` is a no-op. A built-in whose
+# resolved effect is one of these enforces nothing, so it must not count as
+# Azure-Policy coverage regardless of its category. Compared case-folded.
+_NON_ENFORCEABLE_EFFECTS = frozenset({"manual", "disabled"})
+
 # Built-in policies in these categories are internal/reserved and CANNOT be added
 # to a custom policy set definition — ARM rejects the initiative with
 # "can not be part of a custom policy set". Recommending them would produce an
@@ -146,6 +152,7 @@ class PolicyCatalogService:
                 "display_name": (d.get("display_name") or "").strip(),
                 "description": (d.get("description") or "").strip(),
                 "category": (d.get("category") or "Uncategorized").strip(),
+                "effect": (d.get("effect") or "").strip(),
                 "requires_parameters": bool(d.get("requires_parameters", False)),
                 "required_parameters": d.get("required_parameters") or {},
             }
@@ -269,6 +276,32 @@ class PolicyCatalogService:
         if not entry:
             return False
         return _is_non_includable_category(entry.get("category", ""))
+
+    def is_non_enforceable(self, name: str) -> bool:
+        """True if the built-in ``name`` (GUID) is a non-enforceable placeholder.
+
+        Two independent signals classify a built-in as non-enforceable:
+
+        * **Category** — Azure files Microsoft "Managed Control" (CMA_*)
+          manual-attestation policies under "Regulatory Compliance".
+        * **Effect** — a resolved enforcement effect of ``Manual`` (attestation
+          placeholder) or ``Disabled`` (no-op). This catches placeholders that
+          are *not* filed under Regulatory Compliance, which the category signal
+          alone misses.
+
+        Either way the policy carries no enforcement logic, so mapping a control
+        to one produces an initiative that *looks* covered but enforces nothing.
+
+        Returns ``True`` only when the catalog positively classifies the entry.
+        Unknown GUIDs return ``False`` — the snapshot may not be exhaustive, so
+        we never strip a policy we cannot classify.
+        """
+        entry = self.get(name)
+        if not entry:
+            return False
+        if (entry.get("category", "") or "").strip().casefold() == _NON_ENFORCEABLE_CATEGORY:
+            return True
+        return (entry.get("effect", "") or "").strip().casefold() in _NON_ENFORCEABLE_EFFECTS
 
     def requires_parameters(self, name: str) -> bool:
         """True if the built-in ``name`` (GUID) has a required (no-default) parameter.

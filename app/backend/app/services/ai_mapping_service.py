@@ -18,6 +18,7 @@ from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
 from app.services.policy_catalog_service import get_policy_catalog_service
 from app.services.sovereignty_service import get_sovereignty_service
+from app.services import coverage
 from app.auth import get_azure_openai_client
 from app.config import get_settings
 
@@ -79,6 +80,32 @@ For EACH control, also determine the appropriate sovereignty dimensions:
 If a control has NO sovereignty relevance (e.g., purely governance/procedural), set sovereignty_level to "L1" with an empty objectives list.
 
 Always provide sovereignty reasoning explaining why you chose that level.
+
+## Coverage Classification (REQUIRED)
+
+Not every control can be enforced by Azure Policy. Many compliance frameworks
+contain process, legal, HR, contractual, and organisational-governance controls
+that Azure has no technical means to enforce. Attaching an Azure Policy to these
+(especially a catch-all MCSB "Governance & Strategy" entry) is a FALSE POSITIVE.
+
+Classify every control into exactly one coverage_category:
+- "A_AzurePolicy": technically enforceable or auditable by an Azure Policy
+  definition (e.g. encryption, MFA, network rules, logging, backup). ONLY this
+  category may carry azure_policy_ids.
+- "B_AzureConfig": achieved through Azure configuration but NOT via an Azure
+  Policy definition. Return an EMPTY azure_policy_ids list.
+- "C_Process": process, legal, HR, contractual, jurisdiction, incident-contact,
+  training, or organisational-governance controls Azure cannot enforce. Return an
+  EMPTY azure_policy_ids list.
+- "D_MicrosoftAttestation": satisfied by Microsoft-operated infrastructure the
+  customer attests to (datacentre/physical security, hypervisor, ISO/SOC
+  certifications). Return an EMPTY azure_policy_ids list.
+
+Manual opt-out: if the control's nature (see "Control Type") is Policy,
+Contractual, Management, Operational, or Governance, and it is not clearly a
+technical safeguard, set coverage_category to "C_Process" (or "D_MicrosoftAttestation"
+for Microsoft-operated items) and return an EMPTY azure_policy_ids list. Do NOT
+reach for a governance catch-all policy just to attach something.
 
 Always be conservative with confidence scores - it's better to flag uncertain mappings for human review."""
 
@@ -161,9 +188,17 @@ class AIMappingService:
             if not hasattr(mapping, 'external_control_name'):
                 mapping.external_control_name = external_control.control_name
 
+            # Deterministic coverage guarantee: carry the extractor's control_type
+            # onto the mapping and decide whether it is genuinely Azure-Policy
+            # enforceable. Non-enforceable controls (process/legal/attestation)
+            # have their azure_policy_ids cleared here so they never reach the
+            # initiative. This is authoritative over the model's own guess.
+            coverage.apply_coverage(mapping, external_control.control_type, self.catalog)
+
             logger.info(
                 f"Mapped {external_control.control_id} -> {mapping.mcsb_control_id} "
-                f"(confidence: {mapping.confidence_score:.2f})"
+                f"(confidence: {mapping.confidence_score:.2f}, "
+                f"coverage: {mapping.coverage_category})"
             )
 
             return mapping
@@ -302,6 +337,35 @@ class AIMappingService:
             Context string with candidate policy definitions (name + GUID)
         """
         try:
+            # Anchoring guard: for process/legal/organisational controls that are
+            # not clearly technical, do NOT show the model a ranked candidate list
+            # — that biases it into picking a policy for a control Azure cannot
+            # enforce. Tell it to return an empty list instead. The deterministic
+            # coverage layer enforces this regardless, but suppressing candidates
+            # also improves the model's reasoning and rationale.
+            control_text = " ".join(
+                p for p in (
+                    external_control.control_name,
+                    external_control.description,
+                ) if p
+            )
+            if coverage.is_process_control(external_control.control_type) and not any(
+                kw in control_text.casefold() for kw in coverage.TECHNICAL_KEYWORDS
+            ):
+                logger.info(
+                    "Skipping Azure Policy candidate retrieval for %s "
+                    "(process control_type=%s) to avoid anchoring",
+                    external_control.control_id, external_control.control_type,
+                )
+                return (
+                    "Azure Policy Context:\n"
+                    "This control's nature is process/organisational, not a "
+                    "technical safeguard Azure Policy can enforce. Return an EMPTY "
+                    "azure_policy_ids list and set coverage_category to 'C_Process' "
+                    "(or 'D_MicrosoftAttestation' if it concerns Microsoft-operated "
+                    "infrastructure)."
+                )
+
             query = " ".join(
                 p for p in (
                     external_control.control_name,
@@ -540,7 +604,10 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
             reasoning=f"Automated mapping failed: {error_msg}. This control requires manual review and mapping.",
             azure_policy_ids=[],
             mapping_type="none",
-            defender_recommendations=[]
+            defender_recommendations=[],
+            control_type=external_control.control_type,
+            coverage_category=coverage.COVERAGE_C,
+            azure_enforceable=False,
         )
 
 

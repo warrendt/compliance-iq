@@ -96,6 +96,7 @@ async def test_mcsb_generation_creates_version_with_all_downloadable_files(monke
         "Deploy-Example_FrameworkInitiative.ps1",
         "deploy-Example_Framework-initiative.sh",
         "Example_Framework_mappings.json",
+        "Example_Framework_manual_controls.csv",
         "Example_Framework_defender_standard.json",
         "Deploy-Example_FrameworkDefenderStandard.ps1",
     }

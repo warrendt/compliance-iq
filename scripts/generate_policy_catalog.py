@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -44,11 +45,17 @@ DEFAULT_OUTPUT = (
 )
 
 # Server-side projection keeps the CLI payload small and stable.
+# ``policyRule`` is included so the enforcement ``effect`` can be resolved: a
+# control mapped to a Manual/Disabled-effect placeholder policy enforces nothing.
 _AZ_QUERY = (
     "[?policyType=='BuiltIn'].{name:name, display_name:displayName, "
     "description:description, category:metadata.category, mode:mode, "
-    "version:metadata.version, parameters:parameters}"
+    "version:metadata.version, parameters:parameters, policyRule:policyRule}"
 )
+
+# Matches an ARM parameter reference such as ``[parameters('effect')]`` so the
+# concrete effect can be resolved from the parameter's ``defaultValue``.
+_EFFECT_PARAM_RE = re.compile(r"^\[+\s*parameters\('([^']+)'\)\s*\]+$")
 
 
 def _is_deprecated(item: Dict[str, Any]) -> bool:
@@ -101,6 +108,39 @@ def _required_parameter_schema(item: Dict[str, Any]) -> Dict[str, Any]:
     return schema
 
 
+def _extract_effect(item: Dict[str, Any]) -> str:
+    """Resolve the concrete enforcement effect of a policy definition.
+
+    The effect lives at ``policyRule.then.effect``. It is frequently an ARM
+    parameter reference (``[parameters('effect')]``); in that case the effective
+    default is taken from ``parameters.<name>.defaultValue``. Returns the
+    resolved effect string (e.g. ``Audit``, ``Deny``, ``Manual``, ``Disabled``),
+    or ``""`` when it cannot be determined (parameterized with no default).
+
+    The value matters because Manual/Disabled-effect built-ins carry no
+    enforcement logic: a control mapped to one *looks* covered but enforces
+    nothing. Downstream classification uses this to avoid attaching such
+    placeholders as Azure-Policy coverage.
+    """
+    rule = item.get("policyRule")
+    if not isinstance(rule, dict):
+        return ""
+    then = rule.get("then")
+    if not isinstance(then, dict):
+        return ""
+    effect = then.get("effect")
+    if not isinstance(effect, str):
+        return ""
+    effect = effect.strip()
+    match = _EFFECT_PARAM_RE.match(effect)
+    if match:
+        params = item.get("parameters")
+        spec = params.get(match.group(1)) if isinstance(params, dict) else None
+        default = spec.get("defaultValue") if isinstance(spec, dict) else None
+        return default.strip() if isinstance(default, str) else ""
+    return effect
+
+
 def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Project raw definitions to the lean, deduplicated catalog schema.
 
@@ -127,6 +167,7 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "description": (item.get("description") or "").strip(),
                 "category": (item.get("category") or "Uncategorized").strip(),
                 "mode": (item.get("mode") or "All").strip(),
+                "effect": _extract_effect(item),
                 "requires_parameters": bool(schema),
                 "required_parameters": schema,
             }
