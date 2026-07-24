@@ -44,7 +44,73 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         "mapping_type": mt,
         "defender_recommendations": m.get("defender_recommendations", []),
         "sovereignty": m.get("sovereignty"),
+        # Carry the coverage taxonomy through so the backend can exclude
+        # non-Azure-enforceable controls from the initiative and route them to
+        # the manual register. Dropping these would make the coverage gate a
+        # silent no-op (it would fall back to confidence-only filtering).
+        "control_type": m.get("control_type"),
+        "coverage_category": m.get("coverage_category"),
+        "azure_enforceable": m.get("azure_enforceable", False),
     }
+
+
+def _render_manual_register(policy: Dict[str, Any]) -> None:
+    """Render the non-Azure-enforceable controls as a separate manual register.
+
+    These controls are deliberately excluded from the initiative (backend
+    coverage gate). This section lists them for manual attestation, completely
+    separate from the deployable Azure Policy artifacts.
+    """
+    manual = policy.get("manual_controls") or []
+    summary = policy.get("coverage_summary") or {}
+
+    st.markdown("#### 🚫 Controls Not Enforceable by Azure Policy")
+    st.markdown(
+        "These controls were **excluded from the initiative** because Azure Policy "
+        "cannot technically enforce them — they are process, legal, contractual, "
+        "or Microsoft-operated controls. Track them here for **manual "
+        "attestation**; they carry no Azure Policy definitions."
+    )
+
+    if summary:
+        total = summary.get("total", 0)
+        pct = summary.get("azure_enforceable_pct", 0.0)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("A · Azure Policy", summary.get("A_AzurePolicy", 0), help="Enforceable — in the initiative")
+        c2.metric("B · Azure config", summary.get("B_AzureConfig", 0), help="Azure-configurable, not via Policy")
+        c3.metric("C · Process", summary.get("C_Process", 0), help="Process / legal / organisational")
+        c4.metric("D · MS attestation", summary.get("D_MicrosoftAttestation", 0), help="Microsoft-operated")
+        st.caption(
+            f"{total} control(s) total · **{pct}%** Azure-Policy enforceable · "
+            f"{len(manual)} routed to this manual register."
+        )
+
+    if not manual:
+        st.success(
+            "✅ Every mapped control is Azure-Policy enforceable — the manual "
+            "register is empty."
+        )
+        return
+
+    _labels = {
+        "control_id": "Control ID",
+        "control_name": "Control",
+        "control_type": "Type",
+        "coverage_category": "Coverage",
+        "mcsb_control_id": "MCSB",
+        "reason": "Why not enforceable",
+    }
+    df = pd.DataFrame(manual)
+    ordered = [c for c in _labels if c in df.columns]
+    df = df[ordered].rename(columns=_labels)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    st.download_button(
+        label="📥 Download Manual Controls CSV",
+        data=df.to_csv(index=False),
+        file_name=f"{st.session_state.framework_name.replace(' ', '_')}_manual_controls.csv",
+        mime="text/csv",
+    )
 
 
 def _collect_required_parameters(
@@ -121,7 +187,7 @@ def _collect_required_parameters(
 def _regenerate_with_parameters(
     api_client,
     param_values: Dict[str, Dict[str, Any]],
-    filtered_mappings: List[Dict[str, Any]],
+    export_mappings: List[Dict[str, Any]],
     min_confidence: float,
     enforce_mode: bool,
 ) -> Dict[str, Any]:
@@ -139,7 +205,7 @@ def _regenerate_with_parameters(
     values reverts validate/deploy to the base on the next run.
     """
     return api_client.generate_policy_initiative(
-        mappings=[_to_backend_mapping(m) for m in filtered_mappings],
+        mappings=[_to_backend_mapping(m) for m in export_mappings],
         framework_name=st.session_state.framework_name,
         min_confidence=min_confidence,
         session_id=st.session_state.session_uuid,
@@ -278,6 +344,19 @@ if len(filtered_mappings) == 0:
     st.error("⚠️ No mappings meet the criteria. Adjust your filters.")
     st.stop()
 
+# Controls sent to /policy/generate. Send the full working set (respecting only
+# the manual-override toggle) and let the BACKEND apply both gates: the
+# confidence gate decides what enters the initiative, and the coverage gate
+# routes non-Azure controls (B/C/D) to the manual register. Re-applying the
+# confidence filter client-side would (a) hide low-confidence non-Azure controls
+# from the register — the empty-register bug — and (b) drop low-confidence Azure
+# controls from the coverage summary entirely.
+export_mappings: List[Dict[str, Any]] = [
+    m
+    for m in st.session_state.mappings
+    if include_manual or not m.get("manual_override", False)
+]
+
 st.markdown("---")
 
 col_enforce1, col_enforce2 = st.columns([1, 2])
@@ -307,7 +386,7 @@ if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_contai
         try:
             # Call API
             result = api_client.generate_policy_initiative(
-                mappings=[_to_backend_mapping(m) for m in filtered_mappings],
+                mappings=[_to_backend_mapping(m) for m in export_mappings],
                 framework_name=st.session_state.framework_name,
                 min_confidence=min_confidence,
                 session_id=st.session_state.session_uuid,
@@ -369,6 +448,16 @@ if st.session_state.generated_policy:
     enforce_label = "🔒 Enforcement" if policy.get('enforce_mode') else "🔍 Audit Only"
     st.info(f"**Enforcement Mode:** {enforce_label}")
 
+    # Point operators at the separate manual register when non-enforceable
+    # controls were routed out of the initiative.
+    _manual_count = len(policy.get("manual_controls") or [])
+    if _manual_count:
+        st.warning(
+            f"🚫 **{_manual_count} control(s)** are not enforceable by Azure Policy "
+            "and were excluded from the initiative. See the **🚫 Manual Register** "
+            "tab below for the attestation list."
+        )
+
     # Surface excluded built-ins so the operator knows coverage was trimmed and,
     # for parameterized ones, that they can opt in by supplying values below.
     _excl_param = policy.get("excluded_parameterized_policies") or 0
@@ -393,7 +482,7 @@ if st.session_state.generated_policy:
     st.markdown("---")
     
     # Tabs for different outputs
-    tab1, tab2, tab3, tab6, tab4, tab5 = st.tabs(["📋 Initiative JSON", "🔧 PowerShell Script", "📊 Bicep Template", "🛡️ Defender Standard", "📖 Deployment Guide", "🔍 Policy Details"])
+    tab1, tab_manual, tab2, tab3, tab6, tab4, tab5 = st.tabs(["📋 Initiative JSON", "🚫 Manual Register", "🔧 PowerShell Script", "📊 Bicep Template", "🛡️ Defender Standard", "📖 Deployment Guide", "🔍 Policy Details"])
     
     with tab1:
         st.markdown("#### Azure Policy Initiative JSON")
@@ -408,6 +497,9 @@ if st.session_state.generated_policy:
             file_name=f"{st.session_state.framework_name.replace(' ', '_')}_initiative.json",
             mime="application/json"
         )
+
+    with tab_manual:
+        _render_manual_register(policy)
     
     with tab2:
         st.markdown("#### PowerShell Deployment Script")
@@ -747,7 +839,7 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 _regen = _regenerate_with_parameters(
                                     api_client,
                                     _param_values,
-                                    filtered_mappings,
+                                    export_mappings,
                                     min_confidence,
                                     enforce_mode,
                                 )
@@ -795,7 +887,7 @@ Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 _regen = _regenerate_with_parameters(
                                     api_client,
                                     _param_values,
-                                    filtered_mappings,
+                                    export_mappings,
                                     min_confidence,
                                     enforce_mode,
                                 )

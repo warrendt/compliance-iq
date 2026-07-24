@@ -40,6 +40,32 @@ class ControlMapping(BaseModel):
         description="Type of mapping relationship"
     )
 
+    control_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Nature of the control carried from the extractor: Technical, Policy, "
+            "Contractual, Management, Operational, or Governance"
+        ),
+    )
+
+    coverage_category: Optional[
+        Literal["A_AzurePolicy", "B_AzureConfig", "C_Process", "D_MicrosoftAttestation"]
+    ] = Field(
+        default=None,
+        description=(
+            "How this control is covered. A_AzurePolicy: enforceable via Azure "
+            "Policy (only category that keeps azure_policy_ids). B_AzureConfig: "
+            "Azure-configurable but not via policy. C_Process: process/legal/HR/"
+            "contractual. D_MicrosoftAttestation: Microsoft-operated. None for "
+            "legacy mappings (confidence-only gating)."
+        ),
+    )
+
+    azure_enforceable: bool = Field(
+        default=False,
+        description="True only when coverage_category == 'A_AzurePolicy'",
+    )
+
     defender_recommendations: List[str] = Field(
         default_factory=list,
         description="Defender for Cloud recommendations"
@@ -62,6 +88,9 @@ class ControlMapping(BaseModel):
             "reasoning": "Both controls focus on enforcing MFA and strong authentication mechanisms",
             "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],
             "mapping_type": "exact",
+            "control_type": "Technical",
+            "coverage_category": "A_AzurePolicy",
+            "azure_enforceable": True,
             "defender_recommendations": ["Enable MFA for all users"]
         }
     })

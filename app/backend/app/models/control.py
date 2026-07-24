@@ -14,7 +14,7 @@ class ExternalControl(BaseModel):
     control_name: str = Field(..., description="Short control name/title")
     description: str = Field(..., description="Detailed control description")
     domain: Optional[str] = Field(None, description="Control domain (e.g., Identity, Network)")
-    control_type: Optional[str] = Field(None, description="Management, Operational, or Technical")
+    control_type: Optional[str] = Field(None, description="Nature of the control: Technical, Policy, Contractual, Management, Operational, or Governance")
     requirements: Optional[str] = Field(None, description="Specific requirements")
 
     model_config = ConfigDict(json_schema_extra={

@@ -172,39 +172,56 @@ def _render_active_mapping_shell(job_id: str, num_controls: int) -> None:
     )
 
 
+def _session_mapping_from_result(mapping: dict, controls: list) -> dict:
+    """Build a session-state mapping dict from a backend ControlMapping result.
+
+    Pure function. Critically, it preserves the coverage taxonomy
+    (``control_type``, ``coverage_category``, ``azure_enforceable``) that the
+    backend computed during mapping. Dropping these silently defeats the
+    Export page's coverage gate: non-Azure controls would fall back to
+    confidence-only filtering and the manual register would always be empty.
+    """
+    control_id = mapping.get("external_control_id")
+    return {
+        "control_id": mapping.get("external_control_id", "N/A"),
+        "control_name": mapping.get("external_control_name", "N/A"),
+        "description": next(
+            (
+                control["description"]
+                for control in controls
+                if control["control_id"] == control_id
+            ),
+            "",
+        ),
+        "domain": next(
+            (
+                control.get("domain")
+                for control in controls
+                if control["control_id"] == control_id
+            ),
+            None,
+        ),
+        "mcsb_control_id": mapping.get("mcsb_control_id", "N/A"),
+        "mcsb_control_name": mapping.get("mcsb_control_name", "N/A"),
+        "mcsb_domain": mapping.get("mcsb_domain", "N/A"),
+        "confidence_score": mapping.get("confidence_score", 0.0),
+        "reasoning": mapping.get("reasoning", ""),
+        "azure_policy_ids": mapping.get("azure_policy_ids", []),
+        "mapping_type": mapping.get("mapping_type", "unknown"),
+        "sovereignty": mapping.get("sovereignty"),
+        # Preserve the coverage taxonomy through to the Export page.
+        "control_type": mapping.get("control_type"),
+        "coverage_category": mapping.get("coverage_category"),
+        "azure_enforceable": mapping.get("azure_enforceable", False),
+    }
+
+
 def _complete_mapping_job(job_id: str, status: dict) -> None:
     """Store completed mappings and transition the page out of live polling."""
     result = status.get("result", {}) or {}
     raw_mappings = result.get("mappings", [])
     mappings = [
-        {
-            "control_id": mapping.get("external_control_id", "N/A"),
-            "control_name": mapping.get("external_control_name", "N/A"),
-            "description": next(
-                (
-                    control["description"]
-                    for control in st.session_state.controls
-                    if control["control_id"] == mapping.get("external_control_id")
-                ),
-                "",
-            ),
-            "domain": next(
-                (
-                    control.get("domain")
-                    for control in st.session_state.controls
-                    if control["control_id"] == mapping.get("external_control_id")
-                ),
-                None,
-            ),
-            "mcsb_control_id": mapping.get("mcsb_control_id", "N/A"),
-            "mcsb_control_name": mapping.get("mcsb_control_name", "N/A"),
-            "mcsb_domain": mapping.get("mcsb_domain", "N/A"),
-            "confidence_score": mapping.get("confidence_score", 0.0),
-            "reasoning": mapping.get("reasoning", ""),
-            "azure_policy_ids": mapping.get("azure_policy_ids", []),
-            "mapping_type": mapping.get("mapping_type", "unknown"),
-            "sovereignty": mapping.get("sovereignty"),
-        }
+        _session_mapping_from_result(mapping, st.session_state.controls)
         for mapping in raw_mappings
     ]
 
