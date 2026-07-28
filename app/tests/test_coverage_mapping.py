@@ -198,10 +198,61 @@ def test_manual_register_and_summary():
     assert summary["A_AzurePolicy"] == 1
     assert summary["azure_enforceable"] == 1
     assert summary["azure_enforceable_pct"] == 33.3
+    # D is compliant by inheritance from Microsoft's attestation: out of the
+    # initiative, but not a coverage gap. A + D count as compliant; C does not.
+    assert summary["inherited_compliant"] == 1
+    assert summary["compliant"] == 2
+    assert summary["compliant_pct"] == 66.7
 
     csv_text = coverage.manual_controls_csv(mappings)
     assert "control_id" in csv_text.splitlines()[0]
     assert "C-1" in csv_text and "D-1" in csv_text and "A-1" not in csv_text
+
+
+def test_microsoft_attested_controls_are_compliant_not_gaps():
+    """D never enters the mapping, yet still counts as compliant.
+
+    Regression: the summary only credited A_AzurePolicy, so Microsoft-operated
+    controls the customer cannot configure were reported as a coverage gap.
+    """
+    mappings = [
+        _mapping("D-1", [], coverage_category=coverage.COVERAGE_D),
+        _mapping("D-2", [], coverage_category=coverage.COVERAGE_D),
+    ]
+    summary = coverage.coverage_summary(mappings)
+
+    # Not in the mapping — nothing is Azure-Policy enforceable here.
+    assert summary["azure_enforceable"] == 0
+    assert summary["azure_enforceable_pct"] == 0.0
+    assert all(not m.azure_policy_ids for m in mappings)
+
+    # Still fully compliant.
+    assert summary["compliant"] == 2
+    assert summary["compliant_pct"] == 100.0
+
+    # And the register says so, rather than implying an outstanding action.
+    reasons = {r["reason"] for r in coverage.manual_register_rows(mappings)}
+    assert all("no customer action required" in r for r in reasons)
+
+
+def test_b_and_c_remain_open_actions():
+    """Only D is inherited-compliant; B and C stay outside the compliant count."""
+    mappings = [
+        _mapping("B-1", [], coverage_category=coverage.COVERAGE_B),
+        _mapping("C-1", [], coverage_category=coverage.COVERAGE_C),
+    ]
+    summary = coverage.coverage_summary(mappings)
+    assert summary["inherited_compliant"] == 0
+    assert summary["compliant"] == 0
+    assert summary["compliant_pct"] == 0.0
+
+
+def test_coverage_summary_empty_mappings_do_not_divide_by_zero():
+    summary = coverage.coverage_summary([])
+    assert summary["total"] == 0
+    assert summary["compliant"] == 0
+    assert summary["compliant_pct"] == 0.0
+    assert summary["azure_enforceable_pct"] == 0.0
 
 
 def test_generate_response_carries_manual_register_section():
@@ -252,3 +303,21 @@ def test_attestation_keyword_routes_to_D():
     )
     coverage.apply_coverage(mapping, mapping.control_type, _FakeCatalog())
     assert mapping.coverage_category == coverage.COVERAGE_D
+
+
+def test_deploy_readme_reports_attested_controls_as_compliant():
+    """The bundle README must not present category D as a coverage gap."""
+    from app.api.routes.policy import _deploy_readme
+
+    counts = coverage.coverage_summary(
+        [
+            _mapping("A-1", [REAL_GUID], coverage_category=coverage.COVERAGE_A),
+            _mapping("C-1", [], coverage_category=coverage.COVERAGE_C),
+            _mapping("D-1", [], coverage_category=coverage.COVERAGE_D),
+        ]
+    )
+    readme = _deploy_readme("Test", "Test Framework", False, counts)["content"]
+
+    assert "66.7%" in readme  # A + D compliant
+    assert "compliant by inheritance" in readme
+    assert "no customer remediation" in readme

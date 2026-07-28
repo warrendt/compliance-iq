@@ -317,7 +317,9 @@ class PolicyGenerationResponse(BaseModel):
     )
     coverage_summary: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Per-coverage-category counts and the Azure-enforceable share",
+        description="Per-coverage-category counts, the Azure-enforceable share "
+        "(A only) and the compliant share (A + D, where D is inherited from "
+        "Microsoft's attestation)",
     )
 
     model_config = ConfigDict(json_schema_extra={

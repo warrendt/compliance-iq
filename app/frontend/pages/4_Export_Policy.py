@@ -69,20 +69,32 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "These controls were **excluded from the initiative** because Azure Policy "
         "cannot technically enforce them — they are process, legal, contractual, "
         "or Microsoft-operated controls. Track them here for **manual "
-        "attestation**; they carry no Azure Policy definitions."
+        "attestation**; they carry no Azure Policy definitions. Category **D** is "
+        "already **compliant by inheritance** — Microsoft operates and certifies "
+        "those controls, so they need no customer action."
     )
 
     if summary:
         total = summary.get("total", 0)
         pct = summary.get("azure_enforceable_pct", 0.0)
+        attested = summary.get("D_MicrosoftAttestation", 0)
+        compliant = summary.get("compliant", 0)
+        compliant_pct = summary.get("compliant_pct", 0.0)
+        open_actions = max(len(manual) - attested, 0)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("A · Azure Policy", summary.get("A_AzurePolicy", 0), help="Enforceable — in the initiative")
         c2.metric("B · Azure config", summary.get("B_AzureConfig", 0), help="Azure-configurable, not via Policy")
         c3.metric("C · Process", summary.get("C_Process", 0), help="Process / legal / organisational")
-        c4.metric("D · MS attestation", summary.get("D_MicrosoftAttestation", 0), help="Microsoft-operated")
+        c4.metric(
+            "D · MS attestation",
+            attested,
+            help="Microsoft-operated — compliant by inheritance, no customer action",
+        )
         st.caption(
-            f"{total} control(s) total · **{pct}%** Azure-Policy enforceable · "
-            f"{len(manual)} routed to this manual register."
+            f"{total} control(s) total · **{compliant} ({compliant_pct}%)** compliant "
+            f"— {summary.get('A_AzurePolicy', 0)} enforced by Azure Policy ({pct}%) "
+            f"plus {attested} inherited from Microsoft's attestation · "
+            f"{open_actions} open customer action(s) in B/C."
         )
 
     if not manual:

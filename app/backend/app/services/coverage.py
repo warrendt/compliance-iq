@@ -22,6 +22,12 @@ Coverage categories
 Invariant enforced everywhere: ``azure_policy_ids`` is non-empty **only** when
 coverage is ``A_AzurePolicy``. This aligns with the PDF pipeline's existing
 ``is_automatable`` flag (A ⇔ automatable).
+
+Compliance is a wider notion than Azure-Policy enforcement: ``A_AzurePolicy``
+is compliant because Azure enforces it, and ``D_MicrosoftAttestation`` is
+compliant because Microsoft operates and certifies it on the customer's behalf.
+``B_AzureConfig`` and ``C_Process`` remain open customer actions. See
+``INHERITED_COMPLIANT_CATEGORIES``.
 """
 
 from __future__ import annotations
@@ -38,6 +44,12 @@ COVERAGE_D = "D_MicrosoftAttestation"
 VALID_COVERAGE_CATEGORIES = frozenset(
     {COVERAGE_A, COVERAGE_B, COVERAGE_C, COVERAGE_D}
 )
+
+# Categories that count as compliant without any customer action. Microsoft
+# operates the underlying control and evidences it through its own audited
+# certifications (Service Trust Portal), so the control is inherited-compliant:
+# it must stay out of the initiative, but it is not a coverage gap either.
+INHERITED_COMPLIANT_CATEGORIES = frozenset({COVERAGE_D})
 
 # control_type values (from pipeline/control_extractor.py) that describe a
 # control's nature as process/organisational rather than a technical control an
@@ -216,7 +228,10 @@ def _reason_for(mapping) -> str:
     return {
         COVERAGE_B: "Azure-configurable but not enforceable via Azure Policy",
         COVERAGE_C: "Process / legal / organisational control — not Azure-enforceable",
-        COVERAGE_D: "Microsoft-operated control — covered by Microsoft attestation",
+        COVERAGE_D: (
+            "Microsoft-operated control — compliant via Microsoft attestation "
+            "(Service Trust Portal); no customer action required"
+        ),
     }.get(mapping.coverage_category, "Not Azure-Policy enforceable")
 
 
@@ -245,7 +260,16 @@ def manual_register_rows(mappings) -> List[dict]:
 
 
 def coverage_summary(mappings) -> dict:
-    """Count controls per coverage category plus the Azure-enforceable share.
+    """Count controls per coverage category, the Azure-enforceable and compliant shares.
+
+    Two distinct measures are returned and must not be conflated:
+
+    - ``azure_enforceable``/``azure_enforceable_pct`` — controls Azure Policy
+      enforces (``A_AzurePolicy`` only). Drives what lands in the initiative.
+    - ``compliant``/``compliant_pct`` — controls that need no customer remediation:
+      ``A_AzurePolicy`` plus the ``INHERITED_COMPLIANT_CATEGORIES``
+      (``D_MicrosoftAttestation``, satisfied by Microsoft's own attestation).
+      ``B_AzureConfig`` and ``C_Process`` stay outside this count as open actions.
 
     Legacy mappings (``coverage_category is None``) are bucketed under
     ``"unclassified"`` so totals always reconcile.
@@ -266,14 +290,18 @@ def coverage_summary(mappings) -> dict:
         else:
             counts["unclassified"] += 1
 
-    total = len(list(mappings)) if not isinstance(mappings, list) else len(mappings)
     total = sum(counts.values())
     enforceable = counts[COVERAGE_A]
+    inherited = sum(counts[c] for c in INHERITED_COMPLIANT_CATEGORIES)
+    compliant = enforceable + inherited
     counts["total"] = total
     counts["azure_enforceable"] = enforceable
     counts["azure_enforceable_pct"] = (
         round(100.0 * enforceable / total, 1) if total else 0.0
     )
+    counts["inherited_compliant"] = inherited
+    counts["compliant"] = compliant
+    counts["compliant_pct"] = round(100.0 * compliant / total, 1) if total else 0.0
     return counts
 
 

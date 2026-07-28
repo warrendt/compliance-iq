@@ -66,15 +66,27 @@ def _deploy_readme(
     if coverage_counts:
         total = coverage_counts.get("total", 0)
         pct = coverage_counts.get("azure_enforceable_pct", 0.0)
+        attested = coverage_counts.get("D_MicrosoftAttestation", 0)
+        compliant = coverage_counts.get("compliant", 0)
+        compliant_pct = coverage_counts.get("compliant_pct", 0.0)
         rows = [
             ("A — Azure Policy enforceable", coverage_counts.get("A_AzurePolicy", 0)),
             ("B — Azure configurable (no policy)", coverage_counts.get("B_AzureConfig", 0)),
             ("C — Process / legal / organisational", coverage_counts.get("C_Process", 0)),
-            ("D — Microsoft-operated (attestation)", coverage_counts.get("D_MicrosoftAttestation", 0)),
+            ("D — Microsoft-operated (attestation)", attested),
         ]
         if coverage_counts.get("unclassified", 0):
             rows.append(("Unclassified (legacy)", coverage_counts["unclassified"]))
         table = "\n".join(f"| {label} | {count} |" for label, count in rows)
+        attested_line = (
+            f"\n**{attested} control(s)** are category D — Microsoft operates and "
+            "certifies them (datacentre, physical security, hypervisor). They are "
+            "deliberately absent from the initiative because there is nothing for "
+            "the customer to configure, but they are **compliant by inheritance**, "
+            "evidenced through the Service Trust Portal — not a coverage gap.\n"
+            if attested
+            else ""
+        )
         coverage_section = (
             "\n## Coverage summary\n\n"
             f"Of {total} control(s), **{coverage_counts.get('A_AzurePolicy', 0)} "
@@ -82,7 +94,12 @@ def _deploy_readme(
             "initiative. The rest are not Azure-Policy enforceable and are listed "
             f"in `{stem}_manual_controls.csv` for manual attestation — they are "
             "**not** false-mapped to a catch-all policy.\n\n"
-            "| Coverage category | Controls |\n"
+            f"**{compliant} of {total} ({compliant_pct}%)** require no customer "
+            "remediation: category A (enforced by Azure Policy) plus category D "
+            "(inherited from Microsoft's attestation). Categories B and C remain "
+            "open customer actions.\n"
+            f"{attested_line}"
+            "\n| Coverage category | Controls |\n"
             "| --- | --- |\n"
             f"{table}\n"
         )
