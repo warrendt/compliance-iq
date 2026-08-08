@@ -709,18 +709,24 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
         external_control: ExternalControl,
         error_msg: str
     ) -> ControlMapping:
-        """
-        Create a fallback mapping when AI fails.
-        
-        Args:
-            external_control: The control that failed to map
-            error_msg: Error message from the failure
-            
-        Returns:
-            A default ControlMapping with minimal information
+        """Create a fallback mapping when AI fails.
+
+        This must *say* it failed. It previously returned ``COVERAGE_C`` with
+        ``coverage_gap`` left False, which reads downstream as a considered
+        judgement - "this is a process control, Azure cannot enforce it" -
+        when in fact no mapping was attempted successfully. A whole framework
+        of engine failures was therefore indistinguishable from a whole
+        framework of genuine process controls. That is the failure mode this
+        product exists to avoid: a confident wrong answer instead of an
+        admitted gap.
+
+        The category stays ``COVERAGE_C`` only so the control still reaches the
+        manual register - a control that silently disappears from the
+        deliverable is worse than one flagged for review - but the gap flag and
+        reason now make the failure explicit.
         """
         logger.warning(f"Creating fallback mapping for {external_control.control_id}: {error_msg}")
-        
+
         return ControlMapping(
             external_control_id=external_control.control_id,
             external_control_name=external_control.control_name,
@@ -735,6 +741,13 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
             control_type=external_control.control_type,
             coverage_category=coverage.COVERAGE_C,
             azure_enforceable=False,
+            coverage_gap=True,
+            coverage_reason=(
+                "The automated mapping engine failed for this control, so no "
+                "Azure coverage judgement was reached. This is an engine "
+                f"failure, not a finding that Azure cannot help: {error_msg}"
+            ),
+            responsibility=None,
         )
 
 

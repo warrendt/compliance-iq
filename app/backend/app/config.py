@@ -139,7 +139,14 @@ class Settings(BaseSettings):
     coverage_classification_max_tokens: int = 1500
 
     # AI Mapping Settings
-    ai_temperature: float = 0.3  # Lower for consistency    ai_max_tokens: int = 16000
+    ai_temperature: float = 0.3  # Lower for consistency
+    # Declared on its own line deliberately: this field was once absorbed into
+    # the comment above by a lost newline, so `settings.ai_max_tokens` raised
+    # AttributeError on every mapping call. The broad except in
+    # AIMappingService turned that into a fallback mapping, so the engine
+    # silently answered "process control, no policy" for every control of
+    # every framework while looking healthy.
+    ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
     ai_mapping_max_concurrency: int = 10
 

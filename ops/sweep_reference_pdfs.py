@@ -142,12 +142,26 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
     cats = {}
     resp = {}
     pairs = set()
+    engine_failures = 0
     for m in mappings:
         c = getattr(m, "coverage_category", None)
         r = getattr(m, "responsibility", None)
         cats[c] = cats.get(c, 0) + 1
         resp[r] = resp.get(r, 0) + 1
         pairs.add((c, r))
+        if getattr(m, "mcsb_control_id", None) == "N/A":
+            engine_failures += 1
+
+    # The defect this check exists for: settings.ai_max_tokens did not exist, so
+    # every mapping call raised AttributeError, was swallowed by a broad except,
+    # and came back as a fallback. The result looked like a framework of process
+    # controls rather than a broken engine. A failure rate is a finding.
+    if mappings and engine_failures == len(mappings):
+        _violation(v, "engine_not_failing_wholesale", "*", f"all {len(mappings)} mappings are fallbacks")
+    elif engine_failures:
+        _violation(
+            v, "engine_failures_reported", "*", f"{engine_failures}/{len(mappings)} fell back"
+        )
 
     beyond = sorted(emitted - OLD_MENU)
     if emitted and not beyond:
@@ -155,6 +169,7 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
 
     return {
         "violations": v,
+        "engine_failures": engine_failures,
         "distribution": {"category": cats, "responsibility": resp},
         "distinct_policy_ids": len(emitted),
         "ids_beyond_old_menu": len(beyond),
