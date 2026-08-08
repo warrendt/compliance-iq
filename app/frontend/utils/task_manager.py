@@ -145,6 +145,17 @@ def update_task(
         _record_notification(task, status)
 
 
+def annotate_task(job_id: str, **fields: Any) -> None:
+    """Attach arbitrary metadata to a task entry (e.g. its source file digest).
+
+    Kept separate from :func:`update_task` so lifecycle fields stay a closed set
+    while pages can still record their own provenance data.
+    """
+    task = _registry().get(job_id)
+    if task is not None:
+        task.update(fields)
+
+
 def remove_task(job_id: str) -> None:
     """Remove a task from the registry."""
     _registry().pop(job_id, None)

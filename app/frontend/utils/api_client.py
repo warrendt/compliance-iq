@@ -995,6 +995,29 @@ class APIClient:
         except Exception:
             return None
 
+    def delete_all_sessions(self) -> bool:
+        """Delete every persisted workflow for the authenticated user.
+
+        Returns True when the backend confirmed the deletion. Callers treat this
+        as best-effort: clearing the browser workspace must still succeed when
+        the backend is unreachable.
+        """
+        with self._get_client() as client:
+            response = client.delete(f"{self.base_url}/api/v1/session/all")
+            if response.status_code == 404:
+                return False
+            response.raise_for_status()
+            return True
+
+    def delete_session(self, session_id: str) -> bool:
+        """Delete one persisted workflow by id."""
+        with self._get_client() as client:
+            response = client.delete(f"{self.base_url}/api/v1/session/{session_id}")
+            if response.status_code == 404:
+                return False
+            response.raise_for_status()
+            return True
+
     # --- User profile & history ---
 
     def get_user_profile(self) -> Optional[Dict[str, Any]]:

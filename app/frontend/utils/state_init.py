@@ -79,6 +79,14 @@ _TRANSIENT_STATE_KEYS = (
     "_workflow_restore_checked",
     "session_recovery_error",
     "session_save_error",
+    "upload_source",
+    "controls_upload_key",
+    # Column-mapping selections owned by the upload page.
+    "control_id_col",
+    "control_name_col",
+    "description_col",
+    "domain_col",
+    "column_autodetect_notice",
 )
 
 
@@ -163,7 +171,7 @@ def _reset_state_key(key: str, default: Any, widget_errors: tuple) -> None:
         st.session_state.pop(key, None)
 
 
-def clear_workflow_state() -> None:
+def clear_workflow_state(delete_persisted: bool = True) -> None:
     """Reset the workflow to a clean slate for a brand-new session.
 
     Restores every default key to a fresh (deep-copied) copy of its default so
@@ -172,11 +180,27 @@ def clear_workflow_state() -> None:
     re-arms the one-shot restore guard so the fresh session is not immediately
     re-hydrated from the backend.
 
+    A new ``session_uuid`` alone is not enough: ``restore_workflow_state`` falls
+    back to ``GET /session/latest``, which returns the newest document for the
+    user regardless of uuid, so the cleared workspace reappeared on the next
+    page load. ``delete_persisted`` therefore also removes the server-side
+    documents (best-effort — a backend failure must never block the local
+    clear). Pass ``False`` for a purely local reset.
+
     Widget-backed keys (e.g. ``show_api_logs``) cannot be assigned once their
     widget has been instantiated in the current run, so those are deleted
     instead and re-initialise from their widget defaults on the following rerun.
     The caller is expected to ``st.rerun()`` after clearing.
     """
+    if delete_persisted:
+        try:
+            from utils.api_client import get_api_client
+
+            get_api_client().delete_all_sessions()
+        except Exception:
+            # Best-effort: the local workspace is still cleared below.
+            pass
+
     widget_errors = _widget_state_error()
     for key, default in SESSION_DEFAULTS.items():
         _reset_state_key(key, default, widget_errors)
@@ -184,6 +208,7 @@ def clear_workflow_state() -> None:
         st.session_state.pop(key, None)
     st.session_state["session_uuid"] = str(uuid.uuid4())
     st.session_state["_workflow_restore_checked"] = True
+    st.session_state["pdf_extraction_restore_disabled"] = True
 
 
 def persist_workflow_state() -> None:

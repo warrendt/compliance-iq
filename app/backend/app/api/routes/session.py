@@ -152,6 +152,87 @@ async def load_latest_session(user: User = Depends(get_current_user)):
     return _session_response(latest)
 
 
+@router.delete("/all")
+async def delete_all_sessions(user: User = Depends(get_current_user)):
+    """Delete every saved workflow belonging to the caller.
+
+    Clearing the workspace in the UI only reset browser state, so the persisted
+    document survived and ``GET /session/latest`` restored it on the next page
+    load. Deleting server-side makes "clear" actually clear.
+    """
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    await cosmos_client.ensure_container(
+        CONTAINER_NAME,
+        partition_key_paths=["/session_id"],
+        default_ttl=SESSION_TTL_SECONDS,
+    )
+    documents = await cosmos_client.query_documents(
+        CONTAINER_NAME,
+        "SELECT * FROM c WHERE c.userId = @user_id",
+        parameters=[{"name": "@user_id", "value": user.email}],
+    )
+
+    deleted = 0
+    for doc in documents:
+        session_id = doc.get("session_id") or doc.get("id")
+        if not session_id:
+            continue
+        try:
+            await cosmos_client.delete_document(
+                CONTAINER_NAME, doc["id"], partition_key=session_id
+            )
+        except Exception:  # pragma: no cover - best effort per document
+            logger.warning("session_delete_failed", extra={"session_id": session_id})
+        else:
+            deleted += 1
+
+    await audit_service.write_audit(
+        user,
+        action="session.cleared",
+        resource_type="session",
+        resource_id="all",
+        metadata={"deleted": deleted},
+    )
+    logger.info("sessions_cleared", extra={"userId": user.email, "deleted": deleted})
+
+    return {"status": "cleared", "deleted": deleted}
+
+
+@router.delete("/{session_id}")
+async def delete_session(session_id: str, user: User = Depends(get_current_user)):
+    """Delete a single saved session, scoped to the current user."""
+    if not cosmos_client.database:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    await cosmos_client.ensure_container(
+        CONTAINER_NAME,
+        partition_key_paths=["/session_id"],
+        default_ttl=SESSION_TTL_SECONDS,
+    )
+
+    doc = await cosmos_client.get_document(CONTAINER_NAME, session_id, partition_key=session_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    owner = doc.get("userId")
+    if owner and owner != user.email:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    await cosmos_client.delete_document(
+        CONTAINER_NAME, doc["id"], partition_key=session_id
+    )
+    await audit_service.write_audit(
+        user,
+        action="session.deleted",
+        resource_type="session",
+        resource_id=session_id,
+    )
+
+    return {"status": "deleted", "session_id": session_id}
+
+
 @router.get("/{session_id}")
 async def load_session(session_id: str, user: User = Depends(get_current_user)):
     """Restore a previously saved session, scoped to the current user."""
