@@ -53,6 +53,7 @@ compliant because Microsoft operates and certifies it on the customer's behalf.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Iterable, List, Optional, Tuple
 
 CoverageCategory = str  # one of the COVERAGE_* constants below
@@ -369,6 +370,48 @@ def apply_coverage(
     # A control demoted out of A/B carries no policies, so its plane is manual
     # regardless of what the classification said.
     enrich_policy_details(mapping, catalog)
+    apply_provenance(mapping, catalog)
+    return mapping
+
+
+def apply_provenance(mapping, catalog=None):
+    """Record what verified this mapping and when.
+
+    The analyst workbook's Legend documents a ``Verification Date & Source``
+    column - "when and how the mapping was verified" - and warns that region
+    and service availability "changes without customer notice" and must be
+    re-verified before each release. Neither existed anywhere in the product.
+
+    Provenance is the difference between an answer and a defensible one. A
+    regulator asking "how do you know this policy exists" needs the catalog
+    snapshot the identifier was checked against; without it the answer is
+    "the system said so".
+
+    Deliberately deterministic: the timestamp and catalog date are facts the
+    code holds, never model output.
+    """
+    verified_at = datetime.now(timezone.utc).isoformat()
+    snapshot = ""
+    source = "unavailable"
+    if catalog is not None:
+        snapshot = str(getattr(catalog, "snapshot_date", "") or "")
+        source = str(getattr(catalog, "source", "") or "unknown")
+
+    mapping.verified_at = verified_at
+    mapping.catalog_snapshot_date = snapshot
+    mapping.verification_source = (
+        f"Azure Policy catalog {source}"
+        + (f", captured {snapshot}" if snapshot else ", capture date unknown")
+    )
+    # An undated catalog is not a detail. It means nobody can say whether the
+    # definitions cited still exist, so it is carried as a blocker rather than
+    # left for a reader to notice.
+    if catalog is None or not snapshot:
+        mapping.provenance_blocker = (
+            "The policy catalog snapshot carries no capture date, so this "
+            "mapping cannot be dated. Re-verify against a live catalog before "
+            "presenting it as current."
+        )
     return mapping
 
 
@@ -735,6 +778,10 @@ def manual_register_rows(mappings) -> List[dict]:
                 "attestation_location": attestation.get("evidence_location", ""),
                 "attestation_access": attestation.get("access_condition", ""),
                 "attestation_gap": bool(getattr(m, "attestation_gap", False)),
+                "verified_at": getattr(m, "verified_at", None) or "",
+                "catalog_snapshot_date": getattr(m, "catalog_snapshot_date", None) or "",
+                "verification_source": getattr(m, "verification_source", None) or "",
+                "provenance_blocker": getattr(m, "provenance_blocker", None) or "",
                 "reason": _reason_for(m),
             }
         )
@@ -956,6 +1003,10 @@ def manual_controls_csv(mappings) -> str:
         "attestation_location",
         "attestation_access",
         "attestation_gap",
+        "verified_at",
+        "catalog_snapshot_date",
+        "verification_source",
+        "provenance_blocker",
         "reason",
     ]
     buffer = io.StringIO()

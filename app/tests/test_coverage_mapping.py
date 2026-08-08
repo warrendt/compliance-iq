@@ -1316,3 +1316,69 @@ def test_a_covered_control_keeps_its_built_in_policy_type():
     )
     assert mapping.policy_type == "Built-in"
     assert coverage.coverage_gap_rows([mapping]) == []
+
+
+# -- Provenance: what verified this mapping, and when --------------------------
+#
+# The workbook Legend documents a "Verification Date & Source" column and warns
+# that region and service availability changes without customer notice. Neither
+# existed in the product. A regulator asking how the system knows a policy
+# exists needs the catalog snapshot the identifier was checked against;
+# without it the answer is "the system said so".
+
+
+def test_every_mapping_records_when_it_was_verified():
+    mapping = _mapping("DP-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping, mapping.control_type, _FakeCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+    assert mapping.verified_at
+    assert mapping.verified_at.startswith("20")
+
+
+def test_a_mapping_records_the_catalog_snapshot_it_resolved_against():
+    class _DatedCatalog(_FakeCatalog):
+        snapshot_date = "2026-08-08T16:31:29+00:00"
+        source = "snapshot(2467)"
+
+    mapping = _mapping("DP-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping, mapping.control_type, _DatedCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+    assert mapping.catalog_snapshot_date == "2026-08-08T16:31:29+00:00"
+    assert "2467" in mapping.verification_source
+    assert "2026-08-08" in mapping.verification_source
+    assert not mapping.provenance_blocker
+
+
+def test_an_undated_catalog_is_a_declared_blocker_not_a_silent_omission():
+    """An undated catalog means nobody can say whether the cited definitions
+    still exist. Leaving the field empty for a reader to notice is the same
+    failure as a silently dropped GUID."""
+    mapping = _mapping("DP-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping, mapping.control_type, _FakeCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+    assert mapping.provenance_blocker
+    assert "Re-verify" in mapping.provenance_blocker
+
+
+def test_provenance_reaches_the_manual_register():
+    """A C or D row needs provenance as much as an enforced one -- more, since
+    nothing about it can be re-derived from a policy definition."""
+    mapping = _mapping("GRC-1", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping, mapping.control_type, _FakeCatalog(), _Classification(coverage.COVERAGE_C)
+    )
+    (row,) = coverage.manual_register_rows([mapping])
+    assert row["verified_at"]
+    assert row["verification_source"]
+
+
+def test_a_process_control_still_carries_provenance_without_a_catalog():
+    mapping = _mapping("GRC-2", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping, mapping.control_type, None, _Classification(coverage.COVERAGE_C)
+    )
+    assert mapping.verified_at
+    assert mapping.provenance_blocker

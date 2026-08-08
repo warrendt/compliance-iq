@@ -184,6 +184,10 @@ def _to_pipeline_mapping(
         evidence_source=getattr(mapping, "evidence_source", None),
         attestation=getattr(mapping, "attestation", None),
         attestation_gap=bool(getattr(mapping, "attestation_gap", False)),
+        verified_at=getattr(mapping, "verified_at", None),
+        catalog_snapshot_date=getattr(mapping, "catalog_snapshot_date", None),
+        verification_source=getattr(mapping, "verification_source", None),
+        provenance_blocker=getattr(mapping, "provenance_blocker", None),
         dropped_policy_ids=list(getattr(mapping, "dropped_policy_ids", None) or []),
     )
 

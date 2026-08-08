@@ -636,6 +636,10 @@ def _write_mappings_csv(
         "Attestation_Access_Condition",
         "Attestation_Gap",
         "Dropped_Policy_IDs",
+        "Verified_At",
+        "Catalog_Snapshot_Date",
+        "Verification_Source",
+        "Provenance_Blocker",
         "Is_Automatable",
         "Manual_Note",
         "Defender_Recommendations",
@@ -693,6 +697,16 @@ def _write_mappings_csv(
                 "Attestation_Access_Condition": attestation.get("access_condition", ""),
                 "Attestation_Gap": str(getattr(m, "attestation_gap", False)) if m else "",
                 "Dropped_Policy_IDs": dropped,
+                "Verified_At": (getattr(m, "verified_at", None) or "") if m else "",
+                "Catalog_Snapshot_Date": (
+                    getattr(m, "catalog_snapshot_date", None) or ""
+                ) if m else "",
+                "Verification_Source": (
+                    getattr(m, "verification_source", None) or ""
+                ) if m else "",
+                "Provenance_Blocker": (
+                    getattr(m, "provenance_blocker", None) or ""
+                ) if m else "",
                 "Is_Automatable": str(m.is_automatable) if m else "",
                 "Manual_Note": m.manual_attestation_note or "" if m else "",
                 "Defender_Recommendations": defender_recs,
@@ -783,6 +797,10 @@ def _write_coverage_reports(
                 "attestation_location",
                 "attestation_access",
                 "attestation_gap",
+                "verified_at",
+                "catalog_snapshot_date",
+                "verification_source",
+                "provenance_blocker",
                 "reason",
             ],
             manual_register_rows(views),

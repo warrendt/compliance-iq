@@ -45,6 +45,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -167,6 +168,7 @@ class PolicyCatalogService:
         self._embedding_client = None
         self._loaded = False
         self._source = "unloaded"
+        self._snapshot_date = ""
 
     # ------------------------------------------------------------------
     # Loading / indexing
@@ -187,10 +189,17 @@ class PolicyCatalogService:
             data = json.loads(path.read_text(encoding="utf-8"))
             definitions = data.get("definitions") if isinstance(data, dict) else data
             self._ingest(definitions or [])
-            self._source = (
-                f"snapshot({data.get('count', len(self._definitions))})"
-                if isinstance(data, dict) else "snapshot"
-            )
+            if isinstance(data, dict):
+                self._source = f"snapshot({data.get('count', len(self._definitions))})"
+                # The date the catalog was captured. Every mapping is only as
+                # current as the snapshot it was resolved against, and the
+                # analyst workbook's Legend is explicit that region and service
+                # availability "changes without customer notice" and must be
+                # re-verified per release. A mapping that cannot say when its
+                # catalog was taken cannot be defended.
+                self._snapshot_date = str(data.get("generated_at") or "")
+            else:
+                self._source = "snapshot"
             logger.info(
                 "Loaded %d Azure built-in policy definitions for retrieval from %s",
                 len(self._definitions), self.data_path,
@@ -632,6 +641,17 @@ class PolicyCatalogService:
     def source(self) -> str:
         return self._source
 
+    @property
+    def snapshot_date(self) -> str:
+        """When the catalog this mapping resolved against was captured.
+
+        Empty when unknown, which is itself worth reporting: an undated
+        catalog cannot support a claim about what Azure offers today.
+        """
+        if not self._loaded:
+            self.load()
+        return self._snapshot_date
+
     # ------------------------------------------------------------------
     # Refresh
     # ------------------------------------------------------------------
@@ -640,6 +660,9 @@ class PolicyCatalogService:
         self._ingest(definitions)
         self._loaded = True
         self._source = source
+        # A refresh makes the snapshot date *now*, and leaving the old one in
+        # place would attribute fresh definitions to a stale capture.
+        self._snapshot_date = datetime.now(timezone.utc).isoformat()
         logger.info("Refreshed policy catalog: %d definitions (source=%s)", len(self._definitions), source)
         return len(self._definitions)
 

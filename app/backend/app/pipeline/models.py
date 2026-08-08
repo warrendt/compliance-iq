@@ -196,6 +196,28 @@ class ControlPolicyMapping(BaseModel):
         None, description="What evidences this control"
     )
 
+    # ── Provenance ────────────────────────────────────────────────────────────
+    # From the analyst workbook's Legend: "Verification Date & Source" and
+    # "Blocker". A mapping that cannot say what checked it, and when, is an
+    # answer rather than a defensible one.
+    verified_at: Optional[str] = Field(
+        None, description="When this mapping was produced (UTC, ISO 8601)"
+    )
+    catalog_snapshot_date: Optional[str] = Field(
+        None,
+        description=(
+            "When the Azure Policy catalog this mapping resolved against was "
+            "captured. Empty when unknown, which is itself a finding."
+        ),
+    )
+    verification_source: Optional[str] = Field(
+        None, description="What verified this mapping's identifiers"
+    )
+    provenance_blocker: Optional[str] = Field(
+        None,
+        description="Why this mapping cannot yet be presented as current",
+    )
+
     # ── Microsoft attestation (category D) ────────────────────────────────────
     attestation: Optional[dict] = Field(
         None,

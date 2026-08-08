@@ -147,8 +147,37 @@ class ControlMapping(BaseModel):
     responsibility: Optional[Literal["Customer", "Microsoft", "Shared"]] = Field(
         default=None,
         description=(
-            "Who owns the control under the shared responsibility model. "
-            "'Microsoft' controls are attested, not customer-configurable."
+            "Who operates the thing the control governs. An axis independent of "
+            "coverage_category: the category describes HOW a control is met, "
+            "this describes WHO owns it. Microsoft-owned process controls are "
+            "common and legitimate; None means the question was not answered, "
+            "which is reported rather than guessed."
+        ),
+    )
+
+    # -- Provenance ---------------------------------------------------------
+    # The analyst workbook's Legend documents a "Verification Date & Source"
+    # column. Provenance is the difference between an answer and a defensible
+    # one: a regulator asking how the system knows a policy exists needs the
+    # catalog snapshot it was checked against.
+    verified_at: Optional[str] = Field(
+        default=None, description="When this mapping was produced (UTC, ISO 8601)"
+    )
+    catalog_snapshot_date: Optional[str] = Field(
+        default=None,
+        description=(
+            "When the Azure Policy catalog this mapping resolved against was "
+            "captured. Empty when unknown, which is itself a finding."
+        ),
+    )
+    verification_source: Optional[str] = Field(
+        default=None, description="What verified this mapping's identifiers"
+    )
+    provenance_blocker: Optional[str] = Field(
+        default=None,
+        description=(
+            "Why this mapping cannot yet be presented as current — e.g. an "
+            "undated catalog snapshot. The Legend's 'Blocker' column."
         ),
     )
 

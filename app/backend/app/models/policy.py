@@ -350,6 +350,22 @@ class ManualControlEntry(BaseModel):
             "escalated rather than reported as covered."
         ),
     )
+    verified_at: str = Field(
+        "", description="When this mapping was produced (UTC, ISO 8601)"
+    )
+    catalog_snapshot_date: str = Field(
+        "",
+        description=(
+            "When the catalog this mapping resolved against was captured. Empty "
+            "when unknown, which is itself a finding."
+        ),
+    )
+    verification_source: str = Field(
+        "", description="What verified this mapping's identifiers"
+    )
+    provenance_blocker: str = Field(
+        "", description="Why this mapping cannot yet be presented as current"
+    )
     reason: str = Field(
         ..., description="Why the control is not addressable by Azure"
     )
