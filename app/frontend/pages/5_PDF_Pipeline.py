@@ -18,6 +18,7 @@ from utils.state_init import (
     restore_workflow_state,
 )
 from utils.task_manager import (
+    annotate_task,
     cancel_task,
     get_task,
     get_tasks_by_type,
@@ -32,7 +33,7 @@ from components.backend_log_viewer import (
     render_pdf_backend_activity,
 )
 from components.pdf_progress import build_pdf_extraction_activity
-from components.pdf_upload_state import is_replacement_upload
+from components.pdf_upload_state import is_replacement_upload, pdf_digest
 from components.task_status_bar import render_task_status_bar
 
 st.set_page_config(
@@ -304,25 +305,33 @@ with st.sidebar:
         help="URL of the ComplianceIQ backend API",
     )
 
-# Restore completed results independently of the uploader. A View click selects
-# one exact task; the fallback supports completed tasks created before that key
-# was introduced.
-if not st.session_state.pdf_extraction:
+# ── Restore a completed extraction ────────────────────────────────────────
+# Restoration is deliberately conservative: a completed result is only brought
+# back when the user explicitly asks to view it, or when it belongs to the PDF
+# currently loaded in the page. Restoring "the newest completed extraction"
+# regardless of source made a freshly uploaded PDF silently display the previous
+# document's controls, with the Extract button disabled so it could never scan.
+def _restore_completed_extraction(current_digest: str) -> None:
+    """Re-hydrate a completed extraction for the current file, if there is one."""
+    if st.session_state.pdf_extraction:
+        return
+
     selected_task_id = st.session_state.pdf_extraction_task_to_view
-    completed_extractions = [
-        task
-        for task in get_tasks_by_type("pdf_extraction")
-        if task["status"] == "completed"
-    ]
     if selected_task_id:
         candidate_task_ids = [selected_task_id]
-    elif st.session_state.pdf_extraction_restore_disabled:
+    elif st.session_state.pdf_extraction_restore_disabled or not current_digest:
+        # Cleared by the user, or no PDF loaded — never auto-restore.
         candidate_task_ids = []
     else:
         candidate_task_ids = [
             task["job_id"]
             for task in sorted(
-                completed_extractions,
+                (
+                    task
+                    for task in get_tasks_by_type("pdf_extraction")
+                    if task["status"] == "completed"
+                    and task.get("source_digest") == current_digest
+                ),
                 key=lambda task: task.get("completed_at") or task.get("started_at", ""),
                 reverse=True,
             )
@@ -406,14 +415,22 @@ if uploaded_file:
     ):
         _clear_pdf_workflow()
 
-    # Persist file bytes in session state so they survive page navigation
+    # Persist file bytes in session state so they survive page navigation.
+    # ``pdf_extraction_restore_disabled`` is deliberately NOT reset here: doing
+    # so re-armed auto-restore on every upload, so a new PDF (or the same PDF
+    # after "Clear & Start Over") immediately re-displayed the previous
+    # extraction and left the Extract button disabled. It is cleared only when a
+    # new extraction is actually submitted, or when a result is explicitly
+    # viewed from the notification bell.
     st.session_state.pdf_file_bytes = uploaded_bytes
     st.session_state.pdf_file_name = uploaded_file.name
-    st.session_state.pdf_extraction_restore_disabled = False
 
 # Determine which file we're working with (freshly uploaded or persisted)
 file_bytes = st.session_state.pdf_file_bytes
 file_name = st.session_state.pdf_file_name
+current_digest = pdf_digest(file_bytes)
+
+_restore_completed_extraction(current_digest)
 
 if file_bytes:
     file_size = len(file_bytes)
@@ -462,6 +479,8 @@ if file_bytes:
             page_origin="pdf_pipeline",
             poll_backend=False,
         )
+        annotate_task(task_id, source_digest=current_digest)
+        st.session_state.pdf_extraction_restore_disabled = False
         try:
             job = APIClient(base_url=api_url).start_pdf_extraction(
                 pdf_bytes=file_bytes,

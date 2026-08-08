@@ -1,5 +1,14 @@
 """Pure state decisions for replacing a PDF upload."""
 
+import hashlib
+
+
+def pdf_digest(content: bytes | None) -> str:
+    """Return a stable content digest used to tie an extraction to its source PDF."""
+    if not content:
+        return ""
+    return hashlib.sha256(content).hexdigest()
+
 
 def is_replacement_upload(
     current_bytes: bytes | None,

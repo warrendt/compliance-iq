@@ -62,5 +62,7 @@ jobs:
           python -m pytest \
             app/tests/test_state_init_helpers.py \
             app/tests/test_policy_display.py \
+            app/tests/test_column_mapping.py \
+            app/tests/test_pdf_upload_state.py \
             --noconftest -v
 
