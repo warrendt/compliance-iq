@@ -340,6 +340,7 @@ def enrich_policy_details(mapping, catalog=None):
     policy_ids = list(getattr(mapping, "azure_policy_ids", None) or [])
     if not policy_ids or catalog is None:
         mapping.policy_effects = []
+        mapping.available_effects = []
         mapping.policy_type = "N/A" if not policy_ids else "Built-in"
         mapping.enforcement_plane = (
             PLANE_MANUAL if not policy_ids else mapping.enforcement_plane
@@ -347,15 +348,23 @@ def enrich_policy_details(mapping, catalog=None):
         return mapping
 
     effects: List[str] = []
+    available: List[str] = []
     for policy_id in policy_ids:
         guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
         definition = catalog.get(guid) if hasattr(catalog, "get") else None
-        effect = (definition or {}).get("effect", "")
+        definition = definition or {}
+        effect = definition.get("effect", "")
         if effect and effect not in effects:
             effects.append(effect)
+        for allowed in definition.get("allowed_effects") or ():
+            if allowed not in available:
+                available.append(allowed)
 
     mapping.policy_effects = effects
+    mapping.available_effects = available
     mapping.policy_type = "Built-in"
+    # The plane reflects the *default* effect, because that is what applies if
+    # nobody intervenes. available_effects records that a stricter choice exists.
     mapping.enforcement_plane = enforcement_plane_for(effects)
     return mapping
 

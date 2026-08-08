@@ -110,6 +110,17 @@ class ControlMapping(BaseModel):
         ),
     )
 
+    available_effects: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Effects the mapped definitions permit, where they are "
+            "parameterised. Distinct from policy_effects, which is what applies "
+            "by default: a policy defaulting to Audit but permitting Deny can be "
+            "escalated from reporting to blocking, and that choice belongs to "
+            "the reviewer rather than to this engine."
+        ),
+    )
+
     policy_type: Optional[str] = Field(
         default=None,
         description="'Built-in' when policies are mapped, 'N/A' otherwise.",

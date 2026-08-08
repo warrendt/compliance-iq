@@ -61,6 +61,11 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         "evidence_source": m.get("evidence_source"),
         "enforcement_plane": m.get("enforcement_plane"),
         "policy_effects": m.get("policy_effects", []),
+        # Distinct from policy_effects: what the definition permits, not what it
+        # does by default. 484 of the 2467 built-ins default to a weaker effect
+        # than the Deny they allow, so a reviewer deciding whether a control
+        # blocks or merely reports needs both.
+        "available_effects": m.get("available_effects", []),
         "policy_type": m.get("policy_type"),
     }
 

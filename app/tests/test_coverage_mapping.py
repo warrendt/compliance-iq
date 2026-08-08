@@ -485,3 +485,53 @@ def test_non_enforceable_controls_report_no_policy_type():
     coverage.apply_coverage(mapping, "Governance", _FakeCatalog())
     assert mapping.policy_type == "N/A"
     assert mapping.policy_effects == []
+
+
+def test_available_effects_records_stricter_options_the_default_hides():
+    """A policy defaulting to Audit but permitting Deny is not "Audit only".
+
+    The gold workbook records the effect the expert *intends to assign*, which is
+    often stricter than the catalog default. Reporting only the default would tell
+    a reviewer a control can be observed when it can in fact be blocked, so the
+    permitted set is surfaced alongside the default rather than collapsed into it.
+    """
+
+    class _ParameterisedCatalog(_FakeCatalog):
+        def get(self, name):
+            return {"effect": "Audit", "allowed_effects": ["Audit", "Deny", "Disabled"]}
+
+    mapping = _mapping("ENC-9", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _ParameterisedCatalog())
+
+    assert mapping.policy_effects == ["Audit"]
+    assert mapping.available_effects == ["Audit", "Deny", "Disabled"]
+    # The plane follows the default: nothing blocks until someone parameterises it.
+    assert mapping.enforcement_plane == coverage.PLANE_RUNTIME
+
+
+def test_available_effects_is_empty_for_non_parameterised_policies():
+    """Most definitions hardcode their effect; absence must not read as "any effect"."""
+
+    class _FixedCatalog(_FakeCatalog):
+        def get(self, name):
+            return {"effect": "Deny"}
+
+    mapping = _mapping("ENC-10", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _FixedCatalog())
+    assert mapping.available_effects == []
+
+
+def test_available_effects_unions_across_multiple_policies():
+    class _MixedCatalog(_FakeCatalog):
+        def get(self, name):
+            return {"effect": "Audit", "allowed_effects": ["Audit", "Deny"]}
+
+    mapping = _mapping("ENC-11", [REAL_GUID, REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _MixedCatalog())
+    assert mapping.available_effects == ["Audit", "Deny"]
+
+
+def test_non_enforceable_controls_report_no_available_effects():
+    mapping = _mapping("P-9", [], control_type="Governance")
+    coverage.apply_coverage(mapping, "Governance", _FakeCatalog())
+    assert mapping.available_effects == []
