@@ -59,7 +59,15 @@ Assign exactly one coverage category:
 
 Also decide:
 
-- **responsibility** — "Customer" for anything the customer configures, operates or documents. "Microsoft" for D_MicrosoftAttestation controls. "Shared" only when both parties demonstrably act.
+- **responsibility** — **who operates the thing the control governs.** This is a *separate question* from the coverage category above, and you must answer it on its own merits. Coverage category describes HOW a control is met; responsibility describes WHO owns it. They are independent, and any combination is legitimate.
+
+  "Microsoft" when Microsoft operates the underlying system or performs the activity — including process and organisational controls that are Microsoft's to run: datacentre access procedures, Microsoft personnel screening, Microsoft's own incident response, hardware disposal, the platform's audit programme. A process control can be Microsoft's; this is common and you must not avoid it.
+
+  "Customer" when the customer configures, operates or documents it — including technical controls the customer sets in their own tenant.
+
+  "Shared" only when both parties demonstrably act.
+
+  Do **not** infer responsibility from the category. A `C_Process` control is frequently Microsoft-owned, and a `D_MicrosoftAttestation` control is Microsoft-owned because Microsoft operates it, not because of its label. Deriving one axis from the other collapses two independent facts into one and misattributes ownership.
 
 - **reason** — two or three sentences of substantive justification, in the register a compliance consultant would use in a report. For A/B, explain what makes the control *measurable* by Azure and what a policy would evaluate. For C/D, explain specifically why no Azure Policy can assert it — because the control governs human or contractual behaviour, or because the underlying system is Microsoft-operated. Never write a generic sentence that would fit any control; name what this control actually requires.
 

@@ -94,8 +94,11 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "cannot technically address them — they are process, legal, "
         "contractual, or Microsoft-operated controls. Track them here for "
         "**manual attestation**; they carry no Azure Policy definitions. "
-        "Category **D** is already **compliant by inheritance** — Microsoft "
-        "operates and certifies those controls, so they need no customer action."
+        "Category **D** counts as **compliant by inheritance only where the "
+        "attestation is grounded** — where a specific certification clause, "
+        "audit-report criterion or published Microsoft document was resolved "
+        "and is cited below. A D control with no grounded citation is a gap to "
+        "escalate, not an inherited pass."
     )
 
     if summary:
@@ -180,9 +183,18 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "coverage_display": "Coverage",
         "coverage_category": "Category code",
         "mcsb_control_id": "MCSB",
+        # Responsibility is an independent axis from coverage, not a
+        # restatement of it: a process control is frequently Microsoft-owned.
         "responsibility": "Responsibility",
         "enforcement_plane": "Enforcement Plane",
         "evidence_source": "Evidence",
+        # For a D control these four columns *are* the deliverable. Without
+        # them the row asserts Microsoft coverage and leaves the customer to
+        # prove it; with them an auditor can go and fetch the document.
+        "attestation_citation": "Attested by",
+        "attestation_document": "Evidence document",
+        "attestation_location": "Where",
+        "attestation_access": "Access",
         "reason": "Why not Azure-addressable",
     }
     df = pd.DataFrame(manual)

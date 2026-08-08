@@ -1151,3 +1151,168 @@ def test_the_manual_register_csv_carries_the_attestation_columns():
     ):
         assert column in header
     assert "Azure SOC 2 Type II report" in csv_text
+
+
+# -- Responsibility and coverage category are independent axes -----------------
+#
+# The source workbook is explicit: "Coverage category is independent of
+# responsibility: it describes HOW a control is met, not WHO owns it." Its own
+# rows prove the point -- 30 of its 71 process/organisational controls are
+# Microsoft-owned, and every one of its A and B controls is too. Code that
+# derives one from the other cannot express any of that.
+
+
+def test_a_process_control_can_be_microsoft_owned():
+    """The combination the old coupling could not represent at all.
+
+    Microsoft runs process controls: datacentre access procedures, personnel
+    screening, its own incident response. Forcing C to Customer hands the
+    customer 30 pieces of work that are not theirs.
+    """
+    mapping = _mapping("PHY-1", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_C,
+            responsibility="Microsoft",
+            reason="Microsoft operates datacentre visitor procedures.",
+        ),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_C
+    assert mapping.responsibility == "Microsoft"
+
+
+def test_an_azure_enforced_control_can_be_microsoft_owned():
+    """Every A and B row in the gold workbook is Microsoft-owned, so the axes
+    do not even correlate in the direction the coupling assumed."""
+    mapping = _mapping("DP-1", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_A, responsibility="Microsoft"),
+    )
+    assert mapping.azure_enforceable is True
+    assert mapping.responsibility == "Microsoft"
+
+
+def test_a_process_control_can_be_customer_owned():
+    mapping = _mapping("GRC-1", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_C, responsibility="Customer"),
+    )
+    assert mapping.responsibility == "Customer"
+
+
+def test_responsibility_is_not_invented_when_the_classifier_is_silent():
+    """Guessing an owner is worse than admitting the question was not answered:
+    a wrong owner sends work to the wrong party and looks authoritative."""
+    mapping = _mapping("GRC-2", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_C, responsibility=""),
+    )
+    assert mapping.responsibility is None
+
+
+def test_an_attested_control_defaults_to_microsoft():
+    """The one permitted fallback, and it is a definition rather than an
+    inference: D *means* Microsoft operates it and the customer cannot
+    configure it. The reverse inferences are deliberately absent."""
+    mapping = _mapping("ATT-1", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_D, responsibility=""),
+    )
+    assert mapping.responsibility == "Microsoft"
+
+
+def test_the_classification_prompt_does_not_derive_responsibility_from_category():
+    """A regression lock on the prompt itself. The old wording said
+    responsibility was "Microsoft for D_MicrosoftAttestation controls", which
+    taught the model to read one axis off the other."""
+    from app.services.control_classification_service import (
+        CLASSIFICATION_SYSTEM_PROMPT,
+    )
+
+    lowered = CLASSIFICATION_SYSTEM_PROMPT.lower()
+    assert "independent" in lowered
+    assert "how a control is met" in lowered
+    assert "who owns it" in lowered
+    # It must positively invite the combination the coupling forbade.
+    assert "process control can be microsoft" in lowered
+
+
+# -- A control needing a custom policy is told to author one -------------------
+
+
+def test_a_control_with_no_built_in_is_told_a_custom_definition_is_needed():
+    """"N/A" is right for a control Azure was never going to enforce. For one
+    that is in scope and came back empty it is an unexplained blank: the control
+    *should* have a policy and does not, so the answer is to author one.
+    """
+    mapping = _mapping("DP-9", [], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_A),
+    )
+    assert mapping.coverage_gap is True
+    assert mapping.policy_type == coverage.CUSTOM_POLICY_REQUIRED
+
+    (row,) = coverage.coverage_gap_rows([mapping])
+    assert "custom" in row["remediation"].lower()
+    assert row["policy_type"] == coverage.CUSTOM_POLICY_REQUIRED
+
+
+def test_a_process_control_is_not_told_to_author_a_custom_policy():
+    """C is not a coverage gap. Telling the customer to write a policy for
+    "conduct annual security awareness training" is worse than saying nothing.
+    """
+    mapping = _mapping("TRN-1", [], control_type="Process")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_C),
+    )
+    assert mapping.coverage_gap is False
+    assert mapping.policy_type == "N/A"
+    assert coverage.coverage_gap_rows([mapping]) == []
+
+
+def test_a_gap_with_a_known_outside_step_names_that_step_in_the_remedy():
+    mapping = _mapping("IAM-4", [], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_B,
+            outside_step="Entra Conditional Access policy requiring compliant devices",
+        ),
+    )
+    (row,) = coverage.coverage_gap_rows([mapping])
+    assert "Conditional Access" in row["remediation"]
+
+
+def test_a_covered_control_keeps_its_built_in_policy_type():
+    mapping = _mapping("DP-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_A),
+    )
+    assert mapping.policy_type == "Built-in"
+    assert coverage.coverage_gap_rows([mapping]) == []

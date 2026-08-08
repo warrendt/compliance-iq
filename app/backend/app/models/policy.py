@@ -395,6 +395,21 @@ class CoverageGapEntry(BaseModel):
         description="Candidate identifiers discarded in validation, with reasons",
     )
     reason: str = Field("", description="Why this control has no usable policy")
+    policy_type: str = Field(
+        "",
+        description=(
+            "'Custom definition required' when no built-in covers the control. "
+            "Distinct from 'N/A', which means Azure Policy was never the right "
+            "instrument for it."
+        ),
+    )
+    remediation: str = Field(
+        "",
+        description=(
+            "The named next step. A gap without one is a complaint; with one it "
+            "is work someone can pick up."
+        ),
+    )
 
 
 class PolicyGenerationResponse(BaseModel):

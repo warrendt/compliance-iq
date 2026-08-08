@@ -80,6 +80,13 @@ COVERAGE_DISPLAY_NAMES = {
     COVERAGE_D: "Microsoft attested",
 }
 
+# The policy_type for a control that is in scope for Azure but for which no
+# built-in definition exists. Distinct from "N/A", which means Azure Policy was
+# never the right instrument: this control *should* have a policy and does not,
+# so the answer is to author one. The analyst workbook records the same state as
+# "Built-in + Custom (... SLZ definition)".
+CUSTOM_POLICY_REQUIRED = "Custom definition required"
+
 
 def coverage_display_name(category: Optional[str]) -> str:
     """The analyst-facing name for a coverage category identifier."""
@@ -339,6 +346,20 @@ def apply_coverage(
             getattr(classification, "evidence_source", "") or None
         )
 
+    # Responsibility and coverage category are independent axes: the source
+    # workbook is explicit that the category "describes HOW a control is met,
+    # not WHO owns it", and 30 of its process/organisational controls are
+    # Microsoft-owned. So responsibility is never derived from the category --
+    # with one exception that is a definition rather than an inference.
+    #
+    # D_MicrosoftAttestation *means* "Microsoft operates this and the customer
+    # cannot configure it". Filling Microsoft in when the classifier said
+    # nothing restates that definition. The reverse inferences -- C implies
+    # Customer, A/B implies Customer -- are the ones that misattribute
+    # ownership, so they are deliberately absent.
+    if category == COVERAGE_D and not getattr(mapping, "responsibility", None):
+        mapping.responsibility = "Microsoft"
+
     # Category D is the only category whose entire deliverable is a citation, so
     # it is the only one where an ungrounded claim is indistinguishable from a
     # lie. Resolve it now, before the reason is composed from it.
@@ -593,9 +614,7 @@ def _reason_for(mapping) -> str:
 # Azure Policy effects that act at deployment time: they block or mutate the
 # request itself, so the control is enforced by the landing zone before a
 # non-conformant resource ever exists.
-DEPLOY_TIME_EFFECTS = frozenset({"deny", "modify", "deployifnotexists", "append"})
-
-# Effects that only observe. They surface non-conformance as a Defender for Cloud
+DEPLOY_TIME_EFFECTS = frozenset({"deny", "modify", "deployifnotexists", "append"})# Effects that only observe. They surface non-conformance as a Defender for Cloud
 # recommendation after the fact; they do not block anything.
 RUN_TIME_EFFECTS = frozenset({"audit", "auditifnotexists"})
 
@@ -639,7 +658,16 @@ def enrich_policy_details(mapping, catalog=None):
     if not policy_ids or catalog is None:
         mapping.policy_effects = []
         mapping.available_effects = []
-        mapping.policy_type = "N/A" if not policy_ids else "Built-in"
+        # "N/A" is correct for a control Azure was never going to enforce. It is
+        # wrong for one that is in scope and came back empty: that control needs
+        # a policy definition that does not exist yet, and saying so is the
+        # difference between an actionable instruction and an unexplained blank.
+        # The analyst workbook records this state explicitly as
+        # "Built-in + Custom (... SLZ definition)".
+        if not policy_ids and getattr(mapping, "coverage_gap", False):
+            mapping.policy_type = CUSTOM_POLICY_REQUIRED
+        else:
+            mapping.policy_type = "N/A" if not policy_ids else "Built-in"
         mapping.enforcement_plane = (
             PLANE_MANUAL if not policy_ids else mapping.enforcement_plane
         )
@@ -727,6 +755,7 @@ def coverage_gap_rows(mappings) -> List[dict]:
         if not getattr(m, "coverage_gap", False):
             continue
         dropped = list(getattr(m, "dropped_policy_ids", None) or [])
+        step = (getattr(m, "outside_step", None) or "").strip()
         rows.append(
             {
                 "control_id": m.external_control_id,
@@ -735,12 +764,25 @@ def coverage_gap_rows(mappings) -> List[dict]:
                 "coverage_display": coverage_display_name(
                     getattr(m, "coverage_category", None)
                 ),
-                "outside_step": getattr(m, "outside_step", None) or "",
+                "outside_step": step,
                 "rejected_policy_ids": dropped,
                 "reason": (
                     "candidate policies were rejected during validation"
                     if dropped
                     else "no candidate policy was retrieved for this control"
+                ),
+                # A gap without a next step is a complaint. Naming the remedy
+                # turns it into work someone can pick up: author a definition,
+                # or do the thing Azure Policy cannot assert.
+                "policy_type": getattr(m, "policy_type", None) or CUSTOM_POLICY_REQUIRED,
+                "remediation": (
+                    f"No built-in definition covers this control. Author a custom "
+                    f"Azure Policy definition, or complete it outside Azure Policy: {step}"
+                    if step
+                    else (
+                        "No built-in definition covers this control. Author a custom "
+                        "Azure Policy definition, or record a compensating control."
+                    )
                 ),
             }
         )

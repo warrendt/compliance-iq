@@ -798,8 +798,10 @@ def _write_coverage_reports(
                 "coverage_category",
                 "coverage_display",
                 "outside_step",
+                "policy_type",
                 "rejected_policy_ids",
                 "reason",
+                "remediation",
             ],
             coverage_gap_rows(views),
         )
