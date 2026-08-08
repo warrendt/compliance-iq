@@ -210,6 +210,17 @@ class PolicyCatalogService:
                 "description": (d.get("description") or "").strip(),
                 "category": (d.get("category") or "Uncategorized").strip(),
                 "effect": (d.get("effect") or "").strip(),
+                # The effects the definition *allows*, not just its resolved
+                # default. 484 built-ins default to Audit but permit Deny;
+                # dropping this here silently emptied ``available_effects`` on
+                # every mapping, hiding that a control can be blocked rather
+                # than merely observed.
+                "allowed_effects": [
+                    str(effect).strip()
+                    for effect in (d.get("allowed_effects") or [])
+                    if str(effect).strip()
+                ],
+                "policy_type": (d.get("policy_type") or "").strip(),
                 "requires_parameters": bool(d.get("requires_parameters", False)),
                 "required_parameters": d.get("required_parameters") or {},
             }

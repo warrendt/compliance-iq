@@ -535,3 +535,58 @@ def test_non_enforceable_controls_report_no_available_effects():
     mapping = _mapping("P-9", [], control_type="Governance")
     coverage.apply_coverage(mapping, "Governance", _FakeCatalog())
     assert mapping.available_effects == []
+
+
+def test_available_effects_survive_the_real_catalog_service():
+    """Regression: the in-memory index dropped ``allowed_effects`` on ingest.
+
+    Every other available_effects test uses a fake catalog whose ``get()``
+    returns the field directly, so they all passed while the shipped service
+    returned definitions without it and the feature was dead in production.
+    This test goes through the real ``PolicyCatalogService`` so the gap cannot
+    reopen.
+    """
+    from app.services.policy_catalog_service import get_policy_catalog_service
+
+    catalog = get_policy_catalog_service()
+    catalog.load()
+
+    guid = next(
+        (
+            definition["name"]
+            for definition in catalog._definitions
+            if "Deny" in (definition.get("allowed_effects") or ())
+        ),
+        None,
+    )
+    assert guid, "catalog snapshot carries no Deny-capable definition to test against"
+
+    expected = catalog.get(guid)["allowed_effects"]
+    assert expected, "picked a definition with empty allowed_effects"
+
+    mapping = _mapping("ENC-12", [guid], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", catalog)
+
+    assert mapping.available_effects == expected
+
+
+def test_hallucinated_policy_ids_are_not_treated_as_enforceable():
+    """A GUID the catalog has never seen must not survive as enforcement.
+
+    Otherwise the mapping contradicts itself: azure_enforceable=True with no
+    effects and a manual enforcement plane, because enrichment cannot find the
+    definition it claims to be enforced by.
+    """
+    from app.services.policy_catalog_service import get_policy_catalog_service
+
+    catalog = get_policy_catalog_service()
+    catalog.load()
+
+    fabricated = "deadbeef-0000-0000-0000-00000000dead"
+    assert not catalog.exists(fabricated)
+
+    mapping = _mapping("ENC-13", [fabricated], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", catalog)
+
+    assert mapping.azure_policy_ids == []
+    assert mapping.coverage_category != coverage.COVERAGE_A

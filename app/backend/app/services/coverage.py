@@ -259,12 +259,22 @@ def _is_enforceable_id(policy_id: str, catalog) -> bool:
     Drops catalog "Regulatory Compliance" (Microsoft Managed Control /
     manual-attestation) placeholders when a catalog is supplied; these carry no
     audit/deny effect so they must not count as enforcement.
+
+    Also drops GUIDs the catalog has never heard of. The selecting model can
+    hallucinate an ID, and treating one as enforceable produced a mapping that
+    contradicted itself — ``azure_enforceable=True`` with no effects and a
+    manual enforcement plane, because enrichment could not find the definition.
+    Initiative building already filtered unknown IDs, so this only moves the
+    check earlier, to the point where the claim is first made.
     """
     if not policy_id or not policy_id.strip():
         return False
     if catalog is None:
         return True
     guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+    exists = getattr(catalog, "exists", None)
+    if callable(exists) and not exists(guid):
+        return False
     is_non_enforceable = getattr(catalog, "is_non_enforceable", None)
     if callable(is_non_enforceable) and is_non_enforceable(guid):
         return False
