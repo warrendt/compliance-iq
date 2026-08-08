@@ -77,6 +77,7 @@ jobs:
           python -m pytest \
             app/tests/test_control_classification.py \
             app/tests/test_coverage_mapping.py \
+            app/tests/test_retrieval_llm_stages.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests
