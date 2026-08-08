@@ -62,3 +62,52 @@ def test_lookup_reports_initiative_membership(catalog):
 def test_an_unknown_identifier_is_reported_as_unknown(catalog):
     assert not catalog.identifier_exists("deadbeef-0000-0000-0000-00000000dead")
     assert catalog.get("deadbeef-0000-0000-0000-00000000dead") is None
+
+
+def _lookup(identifier):
+    """Drive the route function itself, not just the service beneath it.
+
+    The first version of this endpoint resolved definitions and initiatives and
+    then returned ``kind: null`` for everything else - so a Microsoft Managed
+    Control, a withdrawn built-in and a fabricated GUID were indistinguishable
+    over the API even though the service could already tell them apart. That is
+    the same collapse the classifier was fixed to avoid, reintroduced one layer
+    up, and only a test at this layer can see it.
+    """
+    import asyncio
+
+    from app.api.routes.policy import policy_catalog_lookup
+
+    return asyncio.run(policy_catalog_lookup(identifier))
+
+
+def test_the_route_distinguishes_every_identifier_kind():
+    cases = {
+        "404c3081-a854-4457-ae30-26a93ef643f9": ("definition", True),
+        "1f3afdf9-d0c9-4c3d-847f-89da613e70a8": ("initiative", True),
+        "0004bbf0-5099-4179-869e-e9ffe5fb0945": ("microsoft_managed_control", False),
+        "001802d1-4969-4c82-a700-c29c6c6f9bbd": ("deprecated", False),
+        "deadbeef-0000-0000-0000-00000000dead": ("unknown", False),
+    }
+    for identifier, (kind, enforceable) in cases.items():
+        body = _lookup(identifier)
+        assert body["kind"] == kind, f"{identifier} reported as {body['kind']}"
+        assert body["enforceable"] is enforceable
+
+    # Every kind is distinct - the point of the endpoint.
+    kinds = [_lookup(i)["kind"] for i in cases]
+    assert len(set(kinds)) == len(cases)
+
+
+def test_a_non_enforceable_identifier_explains_itself_over_the_api():
+    body = _lookup("0004bbf0-5099-4179-869e-e9ffe5fb0945")
+    assert body["enforceable"] is False
+    assert body["explanation"], "a refusal the customer cannot act on is not an answer"
+    assert "Microsoft" in body["explanation"]
+
+
+def test_the_real_policy_that_is_not_guid_shaped_is_enforceable_over_the_api():
+    body = _lookup("17k78e20-9358-41c9-923c-fb736d382a12")
+    assert body["kind"] == "definition"
+    assert body["enforceable"] is True
+    assert body["known"] is True

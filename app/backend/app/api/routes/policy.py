@@ -763,21 +763,51 @@ async def policy_catalog_lookup(identifier: str):
     without shelling into a container. It also makes the catalog-before-format
     rule externally checkable: an ARM policy *name* need not be GUID-shaped,
     and at least one shipped built-in is not.
+
+    The reported ``kind`` distinguishes the cases that matter to a customer.
+    "Not recommendable" is not one answer but four, and only the last is a
+    defect in the mapping: a **definition**, an **initiative**, a
+    **microsoft_managed_control** (Microsoft operates and attests it - nothing
+    for the customer to deploy), a **deprecated** built-in (find the
+    replacement), or **unknown** (the citation cannot be trusted).
     """
     from app.services import get_policy_catalog_service
+    from app.services.coverage import (
+        ID_REJECTION_MESSAGES,
+        classify_policy_id,
+    )
 
     catalog = get_policy_catalog_service()
     entry = catalog.get(identifier)
-    initiative = None
-    if entry is None:
-        initiative = catalog.get_initiative(identifier)
+    initiative = None if entry else catalog.get_initiative(identifier)
+
+    if entry:
+        kind = "definition"
+        display_name = entry.get("display_name")
+    elif initiative:
+        kind = "initiative"
+        display_name = initiative.get("display_name")
+    elif catalog.is_managed_control(identifier):
+        kind = "microsoft_managed_control"
+        display_name = catalog.managed_control_display_name(identifier)
+    elif catalog.is_deprecated(identifier):
+        kind = "deprecated"
+        display_name = catalog.deprecated_display_name(identifier)
+    else:
+        kind = "unknown"
+        display_name = None
+
+    classification = classify_policy_id(identifier, catalog)
 
     return {
         "identifier": identifier,
         "known": catalog.identifier_exists(identifier),
-        "kind": "definition" if entry else ("initiative" if initiative else None),
-        "display_name": (entry or initiative or {}).get("display_name"),
+        "kind": kind,
+        "display_name": display_name,
         "effect": (entry or {}).get("effect"),
+        "enforceable": classification == "ok",
+        "classification": classification,
+        "explanation": ID_REJECTION_MESSAGES.get(classification),
         "member_of_initiatives": [
             {
                 "name": i.get("name"),
