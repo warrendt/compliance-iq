@@ -140,9 +140,18 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         # was found is a gap to close, not a category judgement, and a rejected
         # identifier is enforcement that was lost rather than never needed.
         gaps = summary.get("coverage_gaps", 0)
+        attestation_gaps = summary.get("attestation_gaps", 0)
         dropped = summary.get("dropped_policy_ids", 0)
-        if gaps or dropped:
+        if gaps or dropped or attestation_gaps:
             notes = []
+            if attestation_gaps:
+                notes.append(
+                    f"**{attestation_gaps} control(s)** were classified as "
+                    "Microsoft-attested but could not be grounded in any "
+                    "certification, audit report or published documentation. "
+                    "They are excluded from the compliant count — escalate "
+                    "commercially rather than reporting them as covered."
+                )
             if gaps:
                 notes.append(
                     f"**{gaps} control(s)** are in scope for Azure but no usable "

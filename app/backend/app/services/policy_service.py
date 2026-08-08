@@ -214,6 +214,7 @@ class PolicyGenerationService:
             manual_controls=coverage.manual_register_rows(request.mappings),
             coverage_gaps=coverage.coverage_gap_rows(request.mappings),
             dropped_policy_ids=coverage.dropped_policy_rows(request.mappings),
+            attestation_gaps=coverage.attestation_gap_rows(request.mappings),
             coverage_summary=coverage.coverage_summary(request.mappings),
         )
 

@@ -91,6 +91,30 @@ class ControlMapping(BaseModel):
         ),
     )
 
+    attestation: Optional[dict] = Field(
+        default=None,
+        description=(
+            "For D_MicrosoftAttestation: the resolved attestation citation, "
+            "validated against the attestation catalog exactly as policy GUIDs "
+            "are validated against the policy catalog. Carries the scheme, the "
+            "basis kind (certification clause / audit-report criterion / "
+            "published documentation), the clause and whether it was verified, "
+            "the evidence document, where to get it and whether an NDA is "
+            "required. A citation the customer cannot retrieve is not an answer."
+        ),
+    )
+
+    attestation_gap: bool = Field(
+        default=False,
+        description=(
+            "True when a D control's claim could not be grounded in any "
+            "Microsoft attestation. The sovereign case: a requirement such as "
+            "UAE national security clearance, which ISO 27001 and SOC 2 do not "
+            "attest, must be escalated rather than absorbed into a generic "
+            "Microsoft-attested pass a regulator would later disprove."
+        ),
+    )
+
     outside_step: Optional[str] = Field(
         default=None,
         description=(
@@ -103,8 +127,7 @@ class ControlMapping(BaseModel):
     )
 
     dropped_policy_ids: List[dict] = Field(
-        default_factory=list,
-        description=(
+        default_factory=list,        description=(
             "Candidate policy IDs discarded during validation, each with the "
             "reason (malformed GUID, absent from catalog, non-enforceable "
             "placeholder). Never silently dropped: a control that lost its "

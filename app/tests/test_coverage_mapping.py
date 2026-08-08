@@ -184,11 +184,29 @@ def test_control_type_propagated():
 
 # ── Manual register + coverage summary ────────────────────────────────────────
 
+def _grounded_d(control_id, name=None):
+    """A category D mapping whose attestation claim actually resolved.
+
+    Since only grounded D counts towards ``compliant``, tests about the compliant
+    figure have to say which kind of D they mean. Bare ``coverage_category=D``
+    is now the *unevidenced* case, on purpose.
+    """
+    from app.services.attestation_catalog_service import GROUNDED
+
+    mapping = _mapping(control_id, [], coverage_category=coverage.COVERAGE_D, name=name)
+    mapping.attestation = {
+        "status": GROUNDED,
+        "citation": "ISO/IEC 27001:2022 clause 9.2 (Internal audit)",
+        "retrieval": "Download the certificate from the Service Trust Portal.",
+    }
+    return mapping
+
+
 def test_manual_register_and_summary():
     mappings = [
         _mapping("A-1", [REAL_GUID], coverage_category=coverage.COVERAGE_A),
         _mapping("C-1", [], coverage_category=coverage.COVERAGE_C, control_type="Governance"),
-        _mapping("D-1", [], coverage_category=coverage.COVERAGE_D),
+        _grounded_d("D-1"),
     ]
     rows = coverage.manual_register_rows(mappings)
     assert {r["control_id"] for r in rows} == {"C-1", "D-1"}
@@ -210,29 +228,45 @@ def test_manual_register_and_summary():
 
 
 def test_microsoft_attested_controls_are_compliant_not_gaps():
-    """D never enters the mapping, yet still counts as compliant.
+    """D never enters the initiative, and counts as compliant only once cited.
 
-    Regression: the summary only credited A_AzurePolicy, so Microsoft-operated
-    controls the customer cannot configure were reported as a coverage gap.
+    This test previously asserted that *any* D control was compliant and that
+    the register told the reader "no customer action required". That was the
+    false-pass behaviour: it made the compliant percentage a function of how
+    many controls the model was willing to label ``D_MicrosoftAttestation``,
+    with no check that Microsoft attests anything of the sort.
+
+    The invariant now is: the category is a claim, a grounded citation is
+    evidence, and only evidence counts.
     """
-    mappings = [
-        _mapping("D-1", [], coverage_category=coverage.COVERAGE_D),
-        _mapping("D-2", [], coverage_category=coverage.COVERAGE_D),
-    ]
-    summary = coverage.coverage_summary(mappings)
+    from app.services.attestation_catalog_service import GROUNDED
 
-    # Not in the mapping — nothing is Azure-Policy enforceable here.
+    grounded = _mapping("D-1", [], coverage_category=coverage.COVERAGE_D)
+    grounded.attestation = {
+        "status": GROUNDED,
+        "citation": "SOC 2 Type II criterion CC6.4 (Restricted physical access)",
+        "retrieval": "Download the report from the Service Trust Portal.",
+    }
+    unresolved = _mapping("D-2", [], coverage_category=coverage.COVERAGE_D)
+
+    summary = coverage.coverage_summary([grounded, unresolved])
+
+    # Neither is in the initiative — nothing here is Azure-Policy enforceable.
     assert summary["azure_enforceable"] == 0
     assert summary["azure_enforceable_pct"] == 0.0
-    assert all(not m.azure_policy_ids for m in mappings)
+    assert not grounded.azure_policy_ids and not unresolved.azure_policy_ids
 
-    # Still fully compliant.
-    assert summary["compliant"] == 2
-    assert summary["compliant_pct"] == 100.0
+    # Only the cited one is compliant.
+    assert summary["D_MicrosoftAttestation"] == 2
+    assert summary["compliant"] == 1
+    assert summary["attestation_gaps"] == 1
 
-    # And the register says so, rather than implying an outstanding action.
-    reasons = {r["reason"] for r in coverage.manual_register_rows(mappings)}
-    assert all("no customer action required" in r for r in reasons)
+    rows = {r["control_id"]: r["reason"] for r in coverage.manual_register_rows([grounded, unresolved])}
+    # The cited control hands over the citation...
+    assert "CC6.4" in rows["D-1"]
+    # ...and the uncited one admits it is unevidenced rather than passing.
+    assert "unevidenced" in rows["D-2"]
+    assert "no customer action required" not in rows["D-2"]
 
 
 def test_only_c_stays_an_open_customer_action():
@@ -325,14 +359,35 @@ def test_deploy_readme_reports_attested_controls_as_compliant():
         [
             _mapping("A-1", [REAL_GUID], coverage_category=coverage.COVERAGE_A),
             _mapping("C-1", [], coverage_category=coverage.COVERAGE_C),
-            _mapping("D-1", [], coverage_category=coverage.COVERAGE_D),
+            _grounded_d("D-1"),
         ]
     )
     readme = _deploy_readme("Test", "Test Framework", False, counts)["content"]
 
-    assert "66.7%" in readme  # A + D compliant
+    assert "66.7%" in readme  # A + grounded D compliant
     assert "compliant by inheritance" in readme
     assert "no customer remediation" in readme
+
+
+def test_deploy_readme_names_ungrounded_attestations_rather_than_counting_them():
+    """The bundle is the artefact a regulator sees. An unattested control must
+    not silently inflate the compliant figure, and must be named as an item to
+    escalate."""
+    from app.api.routes.policy import _deploy_readme
+
+    counts = coverage.coverage_summary(
+        [
+            _mapping("A-1", [REAL_GUID], coverage_category=coverage.COVERAGE_A),
+            _grounded_d("D-1"),
+            _mapping("D-2", [], coverage_category=coverage.COVERAGE_D),  # never grounded
+        ]
+    )
+    assert counts["compliant"] == 2 and counts["attestation_gaps"] == 1
+
+    readme = _deploy_readme("Test", "Test Framework", False, counts)["content"]
+    assert "66.7%" in readme  # not 100% — the ungrounded control does not count
+    assert "could not be grounded" in readme
+    assert "escalate commercially" in readme
 
 
 # -- Blind classification takes precedence over the keyword heuristics ---------
@@ -348,11 +403,15 @@ class _Classification:
         reason="",
         evidence="",
         outside_step="",
+        evidence_source=None,
     ):
         self.coverage_category = category
         self.responsibility = responsibility
         self.reason = reason
-        self.evidence_source = evidence
+        # ``evidence`` is the original short-hand; ``evidence_source`` matches
+        # the real ControlClassification field name and reads better in the
+        # attestation tests, where the claim being validated is the subject.
+        self.evidence_source = evidence_source if evidence_source is not None else evidence
         self.outside_step = outside_step
 
     @property
@@ -857,3 +916,238 @@ def test_gold_b_rows_are_reproducible_in_shape():
     summary = coverage.coverage_summary([mapping])
     assert summary["azure_partial"] == 1
     assert summary["azure_enforceable"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Category D grounding -- the attestation must be cited, never asserted
+# ---------------------------------------------------------------------------
+class _FakeAttestations:
+    """Minimal stand-in with the one method ``apply_attestation`` consumes."""
+
+    def __init__(self, citation):
+        self._citation = citation
+
+    def resolve(self, claim):
+        self._citation.raw_claim = claim
+        return self._citation
+
+
+def _citation(**kwargs):
+    from app.services.attestation_catalog_service import AttestationCitation
+
+    return AttestationCitation(**kwargs)
+
+
+def test_a_grounded_d_control_hands_over_an_auditable_citation():
+    """D's whole deliverable is the citation, so it must reach the register."""
+    from app.services.attestation_catalog_service import GROUNDED
+
+    mapping = _mapping("3.1.1.1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping,
+        "Governance",
+        None,
+        _Classification(
+            coverage.COVERAGE_D,
+            evidence_source="ATTESTED BY: ISO/IEC 27001:2022 clause 9.2",
+        ),
+        attestations=_FakeAttestations(
+            _citation(
+                status=GROUNDED,
+                basis_kind="certification_clause",
+                scheme_name="ISO/IEC 27001:2022",
+                clause="9.2.2",
+                clause_title="Internal Audit Programme",
+                clause_label="clause",
+                clause_verified=True,
+                evidence_document="ISO/IEC 27001:2022 certificate",
+                evidence_location="https://servicetrust.microsoft.com/viewpage/ISO",
+                access_condition="Downloadable without an NDA",
+                retrieval="Download it from the Service Trust Portal.",
+            )
+        ),
+    )
+
+    assert mapping.attestation_gap is False
+    assert mapping.attestation["clause_verified"] is True
+    # The customer is told what to get, from where, and on what terms.
+    assert "certificate" in mapping.evidence_source
+    assert "servicetrust" in mapping.evidence_source
+    assert "NDA" in mapping.evidence_source
+
+    row = coverage.manual_register_rows([mapping])[0]
+    assert row["attestation_status"] == GROUNDED
+    assert row["attestation_citation"]
+    assert row["attestation_access"]
+
+
+def test_an_ungrounded_d_control_is_declared_a_gap_not_a_pass():
+    """The sovereign case, and the sharpest form of the honesty requirement.
+
+    The workbook's control 3.1.3.4 requires UAE national security clearance for
+    operations personnel; ISO/IEC 27001 and SOC 2 attest *screening*, not UAE
+    clearance. Reporting it as "Microsoft attested" would hand a UAE customer a
+    false pass on precisely the sovereign requirement their regulator examines
+    hardest -- and the regulator, not the customer, would be the one to find out.
+    """
+    from app.services.attestation_catalog_service import UNATTESTED
+
+    mapping = _mapping("3.1.3.4", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping,
+        "Governance",
+        None,
+        _Classification(
+            coverage.COVERAGE_D,
+            reason="The NCSP requires UAE security clearance for operations personnel.",
+            evidence_source="ATTESTED BY: UAE National Security Clearance Programme",
+        ),
+        attestations=_FakeAttestations(
+            _citation(
+                status=UNATTESTED,
+                reason="Microsoft attests personnel screening, not UAE national clearance",
+            )
+        ),
+    )
+
+    assert mapping.attestation_gap is True
+    assert "No Microsoft attestation grounds this requirement" in mapping.evidence_source
+
+    # The control-specific requirement survives into the reason, because
+    # "no attestation covers this" is only actionable if the reader knows what.
+    reason = coverage.manual_register_rows([mapping])[0]["reason"]
+    assert "UAE security clearance" in reason
+    assert "Escalate" in reason
+
+    gaps = coverage.attestation_gap_rows([mapping])
+    assert [g["control_id"] for g in gaps] == ["3.1.3.4"]
+    assert gaps[0]["action"]
+
+
+def test_an_ungrounded_d_control_is_excluded_from_the_compliant_count():
+    """The number the customer reads first must not be inflated by a claim.
+
+    ``D_MicrosoftAttestation`` is a *category*; only a validated citation is
+    *evidence*. Counting the two the same way is how an unattested sovereign
+    requirement becomes a green tick.
+    """
+    from app.services.attestation_catalog_service import GROUNDED, UNATTESTED
+
+    grounded = _mapping("D-ok", [], control_type="Governance")
+    coverage.apply_coverage(
+        grounded, "Governance", None,
+        _Classification(coverage.COVERAGE_D, evidence_source="SOC 2 CC6.4"),
+        attestations=_FakeAttestations(
+            _citation(status=GROUNDED, scheme_name="SOC 2 Type II", clause="CC6.4",
+                      clause_title="Restricted physical access", clause_verified=True)
+        ),
+    )
+    ungrounded = _mapping("D-gap", [], control_type="Governance")
+    coverage.apply_coverage(
+        ungrounded, "Governance", None,
+        _Classification(coverage.COVERAGE_D, evidence_source="Microsoft operates this"),
+        attestations=_FakeAttestations(
+            _citation(status=UNATTESTED, reason="no scheme was named")
+        ),
+    )
+
+    summary = coverage.coverage_summary([grounded, ungrounded])
+    assert summary["D_MicrosoftAttestation"] == 2
+    assert summary["attestation_gaps"] == 1
+    assert summary["inherited_compliant"] == 1  # not 2
+    assert summary["compliant"] == 1
+
+
+def test_a_bare_microsoft_operates_this_claim_never_reads_as_evidence():
+    """This is what the product emits today, and it grounds nothing."""
+    mapping = _mapping("3.9.9.9", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping, "Governance", None,
+        _Classification(coverage.COVERAGE_D, evidence_source="Microsoft operates this control"),
+    )
+    assert mapping.attestation_gap is True
+    assert "Microsoft operates this control" not in (mapping.evidence_source or "")
+
+
+def test_c_controls_are_not_given_attestations():
+    """Only D claims attestation. A process control's evidence is the customer's."""
+    mapping = _mapping("2.1.1.1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping, "Governance", None,
+        _Classification(coverage.COVERAGE_C, evidence_source="Customer GRC records"),
+    )
+    assert mapping.attestation is None
+    assert mapping.attestation_gap is False
+    assert mapping.evidence_source == "Customer GRC records"
+    assert coverage.attestation_gap_rows([mapping]) == []
+
+
+def test_an_unavailable_attestation_catalog_fails_towards_the_gap():
+    """A missing snapshot must degrade to an admitted gap, never to a silent pass.
+
+    Two ways the catalog can be unavailable: not passed at all (deployment or
+    wiring fault), and present but unable to ground the claim. Both have to land
+    on the same side, because the alternative is a control that reads as
+    Microsoft-attested purely because the evidence source failed to load.
+    """
+    # 1. No catalog supplied at all.
+    no_catalog = _mapping("D-1", [], control_type="Governance")
+    no_catalog.coverage_category = coverage.COVERAGE_D
+    coverage.apply_attestation(no_catalog, attestations=None)
+    assert coverage.attestation_is_grounded(no_catalog) is False
+    assert [r["control_id"] for r in coverage.attestation_gap_rows([no_catalog])] == ["D-1"]
+
+    # 2. Catalog present, but it cannot ground the claim.
+    unresolvable = _mapping("D-2", [], control_type="Governance")
+    unresolvable.coverage_category = coverage.COVERAGE_D
+    coverage.apply_attestation(unresolvable, attestations=_FakeAttestations(
+        _citation(status="unattested", reason="the attestation catalog is unavailable")
+    ))
+    assert unresolvable.attestation_gap is True
+    assert coverage.attestation_is_grounded(unresolvable) is False
+
+
+def test_the_generic_microsoft_operated_sentence_is_gone():
+    """Every D row used to carry the same sentence, which told an auditor nothing
+    and read as a pass. It must no longer be reachable for a grounded control."""
+    from app.services.attestation_catalog_service import GROUNDED
+
+    mapping = _mapping("D-1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping, "Governance", None,
+        _Classification(coverage.COVERAGE_D, evidence_source="SOC 2 CC6.4"),
+        attestations=_FakeAttestations(
+            _citation(status=GROUNDED, scheme_name="SOC 2 Type II", clause="CC6.4",
+                      clause_title="Restricted physical access", clause_label="criterion",
+                      clause_verified=True, retrieval="Download it from the STP.")
+        ),
+    )
+    reason = coverage.manual_register_rows([mapping])[0]["reason"]
+    assert "no customer action required" not in reason
+    assert "CC6.4" in reason
+
+
+def test_the_manual_register_csv_carries_the_attestation_columns():
+    """The register is the artefact handed to the auditor; the citation has to be in it."""
+    from app.services.attestation_catalog_service import GROUNDED
+
+    mapping = _mapping("D-1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping, "Governance", None,
+        _Classification(coverage.COVERAGE_D, evidence_source="SOC 2 CC6.4"),
+        attestations=_FakeAttestations(
+            _citation(status=GROUNDED, scheme_name="SOC 2 Type II", clause="CC6.4",
+                      clause_title="Restricted physical access", clause_verified=True,
+                      evidence_document="Azure SOC 2 Type II report",
+                      access_condition="Requires the Microsoft NDA")
+        ),
+    )
+    csv_text = coverage.manual_controls_csv([mapping])
+    header = csv_text.splitlines()[0]
+    for column in (
+        "attestation_status", "attestation_basis", "attestation_citation",
+        "attestation_document", "attestation_location", "attestation_access",
+        "attestation_gap",
+    ):
+        assert column in header
+    assert "Azure SOC 2 Type II report" in csv_text

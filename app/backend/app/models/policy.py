@@ -309,9 +309,68 @@ class ManualControlEntry(BaseModel):
     enforcement_plane: str = Field(
         "", description="Where the control is enforced; 'None (manual control)' here"
     )
+    attestation_status: str = Field(
+        "",
+        description=(
+            "For D controls: 'grounded' (the clause exists and its title was "
+            "read from Azure's published metadata), 'scheme_only' (the scheme is "
+            "real but the cited clause could not be verified) or 'unattested' "
+            "(nothing grounds the claim). Empty for C controls."
+        ),
+    )
+    attestation_basis: str = Field(
+        "",
+        description=(
+            "certification_clause, audit_report_criterion, published_documentation "
+            "or none. 'Certified against ISO 27001' and 'tested in a SOC 2 report' "
+            "are different claims and an auditor treats them differently."
+        ),
+    )
+    attestation_citation: str = Field(
+        "", description="The validated citation, or empty when nothing was grounded"
+    )
+    attestation_document: str = Field(
+        "", description="The evidence document to obtain (certificate, audit report)"
+    )
+    attestation_location: str = Field(
+        "", description="Where the document lives (Service Trust Portal, Microsoft Learn)"
+    )
+    attestation_access: str = Field(
+        "",
+        description=(
+            "Access condition — SOC reports need a work account and the Microsoft "
+            "NDA; ISO certificates do not. Sending an auditor to a document they "
+            "cannot open is a failed answer."
+        ),
+    )
+    attestation_gap: bool = Field(
+        False,
+        description=(
+            "True when no Microsoft attestation covers this requirement. Must be "
+            "escalated rather than reported as covered."
+        ),
+    )
     reason: str = Field(
         ..., description="Why the control is not addressable by Azure"
     )
+
+
+class AttestationGapEntry(BaseModel):
+    """A Microsoft-operated control that no Microsoft attestation grounds.
+
+    The sovereign case, and the most consequential row this product emits. The
+    analyst workbook's control 3.1.3.4 requires UAE national security clearance
+    for operations personnel; ISO/IEC 27001 and SOC 2 attest *screening*, not
+    UAE clearance, so it is a gap to escalate commercially. Silently rolling it
+    into a "Microsoft attested" pass would hand the customer a false answer on
+    exactly the requirement their regulator scrutinises hardest.
+    """
+
+    control_id: str = Field(..., description="External framework control ID")
+    control_name: str = Field("", description="External framework control name")
+    claim: str = Field("", description="The unvalidated attestation claim that was rejected")
+    reason: str = Field("", description="Why it could not be grounded")
+    action: str = Field("", description="What the customer must do instead")
 
 
 class CoverageGapEntry(BaseModel):
@@ -383,12 +442,20 @@ class PolicyGenerationResponse(BaseModel):
         "dropped silently: a control that lost enforcement to a typo must not "
         "look identical to one that never needed any",
     )
+    attestation_gaps: List[AttestationGapEntry] = Field(
+        default_factory=list,
+        description="Microsoft-operated controls that no Microsoft attestation "
+        "grounds. Excluded from the compliant count and surfaced for commercial "
+        "escalation, because a sovereign requirement Microsoft does not attest "
+        "must never be absorbed into a generic attested pass",
+    )
     coverage_summary: Dict[str, Any] = Field(
         default_factory=dict,
         description="Per-coverage-category counts, the Azure-covered share "
-        "(A + B) and the compliant share (A + B + D, where D is inherited from "
-        "Microsoft's attestation), plus coverage_gaps and dropped_policy_ids "
-        "counts",
+        "(A + B) and the compliant share (A + B + grounded D), plus "
+        "coverage_gaps, attestation_gaps and dropped_policy_ids counts. "
+        "Ungrounded D controls are deliberately excluded from 'compliant': the "
+        "category is a claim, only a validated citation is evidence",
     )
 
     model_config = ConfigDict(json_schema_extra={

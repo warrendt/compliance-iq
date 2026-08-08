@@ -249,6 +249,7 @@ def apply_coverage(
     control_type: Optional[str],
     catalog=None,
     classification=None,
+    attestations=None,
 ):
     """Enrich a ``ControlMapping`` in place with coverage classification.
 
@@ -261,6 +262,9 @@ def apply_coverage(
     - Flags ``coverage_gap`` when a control is in scope for Azure but nothing
       survived retrieval and validation, so a recall failure is visible instead
       of hiding inside a category label.
+    - **Grounds Category D against the attestation catalog**, so "Microsoft
+      attested" resolves to a citation the customer can hand an auditor, or to
+      an admitted gap — never to a bare assertion.
     - Records the blind classification's reason, responsibility and evidence
       source, and derives the enforcement plane and effects from the catalog.
 
@@ -272,6 +276,9 @@ def apply_coverage(
     returns for convenience). ``catalog`` is optional; when ``None`` the
     Regulatory-Compliance strip is skipped and all well-formed IDs count as
     candidates. ``classification`` is the blind classification stage's result.
+    ``attestations`` is the attestation catalog; when ``None`` the shipped
+    singleton is used, and when it cannot be loaded every D control degrades to
+    a declared gap rather than to an unchecked pass.
     """
     mapping.control_type = control_type
 
@@ -331,9 +338,83 @@ def apply_coverage(
         mapping.evidence_source = (
             getattr(classification, "evidence_source", "") or None
         )
+
+    # Category D is the only category whose entire deliverable is a citation, so
+    # it is the only one where an ungrounded claim is indistinguishable from a
+    # lie. Resolve it now, before the reason is composed from it.
+    if category == COVERAGE_D:
+        apply_attestation(mapping, attestations)
+
     # A control demoted out of A/B carries no policies, so its plane is manual
     # regardless of what the classification said.
     enrich_policy_details(mapping, catalog)
+    return mapping
+
+
+def apply_attestation(mapping, attestations=None):
+    """Ground a Category D control's attestation claim, or declare it a gap.
+
+    The claim the model produces is free text on ``evidence_source`` — today
+    anything from a real clause reference to "Microsoft operates this control".
+    It is resolved against the attestation catalog exactly as policy GUIDs are
+    resolved against the policy catalog, and the outcome replaces the claim:
+
+    * grounded — a clause that exists, with the title **read** from Azure's
+      published metadata, plus the evidence document, where to get it and
+      whether an NDA is required.
+    * scheme-level — the scheme is a real Microsoft attestation but Azure
+      publishes no metadata for the cited clause. The scheme is still citable;
+      the clause is carried as explicitly unverified.
+    * gap — nothing grounds it. ``attestation_gap`` is set and the reason is
+      stated. This is the sovereign case: a requirement such as UAE national
+      security clearance that Microsoft's certifications do not cover must be
+      escalated, not absorbed into a generic Microsoft-attested pass.
+
+    ``evidence_source`` is overwritten with the resolved text so that no
+    downstream consumer can print the unvalidated claim by accident.
+    """
+    if attestations is None:
+        try:  # local import: avoids a cycle and keeps the catalog optional
+            from app.services.attestation_catalog_service import (
+                get_attestation_catalog_service,
+            )
+
+            attestations = get_attestation_catalog_service()
+        except Exception:  # pragma: no cover - defensive
+            attestations = None
+
+    claim = (getattr(mapping, "evidence_source", None) or "").strip()
+
+    if attestations is None:
+        mapping.attestation = None
+        mapping.attestation_gap = True
+        mapping.evidence_source = (
+            "No Microsoft attestation could be verified: the attestation catalog "
+            "is unavailable. Treat this control as unevidenced until checked."
+        )
+        return mapping
+
+    citation = attestations.resolve(claim)
+    mapping.attestation = citation.to_dict()
+    mapping.attestation_gap = citation.is_gap
+
+    if citation.is_gap:
+        # Say plainly that Microsoft does not attest this, and why. A regulator
+        # discovering the gap is far worse than the customer being told now.
+        mapping.evidence_source = (
+            "No Microsoft attestation grounds this requirement — "
+            f"{citation.reason}. Escalate as a gap rather than claiming coverage."
+        )
+    else:
+        parts = [citation.citation_text()]
+        if citation.evidence_document:
+            parts.append(f"Evidence: {citation.evidence_document}")
+        if citation.evidence_location:
+            parts.append(citation.evidence_location)
+        if citation.access_condition:
+            parts.append(citation.access_condition)
+        mapping.evidence_source = " · ".join(p for p in parts if p)
+
     return mapping
 
 
@@ -451,8 +532,40 @@ def _reason_for(mapping) -> str:
     falls back to a generic sentence only when that is unavailable. The generic
     strings are a safety net, not the intended output: a manual register whose
     every row says the same thing tells the reader nothing.
+
+    Category D is the exception, and takes its grounding first. Its deliverable
+    *is* the citation, and an ungrounded D row is the one place where the
+    model's fluent prose is actively dangerous — "Microsoft operates this
+    control" reads exactly like evidence while grounding nothing.
     """
     reason = (getattr(mapping, "coverage_reason", None) or "").strip()
+
+    if mapping.coverage_category == COVERAGE_D:
+        attestation = getattr(mapping, "attestation", None) or {}
+        if getattr(mapping, "attestation_gap", False):
+            why = attestation.get("reason") or "no Microsoft attestation was identified"
+            # Keep the control-specific reason. "No attestation covers this"
+            # is only actionable if the reader knows *what* is uncovered --
+            # "UAE security clearance for operations personnel" is the sentence
+            # that gets escalated, not the generic rejection.
+            lead = (
+                f"{reason} No Microsoft attestation covers it"
+                if reason
+                else "Microsoft-operated control, but no Microsoft attestation covers this requirement"
+            )
+            return (
+                f"{lead}: {why}. Escalate as a gap rather than claiming coverage."
+            )
+        citation = attestation.get("citation")
+        if citation:
+            retrieval = (attestation.get("retrieval") or "").strip()
+            lead = (
+                f"{reason} Attested by {citation}."
+                if reason
+                else f"Microsoft-operated control, attested by {citation}."
+            )
+            return f"{lead} {retrieval}".strip()
+
     if reason:
         return reason
     step = (getattr(mapping, "outside_step", None) or "").strip()
@@ -467,11 +580,12 @@ def _reason_for(mapping) -> str:
                 "coverage needs a configuration step outside Azure Policy"
             )
         )
+
     return {
         COVERAGE_C: "Process / legal / organisational control — not Azure-enforceable",
         COVERAGE_D: (
-            "Microsoft-operated control — compliant via Microsoft attestation "
-            "(Service Trust Portal); no customer action required"
+            "Microsoft-operated control — no attestation citation was resolved, "
+            "so this control is unevidenced until one is confirmed"
         ),
     }.get(mapping.coverage_category, "Not Azure-Policy enforceable")
 
@@ -569,6 +683,7 @@ def manual_register_rows(mappings) -> List[dict]:
         category = getattr(m, "coverage_category", None)
         if category not in (COVERAGE_C, COVERAGE_D):
             continue
+        attestation = getattr(m, "attestation", None) or {}
         rows.append(
             {
                 "control_id": m.external_control_id,
@@ -582,6 +697,16 @@ def manual_register_rows(mappings) -> List[dict]:
                 "enforcement_plane": (
                     getattr(m, "enforcement_plane", None) or PLANE_MANUAL
                 ),
+                # The attestation columns are what turn a D row from an
+                # assertion into something an auditor can check: the basis, the
+                # document, where to get it, and whether it needs an NDA.
+                "attestation_status": attestation.get("status", ""),
+                "attestation_basis": attestation.get("basis_kind", ""),
+                "attestation_citation": attestation.get("citation", ""),
+                "attestation_document": attestation.get("evidence_document", ""),
+                "attestation_location": attestation.get("evidence_location", ""),
+                "attestation_access": attestation.get("access_condition", ""),
+                "attestation_gap": bool(getattr(m, "attestation_gap", False)),
                 "reason": _reason_for(m),
             }
         )
@@ -663,6 +788,16 @@ def coverage_summary(mappings) -> dict:
     policy, and ``dropped_policy_ids`` counts candidates rejected in validation.
     Neither is cosmetic: they are how a recall failure stays visible.
 
+    ``attestation_gaps`` counts D controls whose claim could not be grounded in
+    any Microsoft attestation, and **only grounded D controls count towards
+    ``compliant``**. This is the headline number where honesty is decided:
+    counting an unattested control as compliant because it was labelled
+    ``D_MicrosoftAttestation`` is how a UAE customer would be told they pass a
+    national-clearance requirement Microsoft has never attested to. The category
+    is a claim; only a grounded citation is evidence. A D control that was never
+    resolved against the attestation catalog at all is treated the same way —
+    unevidenced is unevidenced, however it got that way.
+
     Legacy mappings (``coverage_category is None``) are bucketed under
     ``"unclassified"`` so totals always reconcile.
     """
@@ -675,6 +810,8 @@ def coverage_summary(mappings) -> dict:
     }
     gaps = 0
     dropped = 0
+    attestation_gaps = 0
+    attested = 0
     for m in mappings:
         category = getattr(m, "coverage_category", None)
         if category in counts:
@@ -683,11 +820,16 @@ def coverage_summary(mappings) -> dict:
             counts["unclassified"] += 1
         if getattr(m, "coverage_gap", False):
             gaps += 1
+        if category == COVERAGE_D:
+            if attestation_is_grounded(m):
+                attested += 1
+            else:
+                attestation_gaps += 1
         dropped += len(getattr(m, "dropped_policy_ids", None) or [])
 
     total = sum(counts.values())
     enforceable = sum(counts[c] for c in POLICY_BEARING_CATEGORIES)
-    inherited = sum(counts[c] for c in INHERITED_COMPLIANT_CATEGORIES)
+    inherited = attested
     compliant = enforceable + inherited
     counts["total"] = total
     counts["azure_enforced"] = counts[COVERAGE_A]
@@ -700,8 +842,54 @@ def coverage_summary(mappings) -> dict:
     counts["compliant"] = compliant
     counts["compliant_pct"] = round(100.0 * compliant / total, 1) if total else 0.0
     counts["coverage_gaps"] = gaps
+    counts["attestation_gaps"] = attestation_gaps
     counts["dropped_policy_ids"] = dropped
     return counts
+
+
+def attestation_is_grounded(mapping) -> bool:
+    """Did this control's attestation claim actually resolve to something real?
+
+    Deliberately strict, and deliberately not the inverse of ``attestation_gap``:
+    a control that was never resolved at all has ``attestation_gap`` unset, and
+    treating that as grounded would let an unevidenced control through on a
+    default value. Evidence has to be positively present.
+    """
+    if getattr(mapping, "attestation_gap", False):
+        return False
+    attestation = getattr(mapping, "attestation", None)
+    if not attestation:
+        return False
+    return attestation.get("status") not in (None, "", "unattested")
+
+
+def attestation_gap_rows(mappings) -> List[dict]:
+    """Category D controls that no Microsoft attestation grounds.
+
+    The most valuable output in the system, and the reason this product can be
+    shown to a regulator. The analyst workbook's control 3.1.3.4 asks for UAE
+    national security clearance for operations personnel; ISO/IEC 27001 and
+    SOC 2 attest *screening*, not UAE clearance. It has to be escalated
+    commercially, and it can only be escalated if it is said out loud.
+    """
+    rows: List[dict] = []
+    for m in mappings:
+        if getattr(m, "coverage_category", None) != COVERAGE_D:
+            continue
+        if attestation_is_grounded(m):
+            continue
+        attestation = getattr(m, "attestation", None) or {}
+        rows.append(
+            {
+                "control_id": m.external_control_id,
+                "control_name": m.external_control_name,
+                "claim": attestation.get("raw_claim", ""),
+                "reason": attestation.get("reason", "")
+                or "no Microsoft attestation was identified for this requirement",
+                "action": "Escalate commercially; do not report as covered.",
+            }
+        )
+    return rows
 
 
 def manual_controls_csv(mappings) -> str:
@@ -719,6 +907,13 @@ def manual_controls_csv(mappings) -> str:
         "responsibility",
         "evidence_source",
         "enforcement_plane",
+        "attestation_status",
+        "attestation_basis",
+        "attestation_citation",
+        "attestation_document",
+        "attestation_location",
+        "attestation_access",
+        "attestation_gap",
         "reason",
     ]
     buffer = io.StringIO()

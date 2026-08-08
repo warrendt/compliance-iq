@@ -73,6 +73,8 @@ def _deploy_readme(
         compliant = coverage_counts.get("compliant", 0)
         compliant_pct = coverage_counts.get("compliant_pct", 0.0)
         gaps = coverage_counts.get("coverage_gaps", 0)
+        attestation_gaps = coverage_counts.get("attestation_gaps", 0)
+        grounded = max(attested - attestation_gaps, 0)
         dropped = coverage_counts.get("dropped_policy_ids", 0)
         rows = [
             ("A — Azure Policy enforced", enforced),
@@ -84,12 +86,29 @@ def _deploy_readme(
             rows.append(("Unclassified (legacy)", coverage_counts["unclassified"]))
         table = "\n".join(f"| {label} | {count} |" for label, count in rows)
         attested_line = (
-            f"\n**{attested} control(s)** are category D — Microsoft operates and "
-            "certifies them (datacentre, physical security, hypervisor). They are "
-            "deliberately absent from the initiative because there is nothing for "
-            "the customer to configure, but they are **compliant by inheritance**, "
-            "evidenced through the Service Trust Portal — not a coverage gap.\n"
-            if attested
+            f"\n**{grounded} control(s)** are category D with a validated "
+            "citation — Microsoft operates and certifies them (datacentre, "
+            "physical security, hypervisor). They are deliberately absent from "
+            "the initiative because there is nothing for the customer to "
+            "configure, but they are **compliant by inheritance**, evidenced "
+            "through the cited certification or audit report — not a coverage "
+            "gap.\n"
+            if grounded
+            else ""
+        )
+        # The most important line in the bundle. A control labelled
+        # "Microsoft attested" that no attestation actually covers is the one
+        # failure mode a regulator will find: a sovereign requirement (UAE
+        # national clearance, in-country operations personnel) absorbed into a
+        # generic pass. It is excluded from the compliant count and named here.
+        attestation_gap_line = (
+            f"\n**{attestation_gaps} control(s)** were classified as "
+            "Microsoft-attested but **could not be grounded in any Microsoft "
+            "certification, audit report or published documentation**. They are "
+            "excluded from the compliant count and listed in "
+            f"`{stem}_manual_controls.csv`. Treat each as an open item to "
+            "escalate commercially — do not report it as covered.\n"
+            if attestation_gaps
             else ""
         )
         # Gaps and rejected identifiers are reported, never suppressed: a control
@@ -122,9 +141,11 @@ def _deploy_readme(
             "**not** false-mapped to a catch-all policy.\n\n"
             f"**{compliant} of {total} ({compliant_pct}%)** require no customer "
             "remediation: categories A and B (covered by Azure) plus category D "
-            "(inherited from Microsoft's attestation). Category C remains an open "
-            "customer action.\n"
+            "controls with a **validated** attestation citation. Category C "
+            "remains an open customer action, as does any D control whose "
+            "attestation could not be grounded.\n"
             f"{attested_line}"
+            f"{attestation_gap_line}"
             f"{gap_line}"
             f"{dropped_line}"
             "\n| Coverage category | Controls |\n"
