@@ -121,19 +121,38 @@ def resolve_coverage(
     enforceable_policy_ids: List[str],
     text: str = "",
     model_category: Optional[str] = None,
+    classification: Optional[str] = None,
 ) -> Tuple[CoverageCategory, bool]:
     """Decide a control's coverage category and Azure-enforceability.
 
     Deterministic and side-effect free.
 
+    ``classification`` is the blind classification stage's verdict
+    (``control_classification_service``), reached without seeing any policy
+    candidates. It is the *primary* signal, because it is the only one that
+    judged the control on its own terms; the keyword heuristics below are the
+    fallback for when that stage is disabled or failed.
+
     Precedence:
-    1. A genuinely technical control (not process-typed, OR process-typed but the
-       text is clearly technical) that has at least one enforceable policy ID is
-       ``A_AzurePolicy``.
-    2. Otherwise, a valid explicit ``model_category`` (B/C/D) is respected.
-    3. Otherwise, attestation keywords → ``D_MicrosoftAttestation``.
-    4. Otherwise, process controls → ``C_Process``; anything left with no
-       enforceable policy → ``C_Process`` as the conservative default.
+    1. A blind classification of C or D is authoritative and **demotes** even a
+       control that retrieved policies. This is the whole point of the stage:
+       a governance control that happens to lexically resemble a policy must not
+       become "enforced" just because retrieval found something.
+    2. A blind classification of A or B is treated as one decision — "this
+       control is in scope for Azure enforcement" — and the A/B split is settled
+       *here*, by evidence: A iff enforceable policy IDs survived validation,
+       otherwise B. Measured against the gold mapping, the blind stage recovered
+       0% of gold ``A_AzurePolicy`` controls while correctly keeping them in
+       scope as B, because whether a built-in definition exists is a fact about
+       the catalog that no amount of reading the control text reveals. Deferring
+       the split is therefore not a workaround but the correct division of
+       labour.
+    3. Without a classification, fall back to the original heuristics: a
+       genuinely technical control (not process-typed, or process-typed but with
+       clearly technical text) holding enforceable IDs is ``A_AzurePolicy``.
+    4. Otherwise a valid explicit ``model_category`` (B/C/D) is respected.
+    5. Otherwise attestation keywords → ``D_MicrosoftAttestation``.
+    6. Otherwise → ``C_Process`` as the conservative default.
 
     Returns ``(coverage_category, azure_enforceable)``. ``azure_enforceable`` is
     ``True`` iff the category is ``A_AzurePolicy``.
@@ -142,23 +161,34 @@ def resolve_coverage(
     process = is_process_control(control_type)
     technical_text = _has_keyword(text, TECHNICAL_KEYWORDS)
 
-    # 1. Enforceable technical control.
+    # 1-2. The blind classification wins, with the A/B split settled by evidence.
+    if classification in VALID_COVERAGE_CATEGORIES:
+        if classification in (COVERAGE_C, COVERAGE_D):
+            return classification, False
+        return (COVERAGE_A, True) if has_policies else (COVERAGE_B, False)
+
+    # 3. Enforceable technical control.
     if has_policies and (not process or technical_text):
         return COVERAGE_A, True
 
-    # 2. Respect an explicit, valid non-A model classification.
+    # 4. Respect an explicit, valid non-A model classification.
     if model_category in {COVERAGE_B, COVERAGE_C, COVERAGE_D}:
         return model_category, False
 
-    # 3. Microsoft-operated / attestation.
+    # 5. Microsoft-operated / attestation.
     if _has_keyword(text, ATTESTATION_KEYWORDS):
         return COVERAGE_D, False
 
-    # 4. Conservative default: process controls (and anything non-enforceable).
+    # 6. Conservative default: process controls (and anything non-enforceable).
     return COVERAGE_C, False
 
 
-def apply_coverage(mapping, control_type: Optional[str], catalog=None):
+def apply_coverage(
+    mapping,
+    control_type: Optional[str],
+    catalog=None,
+    classification=None,
+):
     """Enrich a ``ControlMapping`` in place with coverage classification.
 
     - Propagates ``control_type`` onto the mapping.
@@ -167,11 +197,13 @@ def apply_coverage(mapping, control_type: Optional[str], catalog=None):
     - Resolves the coverage category and sets ``azure_enforceable``.
     - Clears ``azure_policy_ids`` whenever coverage is not ``A_AzurePolicy`` —
       the invariant that keeps non-enforceable controls out of the initiative.
+    - Records the blind classification's reason, responsibility and evidence
+      source, and derives the enforcement plane and effects from the catalog.
 
     Pure with respect to inputs other than the passed ``mapping`` (which it
     returns for convenience). ``catalog`` is optional; when ``None`` the
     Regulatory-Compliance strip is skipped and all well-formed IDs count as
-    candidates.
+    candidates. ``classification`` is the blind classification stage's result.
     """
     mapping.control_type = control_type
 
@@ -189,11 +221,13 @@ def apply_coverage(mapping, control_type: Optional[str], catalog=None):
         if part
     )
 
+    classified = getattr(classification, "coverage_category", None)
     category, enforceable = resolve_coverage(
         control_type=control_type,
         enforceable_policy_ids=enforceable_ids,
         text=text,
         model_category=mapping.coverage_category,
+        classification=classified,
     )
 
     mapping.coverage_category = category
@@ -202,6 +236,20 @@ def apply_coverage(mapping, control_type: Optional[str], catalog=None):
         mapping.azure_policy_ids = enforceable_ids
     else:
         mapping.azure_policy_ids = []
+
+    if classification is not None:
+        mapping.coverage_reason = (
+            getattr(classification, "reason", "") or None
+        )
+        mapping.responsibility = (
+            getattr(classification, "responsibility", "") or None
+        )
+        mapping.evidence_source = (
+            getattr(classification, "evidence_source", "") or None
+        )
+    # A control demoted out of A carries no policies, so its plane is manual
+    # regardless of what the classification said.
+    enrich_policy_details(mapping, catalog)
     return mapping
 
 
@@ -224,7 +272,16 @@ def _is_enforceable_id(policy_id: str, catalog) -> bool:
 
 
 def _reason_for(mapping) -> str:
-    """Human-readable reason a control is not Azure-Policy enforceable."""
+    """Human-readable reason a control is not Azure-Policy enforceable.
+
+    Prefers the classification stage's substantive, control-specific reason and
+    falls back to a generic sentence only when that is unavailable. The generic
+    strings are a safety net, not the intended output: a manual register whose
+    every row says the same thing tells the reader nothing.
+    """
+    reason = (getattr(mapping, "coverage_reason", None) or "").strip()
+    if reason:
+        return reason
     return {
         COVERAGE_B: "Azure-configurable but not enforceable via Azure Policy",
         COVERAGE_C: "Process / legal / organisational control — not Azure-enforceable",
@@ -233,6 +290,74 @@ def _reason_for(mapping) -> str:
             "(Service Trust Portal); no customer action required"
         ),
     }.get(mapping.coverage_category, "Not Azure-Policy enforceable")
+
+
+# Azure Policy effects that act at deployment time: they block or mutate the
+# request itself, so the control is enforced by the landing zone before a
+# non-conformant resource ever exists.
+DEPLOY_TIME_EFFECTS = frozenset({"deny", "modify", "deployifnotexists", "append"})
+
+# Effects that only observe. They surface non-conformance as a Defender for Cloud
+# recommendation after the fact; they do not block anything.
+RUN_TIME_EFFECTS = frozenset({"audit", "auditifnotexists"})
+
+PLANE_DEPLOY = "SLZ (deploy-time)"
+PLANE_RUNTIME = "Defender (run-time)"
+PLANE_BOTH = "SLZ (deploy-time) + Defender (run-time)"
+PLANE_MANUAL = "None (manual control)"
+
+
+def enforcement_plane_for(effects: Iterable[str]) -> str:
+    """Where a set of policy effects takes effect.
+
+    Deploy-time and run-time enforcement are materially different promises, and
+    the gold mapping records them separately: ``Deny`` blocks a non-conformant
+    deployment, while ``Audit``/``AuditIfNotExists`` only report it. Conflating
+    them overstates coverage.
+    """
+    normalised = {(e or "").strip().casefold() for e in effects if e}
+    deploy = bool(normalised & DEPLOY_TIME_EFFECTS)
+    runtime = bool(normalised & RUN_TIME_EFFECTS)
+    if deploy and runtime:
+        return PLANE_BOTH
+    if deploy:
+        return PLANE_DEPLOY
+    if runtime:
+        return PLANE_RUNTIME
+    return PLANE_MANUAL
+
+
+def enrich_policy_details(mapping, catalog=None):
+    """Populate ``policy_effects``, ``policy_type`` and ``enforcement_plane``.
+
+    Resolved from the catalog snapshot, never model-generated: the effect a
+    policy actually carries is a fact about the definition, and asking a model to
+    recall it invites confident errors that would misreport whether a control is
+    blocked or merely observed.
+
+    Returns the mapping for convenience.
+    """
+    policy_ids = list(getattr(mapping, "azure_policy_ids", None) or [])
+    if not policy_ids or catalog is None:
+        mapping.policy_effects = []
+        mapping.policy_type = "N/A" if not policy_ids else "Built-in"
+        mapping.enforcement_plane = (
+            PLANE_MANUAL if not policy_ids else mapping.enforcement_plane
+        )
+        return mapping
+
+    effects: List[str] = []
+    for policy_id in policy_ids:
+        guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+        definition = catalog.get(guid) if hasattr(catalog, "get") else None
+        effect = (definition or {}).get("effect", "")
+        if effect and effect not in effects:
+            effects.append(effect)
+
+    mapping.policy_effects = effects
+    mapping.policy_type = "Built-in"
+    mapping.enforcement_plane = enforcement_plane_for(effects)
+    return mapping
 
 
 def manual_register_rows(mappings) -> List[dict]:
@@ -253,6 +378,11 @@ def manual_register_rows(mappings) -> List[dict]:
                 "control_type": getattr(m, "control_type", None) or "",
                 "coverage_category": category,
                 "mcsb_control_id": m.mcsb_control_id,
+                "responsibility": getattr(m, "responsibility", None) or "",
+                "evidence_source": getattr(m, "evidence_source", None) or "",
+                "enforcement_plane": (
+                    getattr(m, "enforcement_plane", None) or PLANE_MANUAL
+                ),
                 "reason": _reason_for(m),
             }
         )
@@ -316,6 +446,9 @@ def manual_controls_csv(mappings) -> str:
         "control_type",
         "coverage_category",
         "mcsb_control_id",
+        "responsibility",
+        "evidence_source",
+        "enforcement_plane",
         "reason",
     ]
     buffer = io.StringIO()

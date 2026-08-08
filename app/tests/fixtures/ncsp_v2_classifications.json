@@ -1,0 +1,828 @@
+{
+ "source": "gpt-5.6-sol via aifpub-wzai-ai-eo6vs, ControlClassificationService",
+ "note": "Frozen live classifications so the eval is reproducible offline.",
+ "classifications": {
+  "2.1.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires senior leadership to mandate and oversee a cloud security program and allocate budget, personnel, and technology resources. These are organisational governance and management decisions; Azure resource properties, identity settings, and platform signals cannot establish that leadership direction or adequate resourcing has occurred, so Azure Policy cannot assert compliance.",
+   "evidence_source": "Board or executive-approved cloud security program charter, governance committee terms of reference and meeting minutes, assigned roles and responsibilities, and approved budget and resource-allocation records."
+  },
+  "2.1.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to establish and document cloud security governance policies and maintain a process for identifying and complying with applicable legal and regulatory obligations. These are organisational, legal and governance activities; Azure Policy may support implementation of selected technical requirements, but it cannot determine whether the governance framework is complete, approved, or legally adequate.",
+   "evidence_source": "Approved cloud security governance framework and policies; legal and regulatory obligations register; compliance assessment records; policy approval and review minutes; assigned ownership and periodic compliance review evidence."
+  },
+  "2.1.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the organisation to establish and operate a continuous risk management programme covering cloud services, including lifecycle risk assessment, monitoring, treatment, and mitigation. Azure security findings may inform that programme, but no Azure resource property or tenant setting can demonstrate that the programme is robust, approved, continuously performed, or that identified risks are appropriately assessed and treated.",
+   "evidence_source": "Approved cloud risk management framework and procedures; cloud risk register with owners, treatment plans, acceptance decisions, and review history; periodic risk assessment reports and governance meeting minutes."
+  },
+  "2.1.2.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Purview classification and sensitivity labels can provide Azure evidence that data classification is applied, while Azure security configurations can demonstrate selected protection measures aligned to those classifications. However, Azure Policy cannot determine whether a security and privacy risk assessment was conducted or whether its impact analysis is appropriate; those elements require documented human governance and review.",
+   "evidence_source": "Microsoft Purview Data Map and sensitivity-label reports; approved cloud security and privacy risk assessments, data classification register, risk treatment plans, and review/approval records."
+  },
+  "2.1.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires stakeholder communication and consultation throughout risk assessments, followed by senior leadership’s documented acknowledgement and formal acceptance of cloud migration risks. These are governance decisions and human approval activities; Azure Policy cannot determine whether executives understood, discussed, and accepted identified risks before data and operations were moved to the cloud.",
+   "evidence_source": "Approved cloud risk assessments and risk register, stakeholder consultation and communication records, executive meeting minutes, and signed risk acceptance or cloud migration approval records."
+  },
+  "2.1.3.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to apply UAE Information Assurance Standard personnel-security requirements to employees, vendors, and contractors supporting cloud services. It governs human-resource, supplier, and assurance activities—such as screening, contractual obligations, onboarding, training, and termination—rather than an Azure resource property or Entra setting, so Azure Policy cannot establish compliance.",
+   "evidence_source": "Approved personnel-security policy mapped to the UAE Information Assurance Standard; employee, vendor, and contractor screening and onboarding records; confidentiality and security clauses; training acknowledgements; access termination checklists; and periodic compliance review records maintained in the GRC/HR system."
+  },
+  "2.1.3.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to establish contractual clauses covering CSP personnel screening, roles and segregation of duties, awareness training, disciplinary measures, and orderly termination. These are contractual and governance obligations rather than Azure resource or identity configurations, so no Azure Policy can determine whether the required clauses exist or are adequate.",
+   "evidence_source": "Executed Microsoft cloud services agreement and applicable contractual addenda, documented shared-responsibility/RACI matrix, supplier due-diligence records, and contract review and termination procedures maintained in the customer’s GRC repository."
+  },
+  "2.1.4.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to understand and document what information Microsoft’s subprocessors and supply-chain parties may receive or access. Azure resource properties cannot demonstrate that organisational awareness; compliance depends on supplier due diligence, review of Microsoft contractual disclosures and subprocessors, and ongoing governance of information-sharing risks.",
+   "evidence_source": "Third-party and supply-chain risk assessment; approved supplier due-diligence records; information/data-flow inventory; Microsoft Data Protection Addendum and Online Services Subprocessor List review records."
+  },
+  "2.1.4.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to identify and assess security risks arising from third-party and supply-chain resources. It governs a risk-management activity and its documentation rather than a concrete Azure resource property or Entra setting, so Azure Policy cannot determine whether the required supply-chain risk identification has been performed.",
+   "evidence_source": "Approved third-party and supply-chain risk management procedure; supplier inventory; completed supplier security risk assessments; supply-chain risk register; and associated review or approval records."
+  },
+  "2.1.4.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to liaise with Microsoft and assess whether third-party suppliers meet applicable cloud security requirements. Azure resource properties, identity settings, and platform signals cannot demonstrate that supplier-compliance inquiries, reviews, and follow-up activities occurred; these are customer governance and supplier-assurance processes.",
+   "evidence_source": "Third-party risk management procedure, CSP and supplier due-diligence records, Microsoft compliance documentation reviewed from the Service Trust Portal, correspondence with Microsoft, supplier assessment reports, and review or approval minutes."
+  },
+  "2.1.5.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to appoint a suitably qualified, independent third party to test the implementation of security controls. Azure resource properties or Entra settings cannot establish the tester's independence and competence or prove that the required engagement and testing occurred; those obligations are organisational and contractual.",
+   "evidence_source": "Executed third-party assessment contract or statement of work, assessor competence and independence records, completed security control testing report, findings register, and remediation tracking records."
+  },
+  "2.1.5.2": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Shared",
+   "reason": "The control requires the cloud consumer to obtain assurance from independent third-party testing and assessments of the cloud service provider’s service design and components. Customers cannot configure or use Azure Policy to test Microsoft-operated platform components; Microsoft commissions the independent assessments, while the customer must obtain and review the resulting assurance reports.",
+   "evidence_source": "Microsoft Service Trust Portal documentation, including Azure SOC 2 Type II reports, ISO/IEC 27001 certification and independent audit reports, supplemented by the customer’s documented review and acceptance of those reports."
+  },
+  "2.2.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to conduct legal due diligence, assess contractual obligations, and determine whether a prospective cloud service or provider aligns with the organisation's risk profile before engagement. These are legal, procurement, and risk-governance activities; no Azure resource property, identity setting, or platform signal can demonstrate that the required review and approval occurred.",
+   "evidence_source": "Completed cloud-service legal due-diligence assessment, contract review checklist, supplier risk assessment, approved risk acceptance or procurement decision, and associated legal/procurement approval records."
+  },
+  "2.2.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the customer and cloud service provider to draft, formalize, and sign a non-disclosure agreement before procurement. Azure resource properties, identity settings, and platform signals cannot verify the legal sufficiency, bilateral execution, or procurement timing of that agreement, so Azure Policy cannot assert compliance.",
+   "evidence_source": "Executed non-disclosure agreement signed by both parties, contract approval records, procurement due-diligence checklist, and dated authorization showing completion before cloud service procurement."
+  },
+  "2.2.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the customer and cloud service provider to draft, formalize, and sign a Service Level Agreement before procurement, covering service availability, quality, and responses to outages, data loss, and security breaches. Azure service settings and telemetry may support later service monitoring, but no Azure Policy can verify that a mutually signed contractual agreement exists or contains the required clauses before procurement.",
+   "evidence_source": "Executed Service Level Agreement and cloud services contract, including availability and service-quality commitments, outage/data-loss/security-breach provisions, approval records, signatures from both parties, and procurement due-diligence records."
+  },
+  "2.2.2.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to negotiate, approve, and retain contractual terms covering portability, termination and data retrieval, and dispute resolution under UAE governing law. Azure resource properties or Entra settings cannot verify the legal content or enforceability of a cloud service contract, so no Azure Policy can assert compliance.",
+   "evidence_source": "Executed cloud service agreement and SLA, including portability and exit clauses, termination and data-retrieval procedures, UAE governing-law and dispute-resolution clauses, supported by legal review and contract approval records."
+  },
+  "2.2.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to negotiate and maintain contractual rights to audit the provider’s controls, processes, and facilities. Azure resource properties, identity settings, and platform signals cannot demonstrate that the governing agreement contains those rights; compliance must be established through legal and procurement review of the contract.",
+   "evidence_source": "Executed cloud service agreement and applicable audit-rights clauses, supported by legal/procurement approval records and a contractual compliance review checklist."
+  },
+  "2.3.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the customer to establish and implement lifecycle-wide data classification, labelling, and handling rules, including consideration of geographic distribution and third-party sharing. Microsoft Purview sensitivity labels, auto-labelling, data loss prevention, retention configurations, and data maps can evidence substantial implementation, but Azure Policy alone cannot determine whether the overall governance procedures address all regulatory, statutory, and supply-chain obligations.",
+   "evidence_source": "Microsoft Purview sensitivity label and labelling-policy configurations, auto-labelling and DLP reports, retention settings, audit logs, and data map/classification reports, alongside the approved data governance policy, data classification standard, lifecycle handling procedures, and third-party compliance assessments."
+  },
+  "2.3.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the customer to assess the business, reputational, financial, and regulatory impact of data compromise, assign the prescribed classification before migration, and align it with Appendix 6.7. These are governance decisions and pre-migration approval activities; Azure Policy cannot determine the impact rationale, verify classification occurred before migration, or confirm organisational alignment with the specified classification levels.",
+   "evidence_source": "Approved data classification policy and scheme mapped to Appendix 6.7, data inventory and classification register, completed impact assessments, and migration-gate approval records showing classification was completed before cloud migration."
+  },
+  "2.3.2.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure can evidence substantial implementation of this control through encryption-at-rest settings for storage and databases, minimum TLS versions and secure transport configurations, Key Vault or Managed HSM usage, and confidential-computing capabilities for selected data-in-use scenarios. However, the control also requires organisation-wide policies and procedures spanning end-user devices, electronic messaging, legal obligations, and systems outside Azure, so Azure configuration alone cannot demonstrate full compliance.",
+   "evidence_source": "Azure Policy compliance state and Defender for Cloud regulatory compliance results for encryption, TLS, key management, and network transport settings; resource configuration exports and Key Vault/Managed HSM logs; approved cryptography policy, data classification standard, and implementation review records in the customer GRC system."
+  },
+  "2.3.2.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure Key Vault or Managed HSM configuration can evidence that cryptographic keys are maintained in a designated managed key store, while Azure RBAC role assignments and Microsoft Entra Privileged Identity Management can demonstrate separation between key-management and key-usage duties. Azure configuration can verify custody and access boundaries, but determining whether an external key management provider is trusted and whether organisational segregation-of-duties procedures are effective also requires governance evidence.",
+   "evidence_source": "Azure Key Vault or Managed HSM inventory and configuration; Azure RBAC role assignments and access review records; Entra PIM activation and audit logs; documented key management standard and trusted-provider assessment."
+  },
+  "2.3.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the consumer to conduct a risk assessment and decide whether HYOK is necessary; it does not mandate a particular key-storage configuration or require HYOK to be enabled. Azure Policy cannot verify that the assessment considered the relevant risks or that the resulting decision was appropriately approved.",
+   "evidence_source": "Approved cryptographic risk assessment documenting the HYOK analysis, decision rationale, risk acceptance or treatment, responsible approvers, and review records."
+  },
+  "2.3.2.4": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control requires the customer to implement Hold Your Own Key when its risk assessment determines that exclusive control of encryption keys is necessary. Azure and Microsoft Purview configurations, such as Double Key Encryption and customer-controlled external key services, can evidence technical implementation, but Azure Policy alone cannot verify the risk-assessment decision or fully establish that the customer retains exclusive control throughout the external key-management architecture.",
+   "evidence_source": "Approved risk assessment identifying the need for HYOK; Microsoft Purview Double Key Encryption configuration; external customer-controlled key service or HSM configuration, access-control records, and key usage/audit logs."
+  },
+  "2.3.2.5": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control requires the customer to implement a hold-your-own-key architecture in which key access, revocation, and audit remain available independently of Microsoft as the cloud service provider. Azure or Microsoft Purview configuration can evidence use of HYOK-compatible protection and associated identity or labelling settings, but Azure Policy cannot establish the continued operation, revocation capability, or auditability of customer-controlled external key infrastructure.",
+   "evidence_source": "Microsoft Purview Information Protection/Azure Rights Management configuration exports showing HYOK protection settings, supplemented by customer-operated AD RMS or HSM access-control configuration, key-revocation test records, and external key audit logs."
+  },
+  "2.4.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure resource region metadata, allowed-region controls, Resource Graph inventories, and Microsoft Purview data maps can evidence where supported resources and data stores are located. However, demonstrating location at all lifecycle stages and determining compliance with UAE sovereignty requirements also requires data-flow governance, legal interpretation, and handling procedures that Azure Policy cannot fully assert.",
+   "evidence_source": "Azure Resource Graph resource-location inventory; Azure Policy compliance state for allowed locations; Microsoft Purview Data Map and lineage records; approved UAE data-residency assessment and data-flow register."
+  },
+  "2.4.1.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure deployment locations and tenant or service-specific data residency settings can evidence that resources are restricted to regions associated with approved jurisdictions, including through allowed-location controls. However, determining which jurisdictions are legally acceptable and assessing Microsoft’s contractual data-location commitments require legal and supplier due diligence beyond what Azure Policy can establish.",
+   "evidence_source": "Azure resource inventory and deployment-region records; Azure Policy compliance results for allowed locations; documented jurisdictional legal assessment, cloud provider due-diligence record, and applicable Microsoft data residency contractual terms."
+  },
+  "2.4.1.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to review and accept contractual terms governing the provider’s use of data and verify their consistency with applicable local legislation. Azure resource locations or data-residency settings may support a broader sovereignty assessment, but no Azure Policy can determine whether contractual agreements are legally acceptable to the customer or compliant with relevant law.",
+   "evidence_source": "Documented legal and privacy review of Microsoft cloud agreements, applicable-law assessment, approved data location and sovereignty assessment, and retained legal or management sign-off."
+  },
+  "2.4.1.4": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure can evidence deployment into approved sovereign cloud environments and the Azure regions in which supported resources store or process data; Azure Policy can restrict or audit resource locations. However, demonstrating that specifically Confidential/Restricted data is confined to a Partial Sovereign Cloud or Sovereign Cloud also requires data-classification mapping, service-specific data residency analysis, and selection of the appropriate Azure sovereign environment, which cannot be established by a single resource policy.",
+   "evidence_source": "Azure Resource Graph resource-location inventory and Azure Policy compliance state for allowed locations, supplemented by Microsoft Purview sensitivity-label records, Azure tenant/environment architecture documentation, and service-specific data residency evidence."
+  },
+  "2.4.1.5": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control requires classified data above Confidential/Restricted to be deployed only within an approved Azure sovereign cloud environment. Azure subscription/tenant placement, resource locations, allowed-region restrictions and service configuration can evidence part of this requirement, but Azure Policy alone cannot reliably correlate every dataset’s classification with all locations where it is stored or processed; this also requires Purview classification and data-flow architecture controls.",
+   "evidence_source": "Azure sovereign cloud tenant and subscription inventory; Azure Resource Graph resource-location reports; Azure Policy compliance results for allowed locations; Microsoft Purview classification/label records; approved data-flow and residency architecture documentation."
+  },
+  "2.5.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to assess and document interoperability needs and requirements across multiple cloud services and cloud service providers. Azure may supply technical inventory or architecture information, but no Azure resource property or tenant setting can demonstrate that a comprehensive cross-provider assessment was performed or that its conclusions address the consumer's business and technical needs.",
+   "evidence_source": "Approved interoperability assessment covering relevant cloud services and CSPs, including requirements, dependencies, interface and data-format analysis, identified gaps and risks, architecture review records, and documented approval or review minutes."
+  },
+  "2.5.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to define and consistently apply industry standards and available APIs across its data and cloud services, which is an architectural governance and implementation practice rather than a specific Azure resource setting. Azure Policy cannot determine whether selected APIs and data formats provide effective interoperability across services; this requires documented standards, design reviews, and interoperability testing.",
+   "evidence_source": "Approved interoperability and API standards, enterprise architecture documentation, API catalogue, solution design review records, and interoperability test results."
+  },
+  "2.5.1.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to document interoperability requirements in approved policies and procedures and communicate them to relevant parties. Azure resource properties or tenant settings cannot demonstrate that the requirements have been formally defined, approved, and communicated; these are organisational governance activities rather than technical configurations.",
+   "evidence_source": "Approved interoperability and portability policy and procedures, stakeholder communication records, policy acknowledgements, and document review or approval history maintained in the customer’s GRC system."
+  },
+  "2.5.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires contractual terms guaranteeing the cloud consumer access to structured and unstructured data in an industry-standard format upon termination. Azure resource properties or tenant settings cannot verify the content, approval, or legal sufficiency of those termination and data-portability provisions; they must be established and reviewed through procurement and contract-management processes.",
+   "evidence_source": "Executed cloud service agreement and data portability/exit clauses, supported by legal review records, contract approval evidence, and the documented cloud exit plan."
+  },
+  "2.5.2.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control primarily requires procurement due diligence and contractual assurance that the cloud service provider supports portability, including post-termination data retention periods, continued protection, export arrangements and deletion procedures. Azure Policy cannot evaluate whether these commitments are documented, contractually accepted or reviewed during procurement; Azure export and deletion capabilities may support an exit plan but do not evidence the required assurance process.",
+   "evidence_source": "Approved cloud procurement and portability assessment, executed Microsoft agreement and Data Protection Addendum, documented exit/transition plan, and Microsoft contractual documentation covering data retrieval, retention and deletion after service termination."
+  },
+  "2.5.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to document portability requirements in approved policies and procedures and communicate them to relevant parties. These are governance and communication activities; no Azure resource property, identity setting, or platform signal can establish that the requirements were appropriately defined, approved, and communicated.",
+   "evidence_source": "Approved cloud portability policy and procedures, portability requirements register, document approval and review records, and communication or stakeholder acknowledgement records maintained in the GRC or document-management system."
+  },
+  "2.6.1.1": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control concerns the CSP’s internal tracking and change management of cloud service components throughout their lifecycle, including their status, location and configuration. These are Microsoft-operated platform processes and systems that the customer cannot configure or continuously assess through Azure Policy; assurance is obtained through Microsoft’s independent audit reports and certifications during supplier due diligence.",
+   "evidence_source": "Microsoft Service Trust Portal documentation, including the SOC 2 Type II report and ISO/IEC 27001:2022 certification covering configuration management and change management controls (notably Annex A controls 8.9 and 8.32)."
+  },
+  "2.6.1.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure can electronically evidence image changes and movements through Azure Activity Log, Azure Compute Gallery image-version and replication status, and deployment or pipeline records; integrity validation can also be supported through image signing, Trusted Launch, Secure Boot, and attestation signals. However, ensuring that validation results are communicated or made available to cloud consumers requires configured logging, notification, and image-management workflows and cannot be asserted fully from a single resource property.",
+   "evidence_source": "Azure Activity Log and Log Analytics records for image operations; Azure Compute Gallery image-version and replication status; CI/CD image validation and signing results; Azure Attestation or Trusted Launch integrity records; configured Azure Monitor alerts or electronic consumer reports."
+  },
+  "2.6.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Shared",
+   "reason": "The control requires the cloud consumer to perform and document pre-procurement due diligence, validating that Microsoft’s data-centre physical safeguards are appropriate for the classification of the data to be hosted. No Azure resource property or tenant setting can demonstrate that this assessment occurred; Microsoft operates the physical controls, while the customer evaluates their adequacy using independent assurance reports.",
+   "evidence_source": "Documented CSP security due-diligence assessment mapped to the customer’s data-classification requirements, procurement approval records, and review of Microsoft Service Trust Portal evidence such as the SOC 2 Type II report and ISO/IEC 27001 certification."
+  },
+  "2.6.3.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure Resource Graph, Defender for Cloud, Microsoft Intune, and Defender for Endpoint can inventory and track Azure assets and enrolled endpoints, while Azure Policy can assess selected management attributes such as required tags or security configurations. However, Azure Policy cannot determine whether the inventory includes all organizational endpoints or whether assets are managed appropriately according to documented business risk, so organizational policy and risk-governance evidence is also required.",
+   "evidence_source": "Azure Resource Graph and Defender for Cloud asset inventories; Intune and Microsoft Defender for Endpoint device inventories and compliance reports; approved asset and endpoint management policy, asset register, risk classification criteria, and periodic inventory review records."
+  },
+  "2.6.4.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the organisation to develop and implement application security policies and procedures that embed security throughout the software development lifecycle. Azure Policy cannot determine whether a DevSecOps governance framework is approved, consistently followed, or effective because no specific Azure resource property or mandatory technical configuration is defined.",
+   "evidence_source": "Approved application security policy and secure SDLC/DevSecOps procedures, supported by governance approvals, security review records, threat models, pipeline control documentation, and periodic compliance review evidence."
+  },
+  "2.6.4.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to perform supplier due diligence during procurement and determine whether the CSP maintains adequate application security controls. Azure Policy cannot assert the adequacy assessment, procurement approval, or contractual assurance because these are governance and third-party risk management activities rather than Azure resource configurations.",
+   "evidence_source": "Approved cloud supplier security assessment, procurement due-diligence records, contractual security requirements, and supporting Microsoft Service Trust Portal reports such as the SOC 2 Type II report and ISO/IEC 27001 certification."
+  },
+  "2.6.5.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "The control requires both documented hardening guidelines and their technical implementation across heterogeneous cloud systems. Azure Policy, Defender for Cloud, machine configuration and device/network configuration can evidence portions such as secure VM baselines, endpoint protection, restricted network exposure and configuration compliance, but they cannot establish the adequacy of the overall guidelines or directly configure Microsoft-managed physical infrastructure and hypervisors.",
+   "evidence_source": "Approved system-hardening standards and baseline records; Azure Policy and Azure Machine Configuration compliance results; Microsoft Defender for Cloud recommendations and secure score; IoT and network-device configuration reports; and Microsoft SOC 2 Type II or ISO/IEC 27001 attestation for Microsoft-managed physical infrastructure and hypervisors."
+  },
+  "2.7.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID can restrict identity administration to authorized customer personnel through privileged directory-role assignments, role-based access control, Privileged Identity Management, administrative units, and Conditional Access. These tenant-level identity configurations and their activity logs provide measurable evidence, although Azure Policy does not directly determine whether each administrator is organizationally authorized.",
+   "evidence_source": "Microsoft Entra role-assignment and administrative-unit configuration exports; Privileged Identity Management eligibility and activation records; Conditional Access configuration; Entra audit and sign-in logs; approved access authorization records."
+  },
+  "2.7.1.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control requires centralized governance and technical restriction of privileged identities, represented in Azure by Microsoft Entra privileged roles, Azure RBAC role assignments, Privileged Identity Management, Conditional Access, and access reviews. These configurations and audit records can evidence limited, time-bound privileged access, but Azure Policy alone cannot verify the account-creation approval process or comprehensively constrain all activities performed by tenant-level privileged accounts.",
+   "evidence_source": "Microsoft Entra Privileged Identity Management role settings and activation history; Entra privileged-role and Azure RBAC assignment exports; Conditional Access configurations and sign-in logs; access-review results; and the approved privileged account creation and authorization procedure."
+  },
+  "2.7.1.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID can evidence and enforce multi-factor authentication for cloud user accounts through Conditional Access policies, authentication method settings, and account or group assignments. Coverage depends on tenant-wide Conditional Access design and the management of exclusions, emergency-access accounts, and non-human identities, so Azure Policy alone cannot establish that MFA has been considered or applied appropriately to every account.",
+   "evidence_source": "Microsoft Entra Conditional Access policy configuration and What If results; authentication methods registration report; sign-in logs showing MFA requirements and outcomes; documented review of exclusions and non-human accounts."
+  },
+  "2.7.2.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID configuration can evidence integration of cloud authentication with an internal directory through Microsoft Entra Connect or Cloud Sync, federation, and enterprise application single sign-on settings. Azure Policy cannot fully assert that authentication processes and procedures are established or that every application and data asset follows them, so procedural evidence is also required.",
+   "evidence_source": "Microsoft Entra Connect or Cloud Sync configuration and health reports; federation and enterprise application authentication settings; Entra sign-in and audit logs; approved authentication and authorization procedures."
+  },
+  "2.7.2.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure management interfaces support Azure RBAC through role definitions, role assignments, management-group scope, and Microsoft Entra identities, making implementation directly evidenced by tenant and subscription configuration. Azure Policy can audit some authorization conditions, but it cannot by itself establish that the overall role model, assignment scopes, and least-privilege design are appropriate across all management interfaces.",
+   "evidence_source": "Azure role assignment and role definition exports, Microsoft Entra privileged role assignments, Privileged Identity Management audit history, and Azure Activity Log records for authorization changes."
+  },
+  "2.7.2.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID and Azure RBAC can evidence substantial implementation through role assignments, Conditional Access, Privileged Identity Management, entitlement management, and recurring access reviews that verify whether users remain authorized to access data and system functions. Azure Policy alone cannot establish the complete access-verification process or its procedural governance, but Entra configuration and review records provide measurable technical evidence.",
+   "evidence_source": "Microsoft Entra access review results and audit logs; Privileged Identity Management activation and assignment history; Azure RBAC role-assignment inventory; Conditional Access configuration; approved IAM procedures and access-review records."
+  },
+  "2.7.2.4": {
+   "coverage_category": "A_AzurePolicy",
+   "responsibility": "Customer",
+   "reason": "The control requires a concrete, machine-evaluable identity configuration: accounts holding elevated Azure or Microsoft Entra privileges must be subject to multi-factor authentication. Compliance can be assessed from privileged role assignments together with MFA enforcement through Microsoft Entra Conditional Access, authentication methods, or role activation requirements.",
+   "evidence_source": "Microsoft Entra Conditional Access policy configuration and coverage reports; Privileged Identity Management role settings and activation records; Entra sign-in logs showing MFA requirement and completion; Defender for Cloud regulatory compliance dashboard where applicable."
+  },
+  "2.7.3.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID Governance can implement formal access requests and approval workflows through entitlement management access packages, including designated approvers, approval stages, expiration, and request history. Azure Policy does not evaluate the completeness of the organisation’s provisioning process, but Entra configuration and audit records provide technical evidence that required request-and-approval steps are enforced.",
+   "evidence_source": "Microsoft Entra entitlement management access package policies and request history; Entra audit logs; approved user access provisioning procedure and associated approval tickets or workflow records."
+  },
+  "2.7.3.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID can automate and evidence mover/leaver access changes through Lifecycle Workflows, HR-driven provisioning, application provisioning, access reviews, and account disablement. Azure Policy cannot establish that every personnel or system-identity change was received and completed within the required timeframe, so end-to-end coverage also depends on authoritative identity feeds and documented joiner-mover-leaver procedures.",
+   "evidence_source": "Microsoft Entra provisioning and audit logs, Lifecycle Workflows execution history, access review results, disabled-account records, and linked HR or service-management de-provisioning tickets."
+  },
+  "2.7.3.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Entra ID Governance access reviews can be configured to periodically recertify group memberships, application access, privileged role assignments and entitlement-package access, with recorded reviewer decisions and automated removal of denied access. This provides measurable evidence for covered identities and entitlements, although the customer must define review scope, frequency, reviewers and remediation procedures and ensure that any access outside Entra is also reviewed.",
+   "evidence_source": "Microsoft Entra ID Governance access review configurations, review history and decision results; entitlement management and Privileged Identity Management audit logs; documented recertification procedure and retained review approvals."
+  },
+  "2.8.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the cloud consumer to establish, regularly test, and enact an incident management process in response to security incidents. Azure alerts, logs, and automation may support incident handling, but no Azure resource property or policy compliance state can demonstrate that the organisation has approved the process, exercised it periodically, or followed it during actual incidents.",
+   "evidence_source": "Approved incident response plan and procedures; exercise schedule, tabletop or simulation test reports, attendance records, lessons-learned and remediation logs; incident tickets and post-incident review reports showing the process was enacted."
+  },
+  "2.8.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the organisation to define incident-response procedures and playbooks for common cloud incidents and attack scenarios. Azure security alerts or automation may support execution, but no Azure resource property or tenant setting can demonstrate that the required processes have been predefined, approved, and maintained.",
+   "evidence_source": "Approved cloud incident management plan; documented incident-response playbooks for common incident and attack types; procedure approval and review records; incident exercise or tabletop test results."
+  },
+  "2.8.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the organisation to define and implement a human-operated incident-reporting process and an accessible contact route. Azure services may generate alerts or support workflow automation, but Azure Policy cannot verify that personnel know and follow the reporting process, that the route is appropriately staffed, or that reports are handled according to documented procedures.",
+   "evidence_source": "Approved incident response and reporting procedure; published incident-reporting contact details or service-desk route; incident tickets and escalation records; periodic process review or exercise records."
+  },
+  "2.8.2.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to notify regulators, affected parties, law enforcement, or other relevant external entities within defined timeframes following an incident. Azure may generate incident alerts and support investigation, but no Azure resource property or policy can verify that the required external notification was made accurately and on time.",
+   "evidence_source": "Approved incident response and external notification procedure; regulatory and contractual notification matrix with deadlines; incident tickets, notification records, correspondence, and timestamps demonstrating timely reporting."
+  },
+  "2.8.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the organisation to maintain and periodically update contact details for regulators, law enforcement bodies, and other jurisdictional authorities used during incident reporting. Azure resource properties, identity settings, and platform signals cannot establish that the contact list is complete, legally applicable, current, or regularly reviewed; those are organisational and legal-governance activities.",
+   "evidence_source": "Approved incident response and regulatory notification procedure; authority contact register showing owners, jurisdictions, review dates, update history, and periodic review approvals."
+  },
+  "2.8.3.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the cloud consumer to establish and document incident-management activation procedures, align an incident response plan with the CSC plan, and define protocols for management reporting, containment coordination, and external communications. Azure alerts and incident records may support execution, but no Azure resource property or policy can verify that these organisational procedures are approved, aligned, and followed.",
+   "evidence_source": "Approved incident response plan mapped to the CSC Cyber Security Incident Response Plan; incident activation and escalation procedures; management notification and external communication protocols; incident exercise records and post-incident review reports."
+  },
+  "2.8.3.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to conduct recurring incident-response simulations that exercise and stress-test its security incident response plans. Azure may provide operational inputs or tooling for an exercise, but no Azure resource property or tenant setting can establish that simulations were regularly performed, appropriately scoped, and evaluated.",
+   "evidence_source": "Approved incident simulation programme and schedule; tabletop or technical exercise plans; attendance records; exercise reports; lessons-learned records; remediation actions and closure evidence maintained in the GRC or incident management system."
+  },
+  "2.8.4.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the cloud consumer to designate suitable personnel to oversee e-discovery and cloud-forensics capabilities and to define measurable supervisory metrics. Azure and Microsoft Purview can support investigations, but no Azure resource property or identity setting can verify personnel suitability, assignment of oversight responsibilities, or the governance metrics required by the control.",
+   "evidence_source": "Approved e-discovery and cloud-forensics governance procedure; named role assignments or RACI matrix; personnel competency records; documented KPIs/KRIs and periodic oversight review minutes."
+  },
+  "2.8.4.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud consumer to establish forensic and digital-evidence handling protocols aligned with UAE law-enforcement procedures and to contractually ensure CSP adherence. Azure Policy cannot determine whether forensic procedures meet legal chain-of-custody requirements or whether contractual obligations are adequate; tools such as Microsoft Purview may support evidence collection but do not establish compliance with the required protocol.",
+   "evidence_source": "Approved e-discovery and cloud-forensics procedures, UAE legal requirements mapping, digital-evidence chain-of-custody records, and CSP contract or SLA clauses requiring compliance with those procedures."
+  },
+  "2.9.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the cloud consumer to define and document backup requirements and a restoration-testing schedule; it does not itself mandate a specific Azure backup configuration, retention value, or test result that Azure Policy could evaluate. Azure backup settings and restore-test records may support implementation, but they cannot prove that the organisation has established and approved the required schedule.",
+   "evidence_source": "Approved backup and restoration policy, backup schedule and retention requirements, restore-testing calendar, completed restoration test records, and review or approval minutes maintained in the GRC system."
+  },
+  "2.9.1.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control combines a measurable technical requirement—backup encryption—with an operational requirement to demonstrate successful restoration. Azure configuration and platform signals can evidence encryption settings for services such as Azure Backup, Recovery Services vaults, storage, and customer-managed keys, but Azure Policy alone cannot prove that restore tests were performed successfully and their results reviewed.",
+   "evidence_source": "Azure Backup and Recovery Services vault encryption configuration, Key Vault or Managed HSM key records, Azure Policy compliance state where applicable, and documented restore-test results with recovery job logs and review records."
+  },
+  "2.9.2.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure configurations and signals can evidence substantial portions of the operational continuity requirement, including availability-zone or region redundancy, backup and replication status, recovery priorities, and Azure Site Recovery test-failover results. However, Azure Policy cannot establish that uptime, high-availability and recovery requirements were communicated in cloud service contracts, nor can configuration alone prove a complete, regularly executed business continuity testing programme; those elements require contractual and procedural evidence.",
+   "evidence_source": "Azure service SLA and executed cloud service contract; approved business continuity and disaster recovery plan; Azure Resource Graph or architecture records showing zone/region redundancy; Recovery Services vault and Azure Site Recovery configuration; test-failover, restore-test and disaster recovery exercise reports."
+  },
+  "2.9.2.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the organization to formally document its business continuity and disaster recovery plans and communicate them to relevant internal and third-party stakeholders. Azure configurations may support recovery capabilities, but no Azure resource property or policy compliance state can demonstrate that the plans have been formalized, approved, and communicated to all required parties.",
+   "evidence_source": "Approved business continuity and disaster recovery plans; document approval and version history; stakeholder distribution records and acknowledgements; third-party communication records; and periodic review minutes."
+  },
+  "2.9.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control primarily requires documented recovery plans that define business-determined MTPD, RTO, RPO, and the roles and responsibilities of relevant parties. Azure backup, replication, and recovery configurations may support achievement of those objectives, but no Azure resource property or policy compliance state can establish that the recovery plan contains these definitions and assigned responsibilities.",
+   "evidence_source": "Approved business continuity and disaster recovery plans documenting MTPD, RTO, RPO, and party responsibilities, supported by plan review records and management approval."
+  },
+  "3.1.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the organisation to establish and maintain a security governance framework that oversees procedures, personnel, and physical and technical controls throughout the service lifecycle and adapts them to changes in services, threats, and technology. Azure may provide operational inputs, but no Azure resource property or tenant setting can demonstrate that the governance framework exists, assigns oversight, or drives periodic and change-triggered review.",
+   "evidence_source": "Approved cloud security governance framework, governance charter and assigned roles, control ownership matrix, risk and change registers, periodic review minutes, and records of threat- or technology-driven control updates."
+  },
+  "3.1.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the CSP to maintain a formally documented risk management process and to continuously monitor and report security and privacy risks affecting consumer services. Azure services may supply risk and security telemetry, but no Azure Policy can determine whether risks are assessed, monitored, escalated, and reported in accordance with the organisation’s approved process.",
+   "evidence_source": "Approved security and privacy risk management procedure; current risk register; periodic risk assessment and monitoring reports; risk committee minutes, escalation records, and management reporting evidence."
+  },
+  "3.1.3.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the organisation to screen personnel and perform background verification before or while granting access to Consumer Data and related systems. Azure or Microsoft Entra can manage access, but no resource property or identity setting can prove that the required employment screening and background checks were completed.",
+   "evidence_source": "Approved personnel security and background-screening procedure; completed screening records or HR attestations; access-to-screening reconciliation records; and periodic review evidence."
+  },
+  "3.1.3.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to establish, maintain, and regularly deliver a cloud security training programme covering principles, best practices, and emerging threats. Azure or Entra may host training records or support access to training systems, but no Azure resource property, identity setting, or platform signal can establish that relevant personnel received appropriate and current training; this must be demonstrated through organisational programme governance and completion records.",
+   "evidence_source": "Approved cloud security training programme and curriculum, training schedule, staff role-to-training matrix, learning-management-system completion records, attendance logs, assessment results, and periodic programme review minutes."
+  },
+  "3.1.3.3": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control requires Microsoft, acting as the cloud service provider, to operate a formal personnel exit process consistent with its contractual commitments to cloud customers. Customers have no Azure resource property, identity setting, or tenant configuration through which they can enforce or audit Microsoft employee offboarding; assurance must therefore come from independent audits and contractual documentation.",
+   "evidence_source": "Microsoft ISO/IEC 27001:2022 certification and Statement of Applicability addressing Annex A control 6.5 (responsibilities after termination or change of employment); SOC 2 Type II report and applicable Microsoft Online Services contractual terms, available through the Service Trust Portal."
+  },
+  "3.1.3.4": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to perform personnel background screening and obtain applicable UAE security clearances for staff who deploy, administer, operate, or maintain cloud services. These are human-resources and regulatory due-diligence activities; no Azure resource property, Entra setting, or platform signal can verify that the checks and clearances were completed.",
+   "evidence_source": "Approved personnel screening procedure, background-check records, UAE security-clearance documentation, role-to-screening register, and HR/compliance review evidence."
+  },
+  "3.1.4.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to identify, assess, treat, and monitor security risks arising from third-party suppliers and delivery partners. Azure resource properties or Entra settings cannot demonstrate supplier due diligence, contractual security requirements, risk acceptance, or ongoing supplier reviews; those activities are organisational and contractual rather than machine-enforceable configurations.",
+   "evidence_source": "Approved third-party and supply-chain risk management procedure; supplier inventory and risk register; completed due-diligence assessments; security clauses and data-processing agreements; supplier review, monitoring, and risk-treatment records."
+  },
+  "3.1.4.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to define and contractually mandate cloud security requirements for suppliers, aligned with its policy and applicable consumer requirements. Azure Policy cannot determine whether supplier agreements contain the required clauses or whether procurement and third-party governance processes enforce them; these are contractual and organisational obligations.",
+   "evidence_source": "Approved third-party and supply-chain security policy; supplier security requirements and contract clauses; executed supplier agreements; procurement due-diligence records; supplier compliance assessments and review approvals."
+  },
+  "3.1.4.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires supplier assurance through independent certifications and assessments, periodic documentation of assessment results, and controlled disclosure of compliance reports under confidentiality agreements. These are third-party risk management, reporting, and contractual activities; no Azure resource property or Entra setting can verify that suppliers were assessed or that reports were appropriately provided to consumers.",
+   "evidence_source": "Third-party risk management records, supplier SOC and ISO reports, periodic supplier assessment and compliance reports, report-distribution logs, and executed confidentiality or non-disclosure agreements."
+  },
+  "3.1.4.4": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the cloud service provider to create and provide comprehensive integration documentation covering APIs, protocols, data formats, authentication methods, technical requirements, and sample code. Azure can host or support the documented interfaces, but no Azure resource property or tenant setting can verify that the documentation is complete, accurate, and available to third-party solution providers.",
+   "evidence_source": "Published API specifications and developer portal content, integration guides, authentication and protocol documentation, sample code repositories, document approval records, and periodic documentation review records."
+  },
+  "3.1.5.1": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control requires the Azure cloud service provider to obtain and maintain specified independent cybersecurity certifications. Customers cannot configure or enforce Microsoft’s certification status through an Azure resource property or tenant setting; it is demonstrated through Microsoft’s external audits and certification programme.",
+   "evidence_source": "Current Microsoft Azure certification reports and certificates applicable to Appendix 6.6, obtained from the Microsoft Service Trust Portal, such as ISO/IEC 27001 certification and SOC 2 Type II reports."
+  },
+  "3.1.5.2": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control obliges the cloud service provider to permit consumer-led independent assurance testing or provide current third-party assurance reports demonstrating service control effectiveness. Azure customers cannot configure this provider-level assurance capability through an Azure resource or tenant setting; Microsoft fulfils it through its testing terms and independently audited compliance programme.",
+   "evidence_source": "Microsoft Service Trust Portal SOC 2 Type II report and ISO/IEC 27001 certification, supplemented where applicable by Microsoft Cloud Penetration Testing Rules of Engagement."
+  },
+  "3.2.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP contract to undergo legal review and to incorporate the cloud consumer’s specific security requirements. Azure Policy cannot verify that qualified personnel reviewed contractual terms or that the resulting legal language adequately addresses those requirements, because these are contractual and human judgment activities rather than Azure resource configurations.",
+   "evidence_source": "Approved contract-review procedure, legal counsel review record or sign-off, cloud security requirements checklist, and the executed CSP agreement showing the reviewed security terms and conditions."
+  },
+  "3.2.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the customer and cloud service provider to draft, formalize, and execute a Non-Disclosure Agreement before cloud services are procured. Azure resource properties, identity settings, and platform signals cannot verify the legal sufficiency, signatures, or procurement timing of that agreement, so Azure Policy cannot assert compliance.",
+   "evidence_source": "Executed Non-Disclosure Agreement signed by both parties, together with contract approval records, signature audit trail, and procurement documentation showing execution before the cloud service purchase."
+  },
+  "3.2.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the customer and cloud service provider to draft, formalize, and sign a contractual Service Level Agreement covering availability, data ownership, and the division of responsibilities before procurement. Azure configurations may support service operation, but no Azure Policy can verify the completeness, approval, timing, or bilateral execution of a legal agreement.",
+   "evidence_source": "Executed Service Level Agreement and cloud services contract, including availability commitments, data ownership terms, responsibility matrix, approval records, signatures, and procurement due-diligence records."
+  },
+  "3.2.2.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to identify supplier and delivery-partner risks and address them through contractual service-level agreements. Azure resource properties, identity settings, and platform signals cannot verify that third-party risks have been appropriately translated into negotiated SLA terms; this must be demonstrated through procurement, legal, and supplier-risk-management records.",
+   "evidence_source": "Approved third-party risk assessments, executed supplier and delivery-partner SLAs containing risk-treatment obligations, contract review and approval records, and the supplier risk register."
+  },
+  "3.3.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the organisation to develop and maintain governance policies and procedures for data classification, protection, and lifecycle handling, aligned with UAE legal and regulatory obligations and assessed risk levels. Azure Policy cannot determine whether those governance documents are complete, legally aligned, approved, or operationally followed; services such as Microsoft Purview may support implementation but do not satisfy the policy-development obligation.",
+   "evidence_source": "Approved data governance and classification policy, data-handling and lifecycle procedures, legal and regulatory requirements register, data classification scheme, risk assessments, approval records, and periodic review minutes."
+  },
+  "3.3.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires documented consumer consent and a governance process that ensures data access remains consistent with each consumer’s stated preferences. Azure access controls and logs may support enforcement and monitoring, but Azure Policy cannot determine whether valid consent was obtained or whether a particular access event conforms to the individual’s consent terms.",
+   "evidence_source": "Consumer consent records and preference register; approved data-access and consent-management procedure; access approval records; periodic access review reports; and correlated application or Azure access logs."
+  },
+  "3.3.1.3": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "This control governs how Microsoft, acting as the cloud service provider, handles binding governmental disclosure requests: redirecting the requester, notifying the customer and relevant authorities where lawful, challenging the request, and limiting disclosure to the minimum necessary data. Customers have no Azure resource property or tenant setting that can enforce or audit Microsoft’s legal-response decisions, so Azure Policy cannot assert compliance.",
+   "evidence_source": "Microsoft Government Requests for Customer Data reports and principles; Microsoft Online Services Data Protection Addendum provisions concerning third-party and law-enforcement disclosure requests; supporting Microsoft Service Trust Portal assurance documentation."
+  },
+  "3.3.1.4": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires a formal legal-request recordkeeping process covering the nature of each foreign access request, actions taken, communications with UAE authorities, ten-year retention, and production upon request. Azure logs or storage may host supporting records, but no Azure resource property or platform signal can determine that every foreign request and associated authority communication has been identified, completely documented, and disclosed as required.",
+   "evidence_source": "Foreign access request register and case files, including documented actions and authority communications; approved ten-year records-retention schedule; access-request handling procedure; and evidence of records supplied to relevant UAE authorities."
+  },
+  "3.3.1.5": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure resource locations, regional service configurations, and data-residency settings can evidence that customer workloads and stored data are restricted to UAE regions; allowed-location controls can evaluate the location property of supported resources. However, exclusive UAE jurisdiction over all processing, including service metadata, support operations, cross-region transfers, and legal control, cannot be established by Azure configuration alone and also requires Microsoft’s contractual and service-specific data-residency commitments.",
+   "evidence_source": "Azure resource inventory and Azure Resource Graph location reports; Azure Policy compliance results for allowed UAE locations; service-specific data residency configurations; Microsoft Product Terms, Data Protection Addendum, and UAE data residency documentation."
+  },
+  "3.3.1.6": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control governs whether Microsoft, acting as the cloud service provider, may disclose customer data or consumer metadata to governmental or other authorities. Customers have no Azure resource property or tenant setting that can determine how Microsoft responds to legally binding disclosure demands, so Azure Policy cannot assert compliance with the UAE-approved-authority restriction.",
+   "evidence_source": "Microsoft contractual and assurance documentation, including the Microsoft Products and Services Data Protection Addendum, applicable UAE-specific contractual commitments, Microsoft Law Enforcement Requests Report, and relevant SOC 2 Type II report controls over governmental requests and customer-data disclosure."
+  },
+  "3.3.1.7": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure and Microsoft Entra controls can substantially enforce default denial of foreign access through Conditional Access location rules, named countries/regions, workload firewalls, private endpoints, and network access-control lists. Azure Policy can audit supporting resource properties such as public network access and firewall configuration, but it cannot by itself determine whether every requester is “foreign” or validate the complete identity, location, and network architecture required by the control.",
+   "evidence_source": "Microsoft Entra Conditional Access policies and sign-in logs showing location-based blocks; Azure resource firewall and private endpoint configurations; Azure Policy compliance results for public network access and network restrictions; documented definition of approved domestic locations."
+  },
+  "3.3.2.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control requires both organisational cryptography and key-management policies and their technical implementation for data at rest and in transit. Azure can evidence substantial implementation through encryption-at-rest settings, minimum TLS versions, Key Vault or Managed HSM key configuration, customer-managed keys, and key rotation controls, but no single Azure Policy assessment can establish that the overall scheme complies with the National Encryption Policy or that the required governance documents are complete.",
+   "evidence_source": "Azure Policy compliance state and Defender for Cloud regulatory compliance results for encryption, TLS, and key-management settings; Key Vault or Managed HSM configuration and audit logs; approved cryptography, encryption, and key-management policy with National Encryption Policy compliance mapping."
+  },
+  "3.3.2.2": {
+   "coverage_category": "A_AzurePolicy",
+   "responsibility": "Shared",
+   "reason": "Azure exposes machine-evaluable properties for encryption at rest and in transit, including storage encryption, customer-managed key configuration, HTTPS-only access, minimum TLS versions, and secure transfer requirements. Azure Policy can audit or enforce many of these resource settings, while Microsoft remains responsible for providing the underlying cryptographic capabilities and protecting traffic within Microsoft-operated service infrastructure.",
+   "evidence_source": "Azure Policy compliance state for encryption, HTTPS-only, secure transfer, customer-managed keys, and minimum TLS settings; Azure Resource Graph configuration exports; Microsoft Azure encryption documentation and relevant SOC 2 Type II/ISO/IEC 27001 attestations for Microsoft-operated infrastructure."
+  },
+  "3.3.2.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure Key Vault and Azure Managed HSM provide customer-controlled key import or generation, storage, retrieval, access control, and rotation through Azure Resource Manager, REST APIs, SDKs, and automation interfaces. Azure configuration and logs can evidence key-vault deployment, RBAC, rotation policies, and key lifecycle operations, but Azure Policy alone cannot establish that the complete integration process is practical, seamless, and well documented across consumer workloads; Microsoft must provide the platform capability and documentation while the customer configures and operates it.",
+   "evidence_source": "Azure Key Vault or Managed HSM resource configurations; key rotation policies; Azure RBAC assignments; Key Vault diagnostic and audit logs showing key import, access, and rotation; Microsoft documentation for bring-your-own-key and API/SDK-based key lifecycle management."
+  },
+  "3.3.2.4": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure and Microsoft Purview provide customer-controlled key options, including Double Key Encryption and integrations in which key material is generated or retained in a customer-controlled HSM or external key service. Azure configuration can evidence the use of customer-managed keys and associated key references, but Azure Policy cannot fully verify that externally held HYOK keys remain under the consumer’s exclusive control or assess generation, storage, and management activities performed in the customer’s trusted environment.",
+   "evidence_source": "Microsoft Purview Double Key Encryption configuration; Azure resource encryption and customer-managed key settings; Key Vault or Managed HSM configuration and audit logs where used; external HSM/KMS key inventory, ownership records, and key-management logs."
+  },
+  "3.3.2.5": {
+   "coverage_category": "A_AzurePolicy",
+   "responsibility": "Shared",
+   "reason": "The control specifies a machine-evaluable residency requirement for cryptographic keys: Azure Key Vault and Managed HSM resources can be restricted and audited by their Azure region, with deployments limited to approved UAE regions. Customer configuration evidences the selected vault/HSM location, while Microsoft is responsible for ensuring service-managed storage, replication, and backups follow the published data-residency architecture; Azure Policy alone may not independently expose every backup location.",
+   "evidence_source": "Azure Policy compliance results for allowed locations covering Key Vault and Managed HSM; Azure Resource Graph inventory showing each vault/HSM location; Key Vault or Managed HSM configuration and key metadata; Microsoft Azure data-residency documentation and applicable Service Trust Portal assurance reports for service-managed backup and replication."
+  },
+  "3.3.2.6": {
+   "coverage_category": "A_AzurePolicy",
+   "responsibility": "Shared",
+   "reason": "The requirement is expressed through machine-evaluable Azure resource properties: encryption keys can be required to use an HSM-backed key type in Azure Key Vault Managed HSM or an appropriate HSM service, and the HSM resource can be restricted to an approved UAE Azure region. Azure Policy can audit or deny non-HSM key configurations and HSM resources deployed outside permitted UAE locations, while Microsoft operates the underlying managed HSM platform.",
+   "evidence_source": "Azure Policy compliance state for allowed UAE locations and HSM-backed key requirements; Azure Resource Graph inventory showing Managed HSM resource locations and key types; Key Vault or Managed HSM configuration records and Microsoft service attestations for the underlying HSM service."
+  },
+  "3.4.1.1": {
+   "coverage_category": "A_AzurePolicy",
+   "responsibility": "Shared",
+   "reason": "The control establishes a machine-evaluable location requirement: Azure resources that store or process Consumer Data must be deployed only in UAE regions, which Azure Policy can audit or deny by evaluating resource location and relevant service configuration properties. The customer must restrict deployments and select UAE-resident services, while Microsoft must operate those services in accordance with their published regional data-residency commitments; policy compliance alone may not prove residency for every service, backup, replication path, or support-generated copy.",
+   "evidence_source": "Azure Policy compliance state for allowed UAE locations and service-specific residency configurations; Azure Resource Graph inventory showing resource regions; Azure data-residency documentation and contractual service commitments for UAE regions."
+  },
+  "3.4.1.2": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control obliges the cloud service provider to maintain an authoritative list of Azure services meeting sovereign-cloud requirements and to notify consumers when their compliance status changes. Customers cannot configure or enforce Microsoft's service eligibility determinations or publication process through Azure Policy; these are Microsoft-operated governance and communication activities.",
+   "evidence_source": "Microsoft sovereign cloud and Azure data residency service documentation, Microsoft Product Terms, Service Trust Portal compliance documentation and audit reports, and Microsoft-issued Azure Service Health or contractual notifications recording changes to service compliance status."
+  },
+  "3.4.1.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure resource regions, storage replication settings, backup locations, and network/data-transfer architecture provide measurable evidence for where customer data is stored, processed, transferred, and backed up. However, Azure configuration cannot by itself demonstrate that locations were clearly communicated to consumers or that all UAE legal and contractual sovereignty requirements were assessed and maintained; Microsoft also determines and discloses the residency characteristics of its underlying services.",
+   "evidence_source": "Azure Resource Graph inventory showing resource locations; storage redundancy and backup configuration records; Azure Policy location-compliance results; documented data-flow and residency architecture; Microsoft Azure data residency documentation and contractual terms; customer legal assessment, data-location register, and consumer disclosures."
+  },
+  "3.4.1.4": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure resource locations and deployment regions provide machine-readable evidence that customer workloads, storage, computation and analytics services are restricted to UAE regions; Azure Policy can audit or deny deployments outside an approved UAE location list. However, proving that all processing remains within UAE legal jurisdiction also requires service-specific data residency validation, architecture controls and Microsoft contractual commitments because some platform operations, support, metadata or service dependencies are not established solely by a resource's location property.",
+   "evidence_source": "Azure Policy compliance state for allowed UAE locations; Azure Resource Graph inventory and deployment records; service-specific Azure data residency documentation and Microsoft contractual data-location commitments."
+  },
+  "3.4.1.5": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure resource locations, service-region selections, and tenant architecture can evidence that customer workloads and supported metadata stores are restricted to UAE regions; Azure Policy can assess location properties for many resource types. However, it cannot by itself prove where every Azure service processes or stores platform-generated metadata, so coverage also depends on Microsoft’s service-specific data residency commitments and the customer’s validation of regional service capabilities.",
+   "evidence_source": "Azure Resource Graph resource-location inventory; Azure Policy compliance results for allowed UAE locations; documented UAE-region architecture and service configuration; Microsoft Azure data residency documentation and applicable contractual commitments for UAE regions."
+  },
+  "3.4.1.6": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to maintain an approved, current catalogue of native services that meet sovereign-cloud requirements and to notify consumers when a service’s compliance status changes. Azure resource properties may help identify deployed services and locations, but Azure Policy cannot establish that the catalogue is maintained or that compliance-change communications are issued to consumers.",
+   "evidence_source": "Approved sovereign-cloud service catalogue with version history, documented service compliance assessment records, change-management procedures, and customer notification records."
+  },
+  "3.5.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to establish service-design, commercial, and interoperability arrangements that preserve consumers’ ability to use related services from other providers. Azure resources may support open APIs, data export, or cross-cloud connectivity, but no Azure resource property or tenant setting can demonstrate consumer freedom of provider choice or end-to-end interoperability across different CSP environments.",
+   "evidence_source": "Approved interoperability and portability strategy; architecture and API standards; contractual terms permitting provider choice and data portability; documented cross-cloud interoperability and portability test results."
+  },
+  "3.5.1.2": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control governs Microsoft’s design and publication of Azure platform APIs to support component interoperability and workload migration. Customers cannot configure whether Azure service APIs are open or published, and Azure Policy cannot evaluate this provider-level design characteristic.",
+   "evidence_source": "Microsoft Azure REST API reference and published OpenAPI specifications, together with Microsoft Service Trust Portal assurance documentation and applicable ISO/IEC 27001 and SOC 2 Type II reports."
+  },
+  "3.5.2.1": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "This control requires the cloud service provider to make customer data portable through supported standards, documented formats, and practical import/export capabilities. Azure customers can use those capabilities but cannot configure or enforce the platform-level portability commitments themselves, and Azure Policy cannot determine whether Microsoft’s services provide reasonably easy and cost-effective data transfer.",
+   "evidence_source": "Microsoft Service Trust Portal assurance reports and Azure contractual/service documentation, supplemented by Azure service documentation identifying supported import/export APIs, data formats, and migration capabilities; relevant assurance may include Microsoft ISO/IEC 27001 and ISO/IEC 27017 certification materials."
+  },
+  "3.5.2.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure and Entra configurations can evidence part of this requirement through enforced HTTPS/TLS, minimum TLS versions, secure-transfer settings, and restricted management interfaces on customer-managed services. However, the control broadly covers all protocols used for data import/export and service management, including protocol standardization and Microsoft-operated service interfaces, so no single resource policy can establish complete compliance.",
+   "evidence_source": "Azure Policy compliance results for minimum TLS and secure-transfer configurations; Azure Resource Graph or configuration exports for public and management endpoints; Microsoft Azure service documentation and SOC 2 Type II report covering platform-operated interfaces."
+  },
+  "3.5.2.3": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to adopt and follow portability policies and procedures defined by its consumers, which is an organisational and contractual obligation rather than a machine-evaluable Azure resource setting. Azure Policy cannot determine whether consumer requirements were incorporated into operating procedures or whether those procedures were followed during data and service migration or export activities.",
+   "evidence_source": "Approved portability policy and procedures, documented consumer portability requirements, contractual or SLA commitments, and records of portability/export tests and completed migration activities."
+  },
+  "3.5.2.4": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control requires the cloud service provider to publish comprehensive documentation describing data and workload portability mechanisms and how consumers can avoid vendor lock-in. Customers cannot configure or enforce the existence or adequacy of Microsoft’s portability documentation through Azure Policy or tenant settings; this is a Microsoft-operated service-provider obligation.",
+   "evidence_source": "Microsoft Azure portability, migration and data-export documentation; applicable Microsoft Product Terms and service documentation; Microsoft ISO/IEC 27001 and SOC 2 Type II assurance reports available through the Service Trust Portal."
+  },
+  "3.6.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires changes to cloud infrastructure to be planned, coordinated and assessed against uptime requirements before implementation. Azure activity and configuration logs can corroborate that changes occurred, but no Azure Policy can determine whether prior planning, stakeholder coordination, approval and uptime impact assessment were performed effectively.",
+   "evidence_source": "Approved change management procedure; change requests with impact and uptime assessments, approvals, implementation schedules and rollback plans; change advisory board records; supported by Azure Activity Log and Azure Resource Graph change history."
+  },
+  "3.6.1.2": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control concerns the integrity of Microsoft-provided virtual machine images and Microsoft's internal logging and consumer notification whenever those images are changed. Azure Policy can restrict which image publishers, offers, SKUs, or versions a customer deploys, but it cannot inspect Microsoft's image build pipeline, verify its internal change records, or assert that Microsoft generated the required consumer alert.",
+   "evidence_source": "Microsoft Azure SOC 2 Type II report and ISO/IEC 27001:2022 certification materials from the Service Trust Portal, particularly controls covering change management, logging and monitoring; supplemented by applicable Azure Service Health or image-update notification records."
+  },
+  "3.6.2.1": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "This control concerns physical access restrictions, visitor monitoring, surveillance, and environmental safeguards at Microsoft-operated Azure datacentres. Customers cannot configure or evaluate these facility-level controls through Azure resource properties, identity settings, or Azure Policy; Microsoft operates and audits them as part of Azure's physical security programme.",
+   "evidence_source": "Microsoft Service Trust Portal audit documentation, including the Azure SOC 2 Type II report and ISO/IEC 27001 certification/Statement of Applicability covering physical and environmental security controls."
+  },
+  "3.6.3.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure Resource Graph, Azure Arc, Defender for Cloud asset inventory, and Microsoft Intune can provide configuration and platform signals showing that Azure resources, hybrid assets, and enrolled endpoints are inventoried and managed. However, Azure Policy cannot establish that the inventory is complete across all organizational assets or that management practices and procedures are defined and applied according to documented business risk.",
+   "evidence_source": "Azure Resource Graph and Defender for Cloud asset inventory exports; Azure Arc connected-machine inventory; Microsoft Intune device inventory and compliance reports; approved asset and endpoint management policy, asset register, risk classifications, and periodic review records."
+  },
+  "3.6.4.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure and associated development tooling can evidence substantial technical elements of secure application development and deployment, such as CI/CD security gates, source-code and dependency scanning, API protection, and Defender for Cloud or Defender for DevOps findings. However, Azure Policy cannot determine whether the complete application lifecycle follows leading industry standards or whether consumer requirements and all applicable UAE legal and regulatory obligations have been identified, translated into requirements, and tested.",
+   "evidence_source": "Azure DevOps or GitHub pipeline configurations and execution records; code, dependency, API, and application security scan reports; Microsoft Defender for Cloud/Defender for DevOps findings; approved secure SDLC standard, consumer security requirements traceability matrix, UAE regulatory compliance assessment, and test sign-off records."
+  },
+  "3.6.5.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "The control combines documented hardening standards with their technical implementation across customer-managed operating systems, virtual machines, and network/security resources, which can be partially evidenced through Azure configuration and Defender for Cloud posture signals. Azure Policy can assess individual properties such as secure configuration baselines, endpoint protection, restricted management access, and network exposure, but it cannot alone prove that comprehensive hardening procedures were developed and implemented; Microsoft is responsible for hardening the underlying physical infrastructure and hypervisors.",
+   "evidence_source": "Approved system-hardening standards and implementation records; Azure Policy compliance state and Microsoft Defender for Cloud secure score/recommendations for customer-managed resources; Microsoft SOC 2 Type II and ISO/IEC 27001 reports for Azure physical infrastructure and hypervisor hardening."
+  },
+  "3.6.6.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "The customer can configure UAE Azure regions, private connectivity, route tables, network virtual appliances and ExpressRoute circuits supplied through TDRA-licensed telecommunications providers, providing technical evidence for part of the routing requirement. Azure Policy can assess some related properties, such as allowed deployment locations, but cannot by itself prove every packet's physical path remains within UAE borders or that all underlying Microsoft and carrier infrastructure meets the licensing restriction; this also depends on Microsoft network architecture and telecommunications-provider assurances.",
+   "evidence_source": "Azure resource inventory showing UAE regions; Azure Route Tables, Network Watcher topology and connection-monitor records; ExpressRoute circuit and peering configuration; Microsoft Azure data-residency/network documentation; and contracts or carrier attestations confirming the provider is TDRA-licensed and routes traffic solely within the UAE."
+  },
+  "3.6.6.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure and Microsoft Entra configurations can provide substantial evidence by restricting access based on source geography through Conditional Access named locations, WAF geo-match rules, and network controls, while Azure resource-region restrictions can keep deployments within approved UAE regions. No single Azure Policy resource property can prove that the entire cloud environment is inaccessible from outside the UAE, because this depends on the combined identity, application, public endpoint, and network architecture.",
+   "evidence_source": "Microsoft Entra Conditional Access policies and sign-in logs showing location-based access enforcement; Azure WAF or other gateway geo-filtering configuration and logs; Azure Firewall and NSG configurations; Azure Resource Graph or Azure Policy compliance evidence showing resources are deployed only in approved UAE regions."
+  },
+  "3.6.6.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure networking and identity configurations can evidence substantial enforcement of isolation between the Sovereign Cloud environment and lower-tier environments, including disabled public network access, Private Link, network security groups, Azure Firewall rules, route tables, virtual network peering restrictions and cross-tenant access controls. However, Azure Policy cannot by itself determine the sovereignty tier of every source environment or prove the complete absence of all connectivity paths; this requires an approved network architecture and validation of effective traffic flows.",
+   "evidence_source": "Azure network architecture and data-flow diagrams; Azure Resource Graph exports of virtual network peerings, Private Endpoints, public network access settings, NSGs, route tables and Azure Firewall rules; Network Watcher topology and connection-monitor results; NSG and firewall flow logs; Entra cross-tenant access configuration; Azure Policy compliance state for applicable network-isolation settings."
+  },
+  "3.7.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Microsoft Entra ID and Azure provide configurable strong authentication, Conditional Access, RBAC/PIM, audit accountability, and activity and diagnostic logging capabilities. Customers must configure authentication and access rules, log destinations, retention periods, and access permissions; Azure Policy can audit some logging and retention resource properties, but cannot validate the complete identity architecture and accountability design in one policy assessment.",
+   "evidence_source": "Microsoft Entra Conditional Access and authentication-method configurations; Entra sign-in, audit and PIM logs; Azure RBAC assignments; Azure Monitor diagnostic settings and Log Analytics retention/access settings; Azure Policy compliance state; and Microsoft service attestations for operation of the underlying cloud platform."
+  },
+  "3.8.1.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to define, regularly test, and enact incident management processes for cloud-service security incidents. Azure can provide incident signals and response tooling, but no Azure resource property or policy compliance state can demonstrate that the organisation follows its process or conducts recurring tests; those obligations require procedural records and human execution.",
+   "evidence_source": "Approved incident response plan and procedures; incident exercise and tabletop test reports; incident tickets, investigation records, response timelines, lessons-learned reports, and evidence of corrective-action tracking."
+  },
+  "3.8.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires confirmed security incidents to be reported to affected cloud consumers and UAE authorities within prescribed response procedures and deadlines. Azure may provide incident signals and communication tooling, but no Azure resource property or policy compliance state can verify that the organisation made the required external notifications accurately and on time.",
+   "evidence_source": "Approved incident response and regulatory notification procedure; incident register and case records showing confirmation, impact assessment, notification timestamps, recipients, and copies of notices submitted to impacted consumers and UAE authorities."
+  },
+  "3.8.2.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Azure can evidence substantial technical coverage through enabled vulnerability assessment or Defender for Cloud scanning, recurring assessment results, identified threats, severity rankings, and remediation recommendations. However, Azure Policy cannot by itself prove that scanning is conducted at the required frequency across every relevant asset or that personnel use the insights to prioritize remediation and incident-response capabilities.",
+   "evidence_source": "Microsoft Defender for Cloud vulnerability assessment configuration and recommendations; vulnerability scan history and findings; Defender for Cloud regulatory compliance dashboard; documented remediation tickets and risk-based prioritization records."
+  },
+  "3.8.2.4": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to notify affected cloud consumers and relevant UAE authorities within 24 hours of confirming a security incident, and then provide regular updates in accordance with the national incident response framework. Azure may supply incident timestamps, alerts, and communication tooling, but no Azure resource property or policy can verify that required recipients were notified on time or that subsequent regulatory updates were issued.",
+   "evidence_source": "Approved incident response and regulatory notification procedure; incident register showing confirmation and notification timestamps; copies of notifications to impacted consumers and UAE authorities; subsequent status updates and incident communication records."
+  },
+  "3.8.2.5": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to notify affected cloud consumers and relevant UAE authorities within one hour of confirming a security incident, then provide updates according to the UAE National Cyber Security Incident Response Framework. Azure may supply alerts, timestamps, and communication tooling, but no Azure resource property or policy can verify that the required recipients were notified within the deadline or that subsequent updates met the prescribed process.",
+   "evidence_source": "Approved incident response and regulatory notification procedure; incident register and case records showing confirmation and notification timestamps, recipients, message copies, escalation records, and periodic update logs."
+  },
+  "3.8.3.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control primarily requires the organisation to establish and formally document incident response capabilities and plans aligned with the CSC Cyber Incident Response Framework and Plan. Azure services may provide alerts, logs, investigation, and response automation, but no Azure resource property or policy compliance state can prove that the required plan exists, is formally approved, aligns with the CSC framework, or is operationally effective.",
+   "evidence_source": "Approved incident response plan mapped to the CSC Cyber Incident Response Framework and Plan, including roles and escalation procedures, containment and recovery playbooks, communications protocols, exercise records, review minutes, and remediation tracking in the organisation's GRC system."
+  },
+  "3.8.4.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "The control is partly measurable through Azure configurations for diagnostic logging, centralized monitoring, audit-log retention, and Microsoft Purview eDiscovery capabilities. Azure Policy can assess portions such as diagnostic settings and retention-related resource properties, but it cannot by itself establish that forensic reviews, evidence handling, and e-discovery processes are appropriately designed and performed.",
+   "evidence_source": "Azure Monitor diagnostic settings and activity logs; Log Analytics workspace retention settings and archived logs; Microsoft Purview Audit and eDiscovery configuration and case records; associated incident response and forensic review procedures."
+  },
+  "3.8.4.2": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Customer",
+   "reason": "Microsoft Purview eDiscovery, audit-log retention, legal holds, and Azure diagnostic logging can provide and preserve searchable evidence for legal, regulatory, and forensic requests. These tenant configurations evidence a substantial part of the capability, but Azure Policy alone cannot verify timely case handling, forensic procedures, or fulfilment of each request.",
+   "evidence_source": "Microsoft Purview eDiscovery case, hold, search and export records; Purview Audit retention configuration; Azure Monitor diagnostic settings and Log Analytics retention evidence; documented e-discovery and cloud-forensics procedures with request and response records."
+  },
+  "3.9.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure configurations can evidence substantial elements of the required resilience provisions, including Azure Backup schedules and retention, Azure Site Recovery replication and recovery plans, availability-zone or regional redundancy, and service health monitoring. However, demonstrating that these configurations meet each consumer’s agreed uptime, recovery time, recovery point, and business continuity objectives also requires workload architecture, contractual service objectives, and tested continuity procedures; Microsoft separately operates the resilience of the underlying Azure platform.",
+   "evidence_source": "Azure Backup policy and job reports; Azure Site Recovery replication health and recovery-plan test results; resource redundancy and availability configuration; Azure Service Health records; documented SLA, business impact analysis, RTO/RPO requirements, and business continuity test reports."
+  },
+  "3.9.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control primarily requires the CSP to establish a documented disaster recovery plan and test it at regular intervals. Azure backup, replication, and recovery configurations can support execution of that plan, but no Azure Policy can verify that the plan is sufficiently detailed or that periodic recovery exercises were performed, evaluated, and remediated.",
+   "evidence_source": "Approved disaster recovery plan, scheduled test programme, completed disaster recovery exercise reports, recovery time and recovery point results, identified corrective actions, and management review records."
+  },
+  "3.9.1.3": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure provides geographically distinct regions and service-specific geo-redundancy capabilities, while the customer must design and deploy workloads, replicas, backups, and failover targets across those locations. Azure resource locations, replication settings, and recovery configurations can evidence part of the requirement, but Azure Policy alone cannot establish that the overall multi-region architecture provides effective business continuity and disaster recovery.",
+   "evidence_source": "Azure Resource Graph inventory showing resources in distinct regions; Azure Storage geo-redundancy settings; Azure Site Recovery replication and recovery plans; Azure Backup vault configuration and geo-replication status; architecture and failover-test records, supplemented by Microsoft resilience attestations and regional infrastructure documentation."
+  },
+  "3.9.1.4": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "Azure configurations can evidence deployment across geographically distinct UAE regions, including resource locations, availability architecture, and supported geo-redundant replication settings. Azure Policy can assess locations and certain redundancy properties, but cannot by itself establish that the complete application stack is redundantly deployed or that the resulting business continuity and disaster recovery design meets recovery objectives; Microsoft supplies and operates the underlying UAE regions while the customer must architect and enable their use.",
+   "evidence_source": "Azure Resource Graph inventory and deployment records showing resources in distinct UAE regions; resource replication and failover configuration; Azure Policy compliance for allowed UAE locations and applicable redundancy settings; approved BC/DR architecture, recovery objectives, and failover test results."
+  },
+  "3.10.1.1": {
+   "coverage_category": "B_AzureConfig",
+   "responsibility": "Shared",
+   "reason": "The control requires reliable operation and maintenance rather than one specific resource property, so Azure Policy alone cannot establish that all maintenance activities are appropriately performed. Azure Monitor availability metrics, Service Health notifications, activity logs, maintenance configurations, and workload resilience settings can evidence substantial technical implementation, while Microsoft operates and maintains the underlying Azure platform and the customer remains responsible for its deployed workloads and operational procedures.",
+   "evidence_source": "Azure Monitor metrics and alerts, Azure Activity Log, Azure Service Health history, Azure Update Manager or Maintenance Configuration records, workload availability reports, and customer maintenance runbooks and operational review records."
+  },
+  "3.10.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to arrange qualified on-site personnel and operational practices for timely support, issue resolution, and service continuity. Azure resource properties, identity settings, and platform signals cannot demonstrate staff qualifications or physical availability; these are organisational and contractual obligations rather than technical configurations.",
+   "evidence_source": "Approved operations and maintenance procedures; on-site support contracts and staffing rosters; personnel qualification records; incident tickets, response-time reports, and service continuity records."
+  },
+  "3.11.1.1": {
+   "coverage_category": "D_MicrosoftAttestation",
+   "responsibility": "Microsoft",
+   "reason": "The control obliges the cloud service provider to maintain alignment and integration capabilities with evolving UAE government cyber-security initiatives; it does not prescribe a customer-configurable Azure resource or Entra property. Customers cannot use Azure Policy to verify Microsoft’s institutional participation, regulatory alignment, or service-level support for national strategies, so assurance must come from Microsoft’s compliance commitments and independent assessments.",
+   "evidence_source": "Microsoft Service Trust Portal documentation and independent audit attestations applicable to Azure in the UAE, supplemented by Microsoft UAE regulatory compliance mappings, contractual service descriptions, and statements of alignment with relevant UAE national cyber-security frameworks."
+  },
+  "3.11.1.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to monitor, integrate with, and align its compliance programme to evolving UAE government cyber security initiatives and their prescribed implementation deadlines. Azure resource properties or Entra settings cannot establish that the organisation has identified applicable initiatives, incorporated their requirements, and met government timeframes; those obligations require governance, regulatory tracking, and documented implementation oversight.",
+   "evidence_source": "Regulatory obligations register for UAE cyber security initiatives, approved compliance roadmap, applicability assessments, implementation plans with deadlines and owners, and governance review minutes demonstrating timely adherence."
+  },
+  "3.11.2.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control governs the CSP’s human-resources practices for recruiting, retaining, and developing UAE Nationals in key roles against national Emiratization targets. Azure Policy and Microsoft Entra cannot verify workforce nationality, hiring priorities, retention outcomes, career-development activities, or compliance with national employment targets because these are organisational and regulatory matters rather than Azure resource configurations.",
+   "evidence_source": "Approved Emiratization and workforce plan; HR recruitment, nationality, retention, training and career-development records; role and succession plans; workforce target reports; and evidence of submissions or reviews against applicable UAE national workforce requirements."
+  },
+  "3.11.3.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to undertake organisational workforce-development activities, including nationwide upskilling and initiatives to attract global cloud talent to the UAE. Azure resource properties, identity settings, and platform signals cannot demonstrate that these programmes were established or that the CSP contributed to them; Azure Policy therefore cannot assert compliance.",
+   "evidence_source": "Approved UAE workforce-development strategy; records of training, internships, scholarships, partnerships, and talent-attraction initiatives; participation agreements with government or educational bodies; programme attendance and outcome reports."
+  },
+  "3.11.4.1": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "This control requires the CSP to establish and maintain an organisational presence in the UAE for research, development, and collaboration on emerging cloud technologies. Azure resource properties, identity settings, and platform signals cannot demonstrate that a local innovation hub exists or that it performs the required activities; this must be established through corporate records and operational evidence.",
+   "evidence_source": "Approved innovation-hub charter and UAE premises records, organisational structure and staffing records, R&D programme documentation, collaboration agreements, project portfolios, and periodic activity or governance reports."
+  },
+  "3.11.4.2": {
+   "coverage_category": "C_Process",
+   "responsibility": "Customer",
+   "reason": "The control requires the CSP to demonstrate economic and strategic contributions to UAE export-led growth, including development of marketable cloud offerings and support for the UAE as a regional and global cloud hub. These are corporate strategy, product development, investment and market-expansion activities; no Azure resource property, identity setting or platform signal can establish that the required contribution has occurred.",
+   "evidence_source": "Approved UAE market and export-growth strategy; cloud product and service development roadmap; investment and partnership records; regional expansion plans; and management reports showing export revenues, international customers, or other UAE cloud-hub performance indicators."
+  }
+ }
+}

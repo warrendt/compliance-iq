@@ -17,6 +17,12 @@ from app.models.sovereignty import SovereigntyMapping
 from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
 from app.services.policy_catalog_service import get_policy_catalog_service
+from app.services.control_intent_service import get_control_intent_service
+from app.services.control_classification_service import (
+    get_control_classification_service,
+    unknown_classification,
+)
+from app.services.policy_rerank_service import get_policy_rerank_service
 from app.services.sovereignty_service import get_sovereignty_service
 from app.services import coverage
 from app.auth import get_azure_openai_client
@@ -118,6 +124,9 @@ class AIMappingService:
         self.client = get_azure_openai_client()
         self.learn_client = get_microsoft_learn_client()
         self.catalog = get_policy_catalog_service()
+        self.control_intent = get_control_intent_service()
+        self.control_classification = get_control_classification_service()
+        self.policy_rerank = get_policy_rerank_service()
         self.mcsb_service = get_mcsb_service()
         self.sovereignty_service = get_sovereignty_service()
         self.model = settings.azure_openai_deployment_name
@@ -150,9 +159,30 @@ class AIMappingService:
                 external_control.domain
             )
 
+        # Stage 1 — classify BLIND, before any policy candidates exist. Showing a
+        # ranked candidate list first anchors the model into attaching a policy to
+        # a control Azure cannot enforce; on the NCSP gold mapping 113 of 137
+        # controls are not policy-enforceable, so getting this wrong is the
+        # default failure, not an edge case.
+        classification = await self.control_classification.classify(
+            external_control.control_name,
+            external_control.description,
+            external_control.domain or "",
+            external_control.control_type,
+        )
+        if classification.is_valid:
+            logger.info(
+                "Classified %s as %s (%s)",
+                external_control.control_id,
+                classification.coverage_category,
+                classification.responsibility,
+            )
+
         # Search for relevant Azure Policies using Microsoft Learn
         logger.debug(f"Starting Azure Policy search for {external_control.control_id}")
-        policy_context = await self._search_azure_policies(external_control)
+        policy_context = await self._search_azure_policies(
+            external_control, classification
+        )
         logger.debug(f"Policy search complete, context length: {len(policy_context)} chars")
 
         # Get relevant SLZ sovereignty policies
@@ -188,12 +218,17 @@ class AIMappingService:
             if not hasattr(mapping, 'external_control_name'):
                 mapping.external_control_name = external_control.control_name
 
-            # Deterministic coverage guarantee: carry the extractor's control_type
-            # onto the mapping and decide whether it is genuinely Azure-Policy
-            # enforceable. Non-enforceable controls (process/legal/attestation)
-            # have their azure_policy_ids cleared here so they never reach the
-            # initiative. This is authoritative over the model's own guess.
-            coverage.apply_coverage(mapping, external_control.control_type, self.catalog)
+            # Deterministic coverage guarantee: the blind classification is the
+            # primary signal, the extractor's control_type a fallback. Controls
+            # that are not Azure-Policy enforceable have their azure_policy_ids
+            # cleared here so they never reach the initiative, and carry the
+            # classification's reason, responsibility and evidence pointer.
+            coverage.apply_coverage(
+                mapping,
+                external_control.control_type,
+                self.catalog,
+                classification,
+            )
 
             logger.info(
                 f"Mapped {external_control.control_id} -> {mapping.mcsb_control_id} "
@@ -320,42 +355,71 @@ class AIMappingService:
         logger.info(f"Batch mapping complete: {summary}")
         return batch
 
-    async def _search_azure_policies(self, external_control: ExternalControl) -> str:
+    async def _search_azure_policies(
+        self,
+        external_control: ExternalControl,
+        classification=None,
+    ) -> str:
         """
         Retrieve candidate Azure built-in policy definitions for a control.
 
-        Uses TF-IDF retrieval over the shipped Azure Policy catalog (~2.5k
-        built-in definitions) so the model chooses ``azure_policy_ids`` from
-        *real* Azure Policy GUIDs instead of inventing them or being limited to
-        the small MCSB control set. Degrades gracefully to a best-practice hint
-        if the catalog is unavailable.
+        Runs the three-stage retrieval pipeline over the *whole* shipped catalog
+        (~2.5k built-in definitions) so the model chooses ``azure_policy_ids``
+        from real Azure Policy GUIDs:
+
+        1. **Expand** — restate the control in Azure vocabulary. Regulatory prose
+           and Azure Policy display names barely share vocabulary, so this is the
+           single largest recall lever (measured 15.6% -> 32.2% micro-recall@15
+           on the NCSP gold mapping, lexical-only).
+        2. **Retrieve wide** — hybrid lexical + semantic sweep to
+           ``policy_catalog_retrieval_depth`` (84.4% recall@200 with expansion).
+        3. **Rerank** — narrow that sweep to ``policy_catalog_candidate_count``
+           so the selection prompt stays short without sacrificing the sweep.
+
+        Every stage degrades independently: a failed expansion falls back to the
+        raw control text, an absent embedding artifact falls back to lexical
+        retrieval, and a failed rerank falls back to retrieval order.
 
         Args:
             external_control: External control to find policies for
+            classification: The blind classification stage's verdict. When it says
+                the control is process/organisational or Microsoft-attested,
+                retrieval is skipped entirely.
 
         Returns:
             Context string with candidate policy definitions (name + GUID)
         """
         try:
-            # Anchoring guard: for process/legal/organisational controls that are
-            # not clearly technical, do NOT show the model a ranked candidate list
-            # — that biases it into picking a policy for a control Azure cannot
-            # enforce. Tell it to return an empty list instead. The deterministic
-            # coverage layer enforces this regardless, but suppressing candidates
-            # also improves the model's reasoning and rationale.
+            # Anchoring guard: for controls no Azure Policy can assert, do NOT
+            # show the model a ranked candidate list — that biases it into picking
+            # a policy anyway. The blind classification decides this, because it
+            # judged the control on its own terms; the extractor's control_type
+            # keyword test is the fallback for when classification is unavailable.
+            # The deterministic coverage layer enforces the outcome regardless,
+            # but suppressing candidates also improves the model's rationale.
             control_text = " ".join(
                 p for p in (
                     external_control.control_name,
                     external_control.description,
                 ) if p
             )
-            if coverage.is_process_control(external_control.control_type) and not any(
-                kw in control_text.casefold() for kw in coverage.TECHNICAL_KEYWORDS
-            ):
+            if classification is not None and classification.is_valid:
+                skip_retrieval = not classification.may_have_policies
+                skip_because = f"classified {classification.coverage_category}"
+            else:
+                skip_retrieval = coverage.is_process_control(
+                    external_control.control_type
+                ) and not any(
+                    kw in control_text.casefold()
+                    for kw in coverage.TECHNICAL_KEYWORDS
+                )
+                skip_because = f"process control_type={external_control.control_type}"
+
+            if skip_retrieval:
                 logger.info(
-                    "Skipping Azure Policy candidate retrieval for %s "
-                    "(process control_type=%s) to avoid anchoring",
-                    external_control.control_id, external_control.control_type,
+                    "Skipping Azure Policy candidate retrieval for %s (%s) "
+                    "to avoid anchoring",
+                    external_control.control_id, skip_because,
                 )
                 return (
                     "Azure Policy Context:\n"
@@ -373,16 +437,34 @@ class AIMappingService:
                     external_control.domain or "",
                 ) if p
             )
-            candidates = await asyncio.to_thread(
+
+            intent = await self.control_intent.expand(
+                external_control.control_name,
+                external_control.description,
+                external_control.domain or "",
+            )
+            if not intent.is_empty:
+                logger.info(
+                    "Expanded %s for retrieval: %s",
+                    external_control.control_id, intent.azure_restatement,
+                )
+
+            retrieved = await asyncio.to_thread(
                 self.catalog.search,
-                query,
-                settings.policy_catalog_candidate_count,
+                intent.build_query(query),
+                settings.policy_catalog_retrieval_depth,
+                intent.policy_categories,
+            )
+            candidates = await self.policy_rerank.rerank(
+                query, retrieved, settings.policy_catalog_candidate_count
             )
 
             if candidates:
                 logger.info(
-                    "Retrieved %d candidate Azure policies for %s from catalog (%s)",
+                    "Retrieved %d candidate Azure policies for %s from catalog (%s), "
+                    "reranked from a depth-%d sweep",
                     len(candidates), external_control.control_id, self.catalog.source,
+                    len(retrieved),
                 )
                 lines = []
                 for c in candidates:

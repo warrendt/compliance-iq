@@ -321,3 +321,167 @@ def test_deploy_readme_reports_attested_controls_as_compliant():
     assert "66.7%" in readme  # A + D compliant
     assert "compliant by inheritance" in readme
     assert "no customer remediation" in readme
+
+
+# -- Blind classification takes precedence over the keyword heuristics ---------
+
+
+class _Classification:
+    """Duck-typed stand-in for ControlClassification."""
+
+    def __init__(self, category, responsibility="Customer", reason="", evidence=""):
+        self.coverage_category = category
+        self.responsibility = responsibility
+        self.reason = reason
+        self.evidence_source = evidence
+
+
+def test_classification_demotes_a_control_that_retrieved_policies():
+    """The point of classifying blind.
+
+    A governance control can lexically resemble a technical one and retrieve
+    plausible policies. Without this rule the keyword path would call it
+    enforceable purely because retrieval succeeded, which is exactly the false
+    confidence the rework exists to remove.
+    """
+    mapping = _mapping(
+        "GOV-1",
+        [REAL_GUID],
+        control_type="Technical",
+        name="Cryptographic key management policy",
+        reasoning="Encryption key lifecycle must be documented and approved.",
+    )
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_C, reason="Documented policy, not a setting."),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_C
+    assert mapping.azure_enforceable is False
+    assert mapping.azure_policy_ids == []
+
+
+def test_classification_rescues_a_control_the_extractor_mistyped():
+    """control_type is one upstream signal and must not be fatal.
+
+    Before the classification stage, a technical control typed "Governance" by
+    the extractor could never be mapped: the anchoring guard suppressed
+    retrieval and the coverage layer stripped its policies.
+    """
+    mapping = _mapping(
+        "ENC-2",
+        [REAL_GUID],
+        control_type="Governance",
+        name="Storage encryption",
+        reasoning="Data at rest must be encrypted.",
+    )
+    coverage.apply_coverage(
+        mapping,
+        mapping.control_type,
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_A),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_A
+    assert mapping.azure_policy_ids == [REAL_GUID]
+
+
+def test_ab_split_is_settled_by_evidence_not_by_the_classifier():
+    """Measured: the blind stage recovers only 12.5% of gold A controls.
+
+    Whether a built-in definition exists is a fact about the catalog, not about
+    the control text, so a classification of B still becomes A when enforceable
+    IDs survive, and a classification of A degrades to B when none do.
+    """
+    promoted = _mapping("X-1", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        promoted, "Technical", _FakeCatalog(), _Classification(coverage.COVERAGE_B)
+    )
+    assert promoted.coverage_category == coverage.COVERAGE_A
+
+    demoted = _mapping("X-2", [], control_type="Technical")
+    coverage.apply_coverage(
+        demoted, "Technical", _FakeCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+    assert demoted.coverage_category == coverage.COVERAGE_B
+    assert demoted.azure_enforceable is False
+
+
+def test_classification_populates_the_gold_workbook_fields():
+    mapping = _mapping("P-1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping,
+        "Governance",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_C,
+            responsibility="Customer",
+            reason="Supplier due diligence is a contractual activity.",
+            evidence="Signed supplier assurance questionnaires in the GRC register.",
+        ),
+    )
+    assert mapping.responsibility == "Customer"
+    assert mapping.coverage_reason.startswith("Supplier due diligence")
+    assert "GRC register" in mapping.evidence_source
+    assert mapping.enforcement_plane == coverage.PLANE_MANUAL
+
+
+def test_manual_register_prefers_the_specific_reason():
+    """The gold Reason column is per-control; canned text is a fallback only."""
+    mapping = _mapping("P-2", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping,
+        "Governance",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_C, reason="Board oversight cannot be queried."
+        ),
+    )
+    rows = coverage.manual_register_rows([mapping])
+    assert rows[0]["reason"] == "Board oversight cannot be queried."
+
+    bare = _mapping("P-3", [], control_type="Governance")
+    coverage.apply_coverage(bare, "Governance", _FakeCatalog())
+    assert "not Azure-enforceable" in coverage.manual_register_rows([bare])[0]["reason"]
+
+
+# -- Deterministic enrichment: effects and enforcement plane -------------------
+
+
+def test_enforcement_plane_distinguishes_blocking_from_reporting():
+    """Deny blocks a deployment; Audit only reports it.
+
+    The gold mapping records these separately because they are materially
+    different promises, and conflating them overstates coverage.
+    """
+    assert coverage.enforcement_plane_for(["Deny"]) == coverage.PLANE_DEPLOY
+    assert coverage.enforcement_plane_for(["AuditIfNotExists"]) == coverage.PLANE_RUNTIME
+    assert coverage.enforcement_plane_for(["deployIfNotExists"]) == coverage.PLANE_DEPLOY
+    assert coverage.enforcement_plane_for(["Deny", "Audit"]) == coverage.PLANE_BOTH
+    assert coverage.enforcement_plane_for([]) == coverage.PLANE_MANUAL
+    assert coverage.enforcement_plane_for(["Manual"]) == coverage.PLANE_MANUAL
+
+
+def test_effects_are_read_from_the_catalog_not_invented():
+    """Asking a model to recall a policy effect invites confident errors.
+
+    An effect determines whether a control is blocked or merely observed, so it
+    is resolved from the catalog snapshot only.
+    """
+
+    class _EffectCatalog(_FakeCatalog):
+        def get(self, name):
+            return {"effect": "Deny"}
+
+    mapping = _mapping("ENC-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _EffectCatalog())
+    assert mapping.policy_effects == ["Deny"]
+    assert mapping.policy_type == "Built-in"
+    assert mapping.enforcement_plane == coverage.PLANE_DEPLOY
+
+
+def test_non_enforceable_controls_report_no_policy_type():
+    mapping = _mapping("P-4", [], control_type="Governance")
+    coverage.apply_coverage(mapping, "Governance", _FakeCatalog())
+    assert mapping.policy_type == "N/A"
+    assert mapping.policy_effects == []
