@@ -11,8 +11,74 @@ from app.models.control import ExternalControl
 _MAX_ACTIVITY_ENTRIES = 50
 
 
+class AttestationCitation(BaseModel):
+    """A grounded Microsoft attestation citation.
+
+    Modelled explicitly rather than as a bare ``dict`` for two reasons. The
+    practical one: ``ControlMapping`` is used as an Azure OpenAI structured
+    output schema, and a bare dict serialises to an open object, which strict
+    schema validation rejects with "additionalProperties is required to be
+    supplied and to be false" - that error failed *every* mapping call, so the
+    engine returned a fallback for every control while appearing healthy.
+
+    The design one: a citation with arbitrary keys cannot be validated, and an
+    attestation the customer cannot retrieve is not an answer. These are the
+    fields an auditor needs - what attests it, where the evidence lives, and
+    what it takes to get hold of it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    basis_kind: Optional[str] = Field(
+        default=None,
+        description=(
+            "certification_clause | audit_report_criterion | "
+            "published_documentation | none"
+        ),
+    )
+    scheme: Optional[str] = Field(
+        default=None, description="e.g. ISO/IEC 27001:2022, SOC 2 Type II"
+    )
+    citation: Optional[str] = Field(
+        default=None, description="Clause or criterion reference, e.g. clause 9.2"
+    )
+    evidence_document: Optional[str] = Field(
+        default=None, description="The certificate or report that carries the evidence"
+    )
+    evidence_location: Optional[str] = Field(
+        default=None,
+        description="Where to retrieve it (Service Trust Portal, Microsoft Learn)",
+    )
+    access_condition: Optional[str] = Field(
+        default=None,
+        description="What retrieval requires, e.g. work account sign-in and NDA",
+    )
+    source: Optional[str] = Field(
+        default=None, description="Which catalog entry grounded this citation"
+    )
+
+
+class DroppedPolicyIdentifier(BaseModel):
+    """An identifier that did not survive validation, and why.
+
+    Typed for the same two reasons as the citation above: an open object breaks
+    the strict response schema, and "nothing is silently dropped" is only true
+    if the reason is a field rather than whatever key happened to be written.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy_id: Optional[str] = Field(default=None, description="The rejected identifier")
+    reason: Optional[str] = Field(default=None, description="Machine-readable rejection code")
+    detail: Optional[str] = Field(default=None, description="What to tell the customer")
+
+
 class ControlMapping(BaseModel):
     """AI-generated mapping between external control and MCSB control."""
+
+    # NOTE: model_config for this class lives with the schema example further
+    # down; a second assignment here would be silently overridden by it, which
+    # is exactly how the open-schema defect survived a first fix attempt.
 
     external_control_id: str = Field(..., description="External framework control ID")
     external_control_name: str = Field(..., description="External control name")
@@ -91,7 +157,7 @@ class ControlMapping(BaseModel):
         ),
     )
 
-    attestation: Optional[dict] = Field(
+    attestation: Optional["AttestationCitation"] = Field(
         default=None,
         description=(
             "For D_MicrosoftAttestation: the resolved attestation citation, "
@@ -126,8 +192,9 @@ class ControlMapping(BaseModel):
         ),
     )
 
-    dropped_policy_ids: List[dict] = Field(
-        default_factory=list,        description=(
+    dropped_policy_ids: List[DroppedPolicyIdentifier] = Field(
+        default_factory=list,
+        description=(
             "Candidate policy IDs discarded during validation, each with the "
             "reason (malformed GUID, absent from catalog, non-enforceable "
             "placeholder). Never silently dropped: a control that lost its "
@@ -235,7 +302,7 @@ class ControlMapping(BaseModel):
         description="Sovereign Landing Zone mapping with recommended level, objectives, and policies"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(extra="forbid", json_schema_extra={
         "example": {
             "external_control_id": "SAMA-AC-01",
             "external_control_name": "Strong Authentication",

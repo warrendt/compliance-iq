@@ -155,7 +155,10 @@ class SovereigntyMapping(BaseModel):
         description="Explanation of sovereignty level recommendation"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    # extra="forbid" is required, not cosmetic: SovereigntyMapping is nested in
+    # ControlMapping, which Azure OpenAI validates as a strict response schema
+    # and refuses outright if any nested object accepts unknown keys.
+    model_config = ConfigDict(extra="forbid", json_schema_extra={
         "example": {
             "sovereignty_level": "L2",
             "sovereignty_objectives": ["SO-3"],
