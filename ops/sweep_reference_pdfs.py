@@ -180,6 +180,31 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
     }
 
 
+def _violation_counts(res: Dict[str, Any]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for v in res.get("violations") or []:
+        rule = str(v.get("rule", "?"))
+        counts[rule] = counts.get(rule, 0) + 1
+    return counts
+
+
+def _summary(res: Dict[str, Any]) -> Dict[str, Any]:
+    """A one-line verdict that survives the log agent's line splitting."""
+    if res.get("error"):
+        return {"pdf": res.get("pdf"), "error": res["error"][:200]}
+    return {
+        "pdf": res.get("pdf"),
+        "controls": res.get("controls_mapped"),
+        "engine_failures": res.get("engine_failures"),
+        "cats": res.get("distribution", {}).get("category"),
+        "ids": res.get("distinct_policy_ids"),
+        "beyond": res.get("ids_beyond_old_menu"),
+        "violations": res.get("violation_count"),
+        "rules": sorted(_violation_counts(res)),
+        "seconds": res.get("total_seconds"),
+    }
+
+
 def run_one(pdf_path: str, max_controls: int) -> Dict[str, Any]:
     from app.pipeline.config import PipelineConfig
     from app.pipeline.pdf_extractor import extract_text_from_pdf
@@ -274,6 +299,12 @@ def main() -> int:
         if res.get("error") or res.get("violation_count"):
             failures += 1
         print("SWEEP_RESULT " + json.dumps(res, ensure_ascii=False), flush=True)
+        # The full result runs to several KB and the log agent splits long lines,
+        # which makes it unparseable downstream. Emit the verdict on one short
+        # line as well, and the violations as one line per rule with a count.
+        print("SWEEP_SUMMARY " + json.dumps(_summary(res), ensure_ascii=False), flush=True)
+        for rule, count in sorted(_violation_counts(res).items()):
+            print(f"SWEEP_VIOLATION {res.get('pdf', '?')[:40]} {rule} n={count}", flush=True)
 
     print(f"SWEEP_DONE pdfs={len(pdfs)} with_findings={failures}", flush=True)
     return 0
