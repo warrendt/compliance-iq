@@ -203,3 +203,151 @@ def test_required_parameters_schema_captured_for_no_default_params():
     assert req["vaultName"]["type"] == "String"
     assert req["vaultName"]["description"] == "Recovery Services vault name"
     assert req["vaultLocation"]["allowed_values"] == ["southafricanorth", "westeurope"]
+
+
+def test_raw_arm_shape_is_read_the_same_as_the_az_projected_shape():
+    """The two --source paths once produced different corpora, silently.
+
+    `az policy definition list` flattens metadata and filters built-ins
+    server-side; a raw ARM dump does neither. Before _field(), a --raw
+    regeneration emitted every definition with category "Uncategorized",
+    disabling category boosting with no error and no failing test. This pins
+    both shapes to the same output.
+    """
+    az_shape = {
+        "name": "g1",
+        "display_name": "Storage accounts should restrict network access",
+        "description": "Network access should be restricted.",
+        "category": "Storage",
+        "policy_type": "BuiltIn",
+    }
+    raw_shape = {
+        "name": "g1",
+        "properties": {
+            "displayName": "Storage accounts should restrict network access",
+            "description": "Network access should be restricted.",
+            "policyType": "BuiltIn",
+            "metadata": {"category": "Storage"},
+        },
+    }
+    az_out = gen.normalize([az_shape])
+    raw_out = gen.normalize([raw_shape])
+    assert len(az_out) == 1 and len(raw_out) == 1
+    for key in ("name", "display_name", "category"):
+        assert az_out[0][key] == raw_out[0][key], key
+
+
+def test_normalize_drops_non_builtin_definitions():
+    """The az path filters these server-side; the raw path must filter them here."""
+    out = gen.normalize(
+        [
+            {"name": "b", "display_name": "Built-in one", "policy_type": "BuiltIn"},
+            {"name": "c", "display_name": "Custom one", "policy_type": "Custom"},
+            {
+                "name": "s",
+                "properties": {
+                    "displayName": "Static one",
+                    "policyType": "Static",
+                },
+            },
+        ]
+    )
+    assert [d["name"] for d in out] == ["b"]
+
+
+def test_missing_category_falls_back_rather_than_raising():
+    out = gen.normalize([{"name": "g1", "display_name": "No category policy"}])
+    assert len(out) == 1
+    assert out[0]["category"]
+
+
+def test_allowed_effects_captured_from_parameter_allowed_values():
+    """A policy defaulting to Audit but permitting Deny can be escalated.
+
+    Recording only the resolved default understates what the definition can do.
+    """
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Parameterised policy",
+                "policy_type": "BuiltIn",
+                "parameters": {
+                    "effect": {
+                        "type": "String",
+                        "allowedValues": ["Audit", "Deny", "Disabled"],
+                        "defaultValue": "Audit",
+                    }
+                },
+                "policy_rule": {"then": {"effect": "[parameters('effect')]"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == "Audit"
+    assert out[0]["allowed_effects"] == ["Audit", "Deny", "Disabled"]
+
+
+def test_allowed_effects_absent_for_hardcoded_effects():
+    out = gen.normalize(
+        [
+            {
+                "name": "g1",
+                "display_name": "Fixed policy",
+                "policy_type": "BuiltIn",
+                "policy_rule": {"then": {"effect": "Deny"}},
+            }
+        ]
+    )
+    assert out[0]["effect"] == "Deny"
+    assert not out[0].get("allowed_effects")
+
+
+def test_empty_output_is_not_silently_accepted_from_a_shape_mismatch():
+    """The regression that motivated _unwrap: every record dropped, exit 0.
+
+    A REST-shaped dump must yield definitions, not an empty catalog.
+    """
+    rest_dump = [
+        {
+            "id": "/providers/Microsoft.Authorization/policyDefinitions/g1",
+            "name": "g1",
+            "properties": {
+                "displayName": "A real policy",
+                "policyType": "BuiltIn",
+                "metadata": {"category": "Storage", "version": "1.0.0"},
+                "policyRule": {"then": {"effect": "Deny"}},
+            },
+        }
+    ]
+    out = gen.normalize(rest_dump)
+    assert len(out) == 1
+    assert out[0]["name"] == "g1"
+    assert out[0]["category"] == "Storage"
+    assert out[0]["effect"] == "Deny"
+
+
+def test_unwrap_does_not_let_properties_shadow_the_guid():
+    """ARM keeps `name` outside `properties`; a stray inner name must not win."""
+    out = gen.normalize(
+        [
+            {
+                "name": "outer-guid",
+                "properties": {
+                    "name": "inner-wrong",
+                    "displayName": "P",
+                    "policyType": "BuiltIn",
+                },
+            }
+        ]
+    )
+    assert out[0]["name"] == "outer-guid"
+
+
+def test_nested_non_builtin_definitions_are_dropped():
+    out = gen.normalize(
+        [
+            {"name": "c", "properties": {"displayName": "Custom", "policyType": "Custom"}},
+            {"name": "b", "properties": {"displayName": "Built", "policyType": "BuiltIn"}},
+        ]
+    )
+    assert [d["name"] for d in out] == ["b"]

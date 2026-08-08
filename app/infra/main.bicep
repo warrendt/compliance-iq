@@ -242,6 +242,10 @@ module backendApp './core/container-app.bicep' = {
         value: openai.outputs.fallbackDeploymentName
       }
       {
+        name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT'
+        value: openai.outputs.embeddingDeploymentName
+      }
+      {
         name: 'COSMOS_DB_ENDPOINT'
         value: cosmos.outputs.endpoint
       }

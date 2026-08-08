@@ -55,6 +55,31 @@ jobs:
             app/tests/test_policy_cache_catalog.py \
             --noconftest -v
 
+      - name: Run mapping recall + gold fixture tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+          AZURE_OPENAI_DEPLOYMENT_NAME: gpt
+          ENABLE_AUTH: "false"
+        run: |
+          python -m pytest app/tests/test_mapping_recall.py --noconftest -v
+
+      # Both suites replay frozen model output, so they measure retrieval and
+      # classification quality against the NCSP v2.0 gold mapping without needing
+      # Azure OpenAI credentials.
+      - name: Run coverage classification + taxonomy tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+          AZURE_OPENAI_DEPLOYMENT_NAME: gpt
+          ENABLE_AUTH: "false"
+        run: |
+          python -m pytest \
+            app/tests/test_control_classification.py \
+            app/tests/test_coverage_mapping.py \
+            app/tests/test_retrieval_llm_stages.py \
+            --noconftest -v
+
       - name: Run frontend state-init unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}/app/frontend

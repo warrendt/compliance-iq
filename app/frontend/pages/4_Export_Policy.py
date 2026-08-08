@@ -51,6 +51,22 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         "control_type": m.get("control_type"),
         "coverage_category": m.get("coverage_category"),
         "azure_enforceable": m.get("azure_enforceable", False),
+        # Gold-workbook fields produced by the classification and enrichment
+        # stages. They are what makes a "no policy" verdict actionable — the
+        # reason it cannot be enforced and the evidence that satisfies it
+        # instead — so losing them here would reduce the manual register back to
+        # a list of control IDs.
+        "coverage_reason": m.get("coverage_reason"),
+        "responsibility": m.get("responsibility"),
+        "evidence_source": m.get("evidence_source"),
+        "enforcement_plane": m.get("enforcement_plane"),
+        "policy_effects": m.get("policy_effects", []),
+        # Distinct from policy_effects: what the definition permits, not what it
+        # does by default. 484 of the 2467 built-ins default to a weaker effect
+        # than the Deny they allow, so a reviewer deciding whether a control
+        # blocks or merely reports needs both.
+        "available_effects": m.get("available_effects", []),
+        "policy_type": m.get("policy_type"),
     }
 
 
@@ -110,6 +126,9 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "control_type": "Type",
         "coverage_category": "Coverage",
         "mcsb_control_id": "MCSB",
+        "responsibility": "Responsibility",
+        "enforcement_plane": "Enforcement Plane",
+        "evidence_source": "Evidence",
         "reason": "Why not enforceable",
     }
     df = pd.DataFrame(manual)

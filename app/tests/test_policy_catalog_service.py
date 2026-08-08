@@ -179,23 +179,38 @@ def test_regulatory_compliance_is_demoted_below_enforceable(tmp_path, monkeypatc
     assert any(c.category == "Regulatory Compliance" for c in demoted)
 
 
-def test_regulatory_penalty_scales_score(tmp_path, monkeypatch):
+def test_regulatory_penalty_reorders_rather_than_rescales(tmp_path, monkeypatch):
+    """The penalty acts on rank, which is what ``score`` now reports.
+
+    Since hybrid retrieval landed, ``PolicyCandidate.score`` is a rank score
+    (reciprocal-rank fusion when embeddings contribute, ``1/(rank+1)``
+    otherwise), not the raw TF-IDF cosine. Both branches must report on the same
+    scale or scores would be meaningless across configurations, so the penalty
+    is no longer observable as a multiplicative change to a score — it is
+    observable as a change in ordering, which is the behaviour that actually
+    affects what the model sees.
+    """
     import app.services.policy_catalog_service as mod
 
     svc = PolicyCatalogService(data_path=_write_catalog(tmp_path, _DEMOTE_SAMPLE))
     query = "review development process standards and tools"
 
-    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 1.0)
-    full = {c.name: c.score for c in svc.search(query, top_n=2)}
-    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 0.5)
-    half = {c.name: c.score for c in svc.search(query, top_n=2)}
-
     reg_guid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     enf_guid = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-    # Manual control's score is halved; enforceable policy is unchanged.
-    assert half[reg_guid] == pytest.approx(full[reg_guid] * 0.5, abs=1e-3)
-    assert half[reg_guid] < full[reg_guid]
-    assert half[enf_guid] == full[enf_guid]
+
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 1.0)
+    full = [c.name for c in svc.search(query, top_n=2)]
+    monkeypatch.setattr(mod.settings, "policy_catalog_regulatory_penalty", 0.5)
+    half = [c.name for c in svc.search(query, top_n=2)]
+
+    assert full.index(reg_guid) < full.index(enf_guid)
+    assert half.index(enf_guid) < half.index(reg_guid)
+    # Demoted, never dropped: a Manual-effect definition can still be the only
+    # sensible answer for an attestation-shaped control.
+    assert set(half) == set(full)
+
+    scores = [c.score for c in svc.search(query, top_n=2)]
+    assert scores == sorted(scores, reverse=True)
 
 
 # ── exists / available (built-in existence checks for deploy safety) ──────────

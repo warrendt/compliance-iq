@@ -213,6 +213,13 @@ def _session_mapping_from_result(mapping: dict, controls: list) -> dict:
         "control_type": mapping.get("control_type"),
         "coverage_category": mapping.get("coverage_category"),
         "azure_enforceable": mapping.get("azure_enforceable", False),
+        # Gold-workbook fields from the classification and enrichment stages.
+        "coverage_reason": mapping.get("coverage_reason"),
+        "responsibility": mapping.get("responsibility"),
+        "evidence_source": mapping.get("evidence_source"),
+        "enforcement_plane": mapping.get("enforcement_plane"),
+        "policy_effects": mapping.get("policy_effects", []),
+        "policy_type": mapping.get("policy_type"),
     }
 
 
