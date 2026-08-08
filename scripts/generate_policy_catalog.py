@@ -47,9 +47,17 @@ DEFAULT_OUTPUT = (
 # Server-side projection keeps the CLI payload small and stable.
 # ``policyRule`` is included so the enforcement ``effect`` can be resolved: a
 # control mapped to a Manual/Disabled-effect placeholder policy enforces nothing.
+#
+# Deliberately NOT filtered to ``policyType=='BuiltIn'`` server-side. The
+# built-in corpus is the only thing that becomes recommendable, but the
+# Static "Microsoft Managed Control" definitions have to arrive too, or the
+# generator cannot name them - and they account for every one of the 327
+# initiative members that would otherwise look unresolvable. ``normalize`` and
+# its siblings do the filtering, so each index says what it means.
 _AZ_QUERY = (
-    "[?policyType=='BuiltIn'].{name:name, display_name:displayName, "
+    "[].{name:name, display_name:displayName, "
     "description:description, category:metadata.category, mode:mode, "
+    "policyType:policyType, "
     "version:metadata.version, parameters:parameters, policyRule:policyRule}"
 )
 
@@ -248,8 +256,14 @@ def _allowed_effects(item: Dict[str, Any]) -> List[str]:
 def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Project raw definitions to the lean, deduplicated catalog schema.
 
-    Pure function: no I/O, so it is unit-testable. Drops non-built-in and
-    deprecated entries and anything without a name (GUID) or display name.
+    Pure function: no I/O, so it is unit-testable. Drops non-built-in entries
+    and anything without a name (GUID) or display name.
+
+    Deprecated definitions are excluded from the recommendable corpus but are
+    *recorded* rather than forgotten - see :func:`normalize_deprecated`. A
+    policy Microsoft has retired and a policy that never existed demand
+    different answers from a customer, and a catalog that drops both makes them
+    look identical.
     """
     seen: set[str] = set()
     out: List[Dict[str, Any]] = []
@@ -288,6 +302,77 @@ def normalize(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
+def normalize_deprecated(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The built-ins Microsoft has retired, kept so they can be named.
+
+    :func:`normalize` excludes these from the recommendable corpus, which is
+    right - a retired definition must never be proposed for new governance.
+    But excluding them silently makes "Microsoft withdrew this policy" and
+    "this policy never existed" produce the same answer, and those call for
+    different things from a customer: the first is a migration, the second is a
+    fabricated citation. Keeping the retired names lets the product tell them
+    apart, which is the whole difference between a reported gap and a wrong
+    answer.
+
+    Only the name and display name are kept - enough to identify and explain
+    it, and deliberately not enough to deploy it.
+    """
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+    for raw_item in raw:
+        item = _unwrap(raw_item)
+        name = (item.get("name") or "").strip()
+        display = (item.get("display_name") or item.get("displayName") or "").strip()
+        if not name or not display:
+            continue
+        if not _is_builtin(item):
+            continue
+        version = _field(item, "version", nested="metadata")
+        if not _is_deprecated({"display_name": display, "version": version}):
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+        out.append({"name": name, "display_name": display})
+    out.sort(key=lambda d: d["name"])
+    return out
+
+
+def normalize_managed_controls(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Microsoft Managed Controls - ``policyType: Static``.
+
+    These are not built-ins and are deliberately absent from the recommendable
+    corpus: they carry no deployable effect, because the control they describe
+    is operated and attested by Microsoft rather than enforced in the
+    customer's tenant.
+
+    They still have to be *nameable*, because Azure's own compliance
+    initiatives are full of them. Every one of the 327 initiative members that
+    the definitions array could not resolve turned out to be a Static managed
+    control - not a deprecation and not a bad identifier. Without this index
+    the product reports a third of MCSB's membership as unresolvable, which
+    reads as broken data when it is in fact Microsoft attestation: precisely
+    the Category D answer the customer is owed.
+    """
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+    for raw_item in raw:
+        item = _unwrap(raw_item)
+        name = (item.get("name") or "").strip()
+        display = (item.get("display_name") or item.get("displayName") or "").strip()
+        policy_type = str(item.get("policyType") or item.get("policy_type") or "").strip()
+        if not name or not display:
+            continue
+        if policy_type.casefold() != "static":
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+        out.append({"name": name, "display_name": display})
+    out.sort(key=lambda d: d["name"])
+    return out
+
+
 def _fetch_via_az(subscription: Optional[str]) -> List[Dict[str, Any]]:
     cmd = ["az", "policy", "definition", "list", "--query", _AZ_QUERY, "-o", "json"]
     if subscription:
@@ -313,12 +398,18 @@ def _fetch_initiatives_via_az(subscription: Optional[str]) -> List[Dict[str, Any
 
 def build_catalog(raw: List[Dict[str, Any]], source: str) -> Dict[str, Any]:
     definitions = normalize(raw)
+    deprecated = normalize_deprecated(raw)
+    managed = normalize_managed_controls(raw)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": source,
         "api_version": API_VERSION,
         "count": len(definitions),
         "definitions": definitions,
+        "deprecated_count": len(deprecated),
+        "deprecated": deprecated,
+        "managed_control_count": len(managed),
+        "managed_controls": managed,
     }
 
 

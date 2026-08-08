@@ -778,7 +778,14 @@ async def policy_catalog_lookup(identifier: str):
         "kind": "definition" if entry else ("initiative" if initiative else None),
         "display_name": (entry or initiative or {}).get("display_name"),
         "effect": (entry or {}).get("effect"),
-        "member_of_initiatives": catalog.initiatives_containing(identifier),
+        "member_of_initiatives": [
+            {
+                "name": i.get("name"),
+                "display_name": i.get("display_name"),
+                "policy_definition_count": i.get("policy_definition_count"),
+            }
+            for i in catalog.initiatives_containing(identifier)
+        ],
     }
 
 

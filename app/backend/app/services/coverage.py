@@ -499,6 +499,8 @@ ID_EMPTY = "empty"
 ID_MALFORMED = "malformed"
 ID_UNKNOWN = "not-in-catalog"
 ID_NON_ENFORCEABLE = "non-enforceable-placeholder"
+ID_DEPRECATED = "deprecated"
+ID_MANAGED_CONTROL = "microsoft-managed-control"
 
 ID_REJECTION_MESSAGES = {
     ID_EMPTY: "empty policy identifier",
@@ -506,6 +508,13 @@ ID_REJECTION_MESSAGES = {
     ID_UNKNOWN: "no such definition in the Azure Policy catalog",
     ID_NON_ENFORCEABLE: (
         "Regulatory Compliance placeholder — carries no enforcement effect"
+    ),
+    ID_DEPRECATED: (
+        "withdrawn by Microsoft — a replacement built-in must be selected"
+    ),
+    ID_MANAGED_CONTROL: (
+        "Microsoft Managed Control — operated and attested by Microsoft, "
+        "not deployable as tenant enforcement"
     ),
 }
 
@@ -567,6 +576,11 @@ def classify_policy_id(policy_id: str, catalog) -> str:
     identifier. Format now only answers for identifiers the catalog cannot
     recognise, where it still does useful work: it separates "an ID this
     snapshot does not have" from "not an identifier at all".
+
+    A definition Azure has *retired* is reported as :data:`ID_DEPRECATED`
+    rather than as unknown. It is still excluded - a withdrawn built-in must
+    never be proposed for new governance - but the customer's next action
+    differs: find the replacement, rather than distrust the citation.
     """
     if not policy_id or not policy_id.strip():
         return ID_EMPTY
@@ -581,6 +595,19 @@ def classify_policy_id(policy_id: str, catalog) -> str:
             known = bool(checker(guid))
 
     if not known:
+        is_managed = getattr(catalog, "is_managed_control", None) if catalog else None
+        if callable(is_managed) and is_managed(guid):
+            # Microsoft attestation, not a missing policy. It is still excluded
+            # from the initiative - it enforces nothing - but calling it
+            # "unknown" would report the Microsoft-attested half of the answer
+            # as broken data.
+            return ID_MANAGED_CONTROL
+        is_deprecated = getattr(catalog, "is_deprecated", None) if catalog else None
+        if callable(is_deprecated) and is_deprecated(guid):
+            # Retired, not imaginary. The customer needs a migration, not a
+            # correction, and saying "no such policy" about something Azure
+            # shipped for years is its own kind of wrong answer.
+            return ID_DEPRECATED
         if not _looks_like_guid(guid):
             return ID_MALFORMED
         if catalog is None:

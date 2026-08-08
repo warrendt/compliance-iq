@@ -175,6 +175,15 @@ class PolicyCatalogService:
         # "is this already covered by an initiative you have?" is a lookup
         # rather than a scan of 15,000 membership references.
         self._definition_to_initiatives: Dict[str, List[str]] = {}
+        # Definitions Microsoft has retired. Held apart from the recommendable
+        # corpus so a withdrawn policy can be named as withdrawn instead of
+        # being reported as though it never existed.
+        self._deprecated: Dict[str, str] = {}
+        # Microsoft Managed Controls (policyType: Static). Not deployable, but
+        # they make up every initiative member the definitions array cannot
+        # resolve, and they are Microsoft attestation - a Category D answer,
+        # not missing data.
+        self._managed_controls: Dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Loading / indexing
@@ -205,6 +214,8 @@ class PolicyCatalogService:
                 # catalog was taken cannot be defended.
                 self._snapshot_date = str(data.get("generated_at") or "")
                 self._ingest_initiatives(data.get("initiatives") or [])
+                self._ingest_deprecated(data.get("deprecated") or [])
+                self._ingest_managed_controls(data.get("managed_controls") or [])
             else:
                 self._source = "snapshot"
             logger.info(
@@ -714,6 +725,89 @@ class PolicyCatalogService:
         index as an absence of coverage would be the same lie as a silent drop.
         """
         return self.initiative_count > 0
+
+    # ------------------------------------------------------------------
+    # Deprecated definitions
+    # ------------------------------------------------------------------
+    def _ingest_deprecated(self, deprecated: List[Dict[str, Any]]) -> None:
+        self._deprecated = {}
+        for entry in deprecated or []:
+            name = str(entry.get("name") or "").strip()
+            if name:
+                self._deprecated[name] = str(entry.get("display_name") or "").strip()
+
+    def is_deprecated(self, name: str) -> bool:
+        """True if Azure once shipped this built-in and has since retired it.
+
+        Retired definitions are deliberately absent from the recommendable
+        corpus - proposing one for new governance would be wrong. But "Microsoft
+        withdrew this" and "this does not exist" are different answers: the
+        first points a customer at a migration, the second at a fabricated
+        citation. Without this the product could only give the second.
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return False
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return segment in self._deprecated
+
+    def deprecated_display_name(self, name: str) -> str:
+        """What the retired definition used to be called, for the explanation."""
+        if not self._loaded:
+            self.load()
+        if not name:
+            return ""
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._deprecated.get(segment, "")
+
+    @property
+    def deprecated_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._deprecated)
+
+    # ------------------------------------------------------------------
+    # Microsoft Managed Controls
+    # ------------------------------------------------------------------
+    def _ingest_managed_controls(self, managed: List[Dict[str, Any]]) -> None:
+        self._managed_controls = {}
+        for entry in managed or []:
+            name = str(entry.get("name") or "").strip()
+            if name:
+                self._managed_controls[name] = str(entry.get("display_name") or "").strip()
+
+    def is_managed_control(self, name: str) -> bool:
+        """True if this identifier is a Microsoft Managed Control.
+
+        These carry no deployable effect - the control is operated and attested
+        by Microsoft, not enforced in the customer's tenant - so they must never
+        enter an initiative as though they were enforcement. But they are also
+        not errors: they account for all 327 of the initiative members the
+        definitions array cannot resolve. Reporting them as unknown would
+        describe a third of MCSB's membership as broken data when it is in fact
+        the Microsoft-attested half of the answer.
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return False
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return segment in self._managed_controls
+
+    def managed_control_display_name(self, name: str) -> str:
+        if not self._loaded:
+            self.load()
+        if not name:
+            return ""
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._managed_controls.get(segment, "")
+
+    @property
+    def managed_control_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._managed_controls)
 
     @property
     def source(self) -> str:

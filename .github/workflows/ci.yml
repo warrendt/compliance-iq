@@ -102,6 +102,7 @@ jobs:
             app/tests/test_gold_fixture_integrity.py \
             app/tests/test_acceptance_invariants.py \
             app/tests/test_catalog_status_route.py \
+            app/tests/test_catalog_identifier_kinds.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests
