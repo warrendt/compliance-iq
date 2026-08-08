@@ -50,7 +50,15 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
         # silent no-op (it would fall back to confidence-only filtering).
         "control_type": m.get("control_type"),
         "coverage_category": m.get("coverage_category"),
+        "coverage_display": m.get("coverage_display"),
         "azure_enforceable": m.get("azure_enforceable", False),
+        # A control in scope for Azure that retrieved nothing usable, and the
+        # candidate IDs that failed validation. Carried so a recall failure and a
+        # silently-dropped GUID stay visible to the reviewer instead of being
+        # indistinguishable from a control that never needed enforcement.
+        "coverage_gap": m.get("coverage_gap", False),
+        "dropped_policy_ids": m.get("dropped_policy_ids", []),
+        "outside_step": m.get("outside_step"),
         # Gold-workbook fields produced by the classification and enrichment
         # stages. They are what makes a "no policy" verdict actionable — the
         # reason it cannot be enforced and the evidence that satisfies it
@@ -71,51 +79,87 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _render_manual_register(policy: Dict[str, Any]) -> None:
-    """Render the non-Azure-enforceable controls as a separate manual register.
+    """Render the controls Azure cannot address as a separate manual register.
 
-    These controls are deliberately excluded from the initiative (backend
-    coverage gate). This section lists them for manual attestation, completely
-    separate from the deployable Azure Policy artifacts.
+    Only categories C and D appear here. B is *partial* Azure coverage — it
+    emits policies and enters the initiative — so listing it as a manual control
+    would tell the customer to do work Azure is already doing.
     """
     manual = policy.get("manual_controls") or []
     summary = policy.get("coverage_summary") or {}
 
-    st.markdown("#### 🚫 Controls Not Enforceable by Azure Policy")
+    st.markdown("#### 🚫 Controls Not Addressable by Azure")
     st.markdown(
-        "These controls were **excluded from the initiative** because Azure Policy "
-        "cannot technically enforce them — they are process, legal, contractual, "
-        "or Microsoft-operated controls. Track them here for **manual "
-        "attestation**; they carry no Azure Policy definitions. Category **D** is "
-        "already **compliant by inheritance** — Microsoft operates and certifies "
-        "those controls, so they need no customer action."
+        "These controls were **excluded from the initiative** because Azure "
+        "cannot technically address them — they are process, legal, "
+        "contractual, or Microsoft-operated controls. Track them here for "
+        "**manual attestation**; they carry no Azure Policy definitions. "
+        "Category **D** is already **compliant by inheritance** — Microsoft "
+        "operates and certifies those controls, so they need no customer action."
     )
 
     if summary:
         total = summary.get("total", 0)
         pct = summary.get("azure_enforceable_pct", 0.0)
+        enforced = summary.get("A_AzurePolicy", 0)
+        partial = summary.get("B_AzureConfig", 0)
+        covered = summary.get("azure_enforceable", enforced + partial)
         attested = summary.get("D_MicrosoftAttestation", 0)
         compliant = summary.get("compliant", 0)
         compliant_pct = summary.get("compliant_pct", 0.0)
-        open_actions = max(len(manual) - attested, 0)
+        open_actions = summary.get("C_Process", 0)
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("A · Azure Policy", summary.get("A_AzurePolicy", 0), help="Enforceable — in the initiative")
-        c2.metric("B · Azure config", summary.get("B_AzureConfig", 0), help="Azure-configurable, not via Policy")
-        c3.metric("C · Process", summary.get("C_Process", 0), help="Process / legal / organisational")
+        c1.metric(
+            "A · Azure Policy enforced",
+            enforced,
+            help="Enforced by Azure Policy — in the initiative",
+        )
+        c2.metric(
+            "B · Azure/Entra partial",
+            partial,
+            help=(
+                "Substantially covered by Azure Policy or Entra config, and in "
+                "the initiative; full coverage needs a step outside Azure Policy"
+            ),
+        )
+        c3.metric("C · Process", summary.get("C_Process", 0), help="Process / organisational")
         c4.metric(
-            "D · MS attestation",
+            "D · Microsoft attested",
             attested,
             help="Microsoft-operated — compliant by inheritance, no customer action",
         )
         st.caption(
             f"{total} control(s) total · **{compliant} ({compliant_pct}%)** compliant "
-            f"— {summary.get('A_AzurePolicy', 0)} enforced by Azure Policy ({pct}%) "
-            f"plus {attested} inherited from Microsoft's attestation · "
-            f"{open_actions} open customer action(s) in B/C."
+            f"— {covered} covered by Azure ({pct}%), of which {enforced} are fully "
+            f"enforced by policy and {partial} are partial, plus {attested} "
+            f"inherited from Microsoft's attestation · "
+            f"{open_actions} open customer action(s) in C."
         )
+
+        # Honest reporting: a control Azure should cover but for which nothing
+        # was found is a gap to close, not a category judgement, and a rejected
+        # identifier is enforcement that was lost rather than never needed.
+        gaps = summary.get("coverage_gaps", 0)
+        dropped = summary.get("dropped_policy_ids", 0)
+        if gaps or dropped:
+            notes = []
+            if gaps:
+                notes.append(
+                    f"**{gaps} control(s)** are in scope for Azure but no usable "
+                    "policy was found — genuine coverage gaps to close with a "
+                    "custom definition or a compensating control."
+                )
+            if dropped:
+                notes.append(
+                    f"**{dropped} candidate policy identifier(s)** were rejected "
+                    "in validation (malformed, absent from the catalog, or "
+                    "non-enforceable) and are reported against their controls."
+                )
+            st.warning("  \n".join(notes))
 
     if not manual:
         st.success(
-            "✅ Every mapped control is Azure-Policy enforceable — the manual "
+            "✅ Every mapped control is addressable by Azure — the manual "
             "register is empty."
         )
         return
@@ -124,12 +168,13 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "control_id": "Control ID",
         "control_name": "Control",
         "control_type": "Type",
-        "coverage_category": "Coverage",
+        "coverage_display": "Coverage",
+        "coverage_category": "Category code",
         "mcsb_control_id": "MCSB",
         "responsibility": "Responsibility",
         "enforcement_plane": "Enforcement Plane",
         "evidence_source": "Evidence",
-        "reason": "Why not enforceable",
+        "reason": "Why not Azure-addressable",
     }
     df = pd.DataFrame(manual)
     ordered = [c for c in _labels if c in df.columns]

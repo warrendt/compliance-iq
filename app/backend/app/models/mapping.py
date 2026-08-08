@@ -53,17 +53,63 @@ class ControlMapping(BaseModel):
     ] = Field(
         default=None,
         description=(
-            "How this control is covered. A_AzurePolicy: enforceable via Azure "
-            "Policy (only category that keeps azure_policy_ids). B_AzureConfig: "
-            "Azure-configurable but not via policy. C_Process: process/legal/HR/"
-            "contractual. D_MicrosoftAttestation: Microsoft-operated. None for "
-            "legacy mappings (confidence-only gating)."
+            "How this control is met — independent of who owns it (see "
+            "responsibility). A_AzurePolicy: enforced by Azure Policy. "
+            "B_AzureConfig: Azure/Entra configuration covers this partially; it "
+            "still emits policies, and full coverage needs a step outside Azure "
+            "Policy. C_Process: process/legal/HR/contractual. "
+            "D_MicrosoftAttestation: Microsoft-operated and attested. A and B "
+            "keep azure_policy_ids; C and D never do. None for legacy mappings "
+            "(confidence-only gating)."
+        ),
+    )
+
+    coverage_display: Optional[str] = Field(
+        default=None,
+        description=(
+            "Analyst-facing name for coverage_category: 'Azure Policy enforced', "
+            "'Azure/Entra config - partial', 'Process / organisational', "
+            "'Microsoft attested'. The A_/B_/C_/D_ codes are identifiers only."
         ),
     )
 
     azure_enforceable: bool = Field(
         default=False,
-        description="True only when coverage_category == 'A_AzurePolicy'",
+        description=(
+            "True when Azure covers this control — coverage_category is "
+            "A_AzurePolicy or B_AzureConfig. B is partial coverage, not absent "
+            "coverage, so it counts here and emits policies too."
+        ),
+    )
+
+    coverage_gap: bool = Field(
+        default=False,
+        description=(
+            "True when the control is in scope for Azure but no usable policy "
+            "survived retrieval and validation. Reported explicitly so a recall "
+            "failure cannot hide inside a category label."
+        ),
+    )
+
+    outside_step: Optional[str] = Field(
+        default=None,
+        description=(
+            "For B_AzureConfig: the configuration step outside Azure Policy that "
+            "full coverage still needs — an Entra Conditional Access policy, a "
+            "Purview labelling scheme, Customer Lockbox. This is what makes B "
+            "'partial' rather than 'uncovered': the customer is told what to go "
+            "and configure, not merely that a shortfall exists."
+        ),
+    )
+
+    dropped_policy_ids: List[dict] = Field(
+        default_factory=list,
+        description=(
+            "Candidate policy IDs discarded during validation, each with the "
+            "reason (malformed GUID, absent from catalog, non-enforceable "
+            "placeholder). Never silently dropped: a control that lost its "
+            "enforcement to a typo must not look like one that never needed any."
+        ),
     )
 
     coverage_reason: Optional[str] = Field(

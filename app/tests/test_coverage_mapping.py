@@ -235,16 +235,28 @@ def test_microsoft_attested_controls_are_compliant_not_gaps():
     assert all("no customer action required" in r for r in reasons)
 
 
-def test_b_and_c_remain_open_actions():
-    """Only D is inherited-compliant; B and C stay outside the compliant count."""
+def test_only_c_stays_an_open_customer_action():
+    """C is the only open customer action; B is covered, D is inherited.
+
+    B was previously counted with C as "not compliant" because the code stripped
+    its policies. B is *partial Azure coverage* — it emits policies and enters
+    the initiative — so it belongs on the covered side of the ledger, with the
+    outside step named rather than the whole control written off.
+    """
     mappings = [
         _mapping("B-1", [], coverage_category=coverage.COVERAGE_B),
         _mapping("C-1", [], coverage_category=coverage.COVERAGE_C),
     ]
     summary = coverage.coverage_summary(mappings)
     assert summary["inherited_compliant"] == 0
-    assert summary["compliant"] == 0
-    assert summary["compliant_pct"] == 0.0
+    assert summary["azure_enforceable"] == 1  # B counts as covered by Azure
+    assert summary["azure_partial"] == 1
+    assert summary["compliant"] == 1
+    assert summary["compliant_pct"] == 50.0
+
+    # And only C is routed to the manual register.
+    rows = coverage.manual_register_rows(mappings)
+    assert {r["control_id"] for r in rows} == {"C-1"}
 
 
 def test_coverage_summary_empty_mappings_do_not_divide_by_zero():
@@ -329,11 +341,23 @@ def test_deploy_readme_reports_attested_controls_as_compliant():
 class _Classification:
     """Duck-typed stand-in for ControlClassification."""
 
-    def __init__(self, category, responsibility="Customer", reason="", evidence=""):
+    def __init__(
+        self,
+        category,
+        responsibility="Customer",
+        reason="",
+        evidence="",
+        outside_step="",
+    ):
         self.coverage_category = category
         self.responsibility = responsibility
         self.reason = reason
         self.evidence_source = evidence
+        self.outside_step = outside_step
+
+    @property
+    def requires_outside_step(self):
+        return bool((self.outside_step or "").strip())
 
 
 def test_classification_demotes_a_control_that_retrieved_policies():
@@ -387,11 +411,11 @@ def test_classification_rescues_a_control_the_extractor_mistyped():
 
 
 def test_ab_split_is_settled_by_evidence_not_by_the_classifier():
-    """Measured: the blind stage recovers only 12.5% of gold A controls.
+    """Measured: the blind stage put 19 of 24 gold-A controls in B.
 
     Whether a built-in definition exists is a fact about the catalog, not about
     the control text, so a classification of B still becomes A when enforceable
-    IDs survive, and a classification of A degrades to B when none do.
+    IDs survive and nothing is outstanding outside Azure Policy.
     """
     promoted = _mapping("X-1", [REAL_GUID], control_type="Technical")
     coverage.apply_coverage(
@@ -404,7 +428,59 @@ def test_ab_split_is_settled_by_evidence_not_by_the_classifier():
         demoted, "Technical", _FakeCatalog(), _Classification(coverage.COVERAGE_A)
     )
     assert demoted.coverage_category == coverage.COVERAGE_B
-    assert demoted.azure_enforceable is False
+    # Still in scope for Azure — the split describes how the control is covered,
+    # it does not decide whether Azure covers it at all.
+    assert demoted.azure_enforceable is True
+    # ...but the fact that nothing was retrieved is reported, not absorbed into
+    # the category label. This is the defect the old derivation created: a recall
+    # miss was indistinguishable from a considered judgement of "B".
+    assert demoted.coverage_gap is True
+
+
+def test_partial_coverage_is_decided_by_the_named_outside_step():
+    """What actually makes a control category B.
+
+    In the gold mapping 18 of 21 B controls carry policy IDs, several with Deny.
+    So B is *Azure coverage plus a remaining step*, not absent coverage — and
+    deriving B from "retrieval found nothing" would make it unreachable. The
+    classification is asked for the missing step directly, which is a question
+    it can answer from the control text, unlike the A/B label itself.
+    """
+    partial = _mapping("CA-1", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        partial,
+        "Technical",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_A,  # even an A verdict yields to the outstanding step
+            outside_step="Entra Conditional Access policy requiring compliant devices",
+        ),
+    )
+    assert partial.coverage_category == coverage.COVERAGE_B
+    # Partial, not uncovered: it keeps its policies and enters the initiative.
+    assert partial.azure_policy_ids == [REAL_GUID]
+    assert partial.azure_enforceable is True
+    assert partial.coverage_gap is False
+    # And the customer is told what to go and configure.
+    assert partial.outside_step.startswith("Entra Conditional Access")
+    assert "Entra Conditional Access" in coverage._reason_for(partial)
+
+
+def test_absent_outside_step_preserves_the_previously_measured_behaviour():
+    """The new signal degrades to the old rule when it is not supplied.
+
+    Guards against the change silently regressing a measured baseline: with no
+    outside_step, a control that retrieved policies is still A.
+    """
+    mapping = _mapping("X-3", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        "Technical",
+        _FakeCatalog(),
+        _Classification(coverage.COVERAGE_B, outside_step=""),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_A
+    assert mapping.outside_step is None
 
 
 def test_classification_populates_the_gold_workbook_fields():
@@ -590,3 +666,194 @@ def test_hallucinated_policy_ids_are_not_treated_as_enforceable():
 
     assert mapping.azure_policy_ids == []
     assert mapping.coverage_category != coverage.COVERAGE_A
+
+
+# ── The A/B emission rule, and honest reporting of what was lost ──────────────
+
+def test_b_controls_keep_their_policies():
+    """A and B are identical for policy emission.
+
+    The previous code cleared azure_policy_ids for every category except A,
+    which deleted real enforcement from every B control on every framework.
+    B is *partial* Azure coverage — substantially covered by Azure Policy or
+    Entra configuration, with a remaining step outside Azure Policy — not
+    absent coverage. The gold mapping makes this concrete: 18 of its 21 B
+    controls carry policy IDs, several with Deny.
+    """
+    mapping = _mapping("B-KEEP", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        "Technical",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_B,
+            outside_step="Entra Conditional Access session controls",
+        ),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_B
+    assert mapping.azure_policy_ids == [REAL_GUID]
+    assert mapping.azure_enforceable is True
+    assert mapping.coverage_gap is False
+
+
+def test_c_and_d_never_emit_policies():
+    """The one thing that must never regress: non-Azure controls stay out."""
+    for category in (coverage.COVERAGE_C, coverage.COVERAGE_D):
+        mapping = _mapping(f"{category}-1", [REAL_GUID], control_type="Governance")
+        coverage.apply_coverage(
+            mapping, "Governance", _FakeCatalog(), _Classification(category)
+        )
+        assert mapping.coverage_category == category
+        assert mapping.azure_policy_ids == []
+        assert mapping.azure_enforceable is False
+        # Not a gap: nothing was expected here, so flagging one would be noise.
+        assert mapping.coverage_gap is False
+
+
+def test_categories_carry_their_analyst_facing_names():
+    """The A_/B_/C_/D_ codes are identifiers; the workbook's names are the output.
+
+    'Azure/Entra config - partial' in particular: the word "partial" is the whole
+    meaning of category B, and reading it as "no policy" is what caused the
+    stripping bug.
+    """
+    assert coverage.coverage_display_name(coverage.COVERAGE_A) == "Azure Policy enforced"
+    assert (
+        coverage.coverage_display_name(coverage.COVERAGE_B)
+        == "Azure/Entra config - partial"
+    )
+    assert coverage.coverage_display_name(coverage.COVERAGE_C) == "Process / organisational"
+    assert coverage.coverage_display_name(coverage.COVERAGE_D) == "Microsoft attested"
+
+    mapping = _mapping("DISP-1", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _FakeCatalog())
+    assert mapping.coverage_display == "Azure Policy enforced"
+
+
+def test_malformed_guid_is_reported_not_silently_dropped():
+    """The thesis case, taken verbatim from the analyst's own workbook.
+
+    17k78e20-... appears on two controls in the source mapping; the letter 'k'
+    is not hexadecimal. Its JSON transcription discarded it without a word,
+    leaving a row whose effects no longer lined up with its policies. That is
+    precisely the failure this product exists to prevent, so the identifier is
+    a permanent test case: it must be rejected *and reported*, never removed
+    quietly.
+    """
+    malformed = "17k78e20-9358-41c9-923c-fb736d382a12"
+    assert coverage.classify_policy_id(malformed, _FakeCatalog()) == coverage.ID_MALFORMED
+
+    mapping = _mapping("GUID-1", [REAL_GUID, malformed], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _FakeCatalog())
+
+    # The valid one survives...
+    assert mapping.azure_policy_ids == [REAL_GUID]
+    # ...and the mistyped one is named, with the reason, on the control it came
+    # from — the difference between a reported gap and a silent loss.
+    assert len(mapping.dropped_policy_ids) == 1
+    dropped = mapping.dropped_policy_ids[0]
+    assert dropped["policy_id"] == malformed
+    assert dropped["reason"] == coverage.ID_MALFORMED
+    assert dropped["detail"]
+
+    rows = coverage.dropped_policy_rows([mapping])
+    assert rows and rows[0]["control_id"] == "GUID-1"
+    assert rows[0]["policy_id"] == malformed
+
+
+def test_hallucinated_guid_is_reported_as_absent_from_the_catalog():
+    fabricated = "deadbeef-0000-0000-0000-00000000dead"
+
+    class _StrictCatalog(_FakeCatalog):
+        def exists(self, name):
+            guid = (name or "").strip().rstrip("/").rsplit("/", 1)[-1]
+            return guid != fabricated
+
+    mapping = _mapping("GUID-2", [fabricated], control_type="Technical")
+    coverage.apply_coverage(
+        mapping, "Technical", _StrictCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+
+    assert mapping.azure_policy_ids == []
+    assert [d["reason"] for d in mapping.dropped_policy_ids] == [coverage.ID_UNKNOWN]
+    # In scope for Azure, nothing usable retrieved: an explicit gap.
+    assert mapping.coverage_gap is True
+
+
+def test_retrieval_miss_surfaces_as_a_gap_rather_than_a_category():
+    """A recall failure must not disguise itself as a considered judgement.
+
+    Under the old derivation, "in scope for Azure but retrieval found nothing"
+    was written out as category B with no policies — identical on the page to a
+    control an analyst had deliberately judged partially covered.
+    """
+    mapping = _mapping("GAP-1", [], control_type="Technical")
+    coverage.apply_coverage(
+        mapping, "Technical", _FakeCatalog(), _Classification(coverage.COVERAGE_A)
+    )
+    assert mapping.coverage_gap is True
+
+    rows = coverage.coverage_gap_rows([mapping])
+    assert len(rows) == 1
+    assert rows[0]["control_id"] == "GAP-1"
+    assert "no candidate policy was retrieved" in rows[0]["reason"]
+
+    summary = coverage.coverage_summary([mapping])
+    assert summary["coverage_gaps"] == 1
+
+
+def test_responsibility_is_independent_of_coverage_category():
+    """Two axes, not one.
+
+    The source workbook states it plainly: the category describes HOW a control
+    is met, not WHO owns it — and 30 of its process/organisational controls are
+    Microsoft-owned. Inferring one axis from the other would misattribute every
+    one of them.
+    """
+    mapping = _mapping("ORTH-1", [], control_type="Governance")
+    coverage.apply_coverage(
+        mapping,
+        "Governance",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_C,
+            reason="Microsoft operates the process on the customer's behalf.",
+            responsibility="Microsoft",
+        ),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_C
+    assert mapping.responsibility == "Microsoft"
+
+
+def test_gold_b_rows_are_reproducible_in_shape():
+    """The workbook's own B rows must be expressible by this engine.
+
+    Not a count target — a shape check. 18 of the gold mapping's 21
+    ``B_AzureConfig`` controls carry policy definition IDs, and several carry
+    Deny effects on the SLZ deploy-time plane. Before this fix the engine could
+    not produce such a row at all: B was defined as "retrieval found nothing",
+    so a B control with three Deny policies was unrepresentable.
+    """
+    mapping = _mapping("2.3.2.2", [REAL_GUID], control_type="Technical")
+    coverage.apply_coverage(
+        mapping,
+        "Technical",
+        _FakeCatalog(),
+        _Classification(
+            coverage.COVERAGE_B,
+            outside_step="External Key Management (EKM) key lifecycle procedures",
+        ),
+    )
+    assert mapping.coverage_category == coverage.COVERAGE_B
+    assert mapping.coverage_display == "Azure/Entra config - partial"
+    assert mapping.azure_policy_ids  # carries enforcement, like the gold row
+    assert mapping.azure_enforceable is True
+    assert mapping.coverage_gap is False
+    assert mapping.outside_step
+
+    # And it belongs in the initiative, not the manual register.
+    assert coverage.manual_register_rows([mapping]) == []
+    assert coverage.coverage_gap_rows([mapping]) == []
+    summary = coverage.coverage_summary([mapping])
+    assert summary["azure_partial"] == 1
+    assert summary["azure_enforceable"] == 1

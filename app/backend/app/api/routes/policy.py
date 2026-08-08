@@ -66,14 +66,19 @@ def _deploy_readme(
     if coverage_counts:
         total = coverage_counts.get("total", 0)
         pct = coverage_counts.get("azure_enforceable_pct", 0.0)
+        enforced = coverage_counts.get("A_AzurePolicy", 0)
+        partial = coverage_counts.get("B_AzureConfig", 0)
+        covered = coverage_counts.get("azure_enforceable", enforced + partial)
         attested = coverage_counts.get("D_MicrosoftAttestation", 0)
         compliant = coverage_counts.get("compliant", 0)
         compliant_pct = coverage_counts.get("compliant_pct", 0.0)
+        gaps = coverage_counts.get("coverage_gaps", 0)
+        dropped = coverage_counts.get("dropped_policy_ids", 0)
         rows = [
-            ("A — Azure Policy enforceable", coverage_counts.get("A_AzurePolicy", 0)),
-            ("B — Azure configurable (no policy)", coverage_counts.get("B_AzureConfig", 0)),
-            ("C — Process / legal / organisational", coverage_counts.get("C_Process", 0)),
-            ("D — Microsoft-operated (attestation)", attested),
+            ("A — Azure Policy enforced", enforced),
+            ("B — Azure/Entra config (partial)", partial),
+            ("C — Process / organisational", coverage_counts.get("C_Process", 0)),
+            ("D — Microsoft attested", attested),
         ]
         if coverage_counts.get("unclassified", 0):
             rows.append(("Unclassified (legacy)", coverage_counts["unclassified"]))
@@ -87,18 +92,41 @@ def _deploy_readme(
             if attested
             else ""
         )
+        # Gaps and rejected identifiers are reported, never suppressed: a control
+        # that lost its enforcement must not read the same as one that never
+        # needed any.
+        gap_line = (
+            f"\n**{gaps} control(s)** are in scope for Azure but no usable policy "
+            "was found for them. These are genuine coverage gaps, not category "
+            "judgements, and are listed so they can be closed with a custom "
+            "definition or a compensating control.\n"
+            if gaps
+            else ""
+        )
+        dropped_line = (
+            f"\n**{dropped} candidate policy identifier(s)** were rejected during "
+            "validation (malformed GUID, absent from the catalog, or a "
+            "non-enforceable placeholder) and are reported against the controls "
+            "they came from rather than discarded.\n"
+            if dropped
+            else ""
+        )
         coverage_section = (
             "\n## Coverage summary\n\n"
-            f"Of {total} control(s), **{coverage_counts.get('A_AzurePolicy', 0)} "
-            f"({pct}%)** are enforceable via Azure Policy and included in the "
-            "initiative. The rest are not Azure-Policy enforceable and are listed "
-            f"in `{stem}_manual_controls.csv` for manual attestation — they are "
+            f"Of {total} control(s), **{covered} ({pct}%)** are covered by Azure "
+            f"and included in the initiative — {enforced} enforced by Azure Policy "
+            f"(A) and {partial} partially covered by Azure/Entra configuration "
+            "(B), which additionally need a configuration step outside Azure "
+            "Policy. The rest are not Azure-addressable and are listed in "
+            f"`{stem}_manual_controls.csv` for manual attestation — they are "
             "**not** false-mapped to a catch-all policy.\n\n"
             f"**{compliant} of {total} ({compliant_pct}%)** require no customer "
-            "remediation: category A (enforced by Azure Policy) plus category D "
-            "(inherited from Microsoft's attestation). Categories B and C remain "
-            "open customer actions.\n"
+            "remediation: categories A and B (covered by Azure) plus category D "
+            "(inherited from Microsoft's attestation). Category C remains an open "
+            "customer action.\n"
             f"{attested_line}"
+            f"{gap_line}"
+            f"{dropped_line}"
             "\n| Coverage category | Controls |\n"
             "| --- | --- |\n"
             f"{table}\n"
@@ -529,6 +557,8 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             "sovereignty_mappings": len(sov_mappings),
             "archetypes": result,
             "manual_controls": coverage.manual_register_rows(request.mappings),
+            "coverage_gaps": coverage.coverage_gap_rows(request.mappings),
+            "dropped_policy_ids": coverage.dropped_policy_rows(request.mappings),
             "coverage_summary": coverage.coverage_summary(request.mappings),
         }
 

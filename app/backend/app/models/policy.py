@@ -263,7 +263,12 @@ class PolicyGenerationRequest(BaseModel):
 
 
 class ManualControlEntry(BaseModel):
-    """A control that Azure Policy cannot enforce, routed to the manual register.
+    """A control Azure cannot address, routed to the manual register.
+
+    Only ``C_Process`` and ``D_MicrosoftAttestation`` appear here.
+    ``B_AzureConfig`` is *partial* Azure coverage — it emits policies and enters
+    the initiative — so listing it as a manual control would tell the customer
+    to do work Azure is already doing.
 
     These controls are deliberately excluded from the generated initiative
     (their ``azure_policy_ids`` are empty) and surfaced here as a completely
@@ -277,12 +282,60 @@ class ManualControlEntry(BaseModel):
     )
     coverage_category: str = Field(
         ...,
-        description="Coverage taxonomy: B_AzureConfig, C_Process, or D_MicrosoftAttestation",
+        description="Coverage taxonomy: C_Process or D_MicrosoftAttestation",
+    )
+    coverage_display: str = Field(
+        "",
+        description=(
+            "Analyst-facing category name: 'Process / organisational' or "
+            "'Microsoft attested'"
+        ),
     )
     mcsb_control_id: str = Field("", description="Associated MCSB control ID, if any")
-    reason: str = Field(
-        ..., description="Why the control is not Azure-Policy enforceable"
+    responsibility: str = Field(
+        "",
+        description=(
+            "Who owns the control — Customer, Microsoft or Shared. Independent "
+            "of coverage_category: a process control may be Microsoft-owned."
+        ),
     )
+    evidence_source: str = Field(
+        "",
+        description=(
+            "Where the evidence lives — a Microsoft attestation clause for "
+            "D_MicrosoftAttestation, or the customer's GRC artefact for C_Process"
+        ),
+    )
+    enforcement_plane: str = Field(
+        "", description="Where the control is enforced; 'None (manual control)' here"
+    )
+    reason: str = Field(
+        ..., description="Why the control is not addressable by Azure"
+    )
+
+
+class CoverageGapEntry(BaseModel):
+    """A control in scope for Azure for which no usable policy was found.
+
+    Distinct from a manual control: Azure *should* be able to address this, but
+    retrieval returned nothing, or everything it returned failed validation.
+    Reported explicitly so a recall failure cannot be mistaken for a considered
+    category judgement — the exact confusion the previous A/B derivation caused.
+    """
+
+    control_id: str = Field(..., description="External framework control ID")
+    control_name: str = Field("", description="External framework control name")
+    coverage_category: str = Field("", description="A_AzurePolicy or B_AzureConfig")
+    coverage_display: str = Field("", description="Analyst-facing category name")
+    outside_step: str = Field(
+        "",
+        description="Named configuration step outside Azure Policy, if one was identified",
+    )
+    rejected_policy_ids: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Candidate identifiers discarded in validation, with reasons",
+    )
+    reason: str = Field("", description="Why this control has no usable policy")
 
 
 class PolicyGenerationResponse(BaseModel):
@@ -312,14 +365,30 @@ class PolicyGenerationResponse(BaseModel):
 
     manual_controls: List[ManualControlEntry] = Field(
         default_factory=list,
-        description="Controls that Azure Policy cannot enforce — excluded from the "
-        "initiative and listed here as a separate manual-attestation register",
+        description="Controls Azure cannot address (C_Process, "
+        "D_MicrosoftAttestation) — excluded from the initiative and listed here "
+        "as a separate manual-attestation register",
+    )
+    coverage_gaps: List[CoverageGapEntry] = Field(
+        default_factory=list,
+        description="Controls in scope for Azure for which no usable policy was "
+        "found. Reported separately from manual controls so a retrieval failure "
+        "is never presented as a category judgement",
+    )
+    dropped_policy_ids: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Every candidate policy identifier discarded during "
+        "validation, with the control it came from and the reason (malformed "
+        "GUID, absent from the catalog, non-enforceable placeholder). Nothing is "
+        "dropped silently: a control that lost enforcement to a typo must not "
+        "look identical to one that never needed any",
     )
     coverage_summary: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Per-coverage-category counts, the Azure-enforceable share "
-        "(A only) and the compliant share (A + D, where D is inherited from "
-        "Microsoft's attestation)",
+        description="Per-coverage-category counts, the Azure-covered share "
+        "(A + B) and the compliant share (A + B + D, where D is inherited from "
+        "Microsoft's attestation), plus coverage_gaps and dropped_policy_ids "
+        "counts",
     )
 
     model_config = ConfigDict(json_schema_extra={

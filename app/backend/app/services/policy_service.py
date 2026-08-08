@@ -212,6 +212,8 @@ class PolicyGenerationService:
             parameterized_requirements=parameterized_requirements,
             warnings=warnings,
             manual_controls=coverage.manual_register_rows(request.mappings),
+            coverage_gaps=coverage.coverage_gap_rows(request.mappings),
+            dropped_policy_ids=coverage.dropped_policy_rows(request.mappings),
             coverage_summary=coverage.coverage_summary(request.mappings),
         )
 
@@ -252,13 +254,18 @@ class PolicyGenerationService:
         coverage_excluded = 0
 
         for mapping in mappings:
-            # Coverage gate: a control explicitly classified as non-enforceable
-            # (B_AzureConfig / C_Process / D_MicrosoftAttestation) never belongs in
-            # the initiative — it is routed to the manual register instead. Legacy
-            # mappings with coverage_category=None fall through to confidence-only
-            # gating, preserving existing behaviour.
+            # Coverage gate: only C_Process and D_MicrosoftAttestation are
+            # routed to the manual register. A_AzurePolicy and B_AzureConfig
+            # both belong in the initiative — B is *partial* Azure coverage, not
+            # absent coverage, and excluding it deleted real enforcement the
+            # customer is entitled to. Legacy mappings with coverage_category=
+            # None fall through to confidence-only gating, preserving existing
+            # behaviour.
             coverage_category = getattr(mapping, "coverage_category", None)
-            if coverage_category is not None and coverage_category != "A_AzurePolicy":
+            if (
+                coverage_category is not None
+                and coverage_category not in coverage.POLICY_BEARING_CATEGORIES
+            ):
                 coverage_excluded += 1
                 logger.debug(
                     f"Excluded {mapping.external_control_id} from initiative "
