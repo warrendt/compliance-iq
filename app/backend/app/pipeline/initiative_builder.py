@@ -8,6 +8,9 @@ Generates all Defender for Cloud regulatory compliance initiative artifacts:
   - Deploy-Initiative.ps1  (PowerShell script to import into Azure)
   - deploy-initiative.sh   (Azure CLI script)
   - mappings.csv     (complete mapping report)
+  - manual_register.csv     (C/D controls Azure does not enforce)
+  - coverage_gaps.csv       (in scope for Azure, nothing usable retrieved)
+  - dropped_policy_ids.csv  (every identifier discarded, and why)
 
 Output format matches the Oman CDC / SAMA pattern used by Defender for Cloud.
 """
@@ -109,6 +112,14 @@ def build_initiative_artifacts(
     report_path = out / "validation_report.json"
     _write_json(report_path, validation.model_dump())
     files_created.append(str(report_path))
+
+    # ── 9-11. The other half of the answer ────────────────────────────────
+    # An initiative on its own says what Azure enforces. These three say what it
+    # does not: the controls the customer must satisfy by other means, the ones
+    # that should have had a policy and did not, and every identifier that was
+    # rejected on the way. Omitting them is how a control that lost its
+    # enforcement ends up looking like one that never needed any.
+    files_created.extend(_write_coverage_reports(out, fw_safe, mappings))
 
     logger.info(f"Generated {len(files_created)} files in {out}/")
     return files_created
@@ -689,6 +700,120 @@ def _write_mappings_csv(
             })
 
     logger.info(f"Wrote mapping report: {csv_path}")
+
+
+class _RegisterView:
+    """Present a pipeline mapping under the attribute names coverage.py expects.
+
+    ``ControlPolicyMapping`` calls them ``control_id``/``control_title``; the
+    services-path ``ControlMapping`` calls them ``external_control_id``/
+    ``external_control_name``. Adapting is deliberate: the rules for what belongs
+    in the manual register, and the wording of each reason, are decisions that
+    must not diverge between the two entry points. Re-implementing them here is
+    how the pipeline path drifted from the taxonomy in the first place.
+    """
+
+    def __init__(self, mapping: ControlPolicyMapping):
+        self._m = mapping
+
+    def __getattr__(self, name):
+        return getattr(self._m, name)
+
+    @property
+    def external_control_id(self):
+        return self._m.control_id
+
+    @property
+    def external_control_name(self):
+        return self._m.control_title
+
+
+def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> str:
+    """Write rows to CSV, always including the header.
+
+    An empty file would be ambiguous - it could mean "nothing to report" or
+    "this step did not run". A header with no rows says the first one.
+    """
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    k: ("; ".join(str(x) for x in v) if isinstance(v, list) else v)
+                    for k, v in row.items()
+                }
+            )
+    logger.info(f"Wrote: {path} ({len(rows)} rows)")
+    return str(path)
+
+
+def _write_coverage_reports(
+    out: Path,
+    fw_safe: str,
+    mappings: list[ControlPolicyMapping],
+) -> list[str]:
+    """Write the manual register, coverage gaps and dropped identifiers."""
+    from app.services.coverage import (
+        coverage_gap_rows,
+        dropped_policy_rows,
+        manual_register_rows,
+    )
+
+    views = [_RegisterView(m) for m in mappings]
+    created: list[str] = []
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Manual_Register.csv",
+            [
+                "control_id",
+                "control_name",
+                "control_type",
+                "coverage_category",
+                "coverage_display",
+                "mcsb_control_id",
+                "responsibility",
+                "evidence_source",
+                "enforcement_plane",
+                "attestation_status",
+                "attestation_basis",
+                "attestation_citation",
+                "attestation_document",
+                "attestation_location",
+                "attestation_access",
+                "attestation_gap",
+                "reason",
+            ],
+            manual_register_rows(views),
+        )
+    )
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Coverage_Gaps.csv",
+            [
+                "control_id",
+                "control_name",
+                "coverage_category",
+                "coverage_display",
+                "outside_step",
+                "rejected_policy_ids",
+                "reason",
+            ],
+            coverage_gap_rows(views),
+        )
+    )
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Dropped_Policy_IDs.csv",
+            ["control_id", "control_name", "policy_id", "reason", "detail"],
+            dropped_policy_rows(views),
+        )
+    )
+
+    return created
 
 
 def _write_json(path: Path, data) -> None:

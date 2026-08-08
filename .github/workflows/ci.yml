@@ -96,6 +96,7 @@ jobs:
             app/tests/test_pipeline_policy_mapper.py \
             app/tests/test_initiative_builder_drops.py \
             app/tests/test_pipeline_cancellation.py \
+            app/tests/test_pipeline_manual_register.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests
