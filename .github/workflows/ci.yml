@@ -99,6 +99,8 @@ jobs:
             app/tests/test_pipeline_manual_register.py \
             app/tests/test_policy_initiatives.py \
             app/tests/test_sovereignty_procedural.py \
+            app/tests/test_gold_fixture_integrity.py \
+            app/tests/test_acceptance_invariants.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests

@@ -515,12 +515,23 @@ _GUID_CHARS = set("0123456789abcdef-")
 def _looks_like_guid(guid: str) -> bool:
     """Structural GUID check: 8-4-4-4-12 hexadecimal.
 
-    Deliberately strict. The source mapping workbook contains
-    ``17k78e20-9358-41c9-923c-fb736d382a12`` — the letter ``k`` is not
-    hexadecimal — and its JSON transcription discarded it without a word,
-    leaving a row whose effects no longer matched its policies. A mistyped
-    identifier is exactly the failure this product exists to catch, so it is
-    detected structurally and reported rather than quietly dropped.
+    **This is a fallback, not the authority.** It was previously documented as
+    "deliberately strict", on the belief that the workbook's
+    ``17k78e20-9358-41c9-923c-fb736d382a12`` was a mistyped identifier - the
+    letter ``k`` is not hexadecimal - and that catching it was the point.
+
+    That was wrong, and measurably so: ``az policy definition show`` returns it
+    as ``policyType: BuiltIn``, "Transparent Data Encryption on SQL databases
+    should be enabled". It is a real, live, deployable policy. The analyst was
+    right; the structural check would have thrown away a correct answer and
+    reported a genuine control as unenforceable.
+
+    So the catalog decides first, and this only answers the question the
+    catalog cannot: is an identifier the catalog has never heard of at least
+    shaped like one, or is it a hallucinated document title? It is the only
+    non-GUID-shaped name among 2,269 initiative members, which is precisely
+    what made a format-first rule dangerous - it is right almost every time,
+    and wrong exactly where it costs a customer a control.
     """
     low = guid.casefold()
     if len(low) != 36 or set(low) - _GUID_CHARS:
@@ -548,17 +559,37 @@ def classify_policy_id(policy_id: str, catalog) -> str:
     hallucinate an ID, and treating one as enforceable produced a mapping that
     contradicted itself — ``azure_enforceable=True`` with no effects and a
     manual enforcement plane, because enrichment could not find the definition.
+
+    **Order matters: the catalog is asked before the format check.** Azure ships
+    at least one real built-in whose name is not GUID-shaped
+    (``17k78e20-…``, verified live as BuiltIn). Checking format first rejected
+    it as malformed and reported a genuine, deployable policy as a lost
+    identifier. Format now only answers for identifiers the catalog cannot
+    recognise, where it still does useful work: it separates "an ID this
+    snapshot does not have" from "not an identifier at all".
     """
     if not policy_id or not policy_id.strip():
         return ID_EMPTY
     guid = normalise_policy_id(policy_id)
-    if not _looks_like_guid(guid):
-        return ID_MALFORMED
-    if catalog is None:
+
+    known = False
+    if catalog is not None:
+        checker = getattr(catalog, "identifier_exists", None) or getattr(
+            catalog, "exists", None
+        )
+        if callable(checker):
+            known = bool(checker(guid))
+
+    if not known:
+        if not _looks_like_guid(guid):
+            return ID_MALFORMED
+        if catalog is None:
+            return ID_OK
+        exists = getattr(catalog, "exists", None)
+        if callable(exists):
+            return ID_UNKNOWN
         return ID_OK
-    exists = getattr(catalog, "exists", None)
-    if callable(exists) and not exists(guid):
-        return ID_UNKNOWN
+
     is_non_enforceable = getattr(catalog, "is_non_enforceable", None)
     if callable(is_non_enforceable) and is_non_enforceable(guid):
         return ID_NON_ENFORCEABLE

@@ -790,24 +790,35 @@ def test_categories_carry_their_analyst_facing_names():
 
 
 def test_malformed_guid_is_reported_not_silently_dropped():
-    """The thesis case, taken verbatim from the analyst's own workbook.
+    """An identifier that is not an identifier at all must be named, not dropped.
 
-    17k78e20-... appears on two controls in the source mapping; the letter 'k'
-    is not hexadecimal. Its JSON transcription discarded it without a word,
-    leaving a row whose effects no longer lined up with its policies. That is
-    precisely the failure this product exists to prevent, so the identifier is
-    a permanent test case: it must be rejected *and reported*, never removed
-    quietly.
+    This was previously written around ``17k78e20-9358-41c9-923c-fb736d382a12``
+    from the analyst's workbook, on the belief that the letter 'k' made it a
+    typo and that catching it was the thesis of the product. That belief was
+    wrong: ``az policy definition show`` returns it as ``policyType: BuiltIn``.
+    It is a real, live policy, and the test above now locks the opposite rule.
+
+    The principle it was reaching for is sound and still holds - a rejected
+    identifier must be reported on the control it came from, never quietly
+    removed - so it is asserted here against something that genuinely is not an
+    identifier, which is what the format check is actually good for.
     """
-    malformed = "17k78e20-9358-41c9-923c-fb736d382a12"
-    assert coverage.classify_policy_id(malformed, _FakeCatalog()) == coverage.ID_MALFORMED
+    malformed = "not-a-policy-identifier"
+
+    class _KnowsOnlyReal(_FakeCatalog):
+        def exists(self, name):
+            guid = (name or "").strip().rstrip("/").rsplit("/", 1)[-1]
+            return guid in (REAL_GUID, REGCOMPLIANCE_GUID)
+
+    catalog = _KnowsOnlyReal()
+    assert coverage.classify_policy_id(malformed, catalog) == coverage.ID_MALFORMED
 
     mapping = _mapping("GUID-1", [REAL_GUID, malformed], control_type="Technical")
-    coverage.apply_coverage(mapping, "Technical", _FakeCatalog())
+    coverage.apply_coverage(mapping, "Technical", catalog)
 
     # The valid one survives...
     assert mapping.azure_policy_ids == [REAL_GUID]
-    # ...and the mistyped one is named, with the reason, on the control it came
+    # ...and the bad one is named, with the reason, on the control it came
     # from — the difference between a reported gap and a silent loss.
     assert len(mapping.dropped_policy_ids) == 1
     dropped = mapping.dropped_policy_ids[0]
@@ -818,6 +829,39 @@ def test_malformed_guid_is_reported_not_silently_dropped():
     rows = coverage.dropped_policy_rows([mapping])
     assert rows and rows[0]["control_id"] == "GUID-1"
     assert rows[0]["policy_id"] == malformed
+
+
+def test_a_real_builtin_that_is_not_guid_shaped_is_not_called_malformed():
+    """The correction, locked so it cannot be re-broken.
+
+    ``17k78e20-9358-41c9-923c-fb736d382a12`` contains a 'k' and is a real,
+    live, deployable Azure built-in. The format check ran before the catalog
+    and rejected it as malformed, discarding a correct answer and reporting a
+    genuine control as unenforceable. The catalog is asked first now.
+    """
+    real_but_odd = "17k78e20-9358-41c9-923c-fb736d382a12"
+
+    class _KnowsIt(_FakeCatalog):
+        def exists(self, name):
+            return name == real_but_odd or super().exists(name)
+
+        def get(self, name):
+            if name == real_but_odd:
+                return {
+                    "display_name": "Transparent Data Encryption on SQL databases should be enabled",
+                    "description": "",
+                    "effect": "AuditIfNotExists",
+                }
+            return super().get(name)
+
+    catalog = _KnowsIt()
+    assert coverage.classify_policy_id(real_but_odd, catalog) == coverage.ID_OK
+
+    mapping = _mapping("GUID-2", [real_but_odd], control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", catalog)
+
+    assert mapping.azure_policy_ids == [real_but_odd]
+    assert mapping.dropped_policy_ids == []
 
 
 def test_hallucinated_guid_is_reported_as_absent_from_the_catalog():
