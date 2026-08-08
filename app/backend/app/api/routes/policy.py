@@ -736,11 +736,50 @@ async def get_policy_details(request: PolicyDetailsRequest):
 
 @router.get("/catalog/status")
 async def policy_catalog_status():
-    """Return the size and source of the Azure Policy retrieval catalog."""
+    """Return the size, source and snapshot date of the Azure Policy corpus.
+
+    The initiative count and snapshot date are reported alongside the
+    definition count because "which catalog is this answer standing on" is not
+    inspectable any other way once the app is deployed, and a mapping is only
+    as defensible as the catalog behind it.
+    """
     from app.services import get_policy_catalog_service
 
     catalog = get_policy_catalog_service()
-    return {"count": catalog.count, "source": catalog.source}
+    return {
+        "count": catalog.count,
+        "source": catalog.source,
+        "initiative_count": getattr(catalog, "initiative_count", 0),
+        "initiatives_available": getattr(catalog, "initiatives_available", False),
+        "snapshot_date": getattr(catalog, "snapshot_date", None),
+    }
+
+
+@router.get("/catalog/lookup/{identifier}")
+async def policy_catalog_lookup(identifier: str):
+    """Resolve one identifier against the live catalog.
+
+    Exists so that "does the deployed app know this policy" is answerable
+    without shelling into a container. It also makes the catalog-before-format
+    rule externally checkable: an ARM policy *name* need not be GUID-shaped,
+    and at least one shipped built-in is not.
+    """
+    from app.services import get_policy_catalog_service
+
+    catalog = get_policy_catalog_service()
+    entry = catalog.get(identifier)
+    initiative = None
+    if entry is None:
+        initiative = catalog.get_initiative(identifier)
+
+    return {
+        "identifier": identifier,
+        "known": catalog.identifier_exists(identifier),
+        "kind": "definition" if entry else ("initiative" if initiative else None),
+        "display_name": (entry or initiative or {}).get("display_name"),
+        "effect": (entry or {}).get("effect"),
+        "member_of_initiatives": catalog.initiatives_containing(identifier),
+    }
 
 
 @router.post("/catalog/refresh")
