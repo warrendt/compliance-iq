@@ -124,6 +124,102 @@ class ControlPolicyMapping(BaseModel):
         None, description="Note about manual steps required if not fully automatable"
     )
 
+    # ── Coverage taxonomy ─────────────────────────────────────────────────────
+    # The services path (Pages 1-4) has carried this since the coverage model
+    # landed; the pipeline path had none of it, so Page 8 and the skill CLI
+    # produced initiatives with no statement of what Azure *cannot* do. That
+    # half of the answer is the half a customer cannot get anywhere else.
+    #
+    # All Optional / default-factory so mappings persisted before this change
+    # still deserialise.
+    coverage_category: Optional[
+        Literal[
+            "A_AzurePolicy",
+            "B_AzureConfig",
+            "C_Process",
+            "D_MicrosoftAttestation",
+        ]
+    ] = Field(
+        None,
+        description=(
+            "How the control is met: Azure Policy enforced, Azure/Entra config "
+            "(partial), process/organisational, or Microsoft attested. "
+            "Independent of who owns it."
+        ),
+    )
+    coverage_display: Optional[str] = Field(
+        None, description="Human-facing name of the coverage category"
+    )
+    coverage_reason: Optional[str] = Field(
+        None, description="Why this control landed in its coverage category"
+    )
+    azure_enforceable: bool = Field(
+        False, description="Whether the control is mapped to Azure (categories A or B)"
+    )
+    coverage_gap: bool = Field(
+        False,
+        description=(
+            "In scope for Azure but nothing usable was retrieved. Reported as a "
+            "gap rather than relabelled, so a recall failure cannot hide inside "
+            "a category judgement."
+        ),
+    )
+    outside_step: Optional[str] = Field(
+        None,
+        description=(
+            "For partial (B) coverage, the named step outside Azure Policy that "
+            "completes the control - e.g. a Conditional Access policy."
+        ),
+    )
+    responsibility: Optional[Literal["Customer", "Microsoft", "Shared"]] = Field(
+        None,
+        description=(
+            "Who operates the control. Orthogonal to coverage_category: a "
+            "process control can be Microsoft-owned."
+        ),
+    )
+    enforcement_plane: Optional[str] = Field(
+        None, description="Where enforcement happens (Azure Policy, Entra ID, ...)"
+    )
+    policy_effects: List[str] = Field(
+        default_factory=list,
+        description="Resolved default effect of each mapped policy, positionally aligned",
+    )
+    available_effects: List[str] = Field(
+        default_factory=list,
+        description="Effects each mapped definition allows, which may be stronger than the default",
+    )
+    policy_type: Optional[str] = Field(
+        None, description="Built-in, custom, or a combination"
+    )
+    evidence_source: Optional[str] = Field(
+        None, description="What evidences this control"
+    )
+
+    # ── Microsoft attestation (category D) ────────────────────────────────────
+    attestation: Optional[dict] = Field(
+        None,
+        description=(
+            "Validated attestation citation for a category D control: scheme, "
+            "clause, evidence document, location and access condition, all read "
+            "from the attestation catalog rather than authored by the model."
+        ),
+    )
+    attestation_gap: bool = Field(
+        False,
+        description=(
+            "Classified Microsoft-attested but groundable in no Microsoft "
+            "certification, report or documentation. Excluded from compliant."
+        ),
+    )
+    dropped_policy_ids: List[dict] = Field(
+        default_factory=list,
+        description=(
+            "Candidate identifiers rejected in validation, with the reason, "
+            "reported against the control they came from rather than discarded."
+        ),
+    )
+
 
 class BatchPolicyMappingResult(BaseModel):
     """Result of mapping a batch of controls to Azure Policies."""

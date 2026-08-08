@@ -16,46 +16,6 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
-# Known Azure Policy definition GUIDs (from existing catalogues)
-KNOWN_POLICY_GUIDS = {
-    "055f3b15-58a8-4d91-a4f6-8437a6c8f7e8",
-    "fc5e4038-4584-4632-8c85-c0448d374b2c",
-    "e71308d3-144b-4262-b144-efdc3cc90517",
-    "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
-    "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-    "4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b",
-    "1f314764-cb73-4fc9-b863-8eca98ac36e9",
-    "0b15565f-aa9e-48ba-8619-45960f2c314d",
-    "818719e5-1338-4776-9a9d-3c31e4df5986",
-    "428256e6-1fac-4f48-a757-df34c2b3336d",
-    "b79fa14e-238a-4c2d-b376-442ce508fc84",
-    "e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
-    "0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
-    "7595c971-233d-4bcf-bd18-596129188c49",
-    "404c3081-a854-4457-ae30-26a93ef643f9",
-    "4733ea7b-a883-42fe-8cac-97454c2a9e4a",
-    "a4af4a39-4135-47fb-b175-47fbdf85311d",
-    "702dd420-7fcc-42c5-afe8-4026edd20fe0",
-    "18adea5e-f416-4d0f-8aa8-d24321e3e274",
-    "0a370ff3-6cab-4e85-8995-295fd854c5b8",
-    "ca610c1d-041c-4332-9d88-7ed3094967c7",
-    "55d1f543-d1b0-4811-9663-d6d0dbc6326d",
-    "013e242c-8828-4970-87b3-ab247555486d",
-    "ac076320-ddcf-4066-b451-6154267e8ad2",
-    "e1145ab1-eb4f-43d8-911b-36ddf771d13f",
-    "8e86a5b6-b9bd-49d1-8e21-4bb8a0862222",
-    "09024ccc-0c5f-475e-9457-b7c0d9ed487b",
-    "22bee202-a82f-4305-9a2a-6d7f44d4dedb",
-    "37bc2e11-1d3c-4e6e-a9fc-62ca7b58b6c2",
-    "e56962a6-4747-49cd-b67b-bf8b01975c4c",
-    "c9d007d0-c057-4772-b18c-01693a6eae35",
-    "0725b4dd-7e76-479c-a735-68e7ee23d5ca",
-    "8e826246-c976-48f6-b03e-619bb92b3d82",
-    "5f0bc445-3935-4915-9981-011aa2b46147",
-    "f4b53539-8df9-40e4-86c6-6b607703bd4e",
-    "2c89a2e5-7285-40fe-afe0-ae8654b92fb2",
-}
-
 GUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
@@ -89,8 +49,10 @@ def validate_mappings(
         mappings: The policy mappings to validate.
         min_confidence: Threshold below which a warning is raised.
         catalog: Optional built-in policy catalog service (injected for testing).
-            When available, referenced GUIDs are checked for existence; otherwise
-            the static ``KNOWN_POLICY_GUIDS`` fallback is used.
+            When available, referenced GUIDs are checked for existence. When it
+            is not, existence cannot be checked at all and that is reported as
+            a warning on the report rather than being papered over with a
+            hardcoded shortlist.
 
     Returns:
         ValidationReport with all issues found.
@@ -101,12 +63,29 @@ def validate_mappings(
             catalog = get_policy_catalog_service()
         except Exception:  # pragma: no cover - defensive
             catalog = None
-    catalog_available = bool(getattr(catalog, "available", False))
+    # ``available`` is a method, so the previous ``bool(getattr(catalog,
+    # "available", False))`` was always True whenever a catalog object existed -
+    # including one that had failed to load.
+    _available = getattr(catalog, "available", None)
+    catalog_available = bool(_available() if callable(_available) else _available)
 
     issues: list[ValidationIssue] = []
     total_controls = len(extraction.controls)
     extracted_ids = {c.control_id for c in extraction.controls}
     mapped_ids = {m.control_id for m in mappings}
+
+    # Existence checking is the whole point of validation here, so its absence
+    # is a finding rather than a quiet downgrade. The previous fallback - a
+    # hardcoded 37-GUID "known-good list" - reported every real identifier
+    # outside that list as suspect and every hallucinated one inside it as
+    # fine, which is worse than saying nothing.
+    if not catalog_available:
+        issues.append(ValidationIssue(
+            severity="warning",
+            control_id="",
+            message="The Azure Policy catalog is unavailable, so policy GUIDs could not be checked for existence",
+            suggestion="Only GUID format was validated. Regenerate the catalog snapshot with scripts/generate_policy_catalog.py before relying on this report.",
+        ))
 
     # ── Check: all controls were mapped ───────────────────────────────────
     unmapped = extracted_ids - mapped_ids
@@ -172,20 +151,12 @@ def validate_mappings(
                 else:
                     all_policy_ids.add(pid)
 
-                    if catalog_available:
-                        if not catalog.exists(pid):
-                            issues.append(ValidationIssue(
-                                severity="warning",
-                                control_id=control_id,
-                                message=f"Policy GUID '{pid}' is not a real Azure built-in policy definition",
-                                suggestion="ARM would reject this as PolicyDefinitionNotFound; it will be dropped before deployment. Re-run mapping or remove it.",
-                            ))
-                    elif pid not in KNOWN_POLICY_GUIDS:
+                    if catalog_available and not catalog.exists(pid):
                         issues.append(ValidationIssue(
-                            severity="info",
+                            severity="warning",
                             control_id=control_id,
-                            message=f"Policy GUID '{pid}' is not in the known-good list",
-                            suggestion="Verify this GUID exists in your Azure environment before deployment",
+                            message=f"Policy GUID '{pid}' is not a real Azure built-in policy definition",
+                            suggestion="ARM would reject this as PolicyDefinitionNotFound; it will be dropped before deployment. Re-run mapping or remove it.",
                         ))
         else:
             manual_count += 1
