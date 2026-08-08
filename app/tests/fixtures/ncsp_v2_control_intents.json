@@ -1,0 +1,812 @@
+{
+  "description": "LLM Azure-vocabulary expansions of the NCSP v2.0 gold controls that carry policy GUIDs. Frozen so retrieval recall is reproducible in CI without Azure OpenAI credentials.",
+  "model": "gpt-5.6-sol",
+  "intents": {
+    "2.3.2.1": {
+      "azure_restatement": "Azure data stores, databases, virtual machine disks, and file shares should use encryption at rest with platform-managed keys or customer-managed keys in Key Vault, including TDE or disk encryption where applicable. Sensitive data in use should use confidential computing or memory encryption, and data in transit across service endpoints, interfaces, public networks, and messaging services should require HTTPS/TLS 1.2 or later and disable unencrypted protocols.",
+      "azure_services": [
+        "Storage Account",
+        "Azure Files",
+        "Azure SQL Database",
+        "SQL Managed Instance",
+        "Virtual Machine",
+        "Managed Disk",
+        "Key Vault",
+        "App Service",
+        "API Management",
+        "Service Bus",
+        "Event Hubs",
+        "Confidential Virtual Machine"
+      ],
+      "security_features": [
+        "encryption at rest",
+        "customer-managed key",
+        "platform-managed key",
+        "Key Vault key",
+        "Transparent Data Encryption (TDE)",
+        "Azure Disk Encryption",
+        "encryption at host",
+        "confidential computing",
+        "memory encryption",
+        "encryption in transit",
+        "HTTPS only",
+        "TLS 1.2 minimum",
+        "secure transfer required"
+      ],
+      "policy_categories": [
+        "Storage",
+        "SQL",
+        "Key Vault",
+        "Compute",
+        "Network",
+        "Guest Configuration",
+        "App Service",
+        "API Management",
+        "Service Bus",
+        "Event Hub",
+        "Security Center"
+      ]
+    },
+    "2.3.2.2": {
+      "azure_restatement": "Azure resources should use customer-managed keys stored in Azure Key Vault or Azure Managed HSM for encryption. Key management permissions and cryptographic key usage permissions should be separated by using Azure RBAC roles with least-privilege access.",
+      "azure_services": [
+        "Key Vault",
+        "Managed HSM"
+      ],
+      "security_features": [
+        "customer-managed key",
+        "encryption at rest",
+        "Azure RBAC",
+        "Key Vault RBAC permission model",
+        "separation of duties",
+        "least privilege",
+        "key management operations",
+        "cryptographic operations"
+      ],
+      "policy_categories": [
+        "Key Vault",
+        "General"
+      ]
+    },
+    "2.3.2.4": {
+      "azure_restatement": "Data services should use customer-managed keys for encryption, with keys retained in a customer-controlled Azure Key Vault, Managed HSM, or external HSM. Where Hold Your Own Key (HYOK) is required, Microsoft Purview Information Protection should use Double Key Encryption or externally retained keys so the customer maintains exclusive key custody.",
+      "azure_services": [
+        "Azure Key Vault",
+        "Azure Managed HSM",
+        "Microsoft Purview Information Protection"
+      ],
+      "security_features": [
+        "Hold Your Own Key (HYOK)",
+        "customer-managed key",
+        "Double Key Encryption",
+        "encryption at rest",
+        "external HSM",
+        "key custody"
+      ],
+      "policy_categories": [
+        "Key Vault",
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.3.2.5": {
+      "azure_restatement": "HYOK-protected data should use customer-controlled key infrastructure outside Azure, with independent key access and key revocation. Key access and cryptographic operations should be audit logged to a customer-controlled logging system without dependency on the cloud service provider.",
+      "azure_services": [
+        "Microsoft Purview Information Protection",
+        "Active Directory Rights Management Services"
+      ],
+      "security_features": [
+        "Hold Your Own Key (HYOK)",
+        "customer-controlled key",
+        "external key management",
+        "key access control",
+        "key revocation",
+        "cryptographic operation audit logging"
+      ],
+      "policy_categories": [
+        "General",
+        "Monitoring",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.4.1.1": {
+      "azure_restatement": "Azure resources that store or process data should be deployed only in allowed UAE Azure regions. Resource, replica, backup, and disaster recovery locations should be identifiable and restricted to approved regions or geographies to meet data residency and sovereignty requirements.",
+      "azure_services": [],
+      "security_features": [
+        "allowed locations",
+        "Azure region",
+        "data residency",
+        "resource location",
+        "backup location",
+        "geo-replication location",
+        "disaster recovery region"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance",
+        "Backup",
+        "Resilience",
+        "Site Recovery"
+      ]
+    },
+    "2.4.1.4": {
+      "azure_restatement": "Resources that store or process Confidential or Restricted data should be deployed only in allowed Azure regions and geographies within an approved Azure sovereign cloud environment. Resource locations should be restricted using allowed locations and allowed locations for resource groups.",
+      "azure_services": [],
+      "security_features": [
+        "allowed locations",
+        "allowed locations for resource groups",
+        "Azure regions",
+        "Azure geographies",
+        "Azure sovereign clouds",
+        "data residency"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.4.1.5": {
+      "azure_restatement": "Resources that store or process data classified above Confidential/Restricted should be deployed only in an approved Azure sovereign cloud and approved Azure regions. Allowed locations should restrict resource and resource group deployment to those sovereign regions.",
+      "azure_services": [
+        "Azure Resource Manager",
+        "Azure Sovereign Clouds"
+      ],
+      "security_features": [
+        "allowed locations",
+        "resource location restriction",
+        "data residency",
+        "sovereign cloud boundary"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.6.5.1": {
+      "azure_restatement": "Virtual machines, operating systems, Kubernetes nodes, Internet of Things devices, and network security resources should comply with approved security configuration baselines. Azure Policy Guest Configuration and Microsoft Defender for Cloud recommendations should be used to audit and remediate insecure configurations, missing system updates, vulnerabilities, and endpoint protection settings.",
+      "azure_services": [
+        "Virtual Machine",
+        "Azure Arc-enabled Server",
+        "Kubernetes Service",
+        "IoT Hub",
+        "Network Security Group",
+        "Azure Firewall",
+        "Microsoft Defender for Cloud"
+      ],
+      "security_features": [
+        "security configuration baseline",
+        "Guest Configuration",
+        "vulnerability assessment",
+        "system updates",
+        "endpoint protection",
+        "secure configuration",
+        "Microsoft Defender for Cloud recommendations",
+        "compliance assessment"
+      ],
+      "policy_categories": [
+        "Compute",
+        "Guest Configuration",
+        "Security Center",
+        "Kubernetes",
+        "Internet of Things",
+        "Network",
+        "General"
+      ]
+    },
+    "2.7.1.1": {
+      "azure_restatement": "Microsoft Entra ID administrative roles and Azure RBAC permissions for managing identities should be restricted to authorized consumer staff using least-privilege role assignments. Privileged identity management accounts should be protected with MFA and Conditional Access.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure Resource Manager"
+      ],
+      "security_features": [
+        "Microsoft Entra roles",
+        "Azure RBAC",
+        "least privilege",
+        "Privileged Identity Management (PIM)",
+        "MFA",
+        "Conditional Access"
+      ],
+      "policy_categories": [
+        "General",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.1.2": {
+      "azure_restatement": "Privileged Microsoft Entra ID and Azure subscription accounts, including Global Administrator and Owner assignments, should be centrally managed and restricted using least-privilege Azure RBAC roles. Privileged access should use Privileged Identity Management (PIM), MFA, time-bound role activation, and limited privileged role assignments.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure subscriptions",
+        "Azure RBAC",
+        "Microsoft Entra Privileged Identity Management"
+      ],
+      "security_features": [
+        "Azure RBAC",
+        "least privilege",
+        "privileged role assignments",
+        "Owner role",
+        "Global Administrator role",
+        "Privileged Identity Management (PIM)",
+        "just-in-time access",
+        "time-bound role activation",
+        "MFA"
+      ],
+      "policy_categories": [
+        "General",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.2.1": {
+      "azure_restatement": "Access to Azure systems, applications, and data should use Microsoft Entra ID authentication integrated with the internal directory through hybrid identity synchronization or federation. Authorization should use Microsoft Entra ID identities and Azure RBAC rather than separate local accounts.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Active Directory Domain Services"
+      ],
+      "security_features": [
+        "Microsoft Entra ID authentication",
+        "hybrid identity",
+        "directory synchronization",
+        "federated authentication",
+        "single sign-on (SSO)",
+        "Azure RBAC"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.2.2": {
+      "azure_restatement": "Azure management interfaces should use Azure role-based access control (Azure RBAC) to authorize access, with users, groups, service principals, and managed identities assigned appropriate built-in or custom roles at the required management group, subscription, resource group, or resource scope.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure Resource Manager"
+      ],
+      "security_features": [
+        "Azure role-based access control (Azure RBAC)",
+        "role assignment",
+        "built-in roles",
+        "custom roles",
+        "least-privilege access",
+        "management group scope",
+        "subscription scope",
+        "resource group scope",
+        "resource scope"
+      ],
+      "policy_categories": [
+        "General",
+        "Security Center"
+      ]
+    },
+    "2.7.2.3": {
+      "azure_restatement": "Access to Azure data and system functions should use Microsoft Entra ID authentication and Azure RBAC so that only authorized identities have appropriate role assignments. Privileged and resource access assignments should be periodically verified using access reviews.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure Resource Manager"
+      ],
+      "security_features": [
+        "Microsoft Entra ID authentication",
+        "Azure RBAC",
+        "role assignments",
+        "access reviews",
+        "least privilege access"
+      ],
+      "policy_categories": [
+        "General",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.2.4": {
+      "azure_restatement": "Accounts with elevated or privileged Azure permissions, including subscription and resource owners, should be enabled for MFA in Microsoft Entra ID. Conditional Access or authentication strength policies should require MFA for privileged directory roles and Azure RBAC administrative roles.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure RBAC"
+      ],
+      "security_features": [
+        "MFA",
+        "Conditional Access",
+        "authentication strength",
+        "privileged directory roles",
+        "Azure RBAC administrative roles",
+        "Owner permissions"
+      ],
+      "policy_categories": [
+        "General",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.3.2": {
+      "azure_restatement": "Microsoft Entra ID user accounts, service principals, managed identities, group memberships, and Azure RBAC role assignments should be disabled, removed, or updated promptly when personnel leave, change roles, or when system identities change.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure Resource Manager",
+        "Managed Identities"
+      ],
+      "security_features": [
+        "identity lifecycle management",
+        "account disablement",
+        "access reviews",
+        "group membership",
+        "service principal",
+        "managed identity",
+        "Azure RBAC",
+        "role assignment"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.7.3.3": {
+      "azure_restatement": "Microsoft Entra ID access reviews should be configured to periodically review and recertify group memberships, enterprise application access, privileged role assignments, and entitlement management access package assignments, with denied or unreviewed access removed upon completion.",
+      "azure_services": [
+        "Microsoft Entra ID"
+      ],
+      "security_features": [
+        "access reviews",
+        "entitlement management",
+        "access packages",
+        "Privileged Identity Management (PIM)",
+        "role assignment review",
+        "group membership review",
+        "enterprise application access review"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "2.8.2.1": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "2.9.1.1": {
+      "azure_restatement": "Cloud resources and data should be protected by Azure Backup using scheduled backup policies with defined backup frequency and retention periods. Backup recovery points should be regularly validated through scheduled restore testing.",
+      "azure_services": [
+        "Azure Backup",
+        "Recovery Services vault",
+        "Backup vault"
+      ],
+      "security_features": [
+        "scheduled backup policy",
+        "backup frequency",
+        "backup retention",
+        "recovery points",
+        "restore testing"
+      ],
+      "policy_categories": [
+        "Backup",
+        "Resilience"
+      ]
+    },
+    "2.9.1.2": {
+      "azure_restatement": "Backups should be encrypted at rest using platform-managed keys or customer-managed keys, with encryption keys protected in Azure Key Vault. Azure Backup restore points should be retained and periodically verified to ensure protected resources can be successfully restored.",
+      "azure_services": [
+        "Azure Backup",
+        "Recovery Services vault",
+        "Backup vault",
+        "Key Vault"
+      ],
+      "security_features": [
+        "backup encryption",
+        "encryption at rest",
+        "customer-managed key",
+        "platform-managed key",
+        "Key Vault",
+        "backup retention",
+        "recovery point",
+        "restore testing"
+      ],
+      "policy_categories": [
+        "Backup",
+        "Key Vault",
+        "Resilience"
+      ]
+    },
+    "3.1.2.1": {
+      "azure_restatement": "Azure resources should be continuously assessed for security and privacy configuration risks using Microsoft Defender for Cloud and Azure Policy compliance, with findings and compliance status reported through security recommendations and regulatory compliance dashboards.",
+      "azure_services": [
+        "Microsoft Defender for Cloud",
+        "Azure Policy",
+        "Azure Monitor"
+      ],
+      "security_features": [
+        "continuous security assessment",
+        "security recommendations",
+        "Azure Policy compliance",
+        "regulatory compliance dashboard",
+        "security posture reporting"
+      ],
+      "policy_categories": [
+        "Security Center",
+        "Monitoring",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.3.1.2": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "3.3.1.4": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "3.3.2.2": {
+      "azure_restatement": "Azure resources should encrypt data at rest using service-side encryption with strong cryptographic algorithms and support customer-managed keys where applicable. HTTPS-only and secure transfer should be required, with TLS 1.2 or later enforced for data in transit, including connections between Azure environments.",
+      "azure_services": [],
+      "security_features": [
+        "encryption at rest",
+        "service-side encryption",
+        "customer-managed key",
+        "encryption in transit",
+        "HTTPS only",
+        "secure transfer required",
+        "TLS 1.2 minimum"
+      ],
+      "policy_categories": [
+        "General",
+        "Network",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.3.2.3": {
+      "azure_restatement": "Azure resources should support customer-managed keys (CMK), including bring your own key (BYOK), with keys stored in Azure Key Vault or Managed HSM. Key generation, import, retrieval, and rotation should be programmatically manageable, and Key Vault keys should have an enabled key rotation policy.",
+      "azure_services": [
+        "Key Vault",
+        "Managed HSM"
+      ],
+      "security_features": [
+        "customer-managed key",
+        "bring your own key (BYOK)",
+        "key rotation policy",
+        "key generation",
+        "key import",
+        "key storage",
+        "key retrieval",
+        "Key Vault REST API"
+      ],
+      "policy_categories": [
+        "Key Vault",
+        "General"
+      ]
+    },
+    "3.3.2.4": {
+      "azure_restatement": "Azure resources should use customer-managed keys for encryption, with cryptographic keys generated or imported from a customer-controlled HSM and managed through Azure Key Vault or Managed HSM. Key ownership, rotation, revocation, and access control should remain under the cloud consumer\u2019s control using HYOK or BYOK capabilities.",
+      "azure_services": [
+        "Azure Key Vault",
+        "Azure Key Vault Managed HSM"
+      ],
+      "security_features": [
+        "Hold Your Own Key (HYOK)",
+        "customer-managed key",
+        "Bring Your Own Key (BYOK)",
+        "HSM-backed key",
+        "encryption at rest",
+        "key import",
+        "key rotation",
+        "key revocation",
+        "RBAC permission model"
+      ],
+      "policy_categories": [
+        "Key Vault",
+        "General"
+      ]
+    },
+    "3.3.2.5": {
+      "azure_restatement": "Azure Key Vaults and Managed HSMs hosting encryption keys should be deployed only in Azure UAE regions. Cryptographic keys, including key backups, should be generated, stored, managed, and retained within UAE regional boundaries.",
+      "azure_services": [
+        "Azure Key Vault",
+        "Azure Managed HSM"
+      ],
+      "security_features": [
+        "allowed locations",
+        "regional data residency",
+        "cryptographic key management",
+        "HSM-backed keys",
+        "key backup"
+      ],
+      "policy_categories": [
+        "Key Vault",
+        "General",
+        "Backup"
+      ]
+    },
+    "3.4.1.1": {
+      "azure_restatement": "Azure resources that store or replicate Consumer Data should be deployed only in allowed UAE regions, and data replication, backups, and disaster recovery locations should remain within UAE geography.",
+      "azure_services": [],
+      "security_features": [
+        "allowed locations",
+        "data residency",
+        "geo-replication",
+        "backup location",
+        "disaster recovery location"
+      ],
+      "policy_categories": [
+        "General",
+        "Resilience",
+        "Backup",
+        "Site Recovery",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.4.1.4": {
+      "azure_restatement": "Azure resources that store, compute, analyze, or otherwise process Consumer Data should be deployed only in UAE Azure regions, such as UAE North and UAE Central. Allowed locations should restrict resource deployments and data processing locations to the UAE.",
+      "azure_services": [
+        "Azure Resource Manager",
+        "Subscription",
+        "Resource Group"
+      ],
+      "security_features": [
+        "allowed locations",
+        "Azure region restriction",
+        "data residency",
+        "resource location"
+      ],
+      "policy_categories": [
+        "General",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.5.2.2": {
+      "azure_restatement": "Data import, export, and service management endpoints should require secure standardized protocols such as HTTPS over TLS 1.2 or later or SFTP over SSH, and insecure or legacy protocols should be disabled.",
+      "azure_services": [],
+      "security_features": [
+        "secure transfer required",
+        "HTTPS only",
+        "minimum TLS version",
+        "TLS 1.2",
+        "SFTP",
+        "SSH",
+        "disable insecure protocols"
+      ],
+      "policy_categories": [
+        "Network",
+        "General"
+      ]
+    },
+    "3.6.1.2": {
+      "azure_restatement": "Virtual machines should use approved, trusted Azure Compute Gallery or Marketplace images, with Trusted launch, Secure Boot, and vTPM enabled to verify image and boot integrity. Azure Activity Log diagnostic settings and activity log alert rules should record and notify consumers of write, version, or delete operations on managed images, image definitions, and image versions, regardless of whether associated virtual machines are running.",
+      "azure_services": [
+        "Virtual Machine",
+        "Azure Compute Gallery",
+        "Managed Image",
+        "Azure Monitor",
+        "Log Analytics"
+      ],
+      "security_features": [
+        "approved images",
+        "Trusted launch",
+        "Secure Boot",
+        "vTPM",
+        "image versioning",
+        "Azure Activity Log",
+        "diagnostic setting",
+        "activity log alert rule"
+      ],
+      "policy_categories": [
+        "Virtual Machine Images",
+        "Compute",
+        "Monitoring"
+      ]
+    },
+    "3.6.3.1": {
+      "azure_restatement": "Azure resources and endpoints should be inventoried and assigned required tags for asset ownership, classification, and business risk. Servers and endpoints should be connected to Azure Arc and Microsoft Defender for Cloud for centralized security management and monitoring.",
+      "azure_services": [
+        "Azure Resource Manager",
+        "Azure Arc-enabled Servers",
+        "Microsoft Defender for Cloud",
+        "Virtual Machine"
+      ],
+      "security_features": [
+        "resource inventory",
+        "required tags",
+        "asset classification",
+        "Azure Arc onboarding",
+        "Defender for Servers",
+        "security monitoring"
+      ],
+      "policy_categories": [
+        "Tags",
+        "General",
+        "Security Center",
+        "Compute"
+      ]
+    },
+    "3.6.4.1": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "3.6.5.1": {
+      "azure_restatement": "Virtual machines, virtual machine scale sets, and Azure Arc-enabled servers should comply with approved operating system security configuration baselines using Guest Configuration. Network and security resources should be configured according to Azure security baseline hardening requirements, including restricted management access, secure protocols, and removal of insecure or unnecessary configurations.",
+      "azure_services": [
+        "Virtual Machine",
+        "Virtual Machine Scale Set",
+        "Azure Arc-enabled servers",
+        "Network Security Group",
+        "Azure Firewall",
+        "Application Gateway"
+      ],
+      "security_features": [
+        "Guest Configuration",
+        "security configuration baseline",
+        "operating system hardening",
+        "secure management ports",
+        "network security group",
+        "Azure Firewall",
+        "secure protocols",
+        "Microsoft Defender for Cloud regulatory compliance"
+      ],
+      "policy_categories": [
+        "Guest Configuration",
+        "Compute",
+        "Network",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.6.6.2": {
+      "azure_restatement": "Public network access to Azure resources should be disabled or restricted to approved UAE source IP ranges. Internet-facing endpoints should use Web Application Firewall custom geo-match rules to allow requests originating from the United Arab Emirates and block requests from other countries or regions.",
+      "azure_services": [
+        "Azure Front Door",
+        "Application Gateway",
+        "Web Application Firewall",
+        "Virtual Network",
+        "Network Security Group",
+        "Azure Firewall",
+        "Private Link"
+      ],
+      "security_features": [
+        "public network access",
+        "private endpoint",
+        "IP-based access restriction",
+        "Web Application Firewall custom rule",
+        "geo-match condition",
+        "network security group",
+        "inbound network access control"
+      ],
+      "policy_categories": [
+        "Network"
+      ]
+    },
+    "3.6.6.3": {
+      "azure_restatement": "Sovereign Cloud resources should disable public network access and use private endpoints and virtual network isolation. Network security groups and Azure Firewall rules should deny connectivity from unapproved networks, subscriptions, tenants, and lower-sovereignty cloud environments.",
+      "azure_services": [
+        "Azure Virtual Network",
+        "Azure Private Link",
+        "Private Endpoint",
+        "Network Security Group",
+        "Azure Firewall"
+      ],
+      "security_features": [
+        "public network access disabled",
+        "private endpoint",
+        "virtual network isolation",
+        "network security group",
+        "firewall rules",
+        "cross-tenant access restriction",
+        "network segmentation"
+      ],
+      "policy_categories": [
+        "Network",
+        "General"
+      ]
+    },
+    "3.7.1.1": {
+      "azure_restatement": "Microsoft Entra ID identities, especially privileged accounts, should use MFA and access to Azure resources should be controlled through Azure RBAC with least-privilege role assignments. Microsoft Entra ID audit and sign-in logs and Azure Activity Logs should be enabled through diagnostic settings, retained for the required period, and protected with restricted access.",
+      "azure_services": [
+        "Microsoft Entra ID",
+        "Azure Monitor",
+        "Log Analytics",
+        "Storage Account"
+      ],
+      "security_features": [
+        "MFA",
+        "Conditional Access",
+        "Azure RBAC",
+        "least privilege",
+        "role assignment",
+        "Microsoft Entra ID audit logs",
+        "Microsoft Entra ID sign-in logs",
+        "Azure Activity Log",
+        "diagnostic setting",
+        "log retention",
+        "log access control"
+      ],
+      "policy_categories": [
+        "General",
+        "Monitoring",
+        "Security Center",
+        "Regulatory Compliance"
+      ]
+    },
+    "3.8.2.1": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "3.8.2.2": {
+      "azure_restatement": "Microsoft Defender for Cloud vulnerability assessment should be enabled for supported workloads, with machines, container images, and databases regularly scanned for vulnerabilities. Vulnerability findings and security recommendations should be available to prioritize remediation and incident response.",
+      "azure_services": [
+        "Microsoft Defender for Cloud",
+        "Virtual Machine",
+        "Azure Arc-enabled server",
+        "Container Registry",
+        "SQL Server"
+      ],
+      "security_features": [
+        "vulnerability assessment",
+        "agentless vulnerability scanning",
+        "container image vulnerability scanning",
+        "SQL vulnerability assessment",
+        "security recommendations",
+        "secure score"
+      ],
+      "policy_categories": [
+        "Security Center",
+        "Compute",
+        "Container Registry",
+        "SQL"
+      ]
+    },
+    "3.8.2.4": {
+      "azure_restatement": "",
+      "azure_services": [],
+      "security_features": [],
+      "policy_categories": []
+    },
+    "3.8.4.1": {
+      "azure_restatement": "Diagnostic settings should be enabled for Azure resources to collect audit and security logs and send them to a centralized Log Analytics workspace or Storage account. Audit logs should be retained for the required retention period to support monitoring, investigation, e-discovery, and cloud forensics.",
+      "azure_services": [
+        "Azure Monitor",
+        "Log Analytics",
+        "Storage Account"
+      ],
+      "security_features": [
+        "diagnostic setting",
+        "audit logging",
+        "security logging",
+        "log retention",
+        "centralized logging",
+        "Azure Activity Log"
+      ],
+      "policy_categories": [
+        "Monitoring",
+        "Storage"
+      ]
+    },
+    "3.9.1.1": {
+      "azure_restatement": "Azure resources should have backups enabled with retention configured to meet recovery objectives. Workloads should use high-availability, zone-redundant or geo-redundant configurations and disaster recovery replication through Azure Site Recovery where supported.",
+      "azure_services": [
+        "Azure Backup",
+        "Recovery Services vault",
+        "Azure Site Recovery"
+      ],
+      "security_features": [
+        "backup",
+        "backup retention",
+        "recovery points",
+        "disaster recovery replication",
+        "high availability",
+        "zone redundancy",
+        "geo-redundant backup"
+      ],
+      "policy_categories": [
+        "Backup",
+        "Resilience",
+        "Site Recovery"
+      ]
+    }
+  }
+}

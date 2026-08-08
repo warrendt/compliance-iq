@@ -173,13 +173,105 @@ def measure_recall(
     return report
 
 
-def catalog_search(catalog) -> Callable[[str, int], List[str]]:
-    """Adapt a :class:`PolicyCatalogService` to the ``search`` callable."""
+def catalog_search(catalog, semantic: bool = False) -> Callable[[str, int], List[str]]:
+    """Adapt a :class:`PolicyCatalogService` to the ``search`` callable.
+
+    Defaults to ``semantic=False`` so the baseline is deterministic and offline;
+    the semantic half of hybrid retrieval needs a live embedding deployment for
+    the *query*, which :func:`hybrid_search` supplies from a frozen fixture.
+    """
 
     def _search(query: str, top_n: int) -> List[str]:
-        return [c.name.lower() for c in catalog.search(query, top_n=top_n)]
+        return [
+            c.name.lower()
+            for c in catalog.search(query, top_n=top_n, semantic=semantic)
+        ]
 
     return _search
+
+
+# ---------------------------------------------------------------------------
+# Offline reproduction of the full retrieval pipeline
+# ---------------------------------------------------------------------------
+
+INTENTS_PATH = Path(__file__).resolve().parent / "fixtures" / "ncsp_v2_control_intents.json"
+QUERY_VECTORS_PATH = (
+    Path(__file__).resolve().parent / "fixtures" / "ncsp_v2_query_embeddings.npz"
+)
+
+
+def load_intents(path: Path = INTENTS_PATH) -> Dict[str, dict]:
+    """Frozen LLM expansions of the gold controls, keyed by control id.
+
+    Captured by ``scripts/generate_retrieval_eval_fixture.py`` so that recall of
+    the *expanded* query is reproducible without Azure OpenAI credentials.
+    """
+    return json.loads(path.read_text(encoding="utf-8"))["intents"]
+
+
+def load_query_vectors(path: Path = QUERY_VECTORS_PATH):
+    """Frozen embeddings of the expanded queries, as ``{control_id: vector}``."""
+    import numpy as np
+
+    with np.load(path, allow_pickle=False) as bundle:
+        vectors = bundle["vectors"].astype(np.float32)
+        ids = [str(c) for c in bundle["control_ids"]]
+    return {cid: vectors[i] for i, cid in enumerate(ids)}
+
+
+def expansion_text(intent: dict) -> str:
+    """Flatten a stored intent into retrieval text.
+
+    Mirrors ``ControlIntent.expansion_text`` without importing the backend model,
+    so the harness stays usable when only the fixtures are present.
+    """
+    parts = [intent.get("azure_restatement", "")]
+    parts.extend(intent.get("azure_services") or [])
+    parts.extend(intent.get("security_features") or [])
+    return " ".join(p.strip() for p in parts if p and p.strip())
+
+
+def query_expanded(control: dict, intents: Dict[str, dict]) -> str:
+    """The runtime query after LLM expansion: original text plus Azure vocabulary."""
+    base = query_realistic(control)
+    expansion = expansion_text(intents.get(control["control_id"], {}))
+    return f"{base} {expansion}".strip() if expansion else base
+
+
+def hybrid_rank(
+    catalog,
+    control: dict,
+    intents: Dict[str, dict],
+    query_vectors,
+    depth: int,
+    rrf_k: int = 60,
+) -> List[str]:
+    """Reproduce ``PolicyCatalogService`` hybrid retrieval offline.
+
+    Fuses the service's own lexical ranking with a dense ranking computed from
+    the shipped catalog embeddings and the frozen query embedding, using the same
+    Reciprocal Rank Fusion the service uses. This lets CI assert the measured
+    recall of the *shipped* configuration without any network calls.
+    """
+    import numpy as np
+
+    query = query_expanded(control, intents)
+    lexical = [c.name.lower() for c in catalog.search(query, top_n=depth, semantic=False)]
+
+    vector = query_vectors[control["control_id"]]
+    vector = vector / (np.linalg.norm(vector) or 1.0)
+    sims = catalog.embedding_matrix @ vector
+    limit = min(depth, sims.shape[0])
+    head = np.argpartition(-sims, limit - 1)[:limit]
+    dense = [
+        catalog.definition_name_at(int(i)).lower() for i in head[np.argsort(-sims[head])]
+    ]
+
+    scores: Dict[str, float] = {}
+    for ranking in (lexical, dense):
+        for rank, name in enumerate(ranking):
+            scores[name] = scores.get(name, 0.0) + 1.0 / (rrf_k + rank + 1)
+    return [name for name, _ in sorted(scores.items(), key=lambda kv: -kv[1])][:depth]
 
 
 def main() -> int:

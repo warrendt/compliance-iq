@@ -6,6 +6,11 @@ param modelName string = 'gpt-5.2'
 param modelVersion string = '2025-12-11'
 param fallbackModel string = 'gpt-5.4-mini'
 param fallbackVersion string = '2026-03-17'
+@description('Embedding model backing semantic Azure Policy retrieval')
+param embeddingModel string = 'text-embedding-3-large'
+param embeddingVersion string = '1'
+@description('Capacity for the embedding deployment (queries are small and infrequent)')
+param embeddingCapacity int = 50
 param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
 @description('SKU used for model deployments (e.g., GlobalStandard for GPT-5 family)')
@@ -90,6 +95,31 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
   ]
 }
 
+// Embedding deployment backing semantic policy retrieval. Regulatory control
+// text and Azure Policy display names share almost no vocabulary, so lexical
+// search alone misses most of the correct definitions; see
+// app/backend/app/services/policy_catalog_service.py.
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (!existingAccount) {
+  parent: openai
+  name: embeddingModel
+  sku: {
+    name: 'Standard'
+    capacity: embeddingCapacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: embeddingModel
+      version: embeddingVersion
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    raiPolicyName: 'Microsoft.Default'
+  }
+  dependsOn: [
+    fallbackDeployment
+  ]
+}
+
 resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' = {
   name: '${name}-pe'
   location: location
@@ -113,6 +143,7 @@ resource openAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-08-01' =
   dependsOn: existingAccount ? [] : [
     modelDeployment
     fallbackDeployment
+    embeddingDeployment
   ]
 }
 
@@ -139,5 +170,6 @@ output name string = name
 output endpoint string = openaiEndpoint
 output deploymentName string = existingAccount ? modelName : modelDeployment.name
 output fallbackDeploymentName string = existingAccount ? '${fallbackModel}-fallback' : (modelName != fallbackModel ? fallbackDeployment.name : '')
+output embeddingDeploymentName string = embeddingModel
 output apiVersion string = apiVersion
 output openAiUserRoleId string = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAiUserRoleId)

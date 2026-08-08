@@ -6,22 +6,28 @@ Split into two groups:
   distributions of ``fixtures/ncsp_v2_gold_mapping.json``, and asserts that no
   customer identity leaked into the committed file.
 * **Recall baseline** — exercises the real 2465-definition catalog against the
-  gold mapping. Pins the *measured* baseline so a retrieval change that silently
-  regresses recall fails here rather than in production.
+  gold mapping. Pins the *measured* recall of each retrieval stage so a change
+  that silently regresses recall fails here rather than in production.
 
-Recall baseline measured 2026-08-08 on the bundled catalog snapshot
-(``generated_at 2026-07-23``, ``count 2465``), realistic query:
+Measured on the bundled catalog snapshot (``generated_at 2026-07-23``,
+``count 2465``), micro-recall of the expert's policy GUIDs:
 
-    depth    micro recall    all-hit
-       15            15.6%       7.3%
-       50            23.3%      14.6%
-      200            46.7%      34.1%
-     2465            73.3%      63.4%
+    retrieval                              @15     @40    @200    @500
+    lexical, raw control text (original) 15.6%   23.3%   46.7%   60.0%
+    lexical, expanded query              32.2%   45.6%   72.2%   86.7%
+    hybrid,  expanded query (shipped)    38.9%   55.6%   84.4%   92.2%
 
-The @2465 figure is the ceiling: even scanning the entire catalog, lexical
-retrieval on regulator prose finds only 73.3% of the expert's policies. Raising
-the candidate window cannot fix that; the query text has to change. See
-``mapping_recall`` for why the ``how_to_meet`` column must not be used.
+Two independent changes produce that: restating the control in Azure vocabulary
+before retrieval, and fusing a dense ranking with the lexical one. Neither is
+window size — lexical retrieval on raw control text tops out at 73.3% even when
+the *entire* catalog is scanned, so widening the candidate window could never
+have fixed this.
+
+The expanded-query and hybrid rows are reproduced offline from frozen fixtures
+(``ncsp_v2_control_intents.json``, ``ncsp_v2_query_embeddings.npz``) captured by
+``scripts/generate_retrieval_eval_fixture.py``, so CI needs no Azure OpenAI
+credentials. See ``mapping_recall`` for why the ``how_to_meet`` column must not
+be used as a query.
 """
 
 import json
@@ -43,8 +49,12 @@ from mapping_recall import (  # noqa: E402
     QUERY_WITH_GUIDANCE,
     catalog_search,
     controls_with_policies,
+    hybrid_rank,
     load_gold,
+    load_intents,
+    load_query_vectors,
     measure_recall,
+    query_expanded,
 )
 
 # Distribution of the expert's four coverage categories over the 137 NCSP
@@ -195,22 +205,23 @@ def test_all_gold_guids_exist_in_the_shipped_catalog(gold, catalog):
     assert not missing, f"gold GUIDs absent from the catalog snapshot: {missing}"
 
 
-def test_baseline_recall_is_poor_at_the_shipped_candidate_window(gold, catalog):
-    """Pins the defect: the shipped window sees a small minority of gold policies.
+def test_lexical_baseline_on_raw_control_text_is_poor(gold, catalog):
+    """Pins the original defect, and the reason the pipeline was reworked.
 
-    Deliberately asserted as a *ceiling*, not a floor. When Phase 1 lands this
-    test must be updated with the improved numbers — it is here so the
-    improvement is provable rather than asserted.
+    Lexical retrieval on the control's own words — the shipped behaviour before
+    query expansion and semantic fusion — sees a small minority of the expert's
+    policies. Asserted as a *ceiling* so that if someone ever "fixes" retrieval
+    by only widening the window, this test still shows why that is not enough.
     """
     report = measure_recall(
-        catalog_search(catalog),
+        catalog_search(catalog, semantic=False),
         controls_with_policies(gold),
         query_fn=QUERY_REALISTIC,
         depths=(15, 50, 200),
         known=lambda guid: catalog.get(guid) is not None,
     )
-    assert report.micro_recall(15) < 0.25, report.format_table("realistic")
-    assert report.micro_recall(200) < 0.60, report.format_table("realistic")
+    assert report.micro_recall(15) < 0.25, report.format_table("lexical, raw text")
+    assert report.micro_recall(200) < 0.60, report.format_table("lexical, raw text")
 
 
 def test_widening_the_window_cannot_reach_acceptable_recall(gold, catalog):
@@ -259,3 +270,139 @@ def test_recall_report_denominator_excludes_unretrievable_guids(gold, catalog):
     assert report.pair_count == 0
     assert report.unretrievable == 90
     assert report.micro_recall(15) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# The shipped retrieval pipeline, reproduced offline
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def intents():
+    return load_intents()
+
+
+@pytest.fixture(scope="module")
+def query_vectors():
+    return load_query_vectors()
+
+
+def test_catalog_ships_a_semantic_index(catalog):
+    """The embedding artifact must be present, aligned and normalised.
+
+    Without it, retrieval silently falls back to lexical-only, which measured
+    72.2% recall@200 instead of 84.4% — a regression that would otherwise only
+    show up as worse mappings in production.
+    """
+    import numpy as np
+
+    matrix = catalog.embedding_matrix
+    assert matrix is not None, (
+        "no catalog embeddings loaded; run "
+        "scripts/generate_policy_catalog_embeddings.py"
+    )
+    assert matrix.shape[0] == catalog.count
+    norms = np.linalg.norm(matrix, axis=1)
+    assert np.allclose(norms, 1.0, atol=1e-2), "catalog vectors are not L2-normalised"
+
+
+def test_expansion_fixture_covers_every_gold_control(gold, intents, query_vectors):
+    """The offline fixtures must not drift out of sync with the gold set."""
+    expected = {c["control_id"] for c in controls_with_policies(gold)}
+    assert set(intents) == expected
+    assert set(query_vectors) == expected
+
+
+def test_query_expansion_roughly_doubles_lexical_recall(gold, catalog, intents):
+    """Requirement 1, part one: the query, not the window, was the bottleneck.
+
+    Restating the control in Azure vocabulary before retrieval lifted lexical
+    micro-recall@200 from 46.7% to 72.2%. Asserted as a floor a little below the
+    measured value to absorb catalog churn.
+    """
+    controls = controls_with_policies(gold)
+    known = lambda guid: catalog.get(guid) is not None  # noqa: E731
+    search = catalog_search(catalog, semantic=False)
+
+    raw = measure_recall(search, controls, QUERY_REALISTIC, (15, 200), known)
+    expanded = measure_recall(
+        search, controls, lambda c: query_expanded(c, intents), (15, 200), known
+    )
+
+    assert expanded.micro_recall(200) >= 0.65, expanded.format_table("expanded, lexical")
+    assert expanded.micro_recall(200) > raw.micro_recall(200) * 1.3, (
+        f"raw@200={raw.micro_recall(200):.3f} "
+        f"expanded@200={expanded.micro_recall(200):.3f}"
+    )
+
+
+def test_hybrid_retrieval_meets_the_recall_gate(gold, catalog, intents, query_vectors):
+    """Requirement 1, part two: the whole catalog is genuinely reachable.
+
+    Reproduces the shipped configuration — LLM-expanded query, hybrid lexical +
+    semantic retrieval, RRF fusion — and asserts the recall gate the design was
+    accepted against. Measured: 55.6% @40, 84.4% @200, 92.2% @500, against a
+    shipped-baseline 15.6% @15.
+
+    Floors sit below the measured values so catalog refreshes do not fail the
+    build for noise, but a structural regression (embeddings not loading, fusion
+    broken, expansion dropped) fails it immediately.
+    """
+    controls = controls_with_policies(gold)
+    depths = (40, 200, 500)
+    report = measure_recall(
+        lambda query, top_n: hybrid_rank(
+            catalog, _control_for(controls, query), intents, query_vectors, top_n
+        ),
+        controls,
+        query_fn=lambda c: c["control_id"],
+        depths=depths,
+        known=lambda guid: catalog.get(guid) is not None,
+    )
+    table = report.format_table("expanded + hybrid")
+    assert report.micro_recall(40) >= 0.48, table
+    assert report.micro_recall(200) >= 0.75, table
+    assert report.micro_recall(500) >= 0.85, table
+
+
+def test_hybrid_beats_lexical_at_every_useful_depth(
+    gold, catalog, intents, query_vectors
+):
+    """Semantic fusion is what justifies shipping a 2.4 MB embedding artifact."""
+    controls = controls_with_policies(gold)
+    known = lambda guid: catalog.get(guid) is not None  # noqa: E731
+
+    lexical = measure_recall(
+        catalog_search(catalog, semantic=False),
+        controls,
+        lambda c: query_expanded(c, intents),
+        (200, 500),
+        known,
+    )
+    hybrid = measure_recall(
+        lambda query, top_n: hybrid_rank(
+            catalog, _control_for(controls, query), intents, query_vectors, top_n
+        ),
+        controls,
+        lambda c: c["control_id"],
+        (200, 500),
+        known,
+    )
+    for depth in (200, 500):
+        assert hybrid.micro_recall(depth) > lexical.micro_recall(depth), (
+            f"depth {depth}: lexical={lexical.micro_recall(depth):.3f} "
+            f"hybrid={hybrid.micro_recall(depth):.3f}"
+        )
+
+
+def _control_for(controls, control_id: str) -> dict:
+    """Resolve a control by id.
+
+    ``measure_recall`` passes a *query string* to the ranker, but hybrid ranking
+    needs the whole control (to look up its frozen expansion and embedding), so
+    the harness passes the control id as the query and resolves it here.
+    """
+    for control in controls:
+        if control["control_id"] == control_id:
+            return control
+    raise KeyError(control_id)
