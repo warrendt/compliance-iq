@@ -44,6 +44,37 @@ jobs:
           python scripts/generate_policy_catalog.py \
             ${{ inputs.subscription && format('--subscription {0}', inputs.subscription) || (vars.AZURE_SUBSCRIPTION_ID && format('--subscription {0}', vars.AZURE_SUBSCRIPTION_ID)) || '' }}
 
+      # The embeddings file is keyed to the catalog it was built from.
+      # PolicyCatalogService validates that alignment and *disables semantic
+      # search* on a mismatch rather than comparing wrong vectors — safe, but
+      # silent: a catalog-only refresh would drop hybrid retrieval back to
+      # lexical (measured micro-recall@200 84.4% -> 72.2%) with nothing failing.
+      # So the two artifacts are regenerated together and committed together.
+      - name: Install embedding dependencies
+        run: pip install openai azure-identity numpy
+
+      - name: Regenerate catalog embeddings
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          python scripts/generate_policy_catalog_embeddings.py \
+            ${AZURE_OPENAI_ENDPOINT:+--endpoint "$AZURE_OPENAI_ENDPOINT"} \
+            ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:+--deployment "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT"}
+
+      - name: Verify the two artifacts agree
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+          AZURE_OPENAI_DEPLOYMENT_NAME: gpt
+          ENABLE_AUTH: "false"
+        run: |
+          python -m pytest \
+            app/tests/test_policy_catalog_service.py \
+            app/tests/test_generate_policy_catalog.py \
+            app/tests/test_mapping_recall.py \
+            --noconftest -q
+
       - name: Open PR if the catalog changed
         uses: peter-evans/create-pull-request@v6
         with:
@@ -51,8 +82,15 @@ jobs:
           title: "chore: refresh Azure Policy catalog snapshot"
           body: |
             Automated refresh of the built-in Azure Policy catalog used for
-            control→policy retrieval. Review the diff (added/removed/renamed
-            built-in policy definitions) before merging.
+            control→policy retrieval, with its embedding index regenerated from
+            the same snapshot.
+
+            Review the diff (added/removed/renamed built-in policy definitions)
+            before merging. The recall tests in `app/tests/test_mapping_recall.py`
+            ran against the refreshed pair and passed; a drop there means the
+            refresh changed retrieval quality, not just catalog contents.
           branch: chore/refresh-policy-catalog
-          add-paths: app/backend/app/data/policy_catalog/azure_policy_catalog.json
+          add-paths: |
+            app/backend/app/data/policy_catalog/azure_policy_catalog.json
+            app/backend/app/data/policy_catalog/azure_policy_catalog_embeddings.npz
           delete-branch: true
