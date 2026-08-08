@@ -21,8 +21,21 @@ GUID_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-VALID_MCSB_PREFIXES = {
-    "NS", "IM", "PA", "DP", "AM", "LT", "IR", "PV", "ES", "BR", "DS", "GS",
+def _identifier_exists(catalog, name: str) -> bool:
+    """Does *catalog* recognise *name* as a definition or an initiative?
+
+    ``identifier_exists`` spans both ARM resource types, but the catalog is
+    injectable and older/simpler implementations expose only ``exists``. Falling
+    back keeps a substituted catalog working instead of failing closed and
+    reporting every real identifier as invalid.
+    """
+    checker = getattr(catalog, "identifier_exists", None)
+    if callable(checker):
+        return bool(checker(name))
+    return bool(catalog.exists(name))
+
+
+VALID_MCSB_PREFIXES = {    "NS", "IM", "PA", "DP", "AM", "LT", "IR", "PV", "ES", "BR", "DS", "GS",
 }
 
 
@@ -141,7 +154,20 @@ def validate_mappings(
             for policy in mapping.azure_policies:
                 pid = policy.policy_definition_id
 
-                if not GUID_PATTERN.match(pid):
+                # The catalog outranks the format check. Azure ships at least
+                # one real built-in whose definition name is not GUID-shaped:
+                # 17k78e20-9358-41c9-923c-fb736d382a12, "Transparent Data
+                # Encryption on SQL databases should be enabled", verified live
+                # as policyType BuiltIn. A format-first check calls that real,
+                # deployable policy invalid and throws away correct work.
+                #
+                # So format is only the fallback for when the catalog cannot
+                # answer. Where the catalog is loaded, membership decides.
+                in_catalog = catalog_available and _identifier_exists(catalog, pid)
+
+                if in_catalog:
+                    all_policy_ids.add(pid)
+                elif not GUID_PATTERN.match(pid):
                     issues.append(ValidationIssue(
                         severity="error",
                         control_id=control_id,
@@ -151,7 +177,7 @@ def validate_mappings(
                 else:
                     all_policy_ids.add(pid)
 
-                    if catalog_available and not catalog.exists(pid):
+                    if catalog_available:
                         issues.append(ValidationIssue(
                             severity="warning",
                             control_id=control_id,

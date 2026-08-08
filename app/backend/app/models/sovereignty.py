@@ -32,6 +32,15 @@ class SovereigntyControlObjective(BaseModel):
         False,
         description="True if no Azure Policy exists (e.g., SO-2 Customer Lockbox)"
     )
+    named_feature: str = Field(
+        "",
+        description=(
+            "For a procedural objective, the Azure feature that meets it. "
+            "SO-2 has no policy but is met by enabling Customer Lockbox -- "
+            "reporting 'no policy' without naming the feature turns a solved "
+            "requirement into an apparent gap."
+        ),
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {

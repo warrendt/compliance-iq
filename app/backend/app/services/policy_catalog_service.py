@@ -169,6 +169,12 @@ class PolicyCatalogService:
         self._loaded = False
         self._source = "unloaded"
         self._snapshot_date = ""
+        self._initiatives: List[Dict[str, Any]] = []
+        self._initiatives_by_name: Dict[str, Dict[str, Any]] = {}
+        # definition GUID -> initiative GUIDs that contain it. Built once so
+        # "is this already covered by an initiative you have?" is a lookup
+        # rather than a scan of 15,000 membership references.
+        self._definition_to_initiatives: Dict[str, List[str]] = {}
 
     # ------------------------------------------------------------------
     # Loading / indexing
@@ -198,6 +204,7 @@ class PolicyCatalogService:
                 # re-verified per release. A mapping that cannot say when its
                 # catalog was taken cannot be defended.
                 self._snapshot_date = str(data.get("generated_at") or "")
+                self._ingest_initiatives(data.get("initiatives") or [])
             else:
                 self._source = "snapshot"
             logger.info(
@@ -636,6 +643,77 @@ class PolicyCatalogService:
         if not self._loaded:
             self.load()
         return len(self._definitions)
+
+    # ── Initiatives ──────────────────────────────────────────────────
+    #
+    # Azure ships compliance coverage as initiatives, not loose definitions:
+    # Microsoft cloud security benchmark, NIST SP 800-53 Rev. 5, ISO 27001 and
+    # CIS Foundations are all policy *set* definitions. A catalog of
+    # definitions alone could never answer "this is already covered by an
+    # initiative you have assigned", and would report a perfectly real
+    # initiative GUID as an unresolvable identifier - the silent-drop failure
+    # mode, wearing a different hat.
+
+    def _ingest_initiatives(self, initiatives: List[Dict[str, Any]]) -> None:
+        self._initiatives = [i for i in initiatives if i.get("name")]
+        self._initiatives_by_name = {i["name"]: i for i in self._initiatives}
+        index: Dict[str, List[str]] = {}
+        for init in self._initiatives:
+            for guid in init.get("policy_definition_names") or []:
+                index.setdefault(guid, []).append(init["name"])
+        self._definition_to_initiatives = index
+
+    def get_initiative(self, name: str) -> Optional[Dict[str, Any]]:
+        """Look up a built-in initiative by GUID, accepting a full ARM id."""
+        if not self._loaded:
+            self.load()
+        if not name:
+            return None
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._initiatives_by_name.get(segment)
+
+    def initiative_exists(self, name: str) -> bool:
+        return self.get_initiative(name) is not None
+
+    def identifier_exists(self, name: str) -> bool:
+        """True if *name* is a real built-in definition **or** initiative.
+
+        Validation that only knows definitions calls a real initiative GUID
+        invalid, which is how a correct answer gets discarded as a typo.
+        """
+        return self.exists(name) or self.initiative_exists(name)
+
+    def initiatives_containing(self, name: str) -> List[Dict[str, Any]]:
+        """Built-in initiatives that already include definition *name*.
+
+        This is what lets the product say "you do not need to assign this
+        policy separately - it ships inside MCSB, which you already run."
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return []
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return [
+            self._initiatives_by_name[i]
+            for i in self._definition_to_initiatives.get(segment, [])
+            if i in self._initiatives_by_name
+        ]
+
+    @property
+    def initiative_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._initiatives)
+
+    @property
+    def initiatives_available(self) -> bool:
+        """Whether initiative coverage can be asserted at all.
+
+        False means "not loaded", never "not covered" - reporting an absent
+        index as an absence of coverage would be the same lie as a silent drop.
+        """
+        return self.initiative_count > 0
 
     @property
     def source(self) -> str:

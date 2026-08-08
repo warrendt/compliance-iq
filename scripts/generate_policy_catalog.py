@@ -57,6 +57,19 @@ _AZ_QUERY = (
 # concrete effect can be resolved from the parameter's ``defaultValue``.
 _EFFECT_PARAM_RE = re.compile(r"^\[+\s*parameters\('([^']+)'\)\s*\]+$")
 
+# A built-in policy definition name is *usually* a GUID, but not always: Azure
+# ships 17k78e20-9358-41c9-923c-fb736d382a12 as a real BuiltIn. Kept only for
+# reporting how many members are non-GUID-shaped, never to filter them out.
+_GUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+_AZ_INITIATIVE_QUERY = (
+    "[?policyType=='BuiltIn'].{name:name, display_name:displayName, "
+    "description:description, category:metadata.category, "
+    "version:metadata.version, policyDefinitions:policyDefinitions}"
+)
+
 
 def _field(item: Dict[str, Any], *names: str, nested: Optional[str] = None) -> Any:
     """Read a field that the two input shapes spell differently.
@@ -285,6 +298,19 @@ def _fetch_via_az(subscription: Optional[str]) -> List[Dict[str, Any]]:
     return json.loads(proc.stdout or "[]")
 
 
+def _fetch_initiatives_via_az(subscription: Optional[str]) -> List[Dict[str, Any]]:
+    cmd = [
+        "az", "policy", "set-definition", "list",
+        "--query", _AZ_INITIATIVE_QUERY, "-o", "json",
+    ]
+    if subscription:
+        cmd += ["--subscription", subscription]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"az failed ({proc.returncode}): {proc.stderr.strip()[:500]}")
+    return json.loads(proc.stdout or "[]")
+
+
 def build_catalog(raw: List[Dict[str, Any]], source: str) -> Dict[str, Any]:
     definitions = normalize(raw)
     return {
@@ -296,12 +322,115 @@ def build_catalog(raw: List[Dict[str, Any]], source: str) -> Dict[str, Any]:
     }
 
 
+def _definition_name(ref: str) -> str:
+    """The definition name at the end of a policy definition resource id.
+
+    Initiative members arrive as full ARM paths; the catalog keys on the
+    trailing segment everywhere else.
+
+    Deliberately **not** GUID-validated. Azure ships at least one real built-in
+    whose definition name is not GUID-shaped -
+    ``17k78e20-9358-41c9-923c-fb736d382a12`` ("Transparent Data Encryption on
+    SQL databases should be enabled"), verified live as ``policyType: BuiltIn``.
+    A format filter here would quietly drop a genuine member and understate the
+    coverage an initiative actually gives the customer.
+    """
+    return (ref or "").rstrip("/").rsplit("/", 1)[-1].strip()
+
+
+def normalize_initiatives(raw: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Project raw policy set definitions to the initiative catalog schema.
+
+    Initiatives are how Azure actually ships compliance coverage - MCSB, NIST
+    SP 800-53 R5, ISO 27001, CIS Foundations are all initiatives, not
+    definitions. Holding only definitions meant the product could never say
+    "this is already covered by an initiative you have assigned", and would
+    report a perfectly real initiative GUID as an unresolvable identifier.
+
+    ``policy_definition_names`` is the join key: it is what lets a control's
+    mapped GUIDs be tested for membership of an initiative the customer already
+    runs.
+    """
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+    for raw_item in raw:
+        item = _unwrap(raw_item)
+        name = (item.get("name") or "").strip()
+        display = (item.get("display_name") or item.get("displayName") or "").strip()
+        if not name or not display:
+            continue
+        version = _field(item, "version", nested="metadata")
+        if _is_deprecated({"display_name": display, "version": version}):
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
+
+        members = item.get("policyDefinitions") or item.get("policy_definitions") or []
+        guids: List[str] = []
+        for member in members:
+            if isinstance(member, dict):
+                ref = member.get("policyDefinitionId") or member.get("policy_definition_id") or ""
+            else:
+                ref = str(member)
+            guid = _definition_name(ref)
+            if guid and guid not in guids:
+                guids.append(guid)
+
+        out.append(
+            {
+                "name": name,
+                "display_name": display,
+                "description": (item.get("description") or "").strip(),
+                "category": str(
+                    _field(item, "category", nested="metadata") or "Uncategorized"
+                ).strip(),
+                "policy_definition_names": guids,
+                "policy_definition_count": len(guids),
+            }
+        )
+    out.sort(key=lambda d: d["name"])
+    return out
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--raw", type=Path, help="Transform a captured az JSON dump instead of calling az.")
     parser.add_argument("--subscription", help="Subscription to query (defaults to az context).")
+    parser.add_argument(
+        "--initiatives-raw",
+        type=Path,
+        help="Captured az policy set-definition JSON dump to fold in as initiatives.",
+    )
+    parser.add_argument(
+        "--initiatives-only",
+        action="store_true",
+        help="Refresh only the initiatives of an existing catalog, leaving definitions untouched.",
+    )
     args = parser.parse_args(argv)
+
+    if args.initiatives_only:
+        if not args.initiatives_raw:
+            print("--initiatives-only requires --initiatives-raw.", file=sys.stderr)
+            return 1
+        if not args.output.exists():
+            print(f"No existing catalog at {args.output} to update.", file=sys.stderr)
+            return 1
+        catalog = json.loads(args.output.read_text(encoding="utf-8"))
+        initiatives = normalize_initiatives(
+            json.loads(args.initiatives_raw.read_text(encoding="utf-8"))
+        )
+        if not initiatives:
+            print("Refusing to write an empty initiative list.", file=sys.stderr)
+            return 1
+        catalog["initiatives"] = initiatives
+        catalog["initiative_count"] = len(initiatives)
+        args.output.write_text(
+            json.dumps(catalog, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+        )
+        print(f"Wrote {len(initiatives)} initiatives to {args.output}")
+        return 0
 
     if args.raw:
         raw = json.loads(Path(args.raw).read_text(encoding="utf-8"))
@@ -315,9 +444,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("Refusing to write an empty catalog.", file=sys.stderr)
         return 1
 
+    if args.initiatives_raw:
+        initiatives_raw = json.loads(args.initiatives_raw.read_text(encoding="utf-8"))
+    else:
+        initiatives_raw = _fetch_initiatives_via_az(args.subscription)
+    initiatives = normalize_initiatives(initiatives_raw)
+    catalog["initiatives"] = initiatives
+    catalog["initiative_count"] = len(initiatives)
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(catalog, indent=2, sort_keys=False) + "\n", encoding="utf-8")
-    print(f"Wrote {catalog['count']} policy definitions to {args.output} (source={source})")
+    print(
+        f"Wrote {catalog['count']} policy definitions and "
+        f"{len(initiatives)} initiatives to {args.output} (source={source})"
+    )
     return 0
 
 
