@@ -386,6 +386,7 @@
       "how_to_meet": "Azure Policies to enforce encryption at rest: Azure Recovery Services vaults should use CMK for backup data;Azure Container Instance container group should use CMK;AKS OS and data disks should be encrypted by CMK;HPC Cache accounts should use CMK for encryption;Managed disks should be double encrypted (PMK + CMK);MySQL servers should use CMK to encrypt data at rest;OS and data disks should be encrypted with a CMK;PostgreSQL servers should use CMK to encrypt data at rest;Queue Storage should use CMK for encryption;SQL managed instances should use CMK to encrypt data at rest;SQL servers should use CMK to encrypt data at rest;Storage account encryption scopes should use CMK;Storage accounts should use CMK for encryption;Table Storage should use CMK for encryption Azure Policies to enforce encryption in use: Confidential Computing:Allowed resource types Encryption in Transit: Azure services are accessible over SSL/TLS endpoints",
       "reason": "Encryption at rest for the primary data services is directly evaluable. Transparent Data Encryption covers Azure SQL at rest; secure transfer and the minimum TLS version policy cover data in transit for storage. Together these give measurable evidence of the encryption policy being applied to Azure-hosted data.",
       "policy_definition_ids": [
+        "17k78e20-9358-41c9-923c-fb736d382a12",
         "404c3081-a854-4457-ae30-26a93ef643f9",
         "fe83a0eb-a853-422d-aac2-1bffd182c5d0"
       ],
@@ -1916,7 +1917,8 @@
       "reason": "Encryption mechanisms for data at rest and in transit are directly evaluable across the storage and database estate: secure transfer and minimum TLS version cover transit; Transparent Data Encryption covers SQL at rest.",
       "policy_definition_ids": [
         "404c3081-a854-4457-ae30-26a93ef643f9",
-        "fe83a0eb-a853-422d-aac2-1bffd182c5d0"
+        "fe83a0eb-a853-422d-aac2-1bffd182c5d0",
+        "17k78e20-9358-41c9-923c-fb736d382a12"
       ],
       "policy_type": "Built-in",
       "defender_recommendations": [
