@@ -31,6 +31,8 @@ jobs:
     runs-on: [self-hosted, ciq-vnet]
     timeout-minutes: 60
     steps:
+      - uses: actions/checkout@v4
+
       - name: Show where this is running
         run: |
           echo "runner: $RUNNER_NAME"
