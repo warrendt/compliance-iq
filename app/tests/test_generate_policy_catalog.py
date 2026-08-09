@@ -351,3 +351,41 @@ def test_nested_non_builtin_definitions_are_dropped():
         ]
     )
     assert [d["name"] for d in out] == ["b"]
+
+
+# ── canonical key order ──────────────────────────────────────────────────────
+#
+# A refresh in which exactly one policy description changed produced a
+# 19,202-line diff, because the two write paths emitted the top-level keys in
+# different orders and whole sections shifted past each other. The catalog is
+# reviewed as a pull request; a diff that size is not reviewed at all.
+
+
+def test_canonicalize_is_order_independent():
+    """Two catalogs with the same content differ only in key order -> identical text."""
+    import json
+
+    a = {"generated_at": "t", "source": "az", "definitions": [1], "initiatives": [2],
+         "deprecated": [3], "count": 1}
+    b = {"count": 1, "deprecated": [3], "initiatives": [2], "definitions": [1],
+         "source": "az", "generated_at": "t"}
+    assert json.dumps(gen.canonicalize(a), indent=2) == json.dumps(gen.canonicalize(b), indent=2)
+
+
+def test_canonicalize_puts_initiatives_before_deprecated():
+    """Pin the order, so a future edit that reshuffles it fails here and not in a
+    23,000-line diff a human is asked to review."""
+    out = list(gen.canonicalize({"deprecated": [], "initiatives": [], "definitions": []}))
+    assert out.index("definitions") < out.index("initiatives") < out.index("deprecated")
+
+
+def test_canonicalize_keeps_unknown_keys():
+    """Dropping a field a future version adds would be the same class of silent
+    loss this file exists to prevent."""
+    out = gen.canonicalize({"count": 1, "future_field": "keep me"})
+    assert out["future_field"] == "keep me"
+
+
+def test_canonicalize_preserves_every_key_and_value():
+    src = {"count": 2, "definitions": [{"name": "g"}], "zzz": 1, "aaa": 2}
+    assert gen.canonicalize(src) == src

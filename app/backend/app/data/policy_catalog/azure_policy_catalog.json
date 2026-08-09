@@ -41528,6 +41528,7 @@
       ]
     }
   ],
+  "initiative_count": 150,
   "initiatives": [
     {
       "name": "03055927-78bd-4236-86c0-f36125a10dc9",
@@ -58362,7 +58363,6 @@
       "policy_definition_count": 31
     }
   ],
-  "initiative_count": 150,
   "deprecated_count": 377,
   "deprecated": [
     {
