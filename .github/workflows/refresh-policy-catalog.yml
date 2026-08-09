@@ -14,6 +14,11 @@ on:
         description: "Subscription to query (defaults to the AZURE_SUBSCRIPTION_ID var)"
         required: false
         type: string
+      runner_already_started:
+        description: "I have already started the in-VNet runner myself"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -75,7 +80,11 @@ jobs:
       # cannot: `administration` is not a permission it can be granted, which
       # was tested rather than assumed. So a fine-grained PAT is required,
       # scoped to this repository with Administration: read and write.
+      #
+      # Without that secret the refresh is still usable, just not unattended:
+      # start the runner by hand and dispatch with runner_already_started.
       - name: Start the in-VNet runner
+        if: ${{ !inputs.runner_already_started }}
         env:
           RUNNER_PAT: ${{ secrets.RUNNER_REGISTRATION_PAT }}
           RG: ${{ vars.AZURE_RESOURCE_GROUP }}
@@ -114,6 +123,18 @@ jobs:
 
           az containerapp job start -n "$JOB_NAME" -g "$RG" -o none
           echo "started $JOB_NAME; it will pick up the embeddings job"
+
+      - name: Confirm the runner was started by hand
+        if: ${{ inputs.runner_already_started }}
+        run: |
+          echo "Skipping runner start at your request."
+          echo "The embeddings job will queue against labels [self-hosted, ciq-vnet]"
+          echo "and wait for a runner. If none is listening it will sit there until"
+          echo "the job timeout, so make sure you ran:"
+          echo ""
+          echo "  TOKEN=\$(gh api -X POST repos/${GITHUB_REPOSITORY}/actions/runners/registration-token --jq .token)"
+          echo "  az containerapp job secret set -n ${{ vars.AZURE_VNET_RUNNER_JOB }} -g ${{ vars.AZURE_RESOURCE_GROUP }} --secrets runner-token=\$TOKEN"
+          echo "  az containerapp job start -n ${{ vars.AZURE_VNET_RUNNER_JOB }} -g ${{ vars.AZURE_RESOURCE_GROUP }}"
 
   embeddings:
     name: Regenerate embeddings (inside the VNet)
