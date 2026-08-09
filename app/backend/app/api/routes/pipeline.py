@@ -578,7 +578,17 @@ def _run_pipeline_job(job_id: str):
 
     job = _jobs[job_id]
 
+    # Mapping is now per-control against the whole catalog rather than a
+    # handful of batched calls, so that stage is roughly an order of magnitude
+    # longer than it was. An un-abortable long stage means a user who cancels
+    # watches the job keep spending tokens, so cancellation is checked between
+    # stages and on every mapped control.
+    def ensure_not_cancelled() -> None:
+        if job.get("cancel_requested") or job.get("status") == "cancelled":
+            raise PipelineJobCancelled()
+
     try:
+        ensure_not_cancelled()
 
         # Save PDF to temp file
         tmp_dir = tempfile.mkdtemp(prefix="compliance_iq_")
@@ -608,6 +618,7 @@ def _run_pipeline_job(job_id: str):
         job["progress"] = 15
 
         # ── Stage 2: Extract controls ─────────────────────────────────
+        ensure_not_cancelled()
         job["status"] = "extracting_controls"
         job["stage"] = "AI extracting controls from document"
         job["progress"] = 20
@@ -621,6 +632,7 @@ def _run_pipeline_job(job_id: str):
         _log_debug(job_id, f"Extracted {len(extraction.controls)} controls (framework: {extraction.framework_name})")
 
         # ── Stage 3: Map to Azure Policies ────────────────────────────
+        ensure_not_cancelled()
         job["status"] = "mapping_policies"
         job["stage"] = "Mapping controls to Azure Policies"
         job["progress"] = 45
@@ -628,6 +640,10 @@ def _run_pipeline_job(job_id: str):
         _log_debug(job_id, "Mapping controls to Azure Policies")
 
         def progress_cb(current, total):
+            # The only per-control hook in this stage, so it is also where
+            # cancellation is honoured. Raising here propagates out of the
+            # mapping engine and aborts the run.
+            ensure_not_cancelled()
             pct = 45 + int((current / total) * 30)
             job["progress"] = pct
             job["controls_mapped"] = current
@@ -639,6 +655,7 @@ def _run_pipeline_job(job_id: str):
         _log_debug(job_id, f"Completed mapping for {len(mappings)} controls")
 
         # ── Stage 4: Validate ─────────────────────────────────────────
+        ensure_not_cancelled()
         job["status"] = "validating"
         job["stage"] = "Validating mappings"
         job["progress"] = 85
@@ -649,6 +666,7 @@ def _run_pipeline_job(job_id: str):
         _log_debug(job_id, "Validation complete")
 
         # ── Stage 5: Generate artifacts ───────────────────────────────
+        ensure_not_cancelled()
         job["status"] = "generating"
         job["stage"] = "Generating initiative artifacts"
 
@@ -684,11 +702,26 @@ def _run_pipeline_job(job_id: str):
         # Remove the raw PDF content from memory
         del job["pdf_content"]
 
+    except PipelineJobCancelled:
+        # A cancelled job is not a failed one. Reporting it as "failed" sends
+        # the user looking for a defect they caused deliberately.
+        logger.info("Pipeline job %s cancelled by user", job_id)
+        job["status"] = "cancelled"
+        job["stage"] = "Cancelled"
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        # Drop the raw document before persisting: the success path already
+        # excludes it from the Cosmos copy, and there is no reason a terminal
+        # job should push the customer's PDF into storage.
+        job.pop("pdf_content", None)
+        _cosmos_upsert_job(job)
+        _log_debug(job_id, "Pipeline cancelled by user")
+
     except Exception as e:
         logger.error(f"Pipeline job {job_id} failed: {e}", exc_info=True)
         job["status"] = "failed"
         job["error"] = str(e)
         job["completed_at"] = datetime.now(timezone.utc).isoformat()
+        job.pop("pdf_content", None)
         _cosmos_upsert_job(job)
         _log_debug(job_id, f"Pipeline failed: {e}")
 

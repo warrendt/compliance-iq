@@ -41,6 +41,31 @@ Mitigations:
 - Report honestly if extraction found no controls (bad/scanned PDF). The mapper
   uses the Azure built-in catalog snapshot (~2465 defs), not MCSB.
 
+## Every control comes back `C_Process` with no policies
+**This is almost certainly an engine failure, not a framework of process controls.**
+`AIMappingService.map_control` wraps the whole mapping in a broad `except`, so any
+error becomes a fallback mapping. Two live instances, both invisible to mocked tests:
+
+- A settings field the request path reads did not exist (a lost newline in
+  `config.py` absorbed `ai_max_tokens` into the comment above it), so every call
+  raised `AttributeError`.
+- A `response_format` model contained an open object (`Optional[dict]`), and Azure
+  OpenAI structured output rejects the request with a **400 before the model runs**:
+  `'additionalProperties' is required to be supplied and to be false`. Every nested
+  object in the response model must be closed.
+
+The fallback now declares itself (`coverage_gap=True` plus a reason naming the engine
+failure), so this shows up as an engine failure rather than a coverage judgement.
+Check backend logs for `Creating fallback mapping for` — the reason is on that line.
+
+## Retrieval quality drops with no visible error
+Structured-output calls must be budgeted for a **reasoning** model: it spends
+completion tokens on reasoning before emitting output. A ceiling sized for a
+non-reasoning model is consumed entirely by reasoning and the call fails with
+`Could not parse response content as the length limit was reached`, having produced
+nothing. The rerank caller degrades quietly to unranked retrieval, so the only
+symptom is worse matches. Look for that message in backend logs.
+
 ## Deploy validation fails
 - `check_references` catches structural issues (missing policy defs, duplicate
   reference IDs, non-GUID policy IDs, missing groups). Fix the initiative JSON

@@ -45,6 +45,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -167,6 +168,22 @@ class PolicyCatalogService:
         self._embedding_client = None
         self._loaded = False
         self._source = "unloaded"
+        self._snapshot_date = ""
+        self._initiatives: List[Dict[str, Any]] = []
+        self._initiatives_by_name: Dict[str, Dict[str, Any]] = {}
+        # definition GUID -> initiative GUIDs that contain it. Built once so
+        # "is this already covered by an initiative you have?" is a lookup
+        # rather than a scan of 15,000 membership references.
+        self._definition_to_initiatives: Dict[str, List[str]] = {}
+        # Definitions Microsoft has retired. Held apart from the recommendable
+        # corpus so a withdrawn policy can be named as withdrawn instead of
+        # being reported as though it never existed.
+        self._deprecated: Dict[str, str] = {}
+        # Microsoft Managed Controls (policyType: Static). Not deployable, but
+        # they make up every initiative member the definitions array cannot
+        # resolve, and they are Microsoft attestation - a Category D answer,
+        # not missing data.
+        self._managed_controls: Dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Loading / indexing
@@ -187,10 +204,20 @@ class PolicyCatalogService:
             data = json.loads(path.read_text(encoding="utf-8"))
             definitions = data.get("definitions") if isinstance(data, dict) else data
             self._ingest(definitions or [])
-            self._source = (
-                f"snapshot({data.get('count', len(self._definitions))})"
-                if isinstance(data, dict) else "snapshot"
-            )
+            if isinstance(data, dict):
+                self._source = f"snapshot({data.get('count', len(self._definitions))})"
+                # The date the catalog was captured. Every mapping is only as
+                # current as the snapshot it was resolved against, and the
+                # analyst workbook's Legend is explicit that region and service
+                # availability "changes without customer notice" and must be
+                # re-verified per release. A mapping that cannot say when its
+                # catalog was taken cannot be defended.
+                self._snapshot_date = str(data.get("generated_at") or "")
+                self._ingest_initiatives(data.get("initiatives") or [])
+                self._ingest_deprecated(data.get("deprecated") or [])
+                self._ingest_managed_controls(data.get("managed_controls") or [])
+            else:
+                self._source = "snapshot"
             logger.info(
                 "Loaded %d Azure built-in policy definitions for retrieval from %s",
                 len(self._definitions), self.data_path,
@@ -628,9 +655,174 @@ class PolicyCatalogService:
             self.load()
         return len(self._definitions)
 
+    # ── Initiatives ──────────────────────────────────────────────────
+    #
+    # Azure ships compliance coverage as initiatives, not loose definitions:
+    # Microsoft cloud security benchmark, NIST SP 800-53 Rev. 5, ISO 27001 and
+    # CIS Foundations are all policy *set* definitions. A catalog of
+    # definitions alone could never answer "this is already covered by an
+    # initiative you have assigned", and would report a perfectly real
+    # initiative GUID as an unresolvable identifier - the silent-drop failure
+    # mode, wearing a different hat.
+
+    def _ingest_initiatives(self, initiatives: List[Dict[str, Any]]) -> None:
+        self._initiatives = [i for i in initiatives if i.get("name")]
+        self._initiatives_by_name = {i["name"]: i for i in self._initiatives}
+        index: Dict[str, List[str]] = {}
+        for init in self._initiatives:
+            for guid in init.get("policy_definition_names") or []:
+                index.setdefault(guid, []).append(init["name"])
+        self._definition_to_initiatives = index
+
+    def get_initiative(self, name: str) -> Optional[Dict[str, Any]]:
+        """Look up a built-in initiative by GUID, accepting a full ARM id."""
+        if not self._loaded:
+            self.load()
+        if not name:
+            return None
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._initiatives_by_name.get(segment)
+
+    def initiative_exists(self, name: str) -> bool:
+        return self.get_initiative(name) is not None
+
+    def identifier_exists(self, name: str) -> bool:
+        """True if *name* is a real built-in definition **or** initiative.
+
+        Validation that only knows definitions calls a real initiative GUID
+        invalid, which is how a correct answer gets discarded as a typo.
+        """
+        return self.exists(name) or self.initiative_exists(name)
+
+    def initiatives_containing(self, name: str) -> List[Dict[str, Any]]:
+        """Built-in initiatives that already include definition *name*.
+
+        This is what lets the product say "you do not need to assign this
+        policy separately - it ships inside MCSB, which you already run."
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return []
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return [
+            self._initiatives_by_name[i]
+            for i in self._definition_to_initiatives.get(segment, [])
+            if i in self._initiatives_by_name
+        ]
+
+    @property
+    def initiative_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._initiatives)
+
+    @property
+    def initiatives_available(self) -> bool:
+        """Whether initiative coverage can be asserted at all.
+
+        False means "not loaded", never "not covered" - reporting an absent
+        index as an absence of coverage would be the same lie as a silent drop.
+        """
+        return self.initiative_count > 0
+
+    # ------------------------------------------------------------------
+    # Deprecated definitions
+    # ------------------------------------------------------------------
+    def _ingest_deprecated(self, deprecated: List[Dict[str, Any]]) -> None:
+        self._deprecated = {}
+        for entry in deprecated or []:
+            name = str(entry.get("name") or "").strip()
+            if name:
+                self._deprecated[name] = str(entry.get("display_name") or "").strip()
+
+    def is_deprecated(self, name: str) -> bool:
+        """True if Azure once shipped this built-in and has since retired it.
+
+        Retired definitions are deliberately absent from the recommendable
+        corpus - proposing one for new governance would be wrong. But "Microsoft
+        withdrew this" and "this does not exist" are different answers: the
+        first points a customer at a migration, the second at a fabricated
+        citation. Without this the product could only give the second.
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return False
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return segment in self._deprecated
+
+    def deprecated_display_name(self, name: str) -> str:
+        """What the retired definition used to be called, for the explanation."""
+        if not self._loaded:
+            self.load()
+        if not name:
+            return ""
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._deprecated.get(segment, "")
+
+    @property
+    def deprecated_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._deprecated)
+
+    # ------------------------------------------------------------------
+    # Microsoft Managed Controls
+    # ------------------------------------------------------------------
+    def _ingest_managed_controls(self, managed: List[Dict[str, Any]]) -> None:
+        self._managed_controls = {}
+        for entry in managed or []:
+            name = str(entry.get("name") or "").strip()
+            if name:
+                self._managed_controls[name] = str(entry.get("display_name") or "").strip()
+
+    def is_managed_control(self, name: str) -> bool:
+        """True if this identifier is a Microsoft Managed Control.
+
+        These carry no deployable effect - the control is operated and attested
+        by Microsoft, not enforced in the customer's tenant - so they must never
+        enter an initiative as though they were enforcement. But they are also
+        not errors: they account for all 327 of the initiative members the
+        definitions array cannot resolve. Reporting them as unknown would
+        describe a third of MCSB's membership as broken data when it is in fact
+        the Microsoft-attested half of the answer.
+        """
+        if not self._loaded:
+            self.load()
+        if not name:
+            return False
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return segment in self._managed_controls
+
+    def managed_control_display_name(self, name: str) -> str:
+        if not self._loaded:
+            self.load()
+        if not name:
+            return ""
+        segment = name.strip().rstrip("/").rsplit("/", 1)[-1]
+        return self._managed_controls.get(segment, "")
+
+    @property
+    def managed_control_count(self) -> int:
+        if not self._loaded:
+            self.load()
+        return len(self._managed_controls)
+
     @property
     def source(self) -> str:
         return self._source
+
+    @property
+    def snapshot_date(self) -> str:
+        """When the catalog this mapping resolved against was captured.
+
+        Empty when unknown, which is itself worth reporting: an undated
+        catalog cannot support a claim about what Azure offers today.
+        """
+        if not self._loaded:
+            self.load()
+        return self._snapshot_date
 
     # ------------------------------------------------------------------
     # Refresh
@@ -640,6 +832,9 @@ class PolicyCatalogService:
         self._ingest(definitions)
         self._loaded = True
         self._source = source
+        # A refresh makes the snapshot date *now*, and leaving the old one in
+        # place would attribute fresh definitions to a stale capture.
+        self._snapshot_date = datetime.now(timezone.utc).isoformat()
         logger.info("Refreshed policy catalog: %d definitions (source=%s)", len(self._definitions), source)
         return len(self._definitions)
 

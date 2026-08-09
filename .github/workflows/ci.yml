@@ -78,6 +78,32 @@ jobs:
             app/tests/test_control_classification.py \
             app/tests/test_coverage_mapping.py \
             app/tests/test_retrieval_llm_stages.py \
+            app/tests/test_attestation_catalog.py \
+            --noconftest -v
+
+      # The pipeline path used to carry its own hardcoded menu of policy GUIDs.
+      # These lock it to the shared mapping engine, keep invalid identifiers
+      # visible rather than silently dropped, and keep a long mapping stage
+      # abortable.
+      - name: Run pipeline mapping + reporting tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+          AZURE_OPENAI_DEPLOYMENT_NAME: gpt
+          ENABLE_AUTH: "false"
+        run: |
+          python -m pytest \
+            app/tests/test_pipeline_policy_mapper.py \
+            app/tests/test_initiative_builder_drops.py \
+            app/tests/test_pipeline_cancellation.py \
+            app/tests/test_pipeline_manual_register.py \
+            app/tests/test_policy_initiatives.py \
+            app/tests/test_sovereignty_procedural.py \
+            app/tests/test_gold_fixture_integrity.py \
+            app/tests/test_acceptance_invariants.py \
+            app/tests/test_catalog_status_route.py \
+            app/tests/test_catalog_identifier_kinds.py \
+            app/tests/test_empty_extraction_is_declared.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests

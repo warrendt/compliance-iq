@@ -32,6 +32,15 @@ class SovereigntyControlObjective(BaseModel):
         False,
         description="True if no Azure Policy exists (e.g., SO-2 Customer Lockbox)"
     )
+    named_feature: str = Field(
+        "",
+        description=(
+            "For a procedural objective, the Azure feature that meets it. "
+            "SO-2 has no policy but is met by enabling Customer Lockbox -- "
+            "reporting 'no policy' without naming the feature turns a solved "
+            "requirement into an apparent gap."
+        ),
+    )
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -146,7 +155,10 @@ class SovereigntyMapping(BaseModel):
         description="Explanation of sovereignty level recommendation"
     )
 
-    model_config = ConfigDict(json_schema_extra={
+    # extra="forbid" is required, not cosmetic: SovereigntyMapping is nested in
+    # ControlMapping, which Azure OpenAI validates as a strict response schema
+    # and refuses outright if any nested object accepts unknown keys.
+    model_config = ConfigDict(extra="forbid", json_schema_extra={
         "example": {
             "sovereignty_level": "L2",
             "sovereignty_objectives": ["SO-3"],

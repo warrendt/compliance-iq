@@ -66,8 +66,16 @@ class PolicyCacheService:
           policy_id, display_name, description, learn_url, cached_at
         Missing / invalid IDs are silently skipped.
         """
-        # Validate & deduplicate
-        valid_ids = list({pid for pid in policy_ids if GUID_RE.match(pid)})
+        # Validate & deduplicate. The catalog outranks the format check: Azure
+        # ships at least one real built-in whose name is not GUID-shaped
+        # (17k78e20-9358-41c9-923c-fb736d382a12, verified live as BuiltIn), and
+        # filtering on format alone would drop its details before the catalog
+        # pass below ever got the chance to resolve them.
+        _catalog = get_policy_catalog_service()
+        valid_ids = list({
+            pid for pid in policy_ids
+            if pid and (GUID_RE.match(pid) or _catalog.identifier_exists(pid))
+        })
         if not valid_ids:
             return {}
 

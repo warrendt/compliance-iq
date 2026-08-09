@@ -39,15 +39,35 @@ _POLICY_GUID_PATTERN = re.compile(
 
 
 def _is_valid_policy_guid(policy_id: str) -> bool:
-    """Return True if ``policy_id`` is a well-formed Azure Policy definition GUID.
+    """Return True if ``policy_id`` names a real Azure Policy definition.
 
-    Accepts either a bare GUID or a full
-    ``/providers/Microsoft.Authorization/policyDefinitions/<guid>`` resource ID,
+    Accepts either a bare identifier or a full
+    ``/providers/Microsoft.Authorization/policyDefinitions/<name>`` resource ID,
     validating only the trailing definition segment.
+
+    **The catalog outranks the format check.** Azure ships at least one real
+    built-in whose definition name is not GUID-shaped:
+    ``17k78e20-9358-41c9-923c-fb736d382a12`` ("Transparent Data Encryption on
+    SQL databases should be enabled"), verified live as ``policyType: BuiltIn``.
+    A format-first rule silently strips that genuine, deployable policy from
+    the initiative - the exact failure this validation exists to prevent, aimed
+    at a correct answer instead of a hallucinated one.
+
+    Format remains the fallback for when the catalog cannot answer, which is
+    where it still earns its place: it catches an LLM-hallucinated document
+    title without needing a lookup.
     """
     if not policy_id:
         return False
     segment = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
+    try:
+        from app.services.policy_catalog_service import get_policy_catalog_service
+
+        catalog = get_policy_catalog_service()
+        if catalog.available and catalog.identifier_exists(segment):
+            return True
+    except Exception:  # pragma: no cover - defensive; format check still applies
+        pass
     return bool(_POLICY_GUID_PATTERN.match(segment))
 
 
@@ -212,6 +232,9 @@ class PolicyGenerationService:
             parameterized_requirements=parameterized_requirements,
             warnings=warnings,
             manual_controls=coverage.manual_register_rows(request.mappings),
+            coverage_gaps=coverage.coverage_gap_rows(request.mappings),
+            dropped_policy_ids=coverage.dropped_policy_rows(request.mappings),
+            attestation_gaps=coverage.attestation_gap_rows(request.mappings),
             coverage_summary=coverage.coverage_summary(request.mappings),
         )
 
@@ -252,13 +275,18 @@ class PolicyGenerationService:
         coverage_excluded = 0
 
         for mapping in mappings:
-            # Coverage gate: a control explicitly classified as non-enforceable
-            # (B_AzureConfig / C_Process / D_MicrosoftAttestation) never belongs in
-            # the initiative — it is routed to the manual register instead. Legacy
-            # mappings with coverage_category=None fall through to confidence-only
-            # gating, preserving existing behaviour.
+            # Coverage gate: only C_Process and D_MicrosoftAttestation are
+            # routed to the manual register. A_AzurePolicy and B_AzureConfig
+            # both belong in the initiative — B is *partial* Azure coverage, not
+            # absent coverage, and excluding it deleted real enforcement the
+            # customer is entitled to. Legacy mappings with coverage_category=
+            # None fall through to confidence-only gating, preserving existing
+            # behaviour.
             coverage_category = getattr(mapping, "coverage_category", None)
-            if coverage_category is not None and coverage_category != "A_AzurePolicy":
+            if (
+                coverage_category is not None
+                and coverage_category not in coverage.POLICY_BEARING_CATEGORIES
+            ):
                 coverage_excluded += 1
                 logger.debug(
                     f"Excluded {mapping.external_control_id} from initiative "

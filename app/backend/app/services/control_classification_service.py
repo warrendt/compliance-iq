@@ -59,16 +59,26 @@ Assign exactly one coverage category:
 
 Also decide:
 
-- **responsibility** — "Customer" for anything the customer configures, operates or documents. "Microsoft" for D_MicrosoftAttestation controls. "Shared" only when both parties demonstrably act.
+- **responsibility** — **who operates the thing the control governs.** This is a *separate question* from the coverage category above, and you must answer it on its own merits. Coverage category describes HOW a control is met; responsibility describes WHO owns it. They are independent, and any combination is legitimate.
+
+  "Microsoft" when Microsoft operates the underlying system or performs the activity — including process and organisational controls that are Microsoft's to run: datacentre access procedures, Microsoft personnel screening, Microsoft's own incident response, hardware disposal, the platform's audit programme. A process control can be Microsoft's; this is common and you must not avoid it.
+
+  "Customer" when the customer configures, operates or documents it — including technical controls the customer sets in their own tenant.
+
+  "Shared" only when both parties demonstrably act.
+
+  Do **not** infer responsibility from the category. A `C_Process` control is frequently Microsoft-owned, and a `D_MicrosoftAttestation` control is Microsoft-owned because Microsoft operates it, not because of its label. Deriving one axis from the other collapses two independent facts into one and misattributes ownership.
 
 - **reason** — two or three sentences of substantive justification, in the register a compliance consultant would use in a report. For A/B, explain what makes the control *measurable* by Azure and what a policy would evaluate. For C/D, explain specifically why no Azure Policy can assert it — because the control governs human or contractual behaviour, or because the underlying system is Microsoft-operated. Never write a generic sentence that would fit any control; name what this control actually requires.
 
 - **evidence_source** — what satisfies the control instead of, or alongside, a policy. For D, cite the attestation (e.g. "ISO/IEC 27001:2022 clause 9.2 audit programme; SOC 2 Type II report"). For C, name the GRC artefact (e.g. "Approved risk management framework and risk register with review minutes"). For A/B, name the Azure evidence (e.g. "Azure Policy compliance state; Defender for Cloud regulatory compliance dashboard"). Never leave this empty.
 
+- **outside_step** — for A/B controls only: if fully meeting this control needs a configuration step that **no Azure Policy can assert**, name that step concretely and briefly — for example "Entra Conditional Access policy requiring compliant devices", "Entra entitlement management access package", "Purview sensitivity label scheme", "enable Customer Lockbox", "hub-and-spoke network segmentation design". Leave it empty when Azure Policy alone can carry the control end to end. Do not restate the control; name the thing an engineer would go and configure. This is a separate question from A versus B: answer it on its own merits.
+
 Decision discipline:
 - Judge what the control *requires*, not the technology it mentions. "Maintain a documented cryptographic key management policy" is C_Process even though it says cryptographic; "keys must be stored in a managed HSM" is A_AzurePolicy.
 - If a control requires both a documented process and a technical setting, classify by what it primarily obliges. Requiring only the process makes it C. If it also obliges the technical setting, it is A or B — the process part does not erase the enforceable part.
-- **A versus B is provisional.** Retrieval, not you, establishes whether a built-in policy actually exists, and a later stage will settle the split. Do not agonise over it: if a concrete resource property is named, say A; if Azure covers the control only in part or mainly through Entra/tenant configuration, say B. Choosing either one keeps the control in scope for retrieval, so the costly mistake is putting an enforceable control in C or D, not picking the wrong one of A/B.
+- **A versus B is provisional.** Retrieval, not you, establishes whether a built-in policy actually exists, and a later stage will settle the split. Do not agonise over it: if a concrete resource property is named, say A; if Azure covers the control only in part or mainly through Entra/tenant configuration, say B. Choosing either one keeps the control in scope for retrieval, so the costly mistake is putting an enforceable control in C or D, not picking the wrong one of A/B. **`outside_step` is where the partial-coverage judgement is actually recorded** — it is what distinguishes a control Azure Policy carries end to end from one it only carries part of, so spend your care there rather than on the A/B label.
 - Before answering C or D, ask explicitly: is there any Azure resource property, identity setting, or platform signal that would evidence even part of this control? If yes, the answer is A or B.
 
 This wording is calibrated, not arbitrary. Measured against the NCSP v2.0 gold mapping, loosening the D definition to catch more Microsoft-operated controls raised D recall from 38% to 71% but pulled genuinely enforceable controls into D, so the controls wrongly excluded from retrieval doubled (7 to 15) and overall in-scope accuracy fell. Losing an enforceable control is unrecoverable — retrieval never runs for it — whereas mislabelling an attested control as "partial" still surfaces it for review, so the definition is deliberately tight."""
@@ -93,11 +103,33 @@ class ControlClassification(BaseModel):
         default="",
         description="What evidences the control: attestation, GRC artefact, or Azure signal",
     )
+    outside_step: str = Field(
+        default="",
+        description=(
+            "For A/B controls: the configuration step outside Azure Policy that "
+            "full coverage still needs (e.g. an Entra Conditional Access policy). "
+            "Empty when Azure Policy carries the control end to end."
+        ),
+    )
 
     @property
     def is_valid(self) -> bool:
         """True when the model returned a category we recognise."""
         return self.coverage_category in coverage.VALID_COVERAGE_CATEGORIES
+
+    @property
+    def requires_outside_step(self) -> bool:
+        """True when meeting the control needs work Azure Policy cannot assert.
+
+        This, not the A/B label, is what makes a control *partially* covered.
+        The A/B label is unreliable for the purpose: the classification stage is
+        scored on the A∪B in-scope decision only, and measured against the gold
+        mapping it put 19 of 24 gold-``A_AzurePolicy`` controls in
+        ``B_AzureConfig`` — it cannot see whether a built-in exists, so it hedges.
+        Asking directly for the missing step is a question the stage *can* answer
+        from the control text alone.
+        """
+        return bool((self.outside_step or "").strip())
 
     @property
     def may_have_policies(self) -> bool:

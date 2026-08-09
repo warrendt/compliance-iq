@@ -279,6 +279,35 @@ class SovereigntyService:
         self._ensure_loaded()
         return self._objectives
 
+    def procedural_objectives_for_control(
+        self,
+        control_description: str,
+        control_domain: Optional[str] = None,
+    ) -> List[SovereigntyControlObjective]:
+        """Sovereignty objectives this control touches that no policy can enforce.
+
+        The policy search above skips procedural objectives, correctly - they
+        have no policies to return. The consequence was that a control about
+        Microsoft support personnel accessing customer data got no sovereignty
+        linkage at all, because SO-2 was filtered out before matching and no
+        policy could stand in for it.
+
+        For a sovereign customer that is close to the whole question. SO-2 is
+        met, just not by a policy: the workbook records it as "no policy -
+        addressed by enabling Customer Lockbox". Returning the objective lets
+        the caller name the feature instead of reporting an empty result, which
+        would turn a solved requirement into an apparent gap.
+        """
+        self._ensure_loaded()
+        text = f"{control_description} {control_domain or ''}".lower()
+        matched: List[SovereigntyControlObjective] = []
+        for obj in self._objectives.values():
+            if not obj.procedural_only:
+                continue
+            if any(kw.lower() in text for kw in obj.keywords):
+                matched.append(obj)
+        return matched
+
     def get_objective(self, objective_id: str) -> Optional[SovereigntyControlObjective]:
         """Get a specific sovereignty control objective."""
         self._ensure_loaded()

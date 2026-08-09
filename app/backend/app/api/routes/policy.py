@@ -66,39 +66,88 @@ def _deploy_readme(
     if coverage_counts:
         total = coverage_counts.get("total", 0)
         pct = coverage_counts.get("azure_enforceable_pct", 0.0)
+        enforced = coverage_counts.get("A_AzurePolicy", 0)
+        partial = coverage_counts.get("B_AzureConfig", 0)
+        covered = coverage_counts.get("azure_enforceable", enforced + partial)
         attested = coverage_counts.get("D_MicrosoftAttestation", 0)
         compliant = coverage_counts.get("compliant", 0)
         compliant_pct = coverage_counts.get("compliant_pct", 0.0)
+        gaps = coverage_counts.get("coverage_gaps", 0)
+        attestation_gaps = coverage_counts.get("attestation_gaps", 0)
+        grounded = max(attested - attestation_gaps, 0)
+        dropped = coverage_counts.get("dropped_policy_ids", 0)
         rows = [
-            ("A — Azure Policy enforceable", coverage_counts.get("A_AzurePolicy", 0)),
-            ("B — Azure configurable (no policy)", coverage_counts.get("B_AzureConfig", 0)),
-            ("C — Process / legal / organisational", coverage_counts.get("C_Process", 0)),
-            ("D — Microsoft-operated (attestation)", attested),
+            ("A — Azure Policy enforced", enforced),
+            ("B — Azure/Entra config (partial)", partial),
+            ("C — Process / organisational", coverage_counts.get("C_Process", 0)),
+            ("D — Microsoft attested", attested),
         ]
         if coverage_counts.get("unclassified", 0):
             rows.append(("Unclassified (legacy)", coverage_counts["unclassified"]))
         table = "\n".join(f"| {label} | {count} |" for label, count in rows)
         attested_line = (
-            f"\n**{attested} control(s)** are category D — Microsoft operates and "
-            "certifies them (datacentre, physical security, hypervisor). They are "
-            "deliberately absent from the initiative because there is nothing for "
-            "the customer to configure, but they are **compliant by inheritance**, "
-            "evidenced through the Service Trust Portal — not a coverage gap.\n"
-            if attested
+            f"\n**{grounded} control(s)** are category D with a validated "
+            "citation — Microsoft operates and certifies them (datacentre, "
+            "physical security, hypervisor). They are deliberately absent from "
+            "the initiative because there is nothing for the customer to "
+            "configure, but they are **compliant by inheritance**, evidenced "
+            "through the cited certification or audit report — not a coverage "
+            "gap.\n"
+            if grounded
+            else ""
+        )
+        # The most important line in the bundle. A control labelled
+        # "Microsoft attested" that no attestation actually covers is the one
+        # failure mode a regulator will find: a sovereign requirement (UAE
+        # national clearance, in-country operations personnel) absorbed into a
+        # generic pass. It is excluded from the compliant count and named here.
+        attestation_gap_line = (
+            f"\n**{attestation_gaps} control(s)** were classified as "
+            "Microsoft-attested but **could not be grounded in any Microsoft "
+            "certification, audit report or published documentation**. They are "
+            "excluded from the compliant count and listed in "
+            f"`{stem}_manual_controls.csv`. Treat each as an open item to "
+            "escalate commercially — do not report it as covered.\n"
+            if attestation_gaps
+            else ""
+        )
+        # Gaps and rejected identifiers are reported, never suppressed: a control
+        # that lost its enforcement must not read the same as one that never
+        # needed any.
+        gap_line = (
+            f"\n**{gaps} control(s)** are in scope for Azure but no usable policy "
+            "was found for them. These are genuine coverage gaps, not category "
+            "judgements, and are listed so they can be closed with a custom "
+            "definition or a compensating control.\n"
+            if gaps
+            else ""
+        )
+        dropped_line = (
+            f"\n**{dropped} candidate policy identifier(s)** were rejected during "
+            "validation (malformed GUID, absent from the catalog, or a "
+            "non-enforceable placeholder) and are reported against the controls "
+            "they came from rather than discarded.\n"
+            if dropped
             else ""
         )
         coverage_section = (
             "\n## Coverage summary\n\n"
-            f"Of {total} control(s), **{coverage_counts.get('A_AzurePolicy', 0)} "
-            f"({pct}%)** are enforceable via Azure Policy and included in the "
-            "initiative. The rest are not Azure-Policy enforceable and are listed "
-            f"in `{stem}_manual_controls.csv` for manual attestation — they are "
+            f"Of {total} control(s), **{covered} ({pct}%)** are covered by Azure "
+            f"and included in the initiative — {enforced} enforced by Azure Policy "
+            f"(A) and {partial} partially covered by Azure/Entra configuration "
+            "(B), which additionally need a configuration step outside Azure "
+            "Policy. The rest are not Azure-addressable and are listed in "
+            f"`{stem}_manual_controls.csv` for manual attestation — they are "
             "**not** false-mapped to a catch-all policy.\n\n"
             f"**{compliant} of {total} ({compliant_pct}%)** require no customer "
-            "remediation: category A (enforced by Azure Policy) plus category D "
-            "(inherited from Microsoft's attestation). Categories B and C remain "
-            "open customer actions.\n"
+            "remediation: categories A and B (covered by Azure) plus category D "
+            "controls with a **validated** attestation citation. Category C "
+            "remains an open customer action, as does any D control whose "
+            "attestation could not be grounded.\n"
             f"{attested_line}"
+            f"{attestation_gap_line}"
+            f"{gap_line}"
+            f"{dropped_line}"
             "\n| Coverage category | Controls |\n"
             "| --- | --- |\n"
             f"{table}\n"
@@ -529,6 +578,8 @@ async def generate_slz_initiatives(request: SLZGenerationRequest,
             "sovereignty_mappings": len(sov_mappings),
             "archetypes": result,
             "manual_controls": coverage.manual_register_rows(request.mappings),
+            "coverage_gaps": coverage.coverage_gap_rows(request.mappings),
+            "dropped_policy_ids": coverage.dropped_policy_rows(request.mappings),
             "coverage_summary": coverage.coverage_summary(request.mappings),
         }
 
@@ -685,11 +736,87 @@ async def get_policy_details(request: PolicyDetailsRequest):
 
 @router.get("/catalog/status")
 async def policy_catalog_status():
-    """Return the size and source of the Azure Policy retrieval catalog."""
+    """Return the size, source and snapshot date of the Azure Policy corpus.
+
+    The initiative count and snapshot date are reported alongside the
+    definition count because "which catalog is this answer standing on" is not
+    inspectable any other way once the app is deployed, and a mapping is only
+    as defensible as the catalog behind it.
+    """
     from app.services import get_policy_catalog_service
 
     catalog = get_policy_catalog_service()
-    return {"count": catalog.count, "source": catalog.source}
+    return {
+        "count": catalog.count,
+        "source": catalog.source,
+        "initiative_count": getattr(catalog, "initiative_count", 0),
+        "initiatives_available": getattr(catalog, "initiatives_available", False),
+        "snapshot_date": getattr(catalog, "snapshot_date", None),
+    }
+
+
+@router.get("/catalog/lookup/{identifier}")
+async def policy_catalog_lookup(identifier: str):
+    """Resolve one identifier against the live catalog.
+
+    Exists so that "does the deployed app know this policy" is answerable
+    without shelling into a container. It also makes the catalog-before-format
+    rule externally checkable: an ARM policy *name* need not be GUID-shaped,
+    and at least one shipped built-in is not.
+
+    The reported ``kind`` distinguishes the cases that matter to a customer.
+    "Not recommendable" is not one answer but four, and only the last is a
+    defect in the mapping: a **definition**, an **initiative**, a
+    **microsoft_managed_control** (Microsoft operates and attests it - nothing
+    for the customer to deploy), a **deprecated** built-in (find the
+    replacement), or **unknown** (the citation cannot be trusted).
+    """
+    from app.services import get_policy_catalog_service
+    from app.services.coverage import (
+        ID_REJECTION_MESSAGES,
+        classify_policy_id,
+    )
+
+    catalog = get_policy_catalog_service()
+    entry = catalog.get(identifier)
+    initiative = None if entry else catalog.get_initiative(identifier)
+
+    if entry:
+        kind = "definition"
+        display_name = entry.get("display_name")
+    elif initiative:
+        kind = "initiative"
+        display_name = initiative.get("display_name")
+    elif catalog.is_managed_control(identifier):
+        kind = "microsoft_managed_control"
+        display_name = catalog.managed_control_display_name(identifier)
+    elif catalog.is_deprecated(identifier):
+        kind = "deprecated"
+        display_name = catalog.deprecated_display_name(identifier)
+    else:
+        kind = "unknown"
+        display_name = None
+
+    classification = classify_policy_id(identifier, catalog)
+
+    return {
+        "identifier": identifier,
+        "known": catalog.identifier_exists(identifier),
+        "kind": kind,
+        "display_name": display_name,
+        "effect": (entry or {}).get("effect"),
+        "enforceable": classification == "ok",
+        "classification": classification,
+        "explanation": ID_REJECTION_MESSAGES.get(classification),
+        "member_of_initiatives": [
+            {
+                "name": i.get("name"),
+                "display_name": i.get("display_name"),
+                "policy_definition_count": i.get("policy_definition_count"),
+            }
+            for i in catalog.initiatives_containing(identifier)
+        ],
+    }
 
 
 @router.post("/catalog/refresh")

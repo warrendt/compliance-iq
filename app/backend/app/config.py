@@ -107,11 +107,16 @@ class Settings(BaseSettings):
     # querying with the raw control text.
     policy_catalog_query_expansion: bool = True
     # Token ceiling for the (small, structured) control-intent expansion call.
-    policy_catalog_expansion_max_tokens: int = 1200
+    # Sized for a *reasoning* model: the deployed model spends completion tokens
+    # on reasoning before it emits any structured output, so a ceiling chosen
+    # for a non-reasoning model is consumed entirely by reasoning and the call
+    # fails with "length limit reached" having produced nothing. Observed live
+    # on the rerank call (2000 tokens, 2000 of them reasoning).
+    policy_catalog_expansion_max_tokens: int = 4000
     # Narrow the wide retrieval sweep to the candidate window with an LLM pass
     # before the selection call. Disable to pass retrieval order straight through.
     policy_catalog_rerank: bool = True
-    policy_catalog_rerank_max_tokens: int = 2000
+    policy_catalog_rerank_max_tokens: int = 8000
     # Score multiplier applied to definitions whose category was predicted by
     # the control-intent expansion. A soft boost, not a filter, so a wrong
     # category prediction degrades ranking instead of removing the right answer.
@@ -136,10 +141,26 @@ class Settings(BaseSettings):
     # organisational, so deciding the control's nature blind is what stops the
     # engine attaching a plausible policy to a governance control.
     coverage_classification: bool = True
-    coverage_classification_max_tokens: int = 1500
+    coverage_classification_max_tokens: int = 4000
 
     # AI Mapping Settings
-    ai_temperature: float = 0.3  # Lower for consistency    ai_max_tokens: int = 16000
+    #
+    # DEAD SETTING, deliberately kept so removing it is a decision rather than an
+    # accident. Nothing reads `ai_temperature`, and on the deployed model it could
+    # not be honoured if it did: `gpt-5.6-luna` is a reasoning model, and the
+    # Responses API rejects `temperature` on those. The old comment here read
+    # "Lower for consistency", which claimed a property the system does not have —
+    # extraction is measurably non-deterministic, returning 53 and 108 controls
+    # from byte-identical input on two runs. Leaving that comment in place would
+    # let the next reader conclude determinism had already been handled.
+    ai_temperature: float = 0.3
+    # Declared on its own line deliberately: this field was once absorbed into
+    # the comment above by a lost newline, so `settings.ai_max_tokens` raised
+    # AttributeError on every mapping call. The broad except in
+    # AIMappingService turned that into a fallback mapping, so the engine
+    # silently answered "process control, no policy" for every control of
+    # every framework while looking healthy.
+    ai_max_tokens: int = 16000
     ai_batch_size: int = 5  # Process controls in batches
     ai_mapping_max_concurrency: int = 10
 

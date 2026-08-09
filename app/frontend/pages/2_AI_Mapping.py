@@ -212,7 +212,16 @@ def _session_mapping_from_result(mapping: dict, controls: list) -> dict:
         # Preserve the coverage taxonomy through to the Export page.
         "control_type": mapping.get("control_type"),
         "coverage_category": mapping.get("coverage_category"),
+        "coverage_display": mapping.get("coverage_display"),
         "azure_enforceable": mapping.get("azure_enforceable", False),
+        # Carried so a retrieval miss and a rejected identifier stay visible
+        # rather than looking like a control that never needed enforcement.
+        "coverage_gap": mapping.get("coverage_gap", False),
+        "dropped_policy_ids": mapping.get("dropped_policy_ids", []),
+        # What the customer must still configure outside Azure Policy for a
+        # partial (B) control — the difference between an instruction and an
+        # unexplained shortfall.
+        "outside_step": mapping.get("outside_step"),
         # Gold-workbook fields from the classification and enrichment stages.
         "coverage_reason": mapping.get("coverage_reason"),
         "responsibility": mapping.get("responsibility"),

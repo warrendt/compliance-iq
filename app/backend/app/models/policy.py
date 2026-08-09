@@ -263,7 +263,12 @@ class PolicyGenerationRequest(BaseModel):
 
 
 class ManualControlEntry(BaseModel):
-    """A control that Azure Policy cannot enforce, routed to the manual register.
+    """A control Azure cannot address, routed to the manual register.
+
+    Only ``C_Process`` and ``D_MicrosoftAttestation`` appear here.
+    ``B_AzureConfig`` is *partial* Azure coverage — it emits policies and enters
+    the initiative — so listing it as a manual control would tell the customer
+    to do work Azure is already doing.
 
     These controls are deliberately excluded from the generated initiative
     (their ``azure_policy_ids`` are empty) and surfaced here as a completely
@@ -277,11 +282,149 @@ class ManualControlEntry(BaseModel):
     )
     coverage_category: str = Field(
         ...,
-        description="Coverage taxonomy: B_AzureConfig, C_Process, or D_MicrosoftAttestation",
+        description="Coverage taxonomy: C_Process or D_MicrosoftAttestation",
+    )
+    coverage_display: str = Field(
+        "",
+        description=(
+            "Analyst-facing category name: 'Process / organisational' or "
+            "'Microsoft attested'"
+        ),
     )
     mcsb_control_id: str = Field("", description="Associated MCSB control ID, if any")
+    responsibility: str = Field(
+        "",
+        description=(
+            "Who owns the control — Customer, Microsoft or Shared. Independent "
+            "of coverage_category: a process control may be Microsoft-owned."
+        ),
+    )
+    evidence_source: str = Field(
+        "",
+        description=(
+            "Where the evidence lives — a Microsoft attestation clause for "
+            "D_MicrosoftAttestation, or the customer's GRC artefact for C_Process"
+        ),
+    )
+    enforcement_plane: str = Field(
+        "", description="Where the control is enforced; 'None (manual control)' here"
+    )
+    attestation_status: str = Field(
+        "",
+        description=(
+            "For D controls: 'grounded' (the clause exists and its title was "
+            "read from Azure's published metadata), 'scheme_only' (the scheme is "
+            "real but the cited clause could not be verified) or 'unattested' "
+            "(nothing grounds the claim). Empty for C controls."
+        ),
+    )
+    attestation_basis: str = Field(
+        "",
+        description=(
+            "certification_clause, audit_report_criterion, published_documentation "
+            "or none. 'Certified against ISO 27001' and 'tested in a SOC 2 report' "
+            "are different claims and an auditor treats them differently."
+        ),
+    )
+    attestation_citation: str = Field(
+        "", description="The validated citation, or empty when nothing was grounded"
+    )
+    attestation_document: str = Field(
+        "", description="The evidence document to obtain (certificate, audit report)"
+    )
+    attestation_location: str = Field(
+        "", description="Where the document lives (Service Trust Portal, Microsoft Learn)"
+    )
+    attestation_access: str = Field(
+        "",
+        description=(
+            "Access condition — SOC reports need a work account and the Microsoft "
+            "NDA; ISO certificates do not. Sending an auditor to a document they "
+            "cannot open is a failed answer."
+        ),
+    )
+    attestation_gap: bool = Field(
+        False,
+        description=(
+            "True when no Microsoft attestation covers this requirement. Must be "
+            "escalated rather than reported as covered."
+        ),
+    )
+    verified_at: str = Field(
+        "", description="When this mapping was produced (UTC, ISO 8601)"
+    )
+    catalog_snapshot_date: str = Field(
+        "",
+        description=(
+            "When the catalog this mapping resolved against was captured. Empty "
+            "when unknown, which is itself a finding."
+        ),
+    )
+    verification_source: str = Field(
+        "", description="What verified this mapping's identifiers"
+    )
+    provenance_blocker: str = Field(
+        "", description="Why this mapping cannot yet be presented as current"
+    )
     reason: str = Field(
-        ..., description="Why the control is not Azure-Policy enforceable"
+        ..., description="Why the control is not addressable by Azure"
+    )
+
+
+class AttestationGapEntry(BaseModel):
+    """A Microsoft-operated control that no Microsoft attestation grounds.
+
+    The sovereign case, and the most consequential row this product emits. The
+    analyst workbook's control 3.1.3.4 requires UAE national security clearance
+    for operations personnel; ISO/IEC 27001 and SOC 2 attest *screening*, not
+    UAE clearance, so it is a gap to escalate commercially. Silently rolling it
+    into a "Microsoft attested" pass would hand the customer a false answer on
+    exactly the requirement their regulator scrutinises hardest.
+    """
+
+    control_id: str = Field(..., description="External framework control ID")
+    control_name: str = Field("", description="External framework control name")
+    claim: str = Field("", description="The unvalidated attestation claim that was rejected")
+    reason: str = Field("", description="Why it could not be grounded")
+    action: str = Field("", description="What the customer must do instead")
+
+
+class CoverageGapEntry(BaseModel):
+    """A control in scope for Azure for which no usable policy was found.
+
+    Distinct from a manual control: Azure *should* be able to address this, but
+    retrieval returned nothing, or everything it returned failed validation.
+    Reported explicitly so a recall failure cannot be mistaken for a considered
+    category judgement — the exact confusion the previous A/B derivation caused.
+    """
+
+    control_id: str = Field(..., description="External framework control ID")
+    control_name: str = Field("", description="External framework control name")
+    coverage_category: str = Field("", description="A_AzurePolicy or B_AzureConfig")
+    coverage_display: str = Field("", description="Analyst-facing category name")
+    outside_step: str = Field(
+        "",
+        description="Named configuration step outside Azure Policy, if one was identified",
+    )
+    rejected_policy_ids: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Candidate identifiers discarded in validation, with reasons",
+    )
+    reason: str = Field("", description="Why this control has no usable policy")
+    policy_type: str = Field(
+        "",
+        description=(
+            "'Custom definition required' when no built-in covers the control. "
+            "Distinct from 'N/A', which means Azure Policy was never the right "
+            "instrument for it."
+        ),
+    )
+    remediation: str = Field(
+        "",
+        description=(
+            "The named next step. A gap without one is a complaint; with one it "
+            "is work someone can pick up."
+        ),
     )
 
 
@@ -312,14 +455,38 @@ class PolicyGenerationResponse(BaseModel):
 
     manual_controls: List[ManualControlEntry] = Field(
         default_factory=list,
-        description="Controls that Azure Policy cannot enforce — excluded from the "
-        "initiative and listed here as a separate manual-attestation register",
+        description="Controls Azure cannot address (C_Process, "
+        "D_MicrosoftAttestation) — excluded from the initiative and listed here "
+        "as a separate manual-attestation register",
+    )
+    coverage_gaps: List[CoverageGapEntry] = Field(
+        default_factory=list,
+        description="Controls in scope for Azure for which no usable policy was "
+        "found. Reported separately from manual controls so a retrieval failure "
+        "is never presented as a category judgement",
+    )
+    dropped_policy_ids: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Every candidate policy identifier discarded during "
+        "validation, with the control it came from and the reason (malformed "
+        "GUID, absent from the catalog, non-enforceable placeholder). Nothing is "
+        "dropped silently: a control that lost enforcement to a typo must not "
+        "look identical to one that never needed any",
+    )
+    attestation_gaps: List[AttestationGapEntry] = Field(
+        default_factory=list,
+        description="Microsoft-operated controls that no Microsoft attestation "
+        "grounds. Excluded from the compliant count and surfaced for commercial "
+        "escalation, because a sovereign requirement Microsoft does not attest "
+        "must never be absorbed into a generic attested pass",
     )
     coverage_summary: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Per-coverage-category counts, the Azure-enforceable share "
-        "(A only) and the compliant share (A + D, where D is inherited from "
-        "Microsoft's attestation)",
+        description="Per-coverage-category counts, the Azure-covered share "
+        "(A + B) and the compliant share (A + B + grounded D), plus "
+        "coverage_gaps, attestation_gaps and dropped_policy_ids counts. "
+        "Ungrounded D controls are deliberately excluded from 'compliant': the "
+        "category is a claim, only a validated citation is evidence",
     )
 
     model_config = ConfigDict(json_schema_extra={

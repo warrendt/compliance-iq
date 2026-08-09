@@ -28,7 +28,7 @@
     "SO-2": {
       "id": "SO-2",
       "name": "Customer Lockbox",
-      "description": "Require customer approval before Microsoft support can access customer data. No Azure Policy available \u2014 procedural control only.",
+      "description": "Require customer approval before Microsoft support can access customer data. No Azure Policy available — procedural control only.",
       "applicable_levels": [
         "L1",
         "L2",
@@ -39,7 +39,8 @@
         "customer approval",
         "support access"
       ],
-      "procedural_only": true
+      "procedural_only": true,
+      "named_feature": "Enable Customer Lockbox for Microsoft Azure on the subscription"
     },
     "SO-3": {
       "id": "SO-3",

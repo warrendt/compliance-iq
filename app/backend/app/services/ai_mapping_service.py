@@ -230,6 +230,8 @@ class AIMappingService:
                 classification,
             )
 
+            self._apply_procedural_sovereignty(mapping, external_control)
+
             logger.info(
                 f"Mapped {external_control.control_id} -> {mapping.mcsb_control_id} "
                 f"(confidence: {mapping.confidence_score:.2f}, "
@@ -582,6 +584,49 @@ Sovereignty Context above.
 """
         return prompt
 
+    def _apply_procedural_sovereignty(self, mapping, external_control) -> None:
+        """Name the Azure feature that meets a sovereignty objective with no policy.
+
+        SO-2 Operator Access is the case: no Azure Policy can assert it, and it
+        is met by enabling Customer Lockbox. Because the policy search skips
+        procedural objectives - correctly, they have no policies - such a
+        control previously came back with no sovereignty linkage at all, which
+        for a sovereign customer is close to the whole question.
+
+        Reporting "no policy" is honest but incomplete; naming the feature is
+        the difference between an apparent gap and a solved requirement. This is
+        deterministic keyword matching against the objective definitions, never
+        model output, for the same reason effects are read from the catalog.
+        """
+        try:
+            objectives = self.sovereignty_service.procedural_objectives_for_control(
+                control_description=external_control.description,
+                control_domain=external_control.domain,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Procedural sovereignty lookup failed: %s", exc)
+            return
+
+        if not objectives:
+            return
+
+        features = [o.named_feature for o in objectives if o.named_feature]
+        ids = [o.id for o in objectives]
+
+        sovereignty = getattr(mapping, "sovereignty", None)
+        if sovereignty is not None:
+            existing = list(getattr(sovereignty, "sovereignty_objectives", None) or [])
+            for obj_id in ids:
+                if obj_id not in existing:
+                    existing.append(obj_id)
+            sovereignty.sovereignty_objectives = existing
+
+        # Only fill outside_step when the classification did not already name a
+        # step. The model saw the control text; this saw only keywords, so it
+        # supplements rather than overrides.
+        if features and not (getattr(mapping, "outside_step", None) or "").strip():
+            mapping.outside_step = "; ".join(features)
+
     def _get_sovereignty_context(self, external_control: ExternalControl) -> str:
         """
         Build sovereignty context string for the AI prompt.
@@ -664,18 +709,24 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
         external_control: ExternalControl,
         error_msg: str
     ) -> ControlMapping:
-        """
-        Create a fallback mapping when AI fails.
-        
-        Args:
-            external_control: The control that failed to map
-            error_msg: Error message from the failure
-            
-        Returns:
-            A default ControlMapping with minimal information
+        """Create a fallback mapping when AI fails.
+
+        This must *say* it failed. It previously returned ``COVERAGE_C`` with
+        ``coverage_gap`` left False, which reads downstream as a considered
+        judgement - "this is a process control, Azure cannot enforce it" -
+        when in fact no mapping was attempted successfully. A whole framework
+        of engine failures was therefore indistinguishable from a whole
+        framework of genuine process controls. That is the failure mode this
+        product exists to avoid: a confident wrong answer instead of an
+        admitted gap.
+
+        The category stays ``COVERAGE_C`` only so the control still reaches the
+        manual register - a control that silently disappears from the
+        deliverable is worse than one flagged for review - but the gap flag and
+        reason now make the failure explicit.
         """
         logger.warning(f"Creating fallback mapping for {external_control.control_id}: {error_msg}")
-        
+
         return ControlMapping(
             external_control_id=external_control.control_id,
             external_control_name=external_control.control_name,
@@ -690,6 +741,13 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
             control_type=external_control.control_type,
             coverage_category=coverage.COVERAGE_C,
             azure_enforceable=False,
+            coverage_gap=True,
+            coverage_reason=(
+                "The automated mapping engine failed for this control, so no "
+                "Azure coverage judgement was reached. This is an engine "
+                f"failure, not a finding that Azure cannot help: {error_msg}"
+            ),
+            responsibility=None,
         )
 
 

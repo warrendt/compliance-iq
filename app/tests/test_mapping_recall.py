@@ -72,7 +72,14 @@ EXPECTED_COVERAGE_COUNTS = {
 # extraction bug. Pinned so the fixture regenerating with *more* gaps fails.
 EXPECTED_CONTROL_COUNT = 137
 EXPECTED_CONTROLS_WITH_POLICIES = 41
-EXPECTED_DISTINCT_GUIDS = 44
+# 45, not 44. The 45th is 17k78e20-9358-41c9-923c-fb736d382a12, "Transparent
+# Data Encryption on SQL databases should be enabled", which the fixture
+# transcription had silently dropped from controls 2.3.2.1 and 3.3.2.2 because
+# it contains a 'k' and does not look like a GUID. It is a real, live BuiltIn -
+# verified with `az policy definition show` - and the workbook was right to
+# include it. Restoring it also removes the only two rows where the effect
+# count disagreed with the identifier count.
+EXPECTED_DISTINCT_GUIDS = 45
 
 # Two gold rows carry no Reason text. Verified against the source workbook
 # 2026-08-08: a gap in the expert's sheet, not an extraction bug.
@@ -268,7 +275,9 @@ def test_recall_report_denominator_excludes_unretrievable_guids(gold, catalog):
         known=lambda guid: False,
     )
     assert report.pair_count == 0
-    assert report.unretrievable == 90
+    # 92, not 90: restoring the real-but-not-GUID-shaped TDE definition to
+    # controls 2.3.2.1 and 3.3.2.2 adds two (control, policy) pairs.
+    assert report.unretrievable == 92
     assert report.micro_recall(15) == 0.0
 
 

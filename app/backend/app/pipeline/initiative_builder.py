@@ -8,6 +8,9 @@ Generates all Defender for Cloud regulatory compliance initiative artifacts:
   - Deploy-Initiative.ps1  (PowerShell script to import into Azure)
   - deploy-initiative.sh   (Azure CLI script)
   - mappings.csv     (complete mapping report)
+  - manual_register.csv     (C/D controls Azure does not enforce)
+  - coverage_gaps.csv       (in scope for Azure, nothing usable retrieved)
+  - dropped_policy_ids.csv  (every identifier discarded, and why)
 
 Output format matches the Oman CDC / SAMA pattern used by Defender for Cloud.
 """
@@ -110,6 +113,14 @@ def build_initiative_artifacts(
     _write_json(report_path, validation.model_dump())
     files_created.append(str(report_path))
 
+    # ── 9-11. The other half of the answer ────────────────────────────────
+    # An initiative on its own says what Azure enforces. These three say what it
+    # does not: the controls the customer must satisfy by other means, the ones
+    # that should have had a policy and did not, and every identifier that was
+    # rejected on the way. Omitting them is how a control that lost its
+    # enforcement ends up looking like one that never needed any.
+    files_created.extend(_write_coverage_reports(out, fw_safe, mappings))
+
     logger.info(f"Generated {len(files_created)} files in {out}/")
     return files_created
 
@@ -146,22 +157,51 @@ def _build_groups(
     return groups
 
 
+def _record_drop(mapping: ControlPolicyMapping, policy_id, reason: str) -> None:
+    """Record a rejected identifier on the control it came from.
+
+    ARM rejects malformed and non-existent policy definition IDs, so dropping
+    them is unavoidable. Dropping them *silently* is the defect this product
+    exists to prevent: the initiative still deploys, the control still appears,
+    and nothing anywhere says it lost its enforcement.
+    """
+    dropped = getattr(mapping, "dropped_policy_ids", None)
+    if dropped is None:
+        return
+    entry = {"policy_id": (policy_id or "").strip(), "reason": reason}
+    if entry not in dropped:
+        dropped.append(entry)
+
+
 def _build_policies(
     mappings: list[ControlPolicyMapping],
     catalog: Optional[object] = None,
 ) -> list[dict]:
-    """Build policyDefinitions array with group assignments.
+    """Build the policyDefinitions array with group assignments.
 
     Drops policy definition IDs that are either malformed or that do not
-    correspond to a real Azure built-in policy definition — ARM rejects both as
-    ``PolicyDefinitionNotFound`` and fails the whole initiative. Existence is
-    checked against the shipped built-in policy catalog; when the catalog is
-    unavailable only GUID format is enforced.
+    correspond to a real Azure built-in definition - ARM rejects both as
+    ``PolicyDefinitionNotFound`` and fails the whole initiative. Every drop is
+    recorded on ``mapping.dropped_policy_ids`` so it can be reported rather
+    than only logged. Existence is checked against the shipped catalog; when
+    that is unavailable only GUID format is enforced.
     """
     if catalog is None:
         from app.services.policy_catalog_service import get_policy_catalog_service
         catalog = get_policy_catalog_service()
-    enforce_existence = bool(getattr(catalog, "available", False))
+    # ``available`` is a method, so the previous ``bool(getattr(catalog,
+    # "available", False))`` was always True - including when the catalog had
+    # failed to load, at which point ``exists()`` returns False for everything
+    # and every policy in the initiative is dropped. The documented fallback
+    # ("when the catalog is unavailable only GUID format is enforced") never
+    # ran. Call it.
+    available = getattr(catalog, "available", None)
+    enforce_existence = bool(available() if callable(available) else available)
+    if not enforce_existence:
+        logger.warning(
+            "Policy catalog unavailable: enforcing GUID format only, so "
+            "identifiers that do not exist in Azure cannot be caught here."
+        )
 
     policy_refs: list[dict] = []
     seen_combos: set[str] = set()
@@ -177,11 +217,20 @@ def _build_policies(
 
             # Strip hallucinated / malformed policy definition IDs that ARM
             # would reject (must be a valid Azure Policy GUID).
+            #
+            # Dropping is necessary - ARM rejects the whole deployment
+            # otherwise - but doing it silently is the defect. The analyst gold
+            # workbook contains a mistyped GUID (`17k78e20-...`, the letter `k`
+            # is not hex) that a transcription silently discarded, leaving
+            # output that still looked complete. A control that lost its
+            # enforcement must not read the same as one that never needed any,
+            # so every drop is recorded against the control it came from.
             if not pid or not GUID_PATTERN.match(pid.strip().rstrip("/").rsplit("/", 1)[-1]):
                 logger.warning(
                     f"Control {mapping.control_id}: dropping invalid Azure Policy "
                     f"definition ID '{pid}' (not a valid GUID)"
                 )
+                _record_drop(mapping, pid, "malformed")
                 continue
 
             # Strip well-formed GUIDs that are not real built-in definitions.
@@ -191,6 +240,7 @@ def _build_policies(
                     f"definition ID '{pid}' — not found in the Azure built-in "
                     f"policy catalog (would fail ARM as PolicyDefinitionNotFound)"
                 )
+                _record_drop(mapping, pid, "not_in_catalog")
                 continue
 
             full_id = f"/providers/Microsoft.Authorization/policyDefinitions/{pid}"
@@ -549,7 +599,14 @@ def _write_mappings_csv(
     extraction: ControlExtractionResult,
     mappings: list[ControlPolicyMapping],
 ):
-    """Write a comprehensive mapping report as CSV."""
+    """Write a comprehensive mapping report as CSV.
+
+    This file is what a customer hands to an auditor, so it has to answer both
+    halves of the question: what Azure enforces, and what it does not. The
+    taxonomy columns carry the second half - how the control is met, who owns
+    it, what completes a partial mapping, what evidences an attested one, and
+    every identifier that was rejected on the way.
+    """
     mapping_lookup = {m.control_id: m for m in mappings}
 
     fieldnames = [
@@ -557,16 +614,40 @@ def _write_mappings_csv(
         "Control_Title",
         "Domain",
         "Control_Type",
+        "Coverage_Category",
+        "Coverage_Display",
+        "Coverage_Reason",
+        "Responsibility",
+        "Azure_Enforceable",
+        "Coverage_Gap",
+        "Outside_Step",
+        "Enforcement_Plane",
         "MCSB_Control_ID",
         "MCSB_Control_Name",
         "Confidence",
         "Azure_Policy_IDs",
         "Azure_Policy_Names",
+        "Policy_Effects",
+        "Available_Effects",
+        "Policy_Type",
+        "Evidence_Source",
+        "Attestation_Citation",
+        "Attestation_Evidence_Location",
+        "Attestation_Access_Condition",
+        "Attestation_Gap",
+        "Dropped_Policy_IDs",
+        "Verified_At",
+        "Catalog_Snapshot_Date",
+        "Verification_Source",
+        "Provenance_Blocker",
         "Is_Automatable",
         "Manual_Note",
         "Defender_Recommendations",
         "Mapping_Rationale",
     ]
+
+    def _joined(values) -> str:
+        return "; ".join(str(v) for v in (values or []))
 
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -583,16 +664,49 @@ def _write_mappings_csv(
                 policy_names = ""
                 defender_recs = ""
 
+            attestation = (getattr(m, "attestation", None) or {}) if m else {}
+            dropped = _joined(
+                f"{d.get('policy_id', '')} ({d.get('reason', '')})"
+                for d in (getattr(m, "dropped_policy_ids", None) or [])
+            ) if m else ""
+
             writer.writerow({
                 "Control_ID": ctrl.control_id,
                 "Control_Title": ctrl.control_title,
                 "Domain": ctrl.domain,
                 "Control_Type": ctrl.control_type,
+                "Coverage_Category": (getattr(m, "coverage_category", None) or "") if m else "",
+                "Coverage_Display": (getattr(m, "coverage_display", None) or "") if m else "",
+                "Coverage_Reason": (getattr(m, "coverage_reason", None) or "") if m else "",
+                "Responsibility": (getattr(m, "responsibility", None) or "") if m else "",
+                "Azure_Enforceable": str(getattr(m, "azure_enforceable", False)) if m else "",
+                "Coverage_Gap": str(getattr(m, "coverage_gap", False)) if m else "",
+                "Outside_Step": (getattr(m, "outside_step", None) or "") if m else "",
+                "Enforcement_Plane": (getattr(m, "enforcement_plane", None) or "") if m else "",
                 "MCSB_Control_ID": m.mcsb_control_id if m else "",
                 "MCSB_Control_Name": m.mcsb_control_name if m else "",
                 "Confidence": f"{m.confidence_score:.2f}" if m else "",
                 "Azure_Policy_IDs": policy_ids,
                 "Azure_Policy_Names": policy_names,
+                "Policy_Effects": _joined(getattr(m, "policy_effects", None)) if m else "",
+                "Available_Effects": _joined(getattr(m, "available_effects", None)) if m else "",
+                "Policy_Type": (getattr(m, "policy_type", None) or "") if m else "",
+                "Evidence_Source": (getattr(m, "evidence_source", None) or "") if m else "",
+                "Attestation_Citation": attestation.get("citation", ""),
+                "Attestation_Evidence_Location": attestation.get("evidence_location", ""),
+                "Attestation_Access_Condition": attestation.get("access_condition", ""),
+                "Attestation_Gap": str(getattr(m, "attestation_gap", False)) if m else "",
+                "Dropped_Policy_IDs": dropped,
+                "Verified_At": (getattr(m, "verified_at", None) or "") if m else "",
+                "Catalog_Snapshot_Date": (
+                    getattr(m, "catalog_snapshot_date", None) or ""
+                ) if m else "",
+                "Verification_Source": (
+                    getattr(m, "verification_source", None) or ""
+                ) if m else "",
+                "Provenance_Blocker": (
+                    getattr(m, "provenance_blocker", None) or ""
+                ) if m else "",
                 "Is_Automatable": str(m.is_automatable) if m else "",
                 "Manual_Note": m.manual_attestation_note or "" if m else "",
                 "Defender_Recommendations": defender_recs,
@@ -600,6 +714,126 @@ def _write_mappings_csv(
             })
 
     logger.info(f"Wrote mapping report: {csv_path}")
+
+
+class _RegisterView:
+    """Present a pipeline mapping under the attribute names coverage.py expects.
+
+    ``ControlPolicyMapping`` calls them ``control_id``/``control_title``; the
+    services-path ``ControlMapping`` calls them ``external_control_id``/
+    ``external_control_name``. Adapting is deliberate: the rules for what belongs
+    in the manual register, and the wording of each reason, are decisions that
+    must not diverge between the two entry points. Re-implementing them here is
+    how the pipeline path drifted from the taxonomy in the first place.
+    """
+
+    def __init__(self, mapping: ControlPolicyMapping):
+        self._m = mapping
+
+    def __getattr__(self, name):
+        return getattr(self._m, name)
+
+    @property
+    def external_control_id(self):
+        return self._m.control_id
+
+    @property
+    def external_control_name(self):
+        return self._m.control_title
+
+
+def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> str:
+    """Write rows to CSV, always including the header.
+
+    An empty file would be ambiguous - it could mean "nothing to report" or
+    "this step did not run". A header with no rows says the first one.
+    """
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    k: ("; ".join(str(x) for x in v) if isinstance(v, list) else v)
+                    for k, v in row.items()
+                }
+            )
+    logger.info(f"Wrote: {path} ({len(rows)} rows)")
+    return str(path)
+
+
+def _write_coverage_reports(
+    out: Path,
+    fw_safe: str,
+    mappings: list[ControlPolicyMapping],
+) -> list[str]:
+    """Write the manual register, coverage gaps and dropped identifiers."""
+    from app.services.coverage import (
+        coverage_gap_rows,
+        dropped_policy_rows,
+        manual_register_rows,
+    )
+
+    views = [_RegisterView(m) for m in mappings]
+    created: list[str] = []
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Manual_Register.csv",
+            [
+                "control_id",
+                "control_name",
+                "control_type",
+                "coverage_category",
+                "coverage_display",
+                "mcsb_control_id",
+                "responsibility",
+                "evidence_source",
+                "enforcement_plane",
+                "attestation_status",
+                "attestation_basis",
+                "attestation_citation",
+                "attestation_document",
+                "attestation_location",
+                "attestation_access",
+                "attestation_gap",
+                "verified_at",
+                "catalog_snapshot_date",
+                "verification_source",
+                "provenance_blocker",
+                "reason",
+            ],
+            manual_register_rows(views),
+        )
+    )
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Coverage_Gaps.csv",
+            [
+                "control_id",
+                "control_name",
+                "coverage_category",
+                "coverage_display",
+                "outside_step",
+                "policy_type",
+                "rejected_policy_ids",
+                "reason",
+                "remediation",
+            ],
+            coverage_gap_rows(views),
+        )
+    )
+
+    created.append(
+        _write_csv(
+            out / f"{fw_safe}_Dropped_Policy_IDs.csv",
+            ["control_id", "control_name", "policy_id", "reason", "detail"],
+            dropped_policy_rows(views),
+        )
+    )
+
+    return created
 
 
 def _write_json(path: Path, data) -> None:
