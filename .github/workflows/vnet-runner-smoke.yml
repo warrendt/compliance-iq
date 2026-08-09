@@ -1,0 +1,138 @@
+# Proves the in-VNet self-hosted runner can do the one thing it exists for:
+# reach the Azure OpenAI embeddings endpoint that refuses public traffic.
+#
+# This is deliberately separate from refresh-policy-catalog.yml so that a
+# failure tells you *which* thing broke -- the runner, or the refresh. Every
+# defect in this repo's CI so far has been one layer hiding the next.
+#
+# The runner is ephemeral and started on demand, so it must be running before
+# this workflow is triggered:
+#
+#   TOKEN=$(gh api -X POST repos/warrendt/compliance-iq/actions/runners/registration-token --jq .token)
+#   az containerapp job secret set -n cj-ciq-vnet-runner -g rg-complianceiq-dev-southafricanorth \
+#       --secrets runner-token=$TOKEN
+#   az containerapp job start -n cj-ciq-vnet-runner -g rg-complianceiq-dev-southafricanorth
+
+name: VNet runner smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/vnet-runner-smoke.yml'
+      - 'app/runner/**'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Reach the private embeddings endpoint
+    runs-on: [self-hosted, ciq-vnet]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show where this is running
+        run: |
+          echo "runner: $RUNNER_NAME"
+          echo "ip: $(hostname -i 2>/dev/null || echo unknown)"
+
+      - name: Resolve the endpoint through private DNS
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+        run: |
+          HOST=$(printf '%s' "${AZURE_OPENAI_ENDPOINT#https://}" | tr -d '/')
+          echo "resolving $HOST"
+          getent hosts "$HOST" || {
+            echo "::error::$HOST did not resolve. The runner is not on the VNet,"
+            echo "::error::or the private DNS zone is not linked to its subnet."
+            exit 1
+          }
+          IP=$(getent hosts "$HOST" | awk '{print $1}' | head -n1)
+          case "$IP" in
+            10.*) echo "resolved to $IP (private) - correct" ;;
+            *) echo "::error::resolved to $IP, which is not a private address."
+               echo "::error::Traffic would leave the VNet and be refused."
+               exit 1 ;;
+          esac
+
+      - name: Authenticate with the job's managed identity
+        run: |
+          az login --identity -o none
+          az account show --query "{sub:name, id:id}" -o tsv
+
+      - name: Call the embeddings endpoint
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          TOKEN=$(az account get-access-token \
+            --resource https://cognitiveservices.azure.com \
+            --query accessToken -o tsv)
+
+          URL="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}/embeddings?api-version=2024-10-21"
+          CODE=$(curl -s -o /tmp/out -w '%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"input":"connectivity probe"}')
+
+          echo "status=$CODE"
+          if [ "$CODE" != "200" ]; then
+            head -c 500 /tmp/out
+            echo ""
+            echo "::error::Expected HTTP 200 from the embeddings endpoint, got $CODE."
+            exit 1
+          fi
+
+          # A 200 with no vector would still be a failure, and is the kind of
+          # thing that has slipped through here before.
+          DIMS=$(jq '.data[0].embedding | length' /tmp/out)
+          echo "embedding dimensions: $DIMS"
+          if [ -z "$DIMS" ] || [ "$DIMS" -lt 256 ]; then
+            echo "::error::Response carried no usable embedding vector."
+            exit 1
+          fi
+          echo "the in-VNet runner can regenerate embeddings"
+
+      # One vector proves connectivity. It does not prove the runner can do the
+      # actual job, which is ~2500 definitions with batching, throttling and a
+      # sizeable file write. Those fail differently, so run the real thing.
+      - name: Install embedding dependencies
+        run: python3 -m pip install --quiet openai azure-identity numpy
+
+      - name: Regenerate the full embedding index
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          python3 scripts/generate_policy_catalog_embeddings.py \
+            --endpoint "$AZURE_OPENAI_ENDPOINT" \
+            --deployment "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT"
+
+      - name: Confirm the index matches the catalog it was built from
+        run: |
+          python3 - <<'PY'
+          import json
+          import numpy as np
+
+          base = "app/backend/app/data/policy_catalog/"
+          catalog = json.load(open(base + "azure_policy_catalog.json", encoding="utf-8"))
+          defs = catalog["definitions"] if isinstance(catalog, dict) and "definitions" in catalog else catalog
+
+          npz = np.load(base + "azure_policy_catalog_embeddings.npz", allow_pickle=True)
+          vectors = npz[npz.files[0]] if "embeddings" not in npz.files else npz["embeddings"]
+
+          print("catalog definitions:", len(defs))
+          print("embedding rows:", vectors.shape[0])
+          print("dimensions:", vectors.shape[1])
+
+          # A short index is the failure that matters: retrieval silently
+          # degrades rather than erroring, so assert the counts line up.
+          assert vectors.shape[0] == len(defs), (
+              f"index has {vectors.shape[0]} rows for {len(defs)} definitions"
+          )
+          assert vectors.shape[1] >= 256, "vectors are too small to be usable"
+          print("index and catalog agree")
+          PY
+

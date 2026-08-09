@@ -14,6 +14,11 @@ on:
         description: "Subscription to query (defaults to the AZURE_SUBSCRIPTION_ID var)"
         required: false
         type: string
+      runner_already_started:
+        description: "I have already started the in-VNet runner myself"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -50,86 +55,189 @@ jobs:
       # silent: a catalog-only refresh would drop hybrid retrieval back to
       # lexical (measured micro-recall@200 84.4% -> 72.2%) with nothing failing.
       # So the two artifacts are regenerated together and committed together.
-      - name: Install embedding dependencies
-        run: pip install openai azure-identity numpy
+      # The embeddings half runs on a different machine (see the `embeddings`
+      # job), so the catalog is handed over as an artifact.
+      - name: Hand the catalog to the in-VNet runner
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-catalog
+          path: app/backend/app/data/policy_catalog/azure_policy_catalog.json
+          retention-days: 1
+          if-no-files-found: error
 
       # Azure OpenAI sits behind a private endpoint with publicNetworkAccess
       # Disabled, which is the correct posture for this product and must not be
       # relaxed to make CI convenient. A GitHub-hosted runner is on the public
-      # internet, so it cannot reach the endpoint at all. Without this check the
-      # job dies on a bare `403 Public access is disabled` traceback from inside
-      # the OpenAI SDK, which reads like a credentials problem and sends the
-      # next person to re-check RBAC that was never wrong.
-      # This probe must make the *same* call the embedding step makes, with
-      # credentials. An unauthenticated request returns 401 because Azure
-      # evaluates authentication before network policy, so it can never observe
-      # the private-endpoint denial -- which is exactly what happened in run
-      # 31306629840: the probe reported "endpoint reachable (HTTP 401)" and the
-      # step it guards then failed with 403 "Public access is disabled".
+      # internet and cannot reach it -- verified in run 31306629840, which got
+      # "403 Public access is disabled".
       #
-      # A check that passes for a reason unrelated to what it is checking is
-      # worse than no check, because it converts a clear failure into a
-      # confusing one.
+      # So the embedding step runs on an ephemeral self-hosted runner inside
+      # vnet-complianceiq-dev-kz2jze, started here, on demand, for one job.
+      # It is started *last* so it is listening by the time the next job queues,
+      # and it deregisters itself when that job finishes.
+      #
+      # This needs a token that can register a runner. The built-in GITHUB_TOKEN
+      # cannot: `administration` is not a permission it can be granted, which
+      # was tested rather than assumed. So a fine-grained PAT is required,
+      # scoped to this repository with Administration: read and write.
+      #
+      # Without that secret the refresh is still usable, just not unattended:
+      # start the runner by hand and dispatch with runner_already_started.
+      - name: Start the in-VNet runner
+        if: ${{ !inputs.runner_already_started }}
+        env:
+          RUNNER_PAT: ${{ secrets.RUNNER_REGISTRATION_PAT }}
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          JOB_NAME: ${{ vars.AZURE_VNET_RUNNER_JOB }}
+        run: |
+          if [ -z "$RUNNER_PAT" ]; then
+            echo "::error::Secret RUNNER_REGISTRATION_PAT is not set, so the"
+            echo "::error::in-VNet runner cannot be started and the embeddings"
+            echo "::error::cannot be regenerated."
+            echo "::error::"
+            echo "::error::Create a fine-grained personal access token limited to"
+            echo "::error::this repository with 'Administration: read and write',"
+            echo "::error::and store it as the RUNNER_REGISTRATION_PAT secret."
+            echo "::error::"
+            echo "::error::Failing here rather than opening a PR with a catalog"
+            echo "::error::whose embeddings were never rebuilt."
+            exit 1
+          fi
+
+          TOKEN=$(curl -sS -X POST \
+            -H "Authorization: Bearer $RUNNER_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
+            | jq -r .token)
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Could not mint a runner registration token."
+            echo "::error::Check that RUNNER_REGISTRATION_PAT has Administration:"
+            echo "::error::read and write on ${GITHUB_REPOSITORY} and has not expired."
+            exit 1
+          fi
+
+          az containerapp job secret set \
+            -n "$JOB_NAME" -g "$RG" \
+            --secrets "runner-token=$TOKEN" -o none
+
+          az containerapp job start -n "$JOB_NAME" -g "$RG" -o none
+          echo "started $JOB_NAME; it will pick up the embeddings job"
+
+      - name: Confirm the runner was started by hand
+        if: ${{ inputs.runner_already_started }}
+        run: |
+          echo "Skipping runner start at your request."
+          echo "The embeddings job will queue against labels [self-hosted, ciq-vnet]"
+          echo "and wait for a runner. If none is listening it will sit there until"
+          echo "the job timeout, so make sure you ran:"
+          echo ""
+          echo "  TOKEN=\$(gh api -X POST repos/${GITHUB_REPOSITORY}/actions/runners/registration-token --jq .token)"
+          echo "  az containerapp job secret set -n ${{ vars.AZURE_VNET_RUNNER_JOB }} -g ${{ vars.AZURE_RESOURCE_GROUP }} --secrets runner-token=\$TOKEN"
+          echo "  az containerapp job start -n ${{ vars.AZURE_VNET_RUNNER_JOB }} -g ${{ vars.AZURE_RESOURCE_GROUP }}"
+
+  embeddings:
+    name: Regenerate embeddings (inside the VNet)
+    needs: refresh
+    # This job must run inside vnet-complianceiq-dev-kz2jze. On a GitHub-hosted
+    # runner every step below fails with 403, which is the whole reason this
+    # runner exists. Do not move it back to ubuntu-latest.
+    runs-on: [self-hosted, ciq-vnet]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Take the catalog from the previous job
+        uses: actions/download-artifact@v4
+        with:
+          name: policy-catalog
+          path: app/backend/app/data/policy_catalog/
+
+      - name: Authenticate with the runner's managed identity
+        run: az login --identity -o none
+
+      - name: Install embedding dependencies
+        run: python3 -m pip install --quiet openai azure-identity numpy
+
+      # Kept from when this ran on a hosted runner, where it correctly refused
+      # to continue. Here it should pass. If it ever fails again, the runner has
+      # lost its place on the VNet and the failure names that directly, rather
+      # than surfacing as a 403 traceback from inside the OpenAI SDK that reads
+      # like a credentials problem.
       - name: Check the embedding endpoint is reachable from this runner
         env:
           AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
         run: |
-          if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
-            echo "::error::AZURE_OPENAI_ENDPOINT is not set as a repository variable."
-            exit 1
-          fi
-          if [ -z "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT" ]; then
-            echo "::error::AZURE_OPENAI_EMBEDDING_DEPLOYMENT is not set."
-            exit 1
-          fi
+          HOST=$(printf '%s' "${AZURE_OPENAI_ENDPOINT#https://}" | tr -d '/')
+          IP=$(getent hosts "$HOST" | awk '{print $1}' | head -n1)
+          echo "$HOST resolves to ${IP:-nothing}"
+          case "$IP" in
+            10.*) : ;;
+            *) echo "::error::$HOST resolved to '${IP:-nothing}', not a private"
+               echo "::error::address. This runner is not on the VNet, so the"
+               echo "::error::embeddings endpoint will refuse it."
+               exit 1 ;;
+          esac
 
           TOKEN=$(az account get-access-token \
             --resource https://cognitiveservices.azure.com \
-            --query accessToken -o tsv) || {
-              echo "::error::Could not obtain a Cognitive Services token."
-              exit 1
-            }
-
+            --query accessToken -o tsv)
           URL="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}/embeddings?api-version=2024-10-21"
-          BODY=$(curl -s --max-time 30 -w '\n%{http_code}' -X POST "$URL" \
+          CODE=$(curl -s -o /tmp/probe -w '%{http_code}' -X POST "$URL" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"input":"connectivity probe"}' || echo "000")
-          CODE=$(printf '%s' "$BODY" | tail -n1)
+            -d '{"input":"connectivity probe"}')
           echo "authenticated probe status=$CODE"
-
-          case "$BODY" in
-            *"Public access is disabled"*|*"public network access is disabled"*)
-              echo "::error::$AZURE_OPENAI_ENDPOINT refuses public traffic (private endpoint only)."
-              echo "::error::A GitHub-hosted runner cannot regenerate embeddings. The catalog"
-              echo "::error::and its embeddings must ship together -- a catalog-only refresh"
-              echo "::error::silently drops hybrid retrieval to lexical (recall@200 84.4% -> 72.2%),"
-              echo "::error::so this job fails instead of opening a partial PR."
-              echo "::error::Run the refresh from inside the VNet (self-hosted runner or an"
-              echo "::error::Azure Container Apps job), or grant this runner network access."
-              exit 1 ;;
-          esac
-          if [ "$CODE" = "000" ] || [ -z "$CODE" ]; then
-            echo "::error::Could not reach $AZURE_OPENAI_ENDPOINT from this runner (network block or DNS)."
+          if [ "$CODE" != "200" ]; then
+            head -c 400 /tmp/probe; echo ""
+            echo "::error::Expected HTTP 200 from the embeddings endpoint, got $CODE."
             exit 1
           fi
-          if [ "$CODE" = "401" ] || [ "$CODE" = "403" ]; then
-            echo "::error::Authenticated probe was rejected with HTTP $CODE."
-            echo "::error::The embedding step would fail the same way, so this job stops here."
-            printf '%s\n' "$BODY" | head -n 5
-            exit 1
-          fi
-          echo "endpoint reachable and authorised (HTTP $CODE) - proceeding"
 
       - name: Regenerate catalog embeddings
         env:
           AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
         run: |
-          python scripts/generate_policy_catalog_embeddings.py \
+          python3 scripts/generate_policy_catalog_embeddings.py \
             ${AZURE_OPENAI_ENDPOINT:+--endpoint "$AZURE_OPENAI_ENDPOINT"} \
             ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:+--deployment "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT"}
+
+      - name: Hand both artifacts back
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-catalog-with-embeddings
+          path: |
+            app/backend/app/data/policy_catalog/azure_policy_catalog.json
+            app/backend/app/data/policy_catalog/azure_policy_catalog_embeddings.npz
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Verify and open PR
+    needs: embeddings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Collect the refreshed pair
+        uses: actions/download-artifact@v4
+        with:
+          name: policy-catalog-with-embeddings
+          path: app/backend/app/data/policy_catalog/
+
+      # This step used to run without installing anything, so `python -m pytest`
+      # would have died on a missing module. It never showed, because the job
+      # had failed at the endpoint probe long before reaching it -- a step that
+      # has never once executed carries no evidence that it works.
+      - name: Install backend dependencies
+        run: pip install -r app/backend/requirements.txt
 
       - name: Verify the two artifacts agree
         env:
