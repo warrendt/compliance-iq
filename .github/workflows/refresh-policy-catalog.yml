@@ -60,22 +60,45 @@ jobs:
       # job dies on a bare `403 Public access is disabled` traceback from inside
       # the OpenAI SDK, which reads like a credentials problem and sends the
       # next person to re-check RBAC that was never wrong.
+      # This probe must make the *same* call the embedding step makes, with
+      # credentials. An unauthenticated request returns 401 because Azure
+      # evaluates authentication before network policy, so it can never observe
+      # the private-endpoint denial -- which is exactly what happened in run
+      # 31306629840: the probe reported "endpoint reachable (HTTP 401)" and the
+      # step it guards then failed with 403 "Public access is disabled".
+      #
+      # A check that passes for a reason unrelated to what it is checking is
+      # worse than no check, because it converts a clear failure into a
+      # confusing one.
       - name: Check the embedding endpoint is reachable from this runner
         env:
           AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
         run: |
           if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
             echo "::error::AZURE_OPENAI_ENDPOINT is not set as a repository variable."
             exit 1
           fi
-          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 \
-            "${AZURE_OPENAI_ENDPOINT%/}/openai/models?api-version=2024-10-21" || echo "000")
-          # 401/403-with-auth-challenge means we reached it; a network-level
-          # block returns 000, and the private-endpoint denial returns 403 with
-          # a body that names it.
-          BODY=$(curl -s --max-time 20 \
-            "${AZURE_OPENAI_ENDPOINT%/}/openai/models?api-version=2024-10-21" || true)
-          echo "probe status=$CODE"
+          if [ -z "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT" ]; then
+            echo "::error::AZURE_OPENAI_EMBEDDING_DEPLOYMENT is not set."
+            exit 1
+          fi
+
+          TOKEN=$(az account get-access-token \
+            --resource https://cognitiveservices.azure.com \
+            --query accessToken -o tsv) || {
+              echo "::error::Could not obtain a Cognitive Services token."
+              exit 1
+            }
+
+          URL="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}/embeddings?api-version=2024-10-21"
+          BODY=$(curl -s --max-time 30 -w '\n%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"input":"connectivity probe"}' || echo "000")
+          CODE=$(printf '%s' "$BODY" | tail -n1)
+          echo "authenticated probe status=$CODE"
+
           case "$BODY" in
             *"Public access is disabled"*|*"public network access is disabled"*)
               echo "::error::$AZURE_OPENAI_ENDPOINT refuses public traffic (private endpoint only)."
@@ -87,11 +110,17 @@ jobs:
               echo "::error::Azure Container Apps job), or grant this runner network access."
               exit 1 ;;
           esac
-          if [ "$CODE" = "000" ]; then
+          if [ "$CODE" = "000" ] || [ -z "$CODE" ]; then
             echo "::error::Could not reach $AZURE_OPENAI_ENDPOINT from this runner (network block or DNS)."
             exit 1
           fi
-          echo "endpoint reachable (HTTP $CODE) - proceeding"
+          if [ "$CODE" = "401" ] || [ "$CODE" = "403" ]; then
+            echo "::error::Authenticated probe was rejected with HTTP $CODE."
+            echo "::error::The embedding step would fail the same way, so this job stops here."
+            printf '%s\n' "$BODY" | head -n 5
+            exit 1
+          fi
+          echo "endpoint reachable and authorised (HTTP $CODE) - proceeding"
 
       - name: Regenerate catalog embeddings
         env:
