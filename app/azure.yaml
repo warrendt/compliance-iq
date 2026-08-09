@@ -32,15 +32,20 @@ hooks:
       shell: sh
       run: |
         echo "Pre-provisioning checks..."
-        # Check for required tools
-        if ! command -v az &> /dev/null; then
+        # NOTE: this hook declares `shell: sh`, so it must be POSIX. `&>` is a
+        # bashism: under dash (which is /bin/sh on the CI runners) it parses as
+        # "run in the background" followed by a bare `> /dev/null` redirect, and
+        # the redirect's exit status -- always 0 -- becomes the `if` condition.
+        # Both checks therefore reported failure unconditionally, even with az
+        # present and logged in. Keep these redirects POSIX.
+        if ! command -v az >/dev/null 2>&1; then
           echo "Error: Azure CLI is not installed"
           exit 1
         fi
         echo "✓ Azure CLI found"
-        
+
         # Check Azure login
-        if ! az account show &> /dev/null; then
+        if ! az account show >/dev/null 2>&1; then
           echo "Error: Not logged in to Azure. Run 'az login'"
           exit 1
         fi
