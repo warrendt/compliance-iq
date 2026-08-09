@@ -91,6 +91,46 @@ jobs:
             --federated-credential-provider github \
             --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
 
+      # An azd environment is local state (.azure/ is gitignored), so a CI
+      # runner always starts with none. If it simply creates one, every
+      # parameter falls back to its default -- and the defaults do not describe
+      # this deployment. Measured against the live environment's own succeeded
+      # deployment (dev-1783932737), six parameters differ:
+      #
+      #   resourceGroupName  '' -> rg-dev          (a parallel stack)
+      #   namingPrefix       '' -> unprefixed names
+      #   openAiModelName    gpt-5.6-sol -> gpt-5.2
+      #   openAiModelVersion 2026-07-09  -> 2025-12-11
+      #   openAiFallback*    gpt-4.1     -> gpt-5.4-mini
+      #   authClientId       '' -> Easy Auth DISABLED
+      #                           (main.bicep: !empty(authClientId) ? ...)
+      #
+      # So a "successful" automated provision would have built a second stack
+      # with different models and no authentication. Refusing to run without
+      # explicit values is the only safe default: a deploy that cannot prove
+      # which environment it is targeting must stop, not guess.
+      - name: Require explicit environment configuration
+        run: |
+          missing=""
+          for v in AZURE_ENV_NAME AZURE_RESOURCE_GROUP AZURE_NAME_PREFIX; do
+            eval "value=\${$v}"
+            if [ -z "$value" ]; then
+              missing="$missing $v"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Refusing to provision. Missing repository variables:$missing"
+            echo "Without these, azd falls back to defaults that describe a"
+            echo "different environment: a new resource group (rg-<env>),"
+            echo "unprefixed resource names, different Azure OpenAI models, and"
+            echo "Easy Auth switched off. Set them in Settings > Variables."
+            exit 1
+          fi
+          echo "✓ targeting resource group: $AZURE_RESOURCE_GROUP"
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_NAME_PREFIX:    ${{ vars.AZURE_NAME_PREFIX }}
+
       - name: Select / create azd environment
         run: |
           if azd env select "$AZURE_ENV_NAME" 2>/dev/null; then
@@ -99,8 +139,27 @@ jobs:
             echo "Creating new environment: $AZURE_ENV_NAME"
             azd env new "$AZURE_ENV_NAME" --no-prompt
           fi
-          azd env set AZURE_LOCATION     "$AZURE_LOCATION"
-          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
+          azd env set AZURE_LOCATION           "$AZURE_LOCATION"
+          azd env set AZURE_SUBSCRIPTION_ID    "$AZURE_SUBSCRIPTION_ID"
+          # Pin every parameter that differs from its default, so provision
+          # reproduces the live environment instead of inventing a new one.
+          azd env set AZURE_RESOURCE_GROUP     "$AZURE_RESOURCE_GROUP"
+          azd env set AZURE_NAME_PREFIX        "$AZURE_NAME_PREFIX"
+          azd env set AZURE_OPENAI_MODEL_NAME     "$AZURE_OPENAI_MODEL_NAME"
+          azd env set AZURE_OPENAI_MODEL_VERSION  "$AZURE_OPENAI_MODEL_VERSION"
+          azd env set AZURE_OPENAI_FALLBACK_MODEL   "$AZURE_OPENAI_FALLBACK_MODEL"
+          azd env set AZURE_OPENAI_FALLBACK_VERSION "$AZURE_OPENAI_FALLBACK_VERSION"
+          azd env set AUTH_CLIENT_ID           "$AUTH_CLIENT_ID"
+          azd env set AUTH_TENANT_ID           "$AUTH_TENANT_ID"
+        env:
+          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_NAME_PREFIX:     ${{ vars.AZURE_NAME_PREFIX }}
+          AZURE_OPENAI_MODEL_NAME:      ${{ vars.AZURE_OPENAI_MODEL_NAME }}
+          AZURE_OPENAI_MODEL_VERSION:   ${{ vars.AZURE_OPENAI_MODEL_VERSION }}
+          AZURE_OPENAI_FALLBACK_MODEL:   ${{ vars.AZURE_OPENAI_FALLBACK_MODEL }}
+          AZURE_OPENAI_FALLBACK_VERSION: ${{ vars.AZURE_OPENAI_FALLBACK_VERSION }}
+          AUTH_CLIENT_ID:        ${{ vars.AUTH_CLIENT_ID }}
+          AUTH_TENANT_ID:        ${{ vars.AUTH_TENANT_ID }}
 
       - name: Provision infrastructure (azd provision)
         run: azd provision --no-prompt
@@ -147,13 +206,29 @@ jobs:
             --federated-credential-provider github \
             --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
 
-      - name: Select azd environment
+      - name: Select / create azd environment
         run: |
-          azd env select "$AZURE_ENV_NAME"
+          if [ -z "$AZURE_RESOURCE_GROUP" ]; then
+            echo "::error::AZURE_RESOURCE_GROUP is not set; refusing to deploy"
+            echo "azd would otherwise look for services in rg-\$AZURE_ENV_NAME,"
+            echo "which is not where this application runs."
+            exit 1
+          fi
+          # .azure/ is gitignored, so the runner has no environment. Create it
+          # and pull the real values from the existing deployment rather than
+          # letting azd fall back to defaults that describe a different stack.
+          azd env select "$AZURE_ENV_NAME" 2>/dev/null \
+            || azd env new "$AZURE_ENV_NAME" --no-prompt
+          azd env set AZURE_LOCATION        "$AZURE_LOCATION"
+          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
+          azd env set AZURE_RESOURCE_GROUP  "$AZURE_RESOURCE_GROUP"
+          # Populate service endpoints/registry from the deployed resources.
+          azd env refresh --no-prompt
         env:
           AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
 
       - name: Deploy containers (azd deploy)
         run: azd deploy --no-prompt
@@ -161,6 +236,7 @@ jobs:
           AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 4: Smoke-test the deployed application endpoints.
@@ -194,11 +270,17 @@ jobs:
 
       - name: Select azd environment
         run: |
-          azd env select "$AZURE_ENV_NAME"
+          azd env select "$AZURE_ENV_NAME" 2>/dev/null \
+            || azd env new "$AZURE_ENV_NAME" --no-prompt
+          azd env set AZURE_LOCATION        "$AZURE_LOCATION"
+          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
+          azd env set AZURE_RESOURCE_GROUP  "$AZURE_RESOURCE_GROUP"
+          azd env refresh --no-prompt
         env:
           AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
 
       - name: Retrieve deployment URLs
         id: urls
