@@ -150,7 +150,14 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
         cats[c] = cats.get(c, 0) + 1
         resp[r] = resp.get(r, 0) + 1
         pairs.add((c, r))
-        if getattr(m, "mcsb_control_id", None) == "N/A":
+        # Detect a real engine failure by the fallback's own marker, not by
+        # mcsb_control_id == "N/A". "N/A" also means "no MCSB control applies to
+        # this control", which is an honest answer - conflating it with an
+        # engine crash is the same three-way collapse this harness exists to
+        # catch, committed by the harness itself. Measured: a control whose
+        # reason read "...cannot assert physical sanitation, secure disposal..."
+        # was counted as a failure despite being a considered judgement.
+        if _is_engine_failure(m):
             engine_failures += 1
             # Counting failures says something is wrong; naming them says what.
             # The reason is on the mapping because the fallback now carries it.
@@ -184,6 +191,19 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
             f"{c}/{r}" for c, r in pairs if c and r
         ),
     }
+
+
+def _is_engine_failure(mapping) -> bool:
+    """True only when the mapping is the fallback the engine emits on failure.
+
+    ``AIMappingService._create_fallback_mapping`` labels itself: the MCSB name
+    says the mapping failed and the coverage reason names the engine failure
+    explicitly. Both are checked, so renaming one does not silently disable the
+    detector.
+    """
+    name = str(getattr(mapping, "mcsb_control_name", "") or "").casefold()
+    reason = str(getattr(mapping, "coverage_reason", "") or "").casefold()
+    return "mapping failed" in name or "automated mapping engine failed" in reason
 
 
 def _violation_counts(res: Dict[str, Any]) -> Dict[str, int]:
