@@ -36,6 +36,60 @@ TaskStatus = Literal[
 TaskNotificationEvent = Literal["started", "completed", "failed", "cancelled"]
 _TERMINAL_TASK_STATUSES = {"completed", "failed", "cancelled"}
 
+# A task with poll_backend=False is updated only by the Streamlit fragment on
+# the page that started it (see 5_PDF_Pipeline.py). If the user navigates away,
+# closes the tab, or the browser session is otherwise abandoned mid-extraction,
+# nothing ever calls update_task() again -- poll_active_tasks() explicitly
+# skips these ("Frontend-managed tasks are updated by the page itself"), so the
+# entry stays "running" forever. Because it is also visible to has_active_task_
+# of_type(), that permanently blocks every future extraction attempt for
+# whichever session state carries the entry, and neither "Clear workspace" nor
+# "Clear & Start Over" reliably reaches it (task_registry is reset by the
+# former, but has been observed to reappear on the very next Streamlit rerun,
+# and the backend cancel call the latter relies on can silently fail against a
+# job the backend never actually started).
+#
+# The real fix is to make every task reconcile with reality; short of that,
+# a stuck task must not be allowed to block forever. 30 minutes is comfortably
+# above the ~5-9 minutes a real extraction has taken in practice, even for a
+# large PDF, so this only ever fires on a genuinely abandoned task.
+_STALE_AFTER_SECONDS = 1800
+
+
+def _is_stale(task: Dict[str, Any]) -> bool:
+    """A poll_backend=False task left "running" well past any real duration."""
+    if task.get("poll_backend", True):
+        return False
+    if task["status"] not in ("pending", "running"):
+        return False
+    started_at = task.get("started_at")
+    if not started_at:
+        return False
+    try:
+        started = datetime.fromisoformat(started_at)
+    except ValueError:
+        return False
+    age = (datetime.now(timezone.utc) - started).total_seconds()
+    return age > _STALE_AFTER_SECONDS
+
+
+def _expire_stale_tasks() -> None:
+    """Mark abandoned frontend-managed tasks failed rather than leave them
+    "running" forever. Honesty over silence: the task is not quietly dropped,
+    it is recorded as having timed out, with a notification like any other
+    terminal transition."""
+    for task in list(_registry().values()):
+        if _is_stale(task):
+            update_task(
+                task["job_id"],
+                status="failed",
+                error=(
+                    "This task stopped reporting progress and was abandoned "
+                    "after 30 minutes with no update. If a page was navigated "
+                    "away from mid-extraction, retry the scan."
+                ),
+            )
+
 
 # ── Registry helpers ──────────────────────────────────────────────────────
 
@@ -188,7 +242,13 @@ def get_task(job_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_active_tasks() -> List[Dict[str, Any]]:
-    """Return all tasks with status ``pending`` or ``running``."""
+    """Return all tasks with status ``pending`` or ``running``.
+
+    Expires abandoned frontend-managed tasks first, so a task nobody is ever
+    going to update again cannot hold this list — and therefore the UI, and
+    ``has_active_task_of_type`` — busy forever.
+    """
+    _expire_stale_tasks()
     return [t for t in _registry().values() if t["status"] in ("pending", "running")]
 
 
@@ -225,6 +285,7 @@ def dismiss_all_task_notifications() -> None:
 
 def has_active_task_of_type(task_type: TaskType) -> bool:
     """Check if there is already an active (pending/running) task of this type."""
+    _expire_stale_tasks()
     return any(
         t["status"] in ("pending", "running")
         for t in _registry().values()

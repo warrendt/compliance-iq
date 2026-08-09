@@ -201,6 +201,19 @@ def clear_workflow_state(delete_persisted: bool = True) -> None:
             # Best-effort: the local workspace is still cleared below.
             pass
 
+    # Cancel any active tasks (e.g. a PDF extraction) *before* resetting the
+    # registry below, so each gets a real "cancelled" transition and
+    # notification rather than silently vanishing. A task's backend job may
+    # itself be uncancellable or already gone; that must never block the
+    # local reset the user asked for.
+    try:
+        from utils.task_manager import cancel_task, get_active_tasks
+
+        for task in get_active_tasks():
+            cancel_task(task["job_id"], error="Cancelled by clearing the workspace")
+    except Exception:
+        pass
+
     widget_errors = _widget_state_error()
     for key, default in SESSION_DEFAULTS.items():
         _reset_state_key(key, default, widget_errors)
