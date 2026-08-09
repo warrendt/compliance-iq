@@ -56,9 +56,11 @@ class _FakeCatalog:
     def get(self, name):
         return self._definitions.get(name)
 
+    @property
     def available(self):
         return self._available
 
+    @property
     def count(self):
         return self._count
 

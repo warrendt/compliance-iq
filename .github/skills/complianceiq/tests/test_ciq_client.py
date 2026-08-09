@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -375,6 +376,33 @@ def test_encode_multipart_roundtrip_shape():
 def test_auth_headers():
     assert core.auth_headers("t") == {"Authorization": "Bearer t"}
     assert core.auth_headers(None) == {}
+
+
+# --------------------------------------------------------------------------- #
+# _az subprocess resolution
+# --------------------------------------------------------------------------- #
+
+def test_az_resolves_executable_via_which(monkeypatch):
+    """``az`` on Windows is az.cmd; subprocess.run(["az", ...]) with the bare
+    name and shell=False raises FileNotFoundError even when az is on PATH.
+    _az must resolve the concrete path with shutil.which first."""
+    monkeypatch.setattr(ciq.shutil, "which", lambda name: r"C:\bin\az.cmd")
+
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok\n", stderr="")
+
+    monkeypatch.setattr(ciq.subprocess, "run", fake_run)
+    assert ciq._az(["account", "show"]) == "ok"
+    assert captured["cmd"][0] == r"C:\bin\az.cmd"
+
+
+def test_az_raises_when_not_on_path(monkeypatch):
+    monkeypatch.setattr(ciq.shutil, "which", lambda name: None)
+    with pytest.raises(ciq.CiqError, match="not found on PATH"):
+        ciq._az(["account", "show"])
 
 
 # --------------------------------------------------------------------------- #
