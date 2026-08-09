@@ -149,6 +149,48 @@ def test_the_container_deploy_names_its_targets() -> None:
     )
 
 
+def test_the_smoke_test_cannot_silently_opt_out() -> None:
+    """The verification job must not skip itself when the deploy succeeded.
+
+    Run 31305517445 deployed successfully and reported "Smoke test: skipped",
+    so nothing verified the deploy while the run showed green. The cause is
+    transitive skip propagation: `provision` is skipped on push, `deploy` runs
+    anyway via its own always(), but the skip still reaches smoke-test through
+    the needs graph, and its `if` had no always() to stop it.
+
+    This is the same defect class as several others found in this repository --
+    a check that cannot distinguish "everything is fine" from "I never ran".
+    """
+    jobs = _workflow().get("jobs", {})
+    smoke = next(
+        (j for name, j in jobs.items() if "smoke" in name.lower()), None
+    )
+    if smoke is None:
+        pytest.skip("no smoke-test job in this workflow")
+
+    condition = " ".join(str(smoke.get("if", "")).split())
+    needs = smoke.get("needs", [])
+    needs = [needs] if isinstance(needs, str) else list(needs)
+
+    # A job whose needs include anything that can be skipped must opt in to
+    # running, or GitHub will skip it too.
+    if needs and condition:
+        assert "always()" in condition or "!cancelled()" in condition, (
+            "the smoke-test job depends on "
+            f"{needs} and has the condition '{condition}', with no always() or "
+            "!cancelled(). A skipped job anywhere upstream silently skips this "
+            "one, so a deploy can be reported green having been verified by "
+            "nothing at all."
+        )
+
+    # And it must still be conditional on the deploy having worked, otherwise
+    # it would run after a failed deploy and report on the previous release.
+    assert "result" in condition, (
+        "the smoke-test job does not check the deploy's result, so it would "
+        f"run even when the deploy failed; got: '{condition}'"
+    )
+
+
 def test_the_deploy_updates_existing_apps_rather_than_creating_them() -> None:
     """`containerapp create`/`up` would resurrect the parallel-stack problem."""
     import re
