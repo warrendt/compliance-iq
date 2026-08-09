@@ -81,6 +81,22 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
     v: List[dict] = []
     emitted: set = set()
 
+    # A document with a readable text layer that yields no controls at all is a
+    # failure, not a clean run. Every per-control rule below is vacuously
+    # satisfied by an empty list, so without this the harness reports "0
+    # controls, 0 violations" and reads exactly like a healthy result. That is
+    # the same collapse these invariants exist to catch: "we checked and there
+    # is nothing to enforce" is a very different claim from "nothing came back".
+    # Observed live — a proclamation that had yielded 2 controls returned 0 in
+    # 6.6s and the harness passed it.
+    if not mappings:
+        _violation(
+            v,
+            "extraction_returned_something",
+            "*",
+            "0 controls from a PDF with readable text",
+        )
+
     for m in mappings:
         cid = getattr(m, "external_control_id", "?")
         cat = getattr(m, "coverage_category", None)

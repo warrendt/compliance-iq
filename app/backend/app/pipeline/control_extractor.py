@@ -17,6 +17,11 @@ from .pdf_extractor import chunk_text
 
 logger = logging.getLogger(__name__)
 
+# Below this much readable text a document is too thin to expect controls from,
+# and the caller's own "no readable text" error is the honest answer. Above it,
+# an empty extraction is a failure — see _reject_empty_extraction.
+MIN_TEXT_CHARS_FOR_EXTRACTION = 500
+
 # ── System prompt for control extraction ──────────────────────────────────────
 
 EXTRACTION_SYSTEM_PROMPT = """You are an expert compliance analyst specializing in cybersecurity, data protection, and cloud governance frameworks from the Middle East, Africa, and global regulatory bodies.
@@ -112,7 +117,7 @@ def extract_controls_from_text(
 
     if len(chunks) == 1:
         try:
-            return _extract_single(client, config, chunks[0], metadata_context)
+            result = _extract_single(client, config, chunks[0], metadata_context)
         except openai.LengthFinishReasonError:
             # If a single-call extraction is truncated by output length, retry in multi-chunk mode.
             fallback_chunk_chars = max(8000, config.extract_chunk_chars // 2)
@@ -123,14 +128,48 @@ def extract_controls_from_text(
                 "Single-chunk extraction hit output length limit. "
                 f"Retrying with {len(retry_chunks)} chunks (max_chars={fallback_chunk_chars})."
             )
-            return _extract_multi_chunk(
+            result = _extract_multi_chunk(
                 client, config, retry_chunks, metadata_context, progress_callback
             )
     else:
         logger.info(f"Document split into {len(chunks)} chunks for extraction")
-        return _extract_multi_chunk(
+        result = _extract_multi_chunk(
             client, config, chunks, metadata_context, progress_callback
         )
+
+    _reject_empty_extraction(result, pdf_text)
+    return result
+
+
+def _reject_empty_extraction(result: ControlExtractionResult, pdf_text: str) -> None:
+    """Refuse to report an empty extraction from a readable document as success.
+
+    Nothing downstream checked this. The job went to ``completed`` with
+    ``controls_extracted: 0`` and built an empty initiative, so a customer was
+    told their regulation contains no requirements — the most damaging thing this
+    product can say, delivered with no hint that anything went wrong.
+
+    It is not hypothetical: a proclamation that had twice yielded 2 controls
+    returned 0 in 6.6 seconds on a later run, and every check downstream passed,
+    because every per-control rule is vacuously true of an empty list.
+
+    An unreadable PDF already raises ``ValueError`` and surfaces as a clear job
+    error. A readable one that yields nothing is the same class of answer and is
+    treated the same way, rather than being dressed up as a finished analysis.
+    """
+    if result.controls:
+        return
+    if len(pdf_text.strip()) < MIN_TEXT_CHARS_FOR_EXTRACTION:
+        # Too little text to have expected controls; the caller's own emptiness
+        # check for unreadable documents is the honest error there.
+        return
+    raise ValueError(
+        f"No controls could be identified in this document, although "
+        f"{len(pdf_text.strip()):,} characters of text were read. This is "
+        f"reported as a failure rather than an empty result, because an empty "
+        f"result is indistinguishable from a regulation with no requirements. "
+        f"Re-running may succeed: extraction is not currently deterministic."
+    )
 
 
 def _get_retry_after(exc: openai.RateLimitError, default: float) -> float:

@@ -103,6 +103,7 @@ jobs:
             app/tests/test_acceptance_invariants.py \
             app/tests/test_catalog_status_route.py \
             app/tests/test_catalog_identifier_kinds.py \
+            app/tests/test_empty_extraction_is_declared.py \
             --noconftest -v
 
       - name: Run frontend state-init unit tests
