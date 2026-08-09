@@ -29,7 +29,7 @@ jobs:
   smoke:
     name: Reach the private embeddings endpoint
     runs-on: [self-hosted, ciq-vnet]
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - name: Show where this is running
         run: |
@@ -92,3 +92,45 @@ jobs:
             exit 1
           fi
           echo "the in-VNet runner can regenerate embeddings"
+
+      # One vector proves connectivity. It does not prove the runner can do the
+      # actual job, which is ~2500 definitions with batching, throttling and a
+      # sizeable file write. Those fail differently, so run the real thing.
+      - name: Install embedding dependencies
+        run: python3 -m pip install --quiet openai azure-identity numpy
+
+      - name: Regenerate the full embedding index
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          python3 scripts/generate_policy_catalog_embeddings.py \
+            --endpoint "$AZURE_OPENAI_ENDPOINT" \
+            --deployment "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT"
+
+      - name: Confirm the index matches the catalog it was built from
+        run: |
+          python3 - <<'PY'
+          import json
+          import numpy as np
+
+          base = "app/backend/app/data/policy_catalog/"
+          catalog = json.load(open(base + "azure_policy_catalog.json", encoding="utf-8"))
+          defs = catalog["definitions"] if isinstance(catalog, dict) and "definitions" in catalog else catalog
+
+          npz = np.load(base + "azure_policy_catalog_embeddings.npz", allow_pickle=True)
+          vectors = npz[npz.files[0]] if "embeddings" not in npz.files else npz["embeddings"]
+
+          print("catalog definitions:", len(defs))
+          print("embedding rows:", vectors.shape[0])
+          print("dimensions:", vectors.shape[1])
+
+          # A short index is the failure that matters: retrieval silently
+          # degrades rather than erroring, so assert the counts line up.
+          assert vectors.shape[0] == len(defs), (
+              f"index has {vectors.shape[0]} rows for {len(defs)} definitions"
+          )
+          assert vectors.shape[1] >= 256, "vectors are too small to be usable"
+          print("index and catalog agree")
+          PY
+
