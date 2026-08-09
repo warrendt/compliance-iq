@@ -11,12 +11,21 @@ on:
       deploy_scope:
         description: "What to deploy"
         required: true
-        default: "all"
+        default: "containers"
         type: choice
         options:
-          - all         # azd up  (infra + containers)
-          - infra       # azd provision  (infra changes only)
-          - containers  # azd deploy  (rebuild & push containers)
+          - containers  # rebuild & push containers (safe; the default)
+          - infra       # azd provision  (see the warning below)
+          - all         # provision + containers
+      confirm_provision:
+        description: >
+          Type PROVISION to allow infrastructure changes. Required for
+          'infra' and 'all'. The Bicep template does NOT currently
+          reproduce the live environment -- see the comment on the
+          provision job -- so provisioning can create parallel resources.
+        required: false
+        default: ""
+        type: string
 
 # Required for OIDC token exchange with Azure.
 permissions:
@@ -57,22 +66,56 @@ jobs:
             --noconftest -v
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Job 2: Provision Azure infrastructure via azd (adds/updates Bicep resources,
-  #         including the new user-profiles Cosmos DB container).
+  # Job 2: Provision Azure infrastructure via azd.
+  #
+  # DELIBERATELY NOT RUN ON PUSH. This is the opposite of the usual advice, and
+  # it is based on what happened when it did run (run 31303805011).
+  #
+  # The template no longer describes the live environment. It produced
+  #     log-complianceiqkz2jzeaw
+  # while the live resource is
+  #     log-complianceiq-dev-kz2jze
+  # so instead of updating the environment, provision built a second, parallel
+  # set of resources *inside the live resource group* -- a Log Analytics
+  # workspace, Application Insights, a VNet with three NSGs, and a Container
+  # Apps environment -- before failing on a name collision. They were removed by
+  # hand.
+  #
+  # The live environment has accreted across at least three naming schemes
+  # (complianceiq-dev-kz2jze, ciq-dev-kz2jze, and resources created out-of-band
+  # such as the subnet NSGs), so no version of this template reproduces it. Until
+  # the template and the environment are reconciled, an unattended provision on
+  # every merge to main is a standing risk of duplicating live infrastructure.
+  #
+  # Application changes do not need provisioning: the deploy job ships
+  # containers to the existing resources by name. Infrastructure changes are a
+  # deliberate, supervised act, so they are opt-in and require typing PROVISION.
   # ─────────────────────────────────────────────────────────────────────────────
   provision:
     name: azd provision (infra)
     runs-on: ubuntu-latest
     needs: test
-    # Skip if this is a container-only deploy.
     if: >
-      github.event_name == 'push' ||
-      github.event.inputs.deploy_scope == 'all' ||
-      github.event.inputs.deploy_scope == 'infra'
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.deploy_scope == 'all' ||
+       github.event.inputs.deploy_scope == 'infra')
     environment: production
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require explicit confirmation
+        run: |
+          if [ "$CONFIRM" != "PROVISION" ]; then
+            echo "::error::Refusing to provision without confirmation."
+            echo "Re-run this workflow and type PROVISION in the confirmation"
+            echo "field. Provisioning is gated because the Bicep template does"
+            echo "not currently reproduce the live environment's resource names,"
+            echo "so it can create parallel resources instead of updating them."
+            exit 1
+          fi
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm_provision }}
 
       - name: Install Azure Developer CLI
         uses: azure/setup-azd@v2
@@ -169,15 +212,26 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Job 3: Build Docker images and deploy them to Azure Container Apps.
+  # Job 3: Build images and roll them onto the existing Container Apps.
+  #
+  # This does not use `azd deploy`. azd resolves its service targets from the
+  # last subscription deployment, and the most recent ones here either failed or
+  # described differently-named resources, so it cannot reliably find the live
+  # apps. Targeting them by name is what every successful manual deploy of this
+  # application has done, so it is the path with evidence behind it.
+  #
+  # `az acr build` also builds inside the registry, which matters because the
+  # registry is private-endpoint-only: a GitHub-hosted runner cannot push to it
+  # directly, but it can ask ACR to build.
   # ─────────────────────────────────────────────────────────────────────────────
   deploy:
-    name: azd deploy (containers)
+    name: Deploy containers
     runs-on: ubuntu-latest
-    needs: provision
-    # Also run if provision was skipped (container-only deploy).
+    needs: [test, provision]
+    # Runs on push, and on dispatch unless the user asked for infra only.
     if: >
       always() &&
+      needs.test.result == 'success' &&
       (needs.provision.result == 'success' || needs.provision.result == 'skipped') &&
       (
         github.event_name == 'push' ||
@@ -189,9 +243,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Azure Developer CLI
-        uses: azure/setup-azd@v2
-
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
@@ -199,44 +250,66 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to azd
+      # Fail before touching Azure if we cannot say exactly what we are
+      # updating. A deploy that guesses its target is how the provision job
+      # ended up building a parallel stack.
+      - name: Require explicit deployment targets
         run: |
-          azd auth login \
-            --client-id       "${{ secrets.AZURE_CLIENT_ID }}" \
-            --federated-credential-provider github \
-            --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
-
-      - name: Select / create azd environment
-        run: |
-          if [ -z "$AZURE_RESOURCE_GROUP" ]; then
-            echo "::error::AZURE_RESOURCE_GROUP is not set; refusing to deploy"
-            echo "azd would otherwise look for services in rg-\$AZURE_ENV_NAME,"
-            echo "which is not where this application runs."
+          missing=""
+          for v in AZURE_RESOURCE_GROUP AZURE_CONTAINER_REGISTRY \
+                   AZURE_BACKEND_APP AZURE_FRONTEND_APP; do
+            eval "value=\${$v}"
+            if [ -z "$value" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Refusing to deploy. Missing repository variables:$missing"
             exit 1
           fi
-          # .azure/ is gitignored, so the runner has no environment. Create it
-          # and pull the real values from the existing deployment rather than
-          # letting azd fall back to defaults that describe a different stack.
-          azd env select "$AZURE_ENV_NAME" 2>/dev/null \
-            || azd env new "$AZURE_ENV_NAME" --no-prompt
-          azd env set AZURE_LOCATION        "$AZURE_LOCATION"
-          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
-          azd env set AZURE_RESOURCE_GROUP  "$AZURE_RESOURCE_GROUP"
-          # Populate service endpoints/registry from the deployed resources.
-          azd env refresh --no-prompt
+          for app in "$AZURE_BACKEND_APP" "$AZURE_FRONTEND_APP"; do
+            if ! az containerapp show -g "$AZURE_RESOURCE_GROUP" -n "$app" \
+                 --query name -o tsv >/dev/null 2>&1; then
+              echo "::error::Container app '$app' does not exist in $AZURE_RESOURCE_GROUP."
+              echo "Refusing to deploy rather than creating a new one."
+              exit 1
+            fi
+          done
+          echo "✓ $AZURE_BACKEND_APP and $AZURE_FRONTEND_APP exist in $AZURE_RESOURCE_GROUP"
         env:
-          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_RESOURCE_GROUP:      ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_REGISTRY:  ${{ vars.AZURE_CONTAINER_REGISTRY }}
+          AZURE_BACKEND_APP:         ${{ vars.AZURE_BACKEND_APP }}
+          AZURE_FRONTEND_APP:        ${{ vars.AZURE_FRONTEND_APP }}
 
-      - name: Deploy containers (azd deploy)
-        run: azd deploy --no-prompt
+      - name: Build images in ACR
+        run: |
+          set -e
+          TAG="${GITHUB_SHA::7}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          az acr build --registry "$AZURE_CONTAINER_REGISTRY" \
+            --image "backend:$TAG" \
+            --file app/backend/Dockerfile app/backend
+          az acr build --registry "$AZURE_CONTAINER_REGISTRY" \
+            --image "frontend:$TAG" \
+            --file app/frontend/Dockerfile app/frontend
         env:
-          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+
+      - name: Roll out new revisions
+        run: |
+          set -e
+          SERVER="$(az acr show -n "$AZURE_CONTAINER_REGISTRY" \
+                     --query loginServer -o tsv)"
+          az containerapp update -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_BACKEND_APP" \
+            --image "$SERVER/backend:$TAG"
+          az containerapp update -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_FRONTEND_APP" \
+            --image "$SERVER/frontend:$TAG"
+        env:
+          AZURE_RESOURCE_GROUP:     ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+          AZURE_BACKEND_APP:        ${{ vars.AZURE_BACKEND_APP }}
+          AZURE_FRONTEND_APP:       ${{ vars.AZURE_FRONTEND_APP }}
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 4: Smoke-test the deployed application endpoints.
@@ -251,9 +324,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Azure Developer CLI
-        uses: azure/setup-azd@v2
-
       - name: Log in to Azure (OIDC)
         uses: azure/login@v2
         with:
@@ -261,42 +331,32 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to azd
-        run: |
-          azd auth login \
-            --client-id       "${{ secrets.AZURE_CLIENT_ID }}" \
-            --federated-credential-provider github \
-            --tenant-id       "${{ secrets.AZURE_TENANT_ID }}"
-
-      - name: Select azd environment
-        run: |
-          azd env select "$AZURE_ENV_NAME" 2>/dev/null \
-            || azd env new "$AZURE_ENV_NAME" --no-prompt
-          azd env set AZURE_LOCATION        "$AZURE_LOCATION"
-          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
-          azd env set AZURE_RESOURCE_GROUP  "$AZURE_RESOURCE_GROUP"
-          azd env refresh --no-prompt
-        env:
-          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          AZURE_RESOURCE_GROUP:  ${{ vars.AZURE_RESOURCE_GROUP }}
-
+      # Read the FQDNs off the running apps rather than via `azd env refresh`,
+      # which resolves them from the last subscription deployment -- unreliable
+      # here, because recent deployments either failed or named different
+      # resources. Asking the apps themselves cannot be stale.
       - name: Retrieve deployment URLs
         id: urls
         run: |
-          BACKEND_URI=$(azd env get-values 2>/dev/null \
-            | grep '^BACKEND_URI=' | cut -d= -f2- | tr -d '"')
-          FRONTEND_URI=$(azd env get-values 2>/dev/null \
-            | grep '^FRONTEND_URI=' | cut -d= -f2- | tr -d '"')
-          echo "backend_uri=$BACKEND_URI"   >> "$GITHUB_OUTPUT"
-          echo "frontend_uri=$FRONTEND_URI" >> "$GITHUB_OUTPUT"
-          echo "Backend:  $BACKEND_URI"
-          echo "Frontend: $FRONTEND_URI"
+          set -e
+          BACKEND_FQDN=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_BACKEND_APP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          FRONTEND_FQDN=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_FRONTEND_APP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          if [ -z "$BACKEND_FQDN" ] || [ -z "$FRONTEND_FQDN" ]; then
+            echo "::error::Could not resolve ingress FQDNs; refusing to report a pass."
+            exit 1
+          fi
+          echo "backend_uri=https://$BACKEND_FQDN"   >> "$GITHUB_OUTPUT"
+          echo "frontend_uri=https://$FRONTEND_FQDN" >> "$GITHUB_OUTPUT"
+          echo "Backend:  https://$BACKEND_FQDN"
+          echo "Frontend: https://$FRONTEND_FQDN"
         env:
-          AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_BACKEND_APP:    ${{ vars.AZURE_BACKEND_APP }}
+          AZURE_FRONTEND_APP:   ${{ vars.AZURE_FRONTEND_APP }}
 
       - name: Backend — ping
         run: |

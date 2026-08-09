@@ -68,6 +68,13 @@ jobs:
         run: |
           python -m pytest app/tests/test_subnets_have_nsgs.py --noconftest -v
 
+      # Provisioning on every merge to main created duplicate live resources
+      # (run 31303805011). These assert the guards that prevent it are present
+      # in the workflow file GitHub actually executes.
+      - name: Run deploy-workflow safety tests
+        run: |
+          python -m pytest app/tests/test_deploy_workflow_is_safe.py --noconftest -v
+
       - name: Run M365/Purview unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}/app/backend
