@@ -5,9 +5,12 @@ Base URL for the skill: `https://<frontend-fqdn>/api/v1` (through the nginx
 Send `Authorization: Bearer <ARM token>` on every call (harmless on the
 unauthenticated pipeline routes; required on `policy/*` and `deploy/*`).
 
-Routers: `health`, `mapping` (`/mapping`), `policy` (`/policy`),
+Routers (14): `health`, `mapping` (`/mapping`), `policy` (`/policy`),
 `pipeline` (`/pipeline`), `deploy` (`/deploy`), plus `platform`, `m365`,
 `purview`, `session`, `user`, `comparison`, `version`, `sovereignty`.
+
+The deployed OpenAPI document reports **94 operations across 89 paths**
+(verified 2026-08-09). This file covers the skill-relevant subset only.
 
 ## Health
 `GET /api/v1/health` → `{status, ...}` (also `/health/ping`, `/health/logs`).
@@ -34,7 +37,16 @@ Routers: `health`, `mapping` (`/mapping`), `policy` (`/policy`),
 ## Policy generation (`/policy`) — **authenticated**
 `POST /policy/generate` (+ `/generate/{json,bicep,scripts,slz}`) ·
 `POST /policy/details` (policy_ids capped at 100 — chunk larger lists) ·
-`GET /policy/catalog/status` · `POST /policy/catalog/refresh`.
+`GET /policy/catalog/status` · `POST /policy/catalog/refresh` ·
+`GET /policy/catalog/lookup/{identifier}`.
+
+`catalog/lookup` answers what an identifier actually is, rather than only whether
+it is present. `kind` is one of `definition`, `initiative`,
+`microsoft_managed_control`, `deprecated`, `unknown`, alongside `enforceable`,
+`classification` and `explanation`. The distinction matters: a Microsoft Managed
+Control (`policyType: Static`, e.g. the 327 unresolvable initiative members), a
+withdrawn definition and a typo are three different answers, and reporting them
+identically as "not found" reads as "we checked and there is nothing".
 
 ## Deploy (`/deploy`) — **authenticated**, uses the caller's ARM token
 - `GET /deploy/scopes` → `{scopes: [{id, display, type, scope}], warnings: []}`
