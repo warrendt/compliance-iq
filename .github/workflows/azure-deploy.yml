@@ -313,12 +313,22 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 4: Smoke-test the deployed application endpoints.
+  #
+  # `always()` is required, not decorative. A skip propagates transitively: the
+  # provision job is skipped on push, and although deploy runs anyway via its
+  # own always(), the skip still reaches this job through the needs graph. Run
+  # 31305517445 deployed successfully and then reported "Smoke test: skipped",
+  # so the deploy went entirely unverified while the run showed green.
+  #
+  # A deploy that is never verified is the failure mode this whole change set
+  # exists to remove, so the verification step must not be the thing that
+  # silently opts out.
   # ─────────────────────────────────────────────────────────────────────────────
   smoke-test:
     name: Smoke test
     runs-on: ubuntu-latest
     needs: deploy
-    if: needs.deploy.result == 'success'
+    if: always() && needs.deploy.result == 'success'
     environment: production
 
     steps:
@@ -358,54 +368,72 @@ jobs:
           AZURE_BACKEND_APP:    ${{ vars.AZURE_BACKEND_APP }}
           AZURE_FRONTEND_APP:   ${{ vars.AZURE_FRONTEND_APP }}
 
-      - name: Backend — ping
+      # The backend has *internal* ingress, so its FQDN is only resolvable from
+      # inside the VNet and a GitHub-hosted runner cannot reach it. HTTP checks
+      # against it would fail regardless of whether the deploy worked, so they
+      # are replaced by control-plane checks, which are both reachable and
+      # meaningful. The frontend has external ingress and is tested over HTTP.
+      - name: Backend — revision is healthy and running the new image
         run: |
-          BACKEND="${{ steps.urls.outputs.backend_uri }}"
-          echo "Testing $BACKEND/api/v1/health/ping ..."
-          curl -sf --retry 6 --retry-delay 10 "$BACKEND/api/v1/health/ping" \
-            && echo "✓ Backend ping OK"
+          set -e
+          echo "Backend ingress is internal ($BACKEND_FQDN), so it is verified"
+          echo "through the control plane rather than over HTTP."
 
-      - name: Backend — health
-        run: |
-          BACKEND="${{ steps.urls.outputs.backend_uri }}"
-          echo "Testing $BACKEND/api/v1/health ..."
-          STATUS=$(curl -sf --retry 3 --retry-delay 5 "$BACKEND/api/v1/health" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin).get('status', 'unknown'))")
-          echo "Health status: $STATUS"
-          [ "$STATUS" != "unhealthy" ] && echo "✓ Health check passed" || exit 1
-
-      - name: Backend — user profile endpoint
-        run: |
-          BACKEND="${{ steps.urls.outputs.backend_uri }}"
-          # The /api/v1/user/profile route must exist.
-          # - Auth enabled  → 401 / 403
-          # - Auth disabled → 200 (mock dev user) or 503 (DB cold-start)
-          # Any of these confirms the route was deployed; 404 / 5xx are failures.
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "$BACKEND/api/v1/user/profile")
-          echo "User profile endpoint returned HTTP $HTTP_CODE"
-          case "$HTTP_CODE" in
-            200|401|403|503)
-              echo "✓ User profile route present (HTTP $HTTP_CODE)" ;;
-            404)
-              echo "✗ Route not found (404) — deploy may have failed" && exit 1 ;;
-            *)
-              echo "✗ Unexpected HTTP status $HTTP_CODE" && exit 1 ;;
+          EXPECTED="${GITHUB_SHA::7}"
+          IMAGE=$(az containerapp show -g "$AZURE_RESOURCE_GROUP" \
+            -n "$AZURE_BACKEND_APP" \
+            --query "properties.template.containers[0].image" -o tsv)
+          echo "Running image: $IMAGE (expected tag: $EXPECTED)"
+          case "$IMAGE" in
+            *":$EXPECTED") echo "✓ Backend is running this commit" ;;
+            *) echo "::error::Backend is running '$IMAGE', not tag $EXPECTED."
+               echo "The update did not take effect."
+               exit 1 ;;
           esac
 
-      - name: Frontend — health
+          # Wait for the new revision to become healthy rather than assuming it.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            STATE=$(az containerapp revision list -g "$AZURE_RESOURCE_GROUP" \
+              -n "$AZURE_BACKEND_APP" \
+              --query "[?properties.active] | [0].properties.runningState" -o tsv)
+            HEALTH=$(az containerapp revision list -g "$AZURE_RESOURCE_GROUP" \
+              -n "$AZURE_BACKEND_APP" \
+              --query "[?properties.active] | [0].properties.healthState" -o tsv)
+            echo "attempt $attempt: running=$STATE health=$HEALTH"
+            if [ "$STATE" = "Running" ] && [ "$HEALTH" = "Healthy" ]; then
+              echo "✓ Backend revision Running and Healthy"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::Backend revision never reached Running/Healthy."
+          exit 1
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_BACKEND_APP:    ${{ vars.AZURE_BACKEND_APP }}
+          BACKEND_FQDN:         ${{ steps.urls.outputs.backend_uri }}
+
+      - name: Frontend — responds over HTTPS
         run: |
+          set -e
           FRONTEND="${{ steps.urls.outputs.frontend_uri }}"
-          echo "Testing $FRONTEND/_stcore/health ..."
-          curl -sf --retry 6 --retry-delay 10 "$FRONTEND/_stcore/health" \
-            && echo "✓ Frontend healthy"
+          echo "Testing $FRONTEND ..."
+          # Easy Auth fronts this app, so an unauthenticated request is
+          # redirected to the identity provider. A 302 is therefore the
+          # expected healthy response and proves authentication is *on*;
+          # 200 means it is off. Both show the app is serving. 404/5xx do not.
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --retry 6 --retry-delay 10 --retry-all-errors "$FRONTEND")
+          echo "Frontend returned HTTP $HTTP_CODE"
+          case "$HTTP_CODE" in
+            302|401) echo "✓ Frontend serving, authentication enabled" ;;
+            200)     echo "::warning::Frontend served 200 — authentication appears DISABLED" ;;
+            *)       echo "::error::Frontend returned $HTTP_CODE"; exit 1 ;;
+          esac
 
       - name: Summary
         run: |
           echo ""
-          echo "╔══════════════════════════════════╗"
-          echo "║  ✅  Deployment smoke-test PASSED ║"
-          echo "╚══════════════════════════════════╝"
-          echo ""
+          echo "Deployed commit: ${GITHUB_SHA::7}"
           echo "Frontend:  ${{ steps.urls.outputs.frontend_uri }}"
-          echo "Backend:   ${{ steps.urls.outputs.backend_uri }}"
+          echo "Backend:   ${{ steps.urls.outputs.backend_uri }} (internal ingress)"
