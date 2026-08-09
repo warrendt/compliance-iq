@@ -1,0 +1,94 @@
+# Proves the in-VNet self-hosted runner can do the one thing it exists for:
+# reach the Azure OpenAI embeddings endpoint that refuses public traffic.
+#
+# This is deliberately separate from refresh-policy-catalog.yml so that a
+# failure tells you *which* thing broke -- the runner, or the refresh. Every
+# defect in this repo's CI so far has been one layer hiding the next.
+#
+# The runner is ephemeral and started on demand, so it must be running before
+# this workflow is triggered:
+#
+#   TOKEN=$(gh api -X POST repos/warrendt/compliance-iq/actions/runners/registration-token --jq .token)
+#   az containerapp job secret set -n cj-ciq-vnet-runner -g rg-complianceiq-dev-southafricanorth \
+#       --secrets runner-token=$TOKEN
+#   az containerapp job start -n cj-ciq-vnet-runner -g rg-complianceiq-dev-southafricanorth
+
+name: VNet runner smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/vnet-runner-smoke.yml'
+      - 'app/runner/**'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Reach the private embeddings endpoint
+    runs-on: [self-hosted, ciq-vnet]
+    timeout-minutes: 15
+    steps:
+      - name: Show where this is running
+        run: |
+          echo "runner: $RUNNER_NAME"
+          echo "ip: $(hostname -i 2>/dev/null || echo unknown)"
+
+      - name: Resolve the endpoint through private DNS
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+        run: |
+          HOST=$(printf '%s' "${AZURE_OPENAI_ENDPOINT#https://}" | tr -d '/')
+          echo "resolving $HOST"
+          getent hosts "$HOST" || {
+            echo "::error::$HOST did not resolve. The runner is not on the VNet,"
+            echo "::error::or the private DNS zone is not linked to its subnet."
+            exit 1
+          }
+          IP=$(getent hosts "$HOST" | awk '{print $1}' | head -n1)
+          case "$IP" in
+            10.*) echo "resolved to $IP (private) - correct" ;;
+            *) echo "::error::resolved to $IP, which is not a private address."
+               echo "::error::Traffic would leave the VNet and be refused."
+               exit 1 ;;
+          esac
+
+      - name: Authenticate with the job's managed identity
+        run: |
+          az login --identity -o none
+          az account show --query "{sub:name, id:id}" -o tsv
+
+      - name: Call the embeddings endpoint
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          TOKEN=$(az account get-access-token \
+            --resource https://cognitiveservices.azure.com \
+            --query accessToken -o tsv)
+
+          URL="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}/embeddings?api-version=2024-10-21"
+          CODE=$(curl -s -o /tmp/out -w '%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"input":"connectivity probe"}')
+
+          echo "status=$CODE"
+          if [ "$CODE" != "200" ]; then
+            head -c 500 /tmp/out
+            echo ""
+            echo "::error::Expected HTTP 200 from the embeddings endpoint, got $CODE."
+            exit 1
+          fi
+
+          # A 200 with no vector would still be a failure, and is the kind of
+          # thing that has slipped through here before.
+          DIMS=$(jq '.data[0].embedding | length' /tmp/out)
+          echo "embedding dimensions: $DIMS"
+          if [ -z "$DIMS" ] || [ "$DIMS" -lt 256 ]; then
+            echo "::error::Response carried no usable embedding vector."
+            exit 1
+          fi
+          echo "the in-VNet runner can regenerate embeddings"
