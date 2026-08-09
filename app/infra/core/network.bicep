@@ -33,6 +33,43 @@ resource peNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
   }
 }
 
+// NSGs for the Container Apps subnets.
+//
+// These are not decorative. A subscription-level Azure Policy requires every
+// subnet to carry an NSG ("Subnets must have a Network Security Group"), and
+// without them `azd provision` is rejected outright with
+// RequestDisallowedByPolicy before any Container Apps resource is touched.
+//
+// They already exist in the deployed environment, created out-of-band with
+// exactly these names and no custom rules -- so this template could no longer
+// reproduce the environment it supposedly describes. Declaring them here
+// closes that drift; the names match the live resources so provisioning
+// adopts them rather than creating a second set.
+//
+// No security rules are defined, deliberately. An NSG with none applies only
+// the platform defaults (intra-VNet traffic allowed, outbound allowed,
+// inbound from the internet denied), which is what the running environment
+// has today. Container Apps also requires specific traffic on its
+// infrastructure subnet, so restrictive rules must not be invented here
+// without testing them against a live environment.
+resource acaInfraNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
+  name: '${name}-aca-infra-nsg'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: []
+  }
+}
+
+resource acaWorkloadNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
+  name: '${name}-aca-workload-nsg'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: []
+  }
+}
+
 resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
   name: name
   location: location
@@ -46,6 +83,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
         name: 'aca-infra'
         properties: {
           addressPrefix: infraPrefix
+          networkSecurityGroup: {
+            id: acaInfraNsg.id
+          }
           delegations: [
             {
               name: 'Microsoft.App/environments'
@@ -60,6 +100,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
         name: 'aca-workload'
         properties: {
           addressPrefix: workloadPrefix
+          networkSecurityGroup: {
+            id: acaWorkloadNsg.id
+          }
         }
       }
       {

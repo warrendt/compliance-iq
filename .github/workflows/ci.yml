@@ -57,6 +57,17 @@ jobs:
         run: |
           python -m pytest app/tests/test_azd_hooks_are_posix.py --noconftest -v
 
+      # A subscription Azure Policy requires every subnet to carry an NSG.
+      # The template attached one to a single subnet, so provisioning was
+      # rejected before any application resource was created -- while the live
+      # environment already had all three, created out-of-band. Reads the
+      # compiled ARM, so it checks what Azure actually receives.
+      - name: Run subnet NSG infrastructure tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+        run: |
+          python -m pytest app/tests/test_subnets_have_nsgs.py --noconftest -v
+
       - name: Run M365/Purview unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}/app/backend
