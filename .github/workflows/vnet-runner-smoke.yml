@@ -15,12 +15,19 @@
 
 name: VNet runner smoke test
 
+# Dispatch only, deliberately.
+#
+# This used to trigger on push. The in-VNet runner is ephemeral and takes
+# exactly one job, so an automatic smoke run competes with the refresh for it --
+# which is not theoretical: merging this workflow to main started a smoke run
+# that consumed the runner a queued refresh was waiting for, and the refresh sat
+# there indefinitely with everything reporting green.
+#
+# A diagnostic that starves the thing it is diagnosing is worse than no
+# diagnostic, so this now runs only when someone asks for it.
+
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/vnet-runner-smoke.yml'
-      - 'app/runner/**'
 
 permissions:
   contents: read
