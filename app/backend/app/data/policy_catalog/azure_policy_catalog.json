@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-08T16:31:29.570543+00:00",
-  "source": "file:policy_dump.json",
+  "generated_at": "2026-08-09T12:12:35.671373+00:00",
+  "source": "az",
   "api_version": "2023-04-01",
   "count": 2467,
   "definitions": [
@@ -6500,7 +6500,7 @@
     {
       "name": "25237d14-4a47-4cb6-bc7c-8bbdd4671f31",
       "display_name": "Azure role assignment management should be restricted to Microsoft Entra Privileged Identity Management",
-      "description": "Ensures all Azure role assignments are made via Microsoft Entra PIM or explicitly approved apps; others are denied by default. Admins can allow exceptions for specific roles, users, or groups (e.g., breakglass access). Existing role assignments are unaffected. Ensure your tenant has the required PIM licensing before enabling this policy; otherwise, access may be unintentionally blocked.",
+      "description": "Ensures all Azure role assignments are made via Microsoft Entra PIM or explicitly approved apps; others are denied by default. Admins can allow exceptions for specific roles, users, or groups (e.g., break\u2011glass access). Existing role assignments are unaffected. Ensure your tenant has the required PIM licensing before enabling this policy; otherwise, access may be unintentionally blocked.",
       "category": "Privileged Identity Management",
       "mode": "All",
       "effect": "Deny",
