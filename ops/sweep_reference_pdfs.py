@@ -143,6 +143,7 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
     resp = {}
     pairs = set()
     engine_failures = 0
+    failure_reasons: Dict[str, int] = {}
     for m in mappings:
         c = getattr(m, "coverage_category", None)
         r = getattr(m, "responsibility", None)
@@ -151,6 +152,10 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
         pairs.add((c, r))
         if getattr(m, "mcsb_control_id", None) == "N/A":
             engine_failures += 1
+            # Counting failures says something is wrong; naming them says what.
+            # The reason is on the mapping because the fallback now carries it.
+            reason = str(getattr(m, "coverage_reason", "") or "")[-160:]
+            failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
 
     # The defect this check exists for: settings.ai_max_tokens did not exist, so
     # every mapping call raised AttributeError, was swallowed by a broad except,
@@ -170,6 +175,7 @@ def check_invariants(mappings: List[Any], catalog) -> Dict[str, Any]:
     return {
         "violations": v,
         "engine_failures": engine_failures,
+        "failure_reasons": failure_reasons,
         "distribution": {"category": cats, "responsibility": resp},
         "distinct_policy_ids": len(emitted),
         "ids_beyond_old_menu": len(beyond),
@@ -305,6 +311,8 @@ def main() -> int:
         print("SWEEP_SUMMARY " + json.dumps(_summary(res), ensure_ascii=False), flush=True)
         for rule, count in sorted(_violation_counts(res).items()):
             print(f"SWEEP_VIOLATION {res.get('pdf', '?')[:40]} {rule} n={count}", flush=True)
+        for reason, count in sorted((res.get("failure_reasons") or {}).items()):
+            print(f"SWEEP_FAILREASON n={count} {reason[:220]}", flush=True)
 
     print(f"SWEEP_DONE pdfs={len(pdfs)} with_findings={failures}", flush=True)
     return 0

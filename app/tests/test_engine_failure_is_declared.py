@@ -40,6 +40,33 @@ def test_every_setting_the_mapping_call_reads_actually_exists():
         assert hasattr(s, name), f"settings.{name} is read at runtime but not declared"
 
 
+def test_structured_output_budgets_leave_room_for_reasoning_tokens():
+    """A reasoning model spends completion tokens before it emits any output.
+
+    Measured live: the rerank call was capped at 2000 completion tokens and the
+    deployed model spent all 2000 on reasoning, so the request failed with
+    "length limit reached" having produced nothing parseable. The caller
+    degraded quietly to unranked retrieval, so retrieval quality dropped with no
+    visible symptom. These ceilings were sized for a non-reasoning model.
+
+    The floor, not the exact value, is what matters - tuning is expected,
+    silently returning to a non-reasoning budget is not.
+    """
+    s = Settings()
+    reasoning_floor = 4000
+    for name in (
+        "coverage_classification_max_tokens",
+        "policy_catalog_expansion_max_tokens",
+        "policy_catalog_rerank_max_tokens",
+        "ai_max_tokens",
+    ):
+        assert getattr(s, name) >= reasoning_floor, (
+            f"settings.{name} is below the budget a reasoning model needs before "
+            "it produces any structured output; the call fails with a length "
+            "limit and the failure is easy to mistake for a poor answer"
+        )
+
+
 def test_no_declaration_is_lost_into_a_trailing_comment():
     """Guard the specific mangling, since it is invisible and syntactically legal."""
     import inspect
