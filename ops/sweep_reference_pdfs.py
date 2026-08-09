@@ -304,9 +304,20 @@ def main() -> int:
         default=int(os.environ.get("SWEEP_SKIP", "0")),
         help="skip the N smallest, so a sweep can be resumed",
     )
+    ap.add_argument(
+        "--match",
+        default=os.environ.get("SWEEP_MATCH", ""),
+        help=(
+            "substring of the filename, case-insensitive. Re-running one PDF "
+            "after a fix should not cost a whole sweep, and size-index "
+            "arithmetic is easy to get wrong."
+        ),
+    )
     args = ap.parse_args()
 
     pdfs = sorted(Path(args.dir).glob("**/*.pdf"), key=lambda p: p.stat().st_size)
+    if args.match:
+        pdfs = [p for p in pdfs if args.match.lower() in p.name.lower()]
     pdfs = pdfs[args.skip :]
     if args.limit:
         pdfs = pdfs[: args.limit]
