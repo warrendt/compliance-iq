@@ -277,7 +277,11 @@ async def get_mcsb_controls(domain: Optional[str] = None):
         domain: Optional domain filter
 
     Returns:
-        List of MCSB controls
+        List of MCSB controls. ``is_demonstration_data`` is True whenever no
+        real MCSB catalog file is loaded, in which case the returned
+        ``defender_recommendations`` are illustrative examples, not verified
+        against a live Microsoft Defender for Cloud subscription (see
+        docs/BACKLOG.md B4).
     """
     try:
         mcsb_service = get_mcsb_service()
@@ -289,7 +293,8 @@ async def get_mcsb_controls(domain: Optional[str] = None):
 
         return {
             "controls": controls,
-            "count": len(controls)
+            "count": len(controls),
+            "is_demonstration_data": mcsb_service.is_demonstration_data,
         }
 
     except Exception as e:
@@ -306,7 +311,8 @@ async def get_mcsb_domains():
 
         return {
             "domains": domains,
-            "count": len(domains)
+            "count": len(domains),
+            "is_demonstration_data": mcsb_service.is_demonstration_data,
         }
 
     except Exception as e:

@@ -21,6 +21,7 @@ class HealthResponse(BaseModel):
     azure_openai_connected: bool
     mcsb_controls_loaded: bool
     mcsb_control_count: int
+    mcsb_is_demonstration_data: bool = False
     slz_policies_loaded: bool = False
     slz_policy_count: int = 0
     policy_catalog_count: int = 0
@@ -51,10 +52,12 @@ async def health_check():
         controls = mcsb_service.get_all_controls()
         mcsb_controls_loaded = True
         mcsb_control_count = len(controls)
+        mcsb_is_demonstration_data = mcsb_service.is_demonstration_data
     except Exception as e:
         logger.error(f"MCSB service health check failed: {e}")
         mcsb_controls_loaded = False
         mcsb_control_count = 0
+        mcsb_is_demonstration_data = False
 
     # Check SLZ sovereignty service
     try:
@@ -83,6 +86,7 @@ async def health_check():
         azure_openai_connected=azure_openai_connected,
         mcsb_controls_loaded=mcsb_controls_loaded,
         mcsb_control_count=mcsb_control_count,
+        mcsb_is_demonstration_data=mcsb_is_demonstration_data,
         slz_policies_loaded=slz_policies_loaded,
         slz_policy_count=slz_policy_count,
         policy_catalog_count=policy_catalog_count,

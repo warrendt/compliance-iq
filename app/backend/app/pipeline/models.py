@@ -115,7 +115,11 @@ class ControlPolicyMapping(BaseModel):
     )
     defender_recommendations: List[str] = Field(
         default_factory=list,
-        description="Relevant Microsoft Defender for Cloud recommendations"
+        description=(
+            "Always empty today. Reserved for real Microsoft Defender for "
+            "Cloud recommendations; the engine does not query a live "
+            "subscription at mapping time. See docs/BACKLOG.md B4."
+        ),
     )
     is_automatable: bool = Field(
         ..., description="Whether this control can be enforced/audited via Azure Policy"

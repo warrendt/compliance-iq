@@ -113,6 +113,14 @@ technical safeguard, set coverage_category to "C_Process" (or "D_MicrosoftAttest
 for Microsoft-operated items) and return an EMPTY azure_policy_ids list. Do NOT
 reach for a governance catch-all policy just to attach something.
 
+## Defender for Cloud Recommendations
+
+You have no access to a live Microsoft Defender for Cloud subscription and no
+data about actual recommendation state. ALWAYS return an EMPTY
+defender_recommendations list. Never invent or guess a Defender for Cloud
+recommendation name - an invented one is indistinguishable from a real one to
+the reader and is worse than reporting nothing.
+
 Always be conservative with confidence scores - it's better to flag uncertain mappings for human review."""
 
 
@@ -217,6 +225,15 @@ class AIMappingService:
             
             if not hasattr(mapping, 'external_control_name'):
                 mapping.external_control_name = external_control.control_name
+
+            # Defender for Cloud recommendations are never grounded in
+            # anything: there is no live subscription context at mapping
+            # time to check against, the prompt never asks for this field,
+            # and the model still fills it because it is present in the
+            # ControlMapping schema (see B4). Whatever comes back here is
+            # invented, so clear it rather than ship a plausible-looking
+            # recommendation nobody verified.
+            self._strip_ungrounded_defender_recommendations(mapping)
 
             # Deterministic coverage guarantee: the blind classification is the
             # primary signal, the extractor's control_type a fallback. Controls
@@ -583,6 +600,22 @@ Context above. The sovereignty field should reference specific SLZ policies from
 Sovereignty Context above.
 """
         return prompt
+
+    @staticmethod
+    def _strip_ungrounded_defender_recommendations(mapping) -> None:
+        """Clear the model's ``defender_recommendations`` guess.
+
+        Nothing in this engine queries Microsoft Defender for Cloud: mapping
+        happens per-control, at framework-analysis time, before any Azure
+        subscription is chosen, so there is no live tenant to check
+        recommendations against. The mapping prompt never asks the model for
+        this field either - it fills it only because ``ControlMapping``
+        declares it. Whatever text comes back is invented, so it is cleared
+        here rather than shipped as if it were a verified Defender for Cloud
+        recommendation. See docs/BACKLOG.md B4.
+        """
+        if getattr(mapping, "defender_recommendations", None):
+            mapping.defender_recommendations = []
 
     def _apply_procedural_sovereignty(self, mapping, external_control) -> None:
         """Name the Azure feature that meets a sovereignty objective with no policy.

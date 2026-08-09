@@ -31,6 +31,21 @@ class MCSBService:
         self._controls_by_id: Dict[str, MCSBControl] = {}
         self._controls_by_domain: Dict[str, List[MCSBControl]] = {}
         self._loaded = False
+        # True whenever the loaded set is the small illustrative fallback
+        # below rather than a real MCSB catalog file - the shipped image has
+        # never actually included ``data_path`` (see docs/BACKLOG.md B4), so
+        # this has been True in every deployment to date. Surfaced via
+        # /api/v1/health and /api/v1/mcsb/controls so a caller isn't misled
+        # into thinking it has the full published benchmark.
+        self._is_demonstration_data = False
+
+    @property
+    def is_demonstration_data(self) -> bool:
+        """True when the loaded controls are the illustrative fallback set,
+        not a real MCSB catalog file."""
+        if not self._loaded:
+            self.load_controls()
+        return self._is_demonstration_data
 
     def load_controls(self) -> None:
         """Load MCSB controls from JSON file."""
@@ -66,6 +81,7 @@ class MCSBService:
             self._build_indexes()
 
             self._loaded = True
+            self._is_demonstration_data = False
             logger.info(f"Successfully loaded {len(self._controls)} MCSB controls")
 
         except Exception as e:
@@ -205,6 +221,7 @@ class MCSBService:
         self._controls = [MCSBControl(**ctrl) for ctrl in default_controls]
         self._build_indexes()
         self._loaded = True
+        self._is_demonstration_data = True
 
         logger.info(f"Created {len(self._controls)} default MCSB controls")
 

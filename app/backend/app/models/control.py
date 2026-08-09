@@ -41,7 +41,12 @@ class MCSBControl(BaseModel):
     )
     defender_recommendations: List[str] = Field(
         default_factory=list,
-        description="Microsoft Defender for Cloud recommendations"
+        description=(
+            "Illustrative Microsoft Defender for Cloud recommendation names, "
+            "not verified against a live Defender for Cloud subscription. "
+            "Populated only when the deployment serves demonstration data "
+            "(see MCSBService.is_demonstration_data / docs/BACKLOG.md B4)."
+        ),
     )
     related_frameworks: Dict[str, List[str]] = Field(
         default_factory=dict,
