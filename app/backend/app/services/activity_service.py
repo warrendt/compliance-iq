@@ -238,11 +238,20 @@ async def record_mappings(
     Each mapping becomes one ``mapping-results`` document; a single audit entry
     summarises the run and ``mappingCount`` is bumped by the number of controls.
     Returns the number of mapping documents written.
+
+    The audit entry distinguishes *mapped* from *persisted*. It previously did
+    not: ``count = written or len(mappings)`` meant a run whose every write
+    failed reported the full control count anyway, so the compliance record
+    claimed "Mapped 200 controls" for a run that stored nothing, and the user's
+    lifetime ``mappingCount`` was inflated by the same amount. A failed write is
+    not a smaller success, and the audit log is the last place that should
+    round it up.
     """
     user_id, _ = _resolve_identity(user)
     metadata = dict(metadata or {})
     written = 0
     date = _today()
+    persistence_attempted = bool(_ready() and mappings)
 
     if _ready() and mappings:
         try:
@@ -279,7 +288,7 @@ async def record_mappings(
         except Exception as exc:  # noqa: BLE001
             logger.warning("mapping records failed for %s: %s", framework, exc)
 
-    count = written or len(mappings)
+    count = len(mappings)
     avg_conf = 0.0
     confs = [
         float(m.get("confidence") if m.get("confidence") is not None
@@ -289,10 +298,21 @@ async def record_mappings(
     if confs:
         avg_conf = round(sum(confs) / len(confs), 3)
 
+    summary = f"Mapped {count} controls from '{framework}' (avg confidence {avg_conf})"
+    if persistence_attempted and written < count:
+        # Say it in the summary, not only in a field. The summary is what a
+        # reviewer reads; a discrepancy buried in metadata is a silent one.
+        summary += (
+            f" — WARNING: only {written} of {count} were stored, "
+            "so this run's detail is incomplete"
+        )
+
     metadata.update({
-        "summary": f"Mapped {count} controls from '{framework}' (avg confidence {avg_conf})",
+        "summary": summary,
         "framework": framework,
         "controlCount": count,
+        "persistedCount": written,
+        "persistenceAttempted": persistence_attempted,
         "avgConfidence": avg_conf,
     })
     await audit_service.write_audit(
@@ -301,7 +321,13 @@ async def record_mappings(
         resource_type=audit_service.RESOURCE_MAPPING,
         metadata=metadata,
     )
-    await _bump_profile(user, "mappingCount", count)
+    # Bump the lifetime stat by what is actually retrievable. When persistence
+    # was attempted these are equal unless writes failed, so this only differs
+    # in the failure case — where a counter that outruns the stored records
+    # would leave the history page claiming work it cannot show.
+    await _bump_profile(
+        user, "mappingCount", written if persistence_attempted else count
+    )
     return written
 
 

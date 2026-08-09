@@ -2,7 +2,7 @@
 Cosmos DB client for data persistence
 """
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import PartitionKey, exceptions
 from azure.identity.aio import DefaultAzureCredential
@@ -314,15 +314,33 @@ class CosmosDBClient:
         partition_key_paths: List[str],
         default_ttl: Optional[int] = None
     ) -> None:
-        """Create container if it does not exist (idempotent)."""
+        """Create container if it does not exist (idempotent).
+
+        Best-effort by design: this runs on the startup path for every
+        container, and a transient Cosmos error there should not stop the app
+        from booting. A failure is logged at error level rather than raised,
+        because the consequence is deferred — writes to that container will
+        fail later, somewhere else.
+        """
         if not self.database:
             return
 
         try:
-            if len(partition_key_paths) == 1:
-                pk = PartitionKey(path=partition_key_paths[0])
-            else:
-                pk = PartitionKey(paths=partition_key_paths, kind="MultiHash", version=2)
+            # The SDK's kwarg is `path`, singular, for both shapes: pass a str
+            # for a single key and a list for a hierarchical one, and it infers
+            # Hash vs MultiHash itself. Passing `paths=`/`kind=` raises
+            # KeyError('path') inside the constructor before any network call,
+            # which is why `mapping-results` — the only container with a
+            # composite key (/userId, /date) — failed to be ensured on every
+            # single run. It went unnoticed because Bicep pre-provisions the
+            # container in the deployed environment, so writes still landed;
+            # on a fresh environment nothing would have created it.
+            path: Union[str, List[str]] = (
+                partition_key_paths[0]
+                if len(partition_key_paths) == 1
+                else list(partition_key_paths)
+            )
+            pk = PartitionKey(path=path)
 
             await self.database.create_container_if_not_exists(
                 id=container_name,
@@ -336,7 +354,11 @@ class CosmosDBClient:
             })
 
         except Exception as e:
-            logger.warning(f"Failed to ensure container {container_name}: {e}")
+            logger.error(
+                "Failed to ensure container %s (partition keys %s): %s. "
+                "Writes to this container will fail unless it already exists.",
+                container_name, partition_key_paths, e,
+            )
 
 
 # Global client instance

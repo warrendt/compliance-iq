@@ -34,6 +34,19 @@ jobs:
         run: |
           python -m pytest app/tests/test_user_profile.py --noconftest -v
 
+      # Persistence honesty: a mapping run that stored nothing must not be
+      # audited as a completed run, and the only container with a composite
+      # partition key must actually be created.
+      - name: Run activity persistence + Cosmos partition key tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+          AZURE_OPENAI_ENDPOINT: https://dummy.openai.azure.com
+        run: |
+          python -m pytest \
+            app/tests/test_mapping_persistence_is_declared.py \
+            app/tests/test_cosmos_composite_partition_key.py \
+            --noconftest -v
+
       - name: Run M365/Purview unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}/app/backend
@@ -50,6 +63,7 @@ jobs:
         run: |
           python -m pytest \
             app/tests/test_policy_catalog_service.py \
+            app/tests/test_catalog_freshness_is_declared.py \
             app/tests/test_policy_exporter_refids.py \
             app/tests/test_generate_policy_catalog.py \
             app/tests/test_policy_cache_catalog.py \
