@@ -120,3 +120,34 @@ and cancels it explicitly before resetting. Regression-locked by
 `app/tests/test_task_staleness.py` (5 tests).
 
 **Status.** Fixed on `main`. Live-retested after redeploy (see the run report).
+
+---
+
+## B8 — Every pipeline mapping run crashed with `'bool' object is not callable` — FIXED
+
+**Observed.** Live E2E test (this session), one PDF: `National Cloud Security Policy_V2.0 1.pdf`
+via `POST /pipeline/run` against the deployed app. Extraction succeeded (155 controls,
+recognized as "UAE National Cloud Security Policy"), then the job failed at 45% with
+`error: "'bool' object is not callable"` and `controls_mapped=0`. This is not specific to this
+PDF — it is unconditional, so **every** pipeline run through `app/backend/app/pipeline/policy_mapper.py`
+has failed at the mapping stage since the commit below landed.
+
+**Root cause.** `PolicyCatalogService.available` and `.count` are `@property` on the real service
+(`policy_catalog_service.py:640,653`) — attribute access, not methods. `map_controls_to_azure_policies`
+(rewritten in #34, "Reach the whole policy catalog from the pipeline path") called them as
+`catalog.available()` and `catalog.count()`, i.e. invoked the returned `bool`/`int` as a function.
+Python raises `TypeError: 'bool' object is not callable` the instant that line executes — this was
+not conditional on the catalog actually being unavailable, it failed 100% of the time the mapping
+stage ran. `initiative_builder.py` and `validator.py` already guard the same real service with
+`callable(available) else available`; `policy_mapper.py` did not.
+
+**Why CI didn't catch it.** `app/tests/test_pipeline_policy_mapper.py`'s `_FakeCatalog` implemented
+`available` and `count` as plain methods, matching the buggy call rather than the real service's
+`@property`. The test suite locked in the mock's shape, not the real one's — so 21 tests exercised
+this exact code path and all passed against a double that couldn't have caught the mismatch.
+
+**Fix.** `catalog.available()` → `catalog.available`, `catalog.count()` → `catalog.count` in
+`policy_mapper.py`. `_FakeCatalog.available`/`.count` changed to `@property` so the double matches
+the real interface it stands in for.
+
+**Status.** Fixed on `main`. Live-retested after redeploy (see the run report).

@@ -230,7 +230,12 @@ def map_controls_to_azure_policies(
     # Retrieval reads the full catalog, so a missing snapshot means every
     # mapping comes back empty and is reported as a gap. That is honest but
     # useless; say why instead.
-    if not catalog.available():
+    #
+    # ``available`` and ``count`` are properties on the real
+    # ``PolicyCatalogService`` (see policy_catalog_service.py), not methods -
+    # calling them crashed every mapping run with "'bool' object is not
+    # callable" before ``available()`` even got the chance to be False.
+    if not catalog.available:
         raise RuntimeError(
             "The Azure Policy catalog is unavailable, so controls cannot be "
             "mapped. Regenerate the snapshot with "
@@ -240,7 +245,7 @@ def map_controls_to_azure_policies(
     logger.info(
         "Mapping %d control(s) against %d catalog definition(s)",
         len(controls),
-        catalog.count(),
+        catalog.count,
     )
 
     external = [_to_external_control(control) for control in controls]

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -50,9 +51,15 @@ class CiqError(RuntimeError):
 
 def _az(args: list[str]) -> str:
     """Run an ``az`` command and return trimmed stdout, raising on failure."""
+    # shutil.which resolves PATHEXT (.cmd/.bat), so this also works on Windows,
+    # where "az" is az.cmd and subprocess.run(["az", ...]) with shell=False
+    # raises FileNotFoundError even though "az" is on PATH.
+    az_path = shutil.which("az")
+    if az_path is None:
+        raise CiqError("Azure CLI ('az') not found on PATH. Install it and run 'az login'.")
     try:
         proc = subprocess.run(
-            ["az", *args],
+            [az_path, *args],
             check=True,
             capture_output=True,
             text=True,
