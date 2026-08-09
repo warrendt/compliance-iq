@@ -47,6 +47,16 @@ jobs:
             app/tests/test_cosmos_composite_partition_key.py \
             --noconftest -v
 
+      # The azd lifecycle hooks declare `shell: sh`, so they must be POSIX. A
+      # `&>` bashism in preprovision made the Azure CLI check report failure
+      # unconditionally, which blocked azd provision and therefore every
+      # automated deployment. Runs against the runner's real /bin/sh.
+      - name: Run azd hook POSIX-compliance tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app/backend
+        run: |
+          python -m pytest app/tests/test_azd_hooks_are_posix.py --noconftest -v
+
       - name: Run M365/Purview unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}/app/backend
