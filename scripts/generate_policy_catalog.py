@@ -413,6 +413,45 @@ def build_catalog(raw: List[Dict[str, Any]], source: str) -> Dict[str, Any]:
     }
 
 
+# The order top-level keys are written in, so a refresh diff shows what changed.
+#
+# Without this the order is a function of which code path last wrote the file:
+# build_catalog() ends at managed_controls and the initiative keys are assigned
+# afterwards, so a fresh run appends them at the end -- but re-writing a catalog
+# that already had them keeps their original position, because assigning to an
+# existing dict key does not move it. The two orderings are semantically
+# identical and textually catastrophic: a refresh where exactly one policy
+# description changed produced a 19,202-line diff, because whole sections
+# shifted past each other. Nobody reviews that, which defeats the point of
+# routing the refresh through a pull request at all.
+CATALOG_KEY_ORDER = (
+    "generated_at",
+    "source",
+    "api_version",
+    "count",
+    "definitions",
+    "initiative_count",
+    "initiatives",
+    "deprecated_count",
+    "deprecated",
+    "managed_control_count",
+    "managed_controls",
+)
+
+
+def canonicalize(catalog: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the catalog with its top-level keys in a fixed order.
+
+    Unknown keys are kept, sorted, after the known ones rather than dropped --
+    silently discarding a field a future version adds would be the same class of
+    bug this function exists to prevent.
+    """
+    ordered = {k: catalog[k] for k in CATALOG_KEY_ORDER if k in catalog}
+    for key in sorted(set(catalog) - set(CATALOG_KEY_ORDER)):
+        ordered[key] = catalog[key]
+    return ordered
+
+
 def _definition_name(ref: str) -> str:
     """The definition name at the end of a policy definition resource id.
 
@@ -518,7 +557,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         catalog["initiatives"] = initiatives
         catalog["initiative_count"] = len(initiatives)
         args.output.write_text(
-            json.dumps(catalog, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+            json.dumps(canonicalize(catalog), indent=2, sort_keys=False) + "\n",
+            encoding="utf-8",
         )
         print(f"Wrote {len(initiatives)} initiatives to {args.output}")
         return 0
@@ -544,7 +584,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     catalog["initiative_count"] = len(initiatives)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(catalog, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(canonicalize(catalog), indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
     print(
         f"Wrote {catalog['count']} policy definitions and "
         f"{len(initiatives)} initiatives to {args.output} (source={source})"
