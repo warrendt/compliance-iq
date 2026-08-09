@@ -84,6 +84,32 @@ def test_no_declaration_is_lost_into_a_trailing_comment():
         )
 
 
+def test_ai_temperature_is_not_described_as_giving_consistency():
+    """A dead setting is tolerable; a comment claiming it does something is not.
+
+    ``ai_temperature`` is read by nothing, and on the deployed reasoning model
+    (``gpt-5.6-luna``) the Responses API would reject ``temperature`` if it were
+    passed. Its comment used to read "Lower for consistency", which asserts a
+    property the system measurably does not have: extraction returned 53 and 108
+    controls from byte-identical input on two runs of the same sweep.
+
+    The risk this guards is not the unused float. It is that the next person to
+    ask "is extraction deterministic?" greps config.py, reads that comment, and
+    concludes the question was already settled.
+    """
+    import inspect
+
+    import app.config as config_module
+
+    for line in inspect.getsource(config_module).splitlines():
+        if "ai_temperature" in line and "#" in line:
+            comment = line.split("#", 1)[1].lower()
+            assert "consisten" not in comment and "determinis" not in comment, (
+                "ai_temperature is not applied anywhere and cannot be honoured by a "
+                f"reasoning deployment, so it must not be annotated as if it were: {line.strip()!r}"
+            )
+
+
 def _fallback():
     from app.services.ai_mapping_service import AIMappingService
 

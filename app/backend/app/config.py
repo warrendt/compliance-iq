@@ -144,7 +144,16 @@ class Settings(BaseSettings):
     coverage_classification_max_tokens: int = 4000
 
     # AI Mapping Settings
-    ai_temperature: float = 0.3  # Lower for consistency
+    #
+    # DEAD SETTING, deliberately kept so removing it is a decision rather than an
+    # accident. Nothing reads `ai_temperature`, and on the deployed model it could
+    # not be honoured if it did: `gpt-5.6-luna` is a reasoning model, and the
+    # Responses API rejects `temperature` on those. The old comment here read
+    # "Lower for consistency", which claimed a property the system does not have —
+    # extraction is measurably non-deterministic, returning 53 and 108 controls
+    # from byte-identical input on two runs. Leaving that comment in place would
+    # let the next reader conclude determinism had already been handled.
+    ai_temperature: float = 0.3
     # Declared on its own line deliberately: this field was once absorbed into
     # the comment above by a lost newline, so `settings.ai_max_tokens` raised
     # AttributeError on every mapping call. The broad except in
