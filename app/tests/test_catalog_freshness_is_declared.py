@@ -67,14 +67,17 @@ def test_catalog_snapshot_is_not_stale():
         f"(generated {generated.date()}), past the {MAX_SNAPSHOT_AGE_DAYS}-day "
         "limit. Every evidence pack is citing this date as the catalogue its "
         "mappings were derived from, so the provenance is now questionable.\n\n"
-        "This test is deliberately time-based. It is the only freshness signal "
-        "that works today: the weekly refresh workflow has never run "
-        "successfully because the repository has no AZURE_CLIENT_ID / "
-        "AZURE_TENANT_ID for OIDC login.\n\n"
-        "To fix: run scripts/generate_policy_catalog.py and "
+        "This test is deliberately time-based, and it remains the backstop rather "
+        "than the primary mechanism: the weekly refresh workflow now runs "
+        "end-to-end (OIDC works, and the embeddings regenerate on a self-hosted "
+        "runner inside the VNet, because the Azure OpenAI endpoint is private). "
+        "If this test fires, the refresh has stopped running or its PR is not "
+        "being merged.\n\n"
+        "To fix by hand: run scripts/generate_policy_catalog.py and "
         "scripts/generate_policy_catalog_embeddings.py together — the embeddings "
         "are keyed to the catalogue, and refreshing one without the other "
-        "silently disables semantic search."
+        "silently disables semantic search. The embeddings script needs network "
+        "access to the private endpoint, so it must run inside the VNet."
     )
 
 
