@@ -1,9 +1,17 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 # =============================================================================
 # ComplianceIQ — Root azure.yaml
-# 
-# The full deployment configuration lives in app/azure.yaml.
-# This root file delegates to it so `azd up` works from the repo root.
+#
+# THIS is the file azd actually reads. The workflows run `azd provision` /
+# `azd deploy` from the repository root, so this file -- not app/azure.yaml --
+# defines the deployment.
+#
+# app/azure.yaml is a near-duplicate kept for running azd from inside app/.
+# azd has no include or delegation mechanism, so the two files do NOT share
+# anything: any change to hooks, services or infra must be made in both, and a
+# fix applied to only one is silently inert. That is not hypothetical -- the
+# `&>` bashism below was first fixed in app/azure.yaml alone and the deployment
+# failed again with byte-identical output.
 # =============================================================================
 
 name: compliance-iq
@@ -40,12 +48,18 @@ hooks:
       shell: sh
       run: |
         echo "Pre-provisioning checks..."
-        if ! command -v az &> /dev/null; then
+        # NOTE: this hook declares `shell: sh`, so it must be POSIX. `&>` is a
+        # bashism: under dash (which is /bin/sh on the CI runners) it parses as
+        # "run in the background" followed by a bare `> /dev/null` redirect, and
+        # the redirect's exit status -- always 0 -- becomes the `if` condition.
+        # Both checks therefore reported failure unconditionally, even with az
+        # present and logged in. Keep these redirects POSIX.
+        if ! command -v az >/dev/null 2>&1; then
           echo "Error: Azure CLI is not installed"
           exit 1
         fi
         echo "✓ Azure CLI found"
-        if ! az account show &> /dev/null; then
+        if ! az account show >/dev/null 2>&1; then
           echo "Error: Not logged in to Azure. Run 'az login'"
           exit 1
         fi
