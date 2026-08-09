@@ -22,6 +22,7 @@ from utils.landing import require_login
 from components.task_status_bar import render_task_status_bar
 from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
+from utils.task_manager import get_active_tasks
 import httpx
 
 _DEEPLINK_PAGE_MAP = {
@@ -211,13 +212,23 @@ with _action_col:
     if st.button(f"Continue: {_next_label}", type="primary", key="home_continue"):
         st.switch_page(_next_page)
 with _reset_col:
-    _ws_dirty = bool(_controls or _mappings or _has_policy)
+    # A stuck task (e.g. an abandoned PDF extraction) is exactly the case a
+    # user most needs "Clear workspace" for, so it must not gate on
+    # controls/mappings/policy alone -- that left the button disabled while a
+    # banner still read "1 active task", with no way to reach it. See B7 in
+    # docs/BACKLOG.md.
+    _has_active_task = bool(get_active_tasks())
+    _ws_dirty = bool(_controls or _mappings or _has_policy or _has_active_task)
     with st.popover("🧹 Clear workspace", disabled=not _ws_dirty):
         st.markdown(
             "**Start again?** This clears the controls, mappings, and generated "
             "policy cached in this session so you can begin a fresh run.\n\n"
             "Documents and control sets already saved to your workspace are kept."
         )
+        if _has_active_task:
+            st.warning(
+                "This will also cancel any in-progress extraction or mapping job."
+            )
         if st.button("Yes, clear workspace", type="primary", key="confirm_clear_ws"):
             clear_workflow_state()
             st.rerun()
