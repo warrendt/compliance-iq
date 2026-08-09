@@ -54,17 +54,47 @@ gate kept as the regression guard afterwards.
 
 ---
 
-## B4 — `mcsb_service` Defender recommendations are a stub
+## B4 — `mcsb_service` Defender recommendations are a stub — FIXED
 
 **Observed.** The service returns placeholder data rather than real Microsoft Defender for Cloud
-recommendations.
+recommendations. Traced precisely: `ControlMapping.defender_recommendations` is filled by Azure
+OpenAI structured output purely because the field exists on the response schema — the mapping
+prompt never once asked the model for it, and there is no live Defender for Cloud subscription to
+check against at mapping time (mapping happens per-control, at framework-analysis time, before any
+Azure scope is chosen). Whatever the model returned was invented, and it reached customers in every
+exported initiative and manual register. Separately, `GET /api/v1/mcsb/controls` and
+`/mcsb/domains` publicly serve `MCSBService`'s 10-control demonstration set (`data/mcsb/
+mcsb_v1_controls.json` has never actually shipped, so every deployment falls through to
+`_create_default_controls()`), with no indication to a caller that it is a small illustrative set
+rather than the full published MCSB benchmark.
 
 **Why it matters.** Anything the product says about Defender coverage today is not grounded in
 Defender. Under the "honestly" requirement, unimplemented is fine — but it must not read as
 implemented.
 
-**Done looks like.** Either it queries Defender for real, or the surface says plainly that this
-is not yet wired up.
+**Fix.** A live per-subscription Defender for Cloud integration does not fit today's architecture
+— mapping runs before any Azure scope is chosen, so there is nothing to query against yet. Took the
+other half of "done looks like": the surface now says plainly this is not wired up, rather than
+fabricating an answer.
+- `AIMappingService._strip_ungrounded_defender_recommendations` clears the model's guess after every
+  mapping call (defense in depth), and the system prompt now explicitly tells the model to always
+  return an empty list rather than invent one.
+- `ControlMapping`/`ControlPolicyMapping.defender_recommendations` field descriptions state plainly
+  it is always empty today and why, instead of describing a working feature.
+- `MCSBService.is_demonstration_data` reports whether the loaded set is the illustrative fallback;
+  surfaced on `GET /api/v1/health` (`mcsb_is_demonstration_data`) and `GET /api/v1/mcsb/controls`
+  `/mcsb/domains` (`is_demonstration_data`) so no caller mistakes 10 examples for the full benchmark.
+- The Platform Selection page no longer lists "Defender Recommendations" as a capability; replaced
+  with the real, tested one it was standing in for (Defender for Cloud onboarding via the security
+  standard / ASC metadata path, unaffected by this change).
+
+Regression-locked by `app/tests/test_defender_recommendations_not_invented.py` (4 tests, including
+an end-to-end `map_control()` run that proves a model insisting on inventing a recommendation still
+gets discarded).
+
+**Status.** Fixed on `main`. The MCSB demonstration set itself (10 of ~200+ published controls) is
+now honestly labelled rather than expanded — sourcing the full official benchmark is a separate,
+larger effort and is not this defect.
 
 ---
 

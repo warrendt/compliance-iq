@@ -293,7 +293,13 @@ class ControlMapping(BaseModel):
 
     defender_recommendations: List[str] = Field(
         default_factory=list,
-        description="Defender for Cloud recommendations"
+        description=(
+            "Always empty today. Reserved for real Microsoft Defender for "
+            "Cloud recommendations; the engine does not query a live "
+            "subscription at mapping time, so nothing is populated here "
+            "rather than an invented recommendation being shown as if it "
+            "were live data. See docs/BACKLOG.md B4."
+        ),
     )
 
     # Sovereignty Landing Zone mapping (populated when SLZ context is available)
@@ -325,7 +331,7 @@ class ControlMapping(BaseModel):
             "enforcement_plane": "Defender (run-time)",
             "policy_effects": ["AuditIfNotExists"],
             "policy_type": "Built-in",
-            "defender_recommendations": ["Enable MFA for all users"]
+            "defender_recommendations": []
         }
     })
 
