@@ -724,6 +724,11 @@ PLANE_RUNTIME = "Defender (run-time)"
 PLANE_BOTH = "SLZ (deploy-time) + Defender (run-time)"
 PLANE_MANUAL = "None (manual control)"
 
+# Used when a policy id resolves to no definition in the catalog snapshot. The
+# effect slot still has to be filled so effects stay aligned with the ids.
+EFFECT_UNKNOWN = "Unknown"
+
+
 
 def enforcement_plane_for(effects: Iterable[str]) -> str:
     """Where a set of policy effects takes effect.
@@ -780,9 +785,16 @@ def enrich_policy_details(mapping, catalog=None):
         guid = policy_id.strip().rstrip("/").rsplit("/", 1)[-1]
         definition = catalog.get(guid) if hasattr(catalog, "get") else None
         definition = definition or {}
+        # One entry per policy id, in the same order - deliberately NOT
+        # deduplicated. The analyst workbook aligns effects positionally with
+        # the identifiers on the row (";"-separated, same length), so a reader
+        # can tell which policy denies and which only audits. Collapsing to a
+        # distinct set destroys that correspondence: three ids that all audit
+        # became one effect, and the row no longer said anything about the
+        # second and third policies. An unresolvable definition is named as
+        # unknown rather than left blank, because a blank reads as "no effect".
         effect = definition.get("effect", "")
-        if effect and effect not in effects:
-            effects.append(effect)
+        effects.append(effect or EFFECT_UNKNOWN)
         for allowed in definition.get("allowed_effects") or ():
             if allowed not in available:
                 available.append(allowed)

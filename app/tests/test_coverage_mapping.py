@@ -615,6 +615,45 @@ def test_effects_are_read_from_the_catalog_not_invented():
     assert mapping.enforcement_plane == coverage.PLANE_DEPLOY
 
 
+def test_effects_align_one_to_one_with_the_policy_ids_on_the_row():
+    """A reader must be able to tell which policy denies and which only audits.
+
+    The analyst workbook lists effects ";"-separated and positionally aligned
+    with the identifiers on the same row, and its 41 policy-bearing rows have
+    zero length mismatches. The code deduplicated the effects, so three ids that
+    all audited collapsed to a single "Audit" and the row said nothing at all
+    about the second and third policies. Measured live on NCA CCC: six controls
+    emitted more ids than effects.
+    """
+
+    class _MixedCatalog(_FakeCatalog):
+        effects = {
+            "11111111-1111-1111-1111-111111111111": "Audit",
+            "22222222-2222-2222-2222-222222222222": "Audit",
+            "33333333-3333-3333-3333-333333333333": "Deny",
+        }
+
+        def get(self, name):
+            guid = (name or "").strip().rstrip("/").rsplit("/", 1)[-1]
+            if guid not in self.effects:
+                return None
+            return {"effect": self.effects[guid]}
+
+    ids = list(_MixedCatalog.effects) + ["44444444-4444-4444-4444-444444444444"]
+    mapping = _mapping("ENC-9", ids, control_type="Technical")
+    coverage.apply_coverage(mapping, "Technical", _MixedCatalog())
+
+    assert len(mapping.policy_effects) == len(mapping.azure_policy_ids)
+    # Duplicates are kept: position carries the meaning, not the distinct set.
+    assert mapping.policy_effects[:3] == ["Audit", "Audit", "Deny"]
+    # An id the catalog cannot resolve is named, not silently blank - a blank
+    # effect reads as "this policy does nothing".
+    assert mapping.policy_effects[3] == coverage.EFFECT_UNKNOWN
+    # Audit reports at run-time and Deny blocks at deploy-time, so a row
+    # carrying both is honestly described as covering both planes.
+    assert mapping.enforcement_plane == coverage.PLANE_BOTH
+
+
 def test_non_enforceable_controls_report_no_policy_type():
     mapping = _mapping("P-4", [], control_type="Governance")
     coverage.apply_coverage(mapping, "Governance", _FakeCatalog())
