@@ -53,6 +53,46 @@ jobs:
       - name: Install embedding dependencies
         run: pip install openai azure-identity numpy
 
+      # Azure OpenAI sits behind a private endpoint with publicNetworkAccess
+      # Disabled, which is the correct posture for this product and must not be
+      # relaxed to make CI convenient. A GitHub-hosted runner is on the public
+      # internet, so it cannot reach the endpoint at all. Without this check the
+      # job dies on a bare `403 Public access is disabled` traceback from inside
+      # the OpenAI SDK, which reads like a credentials problem and sends the
+      # next person to re-check RBAC that was never wrong.
+      - name: Check the embedding endpoint is reachable from this runner
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+        run: |
+          if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+            echo "::error::AZURE_OPENAI_ENDPOINT is not set as a repository variable."
+            exit 1
+          fi
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 \
+            "${AZURE_OPENAI_ENDPOINT%/}/openai/models?api-version=2024-10-21" || echo "000")
+          # 401/403-with-auth-challenge means we reached it; a network-level
+          # block returns 000, and the private-endpoint denial returns 403 with
+          # a body that names it.
+          BODY=$(curl -s --max-time 20 \
+            "${AZURE_OPENAI_ENDPOINT%/}/openai/models?api-version=2024-10-21" || true)
+          echo "probe status=$CODE"
+          case "$BODY" in
+            *"Public access is disabled"*|*"public network access is disabled"*)
+              echo "::error::$AZURE_OPENAI_ENDPOINT refuses public traffic (private endpoint only)."
+              echo "::error::A GitHub-hosted runner cannot regenerate embeddings. The catalog"
+              echo "::error::and its embeddings must ship together -- a catalog-only refresh"
+              echo "::error::silently drops hybrid retrieval to lexical (recall@200 84.4% -> 72.2%),"
+              echo "::error::so this job fails instead of opening a partial PR."
+              echo "::error::Run the refresh from inside the VNet (self-hosted runner or an"
+              echo "::error::Azure Container Apps job), or grant this runner network access."
+              exit 1 ;;
+          esac
+          if [ "$CODE" = "000" ]; then
+            echo "::error::Could not reach $AZURE_OPENAI_ENDPOINT from this runner (network block or DNS)."
+            exit 1
+          fi
+          echo "endpoint reachable (HTTP $CODE) - proceeding"
+
       - name: Regenerate catalog embeddings
         env:
           AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
