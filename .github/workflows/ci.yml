@@ -50,6 +50,7 @@ jobs:
         run: |
           python -m pytest \
             app/tests/test_policy_catalog_service.py \
+            app/tests/test_catalog_freshness_is_declared.py \
             app/tests/test_policy_exporter_refids.py \
             app/tests/test_generate_policy_catalog.py \
             app/tests/test_policy_cache_catalog.py \
