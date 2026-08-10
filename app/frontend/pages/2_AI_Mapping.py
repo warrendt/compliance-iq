@@ -1,5 +1,5 @@
 """
-AI Mapping Page - Map controls to MCSB using AI.
+AI Mapping Page - Map controls to Azure Policy using AI.
 """
 
 import streamlit as st
@@ -7,6 +7,7 @@ from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.components import render_page_header
 from utils.state_init import init_session_state, restore_workflow_state
+from utils.coverage import confidence_eligible
 from utils.task_manager import (
     cancel_task,
     register_task,
@@ -227,6 +228,12 @@ def _session_mapping_from_result(mapping: dict, controls: list) -> dict:
         "enforcement_plane": mapping.get("enforcement_plane"),
         "policy_effects": mapping.get("policy_effects", []),
         "policy_type": mapping.get("policy_type"),
+        # For D_MicrosoftAttestation: the resolved citation an auditor could
+        # actually retrieve, and whether the claim is grounded at all. Without
+        # these the Manual Register can only assert "Microsoft attested" with
+        # nothing to back it, which is indistinguishable from an invented pass.
+        "attestation": mapping.get("attestation"),
+        "attestation_gap": mapping.get("attestation_gap", False),
     }
 
 
@@ -466,19 +473,33 @@ else:
     if completed_notice := st.session_state.pop("mapping_completed_notice", None):
         st.success(f"✅ {completed_notice}")
         mappings = st.session_state.mappings
+        # Scope confidence stats to controls where Azure Policy mapping was
+        # actually attempted (A/B, plus legacy unclassified). C_Process and
+        # D_MicrosoftAttestation controls carry a fixed 0.0 confidence_score
+        # placeholder - averaging it in misrepresents how well the real
+        # mapping work went. See utils/coverage.py.
+        scored_mappings = [m for m in mappings if confidence_eligible(m)]
         col_sum1, col_sum2, col_sum3 = st.columns(3)
         with col_sum1:
             avg_confidence = (
-                sum(mapping.get("confidence_score", 0) for mapping in mappings)
-                / len(mappings)
-                if mappings
+                sum(mapping.get("confidence_score", 0) for mapping in scored_mappings)
+                / len(scored_mappings)
+                if scored_mappings
                 else 0
             )
-            st.metric("Average Confidence", f"{avg_confidence:.0%}")
+            st.metric(
+                "Average Confidence",
+                f"{avg_confidence:.0%}",
+                help=(
+                    f"Across {len(scored_mappings)} Azure-mappable control(s); "
+                    "excludes process/Microsoft-attested controls, which never "
+                    "attempt an Azure Policy match."
+                ),
+            )
         with col_sum2:
             high_confidence = sum(
                 1
-                for mapping in mappings
+                for mapping in scored_mappings
                 if mapping.get("confidence_score", 0) >= 0.8
             )
             st.metric("High Confidence (≥80%)", high_confidence)
@@ -617,8 +638,9 @@ with st.sidebar:
     if st.session_state.mappings:
         st.success(f"✅ {len(st.session_state.mappings)} mappings created")
         
-        # Statistics
-        avg_conf = sum(m.get('confidence_score', 0) for m in st.session_state.mappings) / len(st.session_state.mappings)
+        # Statistics — scoped to Azure-mappable controls (see utils/coverage.py)
+        scored = [m for m in st.session_state.mappings if confidence_eligible(m)]
+        avg_conf = sum(m.get('confidence_score', 0) for m in scored) / len(scored) if scored else 0
         st.metric("Avg Confidence", f"{avg_conf:.0%}")
     else:
         st.info("No mappings yet")

@@ -72,6 +72,33 @@ VALID_COVERAGE_CATEGORIES = frozenset(
 # so stripping its policies deletes real enforcement the customer is entitled to.
 POLICY_BEARING_CATEGORIES = frozenset({COVERAGE_A, COVERAGE_B})
 
+# Categories for which confidence_score is never a graded match-quality signal.
+# C_Process and D_MicrosoftAttestation controls never attempt an Azure Policy
+# match - confidence_score is forced to 0.0 as a placeholder (see
+# ai_mapping_service.py's ControlMapping construction), not a real assessment
+# of how well anything matched. Averaging that fixed 0.0 in with A/B controls'
+# genuine confidence judgements drags a legitimate "every enforceable control
+# matched well" result down to a misleading low headline number - exactly the
+# defect this constant exists to prevent. ``None`` (legacy/unclassified
+# mappings) is deliberately NOT included here, for the same backward-
+# compatibility reason coverage_summary buckets it as "unclassified" rather
+# than excluding it.
+CONFIDENCE_EXCLUDED_CATEGORIES = frozenset({COVERAGE_C, COVERAGE_D})
+
+
+def confidence_eligible(category: Optional[str]) -> bool:
+    """True when a mapping's confidence_score is a meaningful match-quality signal.
+
+    Use this to scope any "average confidence" / "high confidence" statistic
+    to the controls where confidence was actually judged - A_AzurePolicy and
+    B_AzureConfig (plus legacy ``None`` mappings, for backward compatibility).
+    C_Process and D_MicrosoftAttestation controls are excluded: Azure was
+    never attempted for them, so their fixed 0.0 confidence_score is a
+    placeholder, not a low score.
+    """
+    return category not in CONFIDENCE_EXCLUDED_CATEGORIES
+
+
 # The analyst's display names, from the source workbook's Legend sheet. The
 # A_/B_/C_/D_ codes are internal identifiers; these are what a reader sees.
 COVERAGE_DISPLAY_NAMES = {
@@ -372,6 +399,40 @@ def apply_coverage(
     enrich_policy_details(mapping, catalog)
     apply_provenance(mapping, catalog)
     return mapping
+
+
+def clear_moot_sovereignty(mapping) -> None:
+    """Clear a C/D control's sovereignty card when it carries no real objective.
+
+    The mapping prompt asks the model to assign a sovereignty dimension to
+    EVERY control, defaulting to L1/sovereign_root with an empty objectives
+    list when none applies. For a process or Microsoft-attestation control
+    that will never carry an Azure Policy or SLZ policy, that default renders
+    as a real assignment ("Level: L1 - Global", "Target Archetype:
+    sovereign_root") when the model's own sovereignty reasoning says the
+    opposite - no sovereignty requirement applies here at all. Shown next to
+    a mapping that constructs no initiative entry, it reads as a second,
+    contradictory verdict rather than a placeholder.
+
+    The one legitimate exception is a real procedural sovereignty objective
+    (e.g. SO-2 Customer Lockbox), which has no Azure Policy but genuine
+    sovereignty relevance - callers apply that (see
+    ``AIMappingService._apply_procedural_sovereignty``) before this runs, so
+    it is preserved by checking for a non-empty ``sovereignty_objectives``
+    rather than category alone.
+
+    Must run after ``apply_coverage`` (needs the resolved ``coverage_category``)
+    and after any procedural sovereignty enrichment.
+    """
+    category = getattr(mapping, "coverage_category", None)
+    if category not in (COVERAGE_C, COVERAGE_D):
+        return
+    sovereignty = getattr(mapping, "sovereignty", None)
+    if sovereignty is None:
+        return
+    if getattr(sovereignty, "sovereignty_objectives", None):
+        return  # a real procedural objective is attached - keep it
+    mapping.sovereignty = None
 
 
 def apply_provenance(mapping, catalog=None):

@@ -7,6 +7,8 @@ import logging
 import re
 from typing import Optional
 
+from ..services import coverage
+
 from .models import (
     ControlPolicyMapping,
     ControlExtractionResult,
@@ -111,19 +113,26 @@ def validate_mappings(
     automatable_count = 0
     manual_count = 0
     confidence_sum = 0.0
+    confidence_eligible_count = 0
 
     for mapping in mappings:
         control_id = mapping.control_id
 
-        # Check confidence score
-        confidence_sum += mapping.confidence_score
-        if mapping.confidence_score < min_confidence:
-            issues.append(ValidationIssue(
-                severity="warning",
-                control_id=control_id,
-                message=f"Low confidence mapping ({mapping.confidence_score:.2f} < {min_confidence})",
-                suggestion="Review this mapping manually before deployment",
-            ))
+        # Check confidence score. Scoped to controls where Azure Policy was
+        # actually attempted: C_Process/D_MicrosoftAttestation mappings carry
+        # a fixed 0.0 confidence_score placeholder (no match was ever tried),
+        # so including them here would both drag the average down misleadingly
+        # and raise a spurious "low confidence" warning on every one of them.
+        if coverage.confidence_eligible(getattr(mapping, "coverage_category", None)):
+            confidence_sum += mapping.confidence_score
+            confidence_eligible_count += 1
+            if mapping.confidence_score < min_confidence:
+                issues.append(ValidationIssue(
+                    severity="warning",
+                    control_id=control_id,
+                    message=f"Low confidence mapping ({mapping.confidence_score:.2f} < {min_confidence})",
+                    suggestion="Review this mapping manually before deployment",
+                ))
 
         # Check Azure Policy IDs
         if mapping.is_automatable:
@@ -179,7 +188,9 @@ def validate_mappings(
                     suggestion="Add guidance on what manual steps or evidence are needed",
                 ))
 
-    avg_confidence = confidence_sum / len(mappings) if mappings else 0.0
+    avg_confidence = (
+        confidence_sum / confidence_eligible_count if confidence_eligible_count else 0.0
+    )
 
     error_count = sum(1 for i in issues if i.severity == "error")
     is_valid = error_count == 0
