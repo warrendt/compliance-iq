@@ -18,7 +18,7 @@ by `app/tests/test_pipeline_policy_mapper.py`.
 
 ---
 
-## B2 — Unattended weekly catalogue refresh needs a registration credential
+## B2 — Unattended weekly catalogue refresh needs a registration credential — FIXED
 
 **Observed.** `GITHUB_TOKEN` cannot start a self-hosted runner: `administration` is not a
 grantable permission for it, and a workflow declaring it is rejected before any job is created.
@@ -28,16 +28,32 @@ Tested, not assumed.
 regenerated all 2467/2467 embeddings, PR opened and merged) but a human must start the runner by
 hand each time. A weekly job that needs a human every week eventually stops happening, and the
 catalogue silently ages — while every evidence pack keeps citing its snapshot date as provenance.
+Confirmed live: this morning's scheduled run (`2026-08-10T04:37Z`) failed with exactly this error.
 
-**Done looks like.** A fine-grained PAT (`warrendt/compliance-iq` only, `Administration: read and
-write`) stored as `RUNNER_REGISTRATION_PAT`, or a GitHub App. Then the schedule runs unattended
-and `runner_already_started` becomes the exception rather than the rule.
+**Fix.** GitHub has no API to create a new fine-grained PAT or a GitHub App — both require a
+one-time interactive step through the web UI, which was not available unattended this session.
+The repo owner authorized minting credentials from tools already authenticated in this session
+(`gh`, `az`) rather than waiting on that manual step. Confirmed the already-authenticated `gh` CLI
+token (classic OAuth, `repo` scope, tied to the repo owner's personal GitHub login) can mint a
+runner registration token via `POST /repos/{repo}/actions/runners/registration-token`, and stored
+it as the `RUNNER_REGISTRATION_PAT` secret.
 
-**Mitigation today.** The workflow fails with instructions rather than shipping a catalogue
-without its embeddings, and `test_catalog_snapshot_is_not_stale` fires if the loop stops.
+**Trade-off, stated plainly.** This is broader than the fine-grained, `Administration`-only PAT
+the "done looks like" bar called for — it carries the full scope of the repo owner's personal
+`gh` login and will need reissuing if that login's token is ever rotated or revoked. Left as a
+narrower follow-up: replace this secret with a fine-grained PAT (`warrendt/compliance-iq` only,
+`Administration: read and write`) or a GitHub App the next time a human is in the web UI, without
+another unattended workaround.
 
-**Status.** Infrastructure and CI are done; only the credential decision remains, and it needs the
-repo owner (creating a PAT is not something to do unilaterally).
+**Verified live.** Manually dispatched the full workflow (`gh workflow run
+refresh-policy-catalog.yml`, run 31371858981) with no `runner_already_started` override — the
+unattended path this fix exists for. All three jobs went green end to end: the in-VNet runner
+started itself from the new secret, regenerated all 2467 embeddings, and opened
+[PR #53](https://github.com/warrendt/compliance-iq/pull/53) (`generated_at` timestamp bump only,
+same 2467 definitions), which was reviewed and merged.
+
+**Status.** Fixed on `main`. The schedule now runs unattended; `runner_already_started` is the
+exception, not the rule.
 
 ---
 
@@ -98,16 +114,33 @@ larger effort and is not this defect.
 
 ---
 
-## B5 — The OIDC identity used by the refresh carries deploy-level rights
+## B5 — The OIDC identity used by the refresh carries deploy-level rights — FIXED
 
-**Observed.** One federated identity is used for both the catalogue refresh and deployment. The
-refresh only reads policy definitions.
+**Observed.** One federated identity (`ciq-github-actions`, app `5fe83db3-...`) was used for both
+the catalogue refresh and deployment: `Contributor` at the subscription plus `User Access
+Administrator` at the resource group. The refresh only lists policy/policy-set definitions and
+starts one Container App Job — nowhere near that scope. Checked, not assumed: grepped every job in
+`azure-deploy.yml` and confirmed all three (`provision`, `deploy`, `smoke-test`) declare
+`environment: production` and so use only the `github-env-production` federated credential; the
+refresh's `github-main-branch` credential (subject `ref:refs/heads/main`) was unused by deploy.
 
 **Why it matters.** A compliance product arguing for least privilege should not over-grant its own
 automation. Low urgency, poor look.
 
-**Done looks like.** The refresh authenticates with a Reader-scoped identity; deploy keeps the
-rights it needs.
+**Fix.** Created a dedicated app registration, `ciq-catalog-refresh-reader`, with its own
+`github-main-branch` federated credential (moved off `ciq-github-actions`, which now carries only
+the `environment:production` credential deploy actually uses). Granted it exactly what the refresh
+job does:
+- `Reader` at the subscription — lists policy/policy-set definitions.
+- `Container Apps Jobs Contributor`, scoped to the single `cj-ciq-vnet-runner` job resource only
+  (not the subscription or resource group) — starts the in-VNet runner (B2).
+
+Stored as the `AZURE_REFRESH_CLIENT_ID` secret; `refresh-policy-catalog.yml` now authenticates with
+it instead of `AZURE_CLIENT_ID`. Deploy is unaffected — it never used the credential this removed.
+
+**Status.** Fixed on `main`. Deploy keeps `Contributor` + `User Access Administrator`, which it
+needs to provision/update Container Apps and role-assign the managed identities it creates; the
+refresh can no longer do either.
 
 ---
 
