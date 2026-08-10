@@ -144,16 +144,26 @@ refresh can no longer do either.
 
 ---
 
-## B6 — `compliance-pipeline/` carries a second, larger hardcoded GUID menu
+## B6 — `compliance-pipeline/` carries a second, larger hardcoded GUID menu — FIXED
 
 **Observed.** A fourth mapping stack with its own `policy_mapper.py` and a 64-GUID menu, 32 of
 them overlapping the backend's 34. The backend pipeline is a fork of it.
 
 **Why it matters.** Fixing B1 leaves this copy wrong, so the defect can be reintroduced by anyone
-who follows the older code.
+who follows the older code. Hardcoding a policy menu is exactly the failure mode the AI mapping
+engine exists to avoid — a curated shortlist caps recall at whatever the list's author thought of,
+against a catalogue of 2,467 shipped definitions.
 
-**Done looks like.** Either it is deleted, or it delegates to the same engine. A decision, not an
-oversight.
+**Fix.** Deleted the entire `compliance-pipeline/` directory (`pipeline.py`, `policy_mapper.py`,
+`control_extractor.py`, `pdf_extractor.py`, `initiative_builder.py`, `validator.py`, `models.py`,
+`config.py`, its own `requirements.txt` and `README.md`) rather than reworking it to delegate to
+`AIMappingService`. It was a fully standalone CLI tool — confirmed nothing in `app/` (backend,
+frontend, or tests) imported or referenced it — so making it delegate would mean building and
+maintaining a second integration surface into the shared mapping engine for a tool nothing else
+depends on. Removed its two remaining references in `README.md` and `docs/FUNCTIONAL_SPEC.md`.
+
+**Status.** Fixed on `main`. There is exactly one mapping engine left in the repository
+(`AIMappingService`), reached by both the backend services path and the pipeline path (B1).
 
 ---
 
