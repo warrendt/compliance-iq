@@ -300,6 +300,14 @@ class AIMappingService:
 
             self._apply_procedural_sovereignty(mapping, external_control)
 
+            # A process/attestation control that carries no real sovereignty
+            # objective should not show the model's default L1/sovereign_root
+            # placeholder as if it were a genuine sovereignty verdict - see
+            # clear_moot_sovereignty for why. Must run after apply_coverage
+            # (needs coverage_category) and after the procedural sovereignty
+            # step above (which may have attached a real objective to keep).
+            coverage.clear_moot_sovereignty(mapping)
+
             # policy_category is a resolvable fact about the real catalog
             # entries selected, not a judgement call, so it is always computed
             # here rather than asked of the model - same rationale as
@@ -415,9 +423,19 @@ class AIMappingService:
                 mappings.append(mapping)
 
         mapped_count = len(mappings)
+        # Scope the average to controls where confidence is a real signal.
+        # C_Process/D_MicrosoftAttestation mappings never attempt an Azure
+        # Policy match, so their confidence_score is a fixed 0.0 placeholder -
+        # averaging it in with A/B controls' genuine scores drags a batch that
+        # matched its enforceable controls well down to a misleadingly low
+        # headline number. See coverage.confidence_eligible.
+        confidence_scoped = [
+            m for m in mappings
+            if coverage.confidence_eligible(getattr(m, "coverage_category", None))
+        ]
         avg_confidence = (
-            sum(m.confidence_score for m in mappings) / mapped_count
-            if mapped_count > 0 else 0.0
+            sum(m.confidence_score for m in confidence_scoped) / len(confidence_scoped)
+            if confidence_scoped else 0.0
         )
 
         summary = self._generate_summary(total_controls, mapped_count, avg_confidence)

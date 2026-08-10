@@ -22,6 +22,7 @@ from components.log_viewer import render_log_viewer
 from components.backend_log_viewer import render_backend_log_viewer
 from components.task_status_bar import render_task_status_bar
 from utils.policy_parameters import satisfied_parameter_values
+from utils.coverage import confidence_eligible
 
 
 _VALID_MAPPING_TYPES = {"exact", "partial", "conceptual", "none"}
@@ -379,8 +380,20 @@ with col2:
     st.metric("Total Mappings", len(st.session_state.mappings))
 
 with col3:
-    avg_confidence = sum(m.get('confidence_score', 0) for m in st.session_state.mappings) / len(st.session_state.mappings)
-    st.metric("Avg Confidence", f"{avg_confidence:.0%}")
+    scored_mappings = [m for m in st.session_state.mappings if confidence_eligible(m)]
+    avg_confidence = (
+        sum(m.get('confidence_score', 0) for m in scored_mappings) / len(scored_mappings)
+        if scored_mappings else 0.0
+    )
+    st.metric(
+        "Avg Confidence",
+        f"{avg_confidence:.0%}",
+        help=(
+            f"Across {len(scored_mappings)} Azure-mappable control(s); excludes "
+            "process/Microsoft-attested controls in the Manual Register, which "
+            "never attempt an Azure Policy match."
+        ),
+    )
 
 with col4:
     unique_categories = len(set(m.get('policy_category', '') for m in st.session_state.mappings if m.get('policy_category')))
