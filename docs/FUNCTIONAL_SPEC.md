@@ -200,5 +200,3 @@ labelled B.
 * ISO 27018, SOC 1 and SOC 3 have no Azure clause metadata, so citations against them
   can never reach `GROUNDED`.
 * `comparison.py` `_run_build_job` has no cancellation check.
-* `compliance-pipeline/` retains its own 64-identifier fork of the mapper. Out of scope,
-  recorded as a decision rather than an oversight.

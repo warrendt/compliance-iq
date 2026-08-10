@@ -64,7 +64,6 @@ compliance-iq/
 │   ├── Oman_Government_Azure_Mappings.csv
 │   └── CATALOG_SUMMARY.md
 │
-├── compliance-pipeline/       # Standalone CLI tool for batch processing
 ├── framework/                 # Azure Policy initiative JSON & deployment scripts
 ├── reference_documents/       # Source compliance framework PDFs
 ├── templates/                 # Simplified control templates for gap analysis
