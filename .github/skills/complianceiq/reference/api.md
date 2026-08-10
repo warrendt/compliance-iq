@@ -32,7 +32,7 @@ The deployed OpenAPI document reports **94 operations across 89 paths**
 
 ## Granular mapping (`/mapping`) — for advanced flows
 `POST /mapping/analyze` (job) · `POST /mapping/map-batch` · `POST /mapping/map-single`
-· `GET /mapping/status/{job_id}` · `GET /mapping/mcsb/{controls,domains}`.
+· `GET /mapping/status/{job_id}`.
 
 ## Policy generation (`/policy`) — **authenticated**
 `POST /policy/generate` (+ `/generate/{json,bicep,scripts,slz}`) ·

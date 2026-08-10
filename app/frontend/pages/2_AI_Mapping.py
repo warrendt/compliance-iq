@@ -201,9 +201,7 @@ def _session_mapping_from_result(mapping: dict, controls: list) -> dict:
             ),
             None,
         ),
-        "mcsb_control_id": mapping.get("mcsb_control_id", "N/A"),
-        "mcsb_control_name": mapping.get("mcsb_control_name", "N/A"),
-        "mcsb_domain": mapping.get("mcsb_domain", "N/A"),
+        "policy_category": mapping.get("policy_category"),
         "confidence_score": mapping.get("confidence_score", 0.0),
         "reasoning": mapping.get("reasoning", ""),
         "azure_policy_ids": mapping.get("azure_policy_ids", []),
@@ -275,11 +273,6 @@ def _complete_mapping_job(job_id: str, status: dict) -> None:
                     "domain": m.get("domain"),
                     "confidence_score": m.get("confidence_score", 0.0),
                     "reasoning": m.get("reasoning", ""),
-                    "mcsb_mappings": [{
-                        "mcsbControlId": m.get("mcsb_control_id"),
-                        "mcsbControlName": m.get("mcsb_control_name"),
-                        "mcsbDomain": m.get("mcsb_domain"),
-                    }],
                     "policy_recommendations": m.get("azure_policy_ids", []),
                 }
                 for m in mappings
@@ -426,7 +419,7 @@ if mapping_mode == "Single Control Test":
                 with col_result1:
                     st.markdown("#### 📊 Mapping Result")
                     st.metric("Confidence Score", f"{result['confidence_score']:.0%}")
-                    st.metric("MCSB Control", result['mcsb_control_id'])
+                    st.metric("Azure Policies Matched", len(result.get('azure_policy_ids') or []))
                     st.metric("Mapping Type", result['mapping_type'].replace('_', ' ').title())
                 
                 with col_result2:
@@ -490,13 +483,14 @@ else:
             )
             st.metric("High Confidence (≥80%)", high_confidence)
         with col_sum3:
-            unique_mcsb = len(
+            unique_categories = len(
                 {
-                    mapping.get("mcsb_control_id", "")
+                    mapping.get("policy_category", "")
                     for mapping in mappings
+                    if mapping.get("policy_category")
                 }
             )
-            st.metric("Unique MCSB Controls", unique_mcsb)
+            st.metric("Unique Policy Categories", unique_categories)
         st.info("👉 Go to **Review & Edit** to validate the mappings")
         st.page_link(
             "pages/3_Review_Edit.py",
@@ -591,7 +585,7 @@ if st.session_state.mappings and not st.session_state.mapping_in_progress:
         {
             'Control ID': m.get('control_id', m.get('external_control_id', 'N/A')),
             'Control Name': m.get('control_name', m.get('external_control_name', 'N/A')),
-            'MCSB Control': m.get('mcsb_control_id', 'N/A'),
+            'Policy Category': m.get('policy_category', 'N/A'),
             'Confidence': f"{m.get('confidence_score', 0):.0%}",
             'SLZ Level': (m.get('sovereignty') or {}).get('sovereignty_level', '—'),
             'Type': m.get('mapping_type', 'unknown')

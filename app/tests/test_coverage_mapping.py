@@ -59,9 +59,6 @@ def _mapping(
     return ControlMapping(
         external_control_id=control_id,
         external_control_name=name or f"Control {control_id}",
-        mcsb_control_id="GS-1",
-        mcsb_control_name="Governance and strategy",
-        mcsb_domain="Governance",
         confidence_score=confidence,
         reasoning=reasoning,
         azure_policy_ids=policy_ids,

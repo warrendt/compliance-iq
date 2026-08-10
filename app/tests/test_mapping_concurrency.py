@@ -23,9 +23,6 @@ def _mapping(control: ExternalControl) -> ControlMapping:
     return ControlMapping(
         external_control_id=control.control_id,
         external_control_name=control.control_name,
-        mcsb_control_id="IM-1",
-        mcsb_control_name="Identity",
-        mcsb_domain="Identity",
         confidence_score=0.8,
         reasoning="Test mapping",
         mapping_type="partial",

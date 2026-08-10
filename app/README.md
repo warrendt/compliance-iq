@@ -183,8 +183,7 @@ app/
 │   │   │   ├── policy.py      # Policy initiative models
 │   │   │   └── sovereignty.py # SLZ / sovereignty models (NEW)
 │   │   ├── services/          # Business logic
-│   │   │   ├── ai_mapping_service.py   # AI mapping (MCSB + SLZ)
-│   │   │   ├── mcsb_service.py         # MCSB control loader
+│   │   │   ├── ai_mapping_service.py   # AI mapping (direct to Azure Policy + SLZ)
 │   │   │   ├── microsoft_learn_client.py # MS Learn policy search
 │   │   │   ├── policy_service.py       # Policy gen (+ SLZ initiatives)
 │   │   │   └── sovereignty_service.py  # SLZ data service (NEW)
@@ -208,13 +207,12 @@ app/
 │   │   ├── 1_📁_Upload_Controls.py
 │   │   ├── 2_🤖_AI_Mapping.py    # Shows SLZ level badges
 │   │   ├── 3_✏️_Review_Edit.py    # Sovereignty filter + panels
-│   │   └── 4_📦_Export_Policy.py  # MCSB + SLZ export tabs
+│   │   └── 4_📦_Export_Policy.py  # Azure Policy + SLZ export tabs
 │   ├── utils/                 # API client (+ SLZ methods)
 │   ├── app.py                 # Main app (SLZ status in sidebar)
 │   └── requirements.txt
 │
 ├── data/                      # Reference data
-│   ├── mcsb/                  # MCSB controls
 │   └── examples/              # Sample files
 │
 ├── tests/                     # Test suite
@@ -277,7 +275,6 @@ SAMA-AC-01,Strong Authentication,Enforce MFA and disable legacy protocols
 ```json
 {
   "external_control_id": "SAMA-AC-01",
-  "mcsb_control_id": "IM-6",
   "confidence_score": 0.92,
   "reasoning": "Both controls focus on enforcing MFA...",
   "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"]

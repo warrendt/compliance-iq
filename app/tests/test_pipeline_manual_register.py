@@ -54,8 +54,6 @@ def _mapping(control_id, **kwargs):
         control_id=control_id,
         control_title="A control",
         domain="Data Protection",
-        mcsb_control_id="DP-3",
-        mcsb_control_name="Encrypt data",
         confidence_score=0.9,
         mapping_rationale="Relevant",
         is_automatable=False,

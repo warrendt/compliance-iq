@@ -417,7 +417,7 @@ class PolicyGenerationService:
                 group = PolicyDefinitionGroup(
                     name=group_name,
                     display_name=display_name,
-                    category=mapping.mcsb_domain or None,
+                    category=mapping.policy_category or None,
                     description=mapping.reasoning or None,
                 )
                 groups_by_name[group_name] = group

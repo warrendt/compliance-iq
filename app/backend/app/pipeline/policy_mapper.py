@@ -123,8 +123,6 @@ def _placeholder(control: ExtractedControl, reason: str) -> ControlPolicyMapping
         control_id=control.control_id,
         control_title=control.control_title,
         domain=control.domain,
-        mcsb_control_id="",
-        mcsb_control_name="",
         confidence_score=0.0,
         mapping_rationale=reason,
         azure_policies=[],
@@ -159,9 +157,10 @@ def _to_pipeline_mapping(
     return ControlPolicyMapping(
         control_id=mapping.external_control_id,
         control_title=mapping.external_control_name,
-        domain=(control.domain if control else None) or mapping.mcsb_domain or "",
-        mcsb_control_id=mapping.mcsb_control_id or "",
-        mcsb_control_name=mapping.mcsb_control_name or "",
+        domain=(control.domain if control else None)
+        or getattr(mapping, "policy_category", None)
+        or "",
+        policy_category=getattr(mapping, "policy_category", None),
         confidence_score=mapping.confidence_score,
         mapping_rationale=mapping.reasoning,
         azure_policies=policies,

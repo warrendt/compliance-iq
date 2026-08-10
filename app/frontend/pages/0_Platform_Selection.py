@@ -50,7 +50,7 @@ with col1:
     
     **Capabilities:**
     - Azure Policy Initiatives
-    - MCSB Control Mapping  
+    - Direct Azure Policy Control Mapping  
     - Defender for Cloud Onboarding (Regulatory Compliance)
     - Sovereign Landing Zone (SLZ) Policies
     

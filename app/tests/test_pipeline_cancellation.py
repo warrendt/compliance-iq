@@ -77,8 +77,6 @@ def _stub_pipeline(monkeypatch, *, on_map=None, controls=("C-1", "C-2")):
                     control_id=control.control_id,
                     control_title=control.control_title,
                     domain=control.domain,
-                    mcsb_control_id="DP-3",
-                    mcsb_control_name="Encrypt data in transit",
                     confidence_score=0.9,
                     mapping_rationale="Relevant",
                     is_automatable=False,

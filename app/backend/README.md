@@ -91,8 +91,6 @@ Once the server is running:
 - `POST /api/v1/mapping/map-single` - Map single control
 - `POST /api/v1/mapping/analyze` - Batch mapping (async)
 - `GET /api/v1/mapping/status/{job_id}` - Job status
-- `GET /api/v1/mapping/mcsb/controls` - Get MCSB controls
-- `GET /api/v1/mapping/mcsb/domains` - Get MCSB domains
 
 ### Policy Generation
 
@@ -114,9 +112,7 @@ Expected output:
 {
   "status": "healthy",
   "version": "1.0.0",
-  "azure_openai_connected": true,
-  "mcsb_controls_loaded": true,
-  "mcsb_control_count": 10
+  "azure_openai_connected": true
 }
 ```
 
@@ -133,12 +129,6 @@ curl -X POST http://localhost:8000/api/v1/mapping/map-single \
       "domain": "Identity & Access Control"
     }
   }' | jq
-```
-
-### Test MCSB Controls Retrieval
-
-```bash
-curl http://localhost:8000/api/v1/mapping/mcsb/controls | jq
 ```
 
 ## 🚀 Azure Container Apps Deployment Notes
@@ -162,7 +152,6 @@ backend/
 │   │   ├── mapping.py
 │   │   └── policy.py
 │   ├── services/            # Business logic
-│   │   ├── mcsb_service.py
 │   │   ├── ai_mapping_service.py
 │   │   └── policy_service.py
 │   ├── api/routes/          # API endpoints
@@ -231,14 +220,6 @@ Test connection:
 from app.auth import test_azure_openai_connection
 test_azure_openai_connection()  # Should return True
 ```
-
-### MCSB Controls Not Loading
-
-The service includes 10 default MCSB controls for demonstration. For full MCSB catalog:
-
-1. Download from GitHub SecurityBenchmarks
-2. Place JSON at `../data/mcsb/mcsb_v1_controls.json`
-3. Restart server
 
 ## 📝 Development
 

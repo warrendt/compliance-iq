@@ -28,47 +28,6 @@ class ExternalControl(BaseModel):
     })
 
 
-class MCSBControl(BaseModel):
-    """Model for Microsoft Cloud Security Benchmark control."""
-
-    control_id: str = Field(..., description="MCSB control ID (e.g., IM-1)")
-    domain: str = Field(..., description="Security domain")
-    control_name: str = Field(..., description="Control title")
-    description: str = Field(..., description="Full control description")
-    azure_policy_ids: List[str] = Field(
-        default_factory=list,
-        description="Associated Azure Policy definition GUIDs"
-    )
-    defender_recommendations: List[str] = Field(
-        default_factory=list,
-        description=(
-            "Illustrative Microsoft Defender for Cloud recommendation names, "
-            "not verified against a live Defender for Cloud subscription. "
-            "Populated only when the deployment serves demonstration data "
-            "(see MCSBService.is_demonstration_data / docs/BACKLOG.md B4)."
-        ),
-    )
-    related_frameworks: Dict[str, List[str]] = Field(
-        default_factory=dict,
-        description="Mappings to other frameworks (CIS, NIST, etc.)"
-    )
-
-    model_config = ConfigDict(json_schema_extra={
-        "example": {
-            "control_id": "IM-1",
-            "domain": "Identity Management",
-            "control_name": "Use centralized identity and authentication system",
-            "description": "Use a centralized identity and authentication system...",
-            "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],
-            "defender_recommendations": ["Enable MFA for all users"],
-            "related_frameworks": {
-                "CIS": ["CIS-5.1"],
-                "NIST": ["IA-2"]
-            }
-        }
-    })
-
-
 class FrameworkUpload(BaseModel):
     """Model for uploaded framework control data."""
 

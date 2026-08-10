@@ -49,8 +49,6 @@ def _mapping(control_id, policy_ids):
         control_id=control_id,
         control_title=f"Control {control_id}",
         domain="Data Protection",
-        mcsb_control_id="DP-3",
-        mcsb_control_name="Encrypt data in transit",
         confidence_score=0.9,
         mapping_rationale="Relevant",
         azure_policies=[

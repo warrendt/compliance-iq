@@ -83,15 +83,18 @@ class ControlMapping(BaseModel):
     external_control_id: str = Field(..., description="External framework control ID")
     external_control_name: str = Field(..., description="External control name")
 
-    mcsb_control_id: str = Field(..., description="Mapped MCSB control ID")
-    mcsb_control_name: str = Field(..., description="Mapped MCSB control name")
-    mcsb_domain: str = Field(..., description="MCSB security domain")
-
     confidence_score: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Confidence score for this mapping (0.0 to 1.0)"
+        description=(
+            "Confidence that the selected azure_policy_ids (or, for non-"
+            "enforceable controls, the coverage classification) genuinely "
+            "match this control's literal text - scored against the actual "
+            "Azure Policy definitions retrieved for it, not against any "
+            "intermediate control taxonomy. See SYSTEM_PROMPT for the "
+            "worked calibration examples this rubric is grounded in."
+        ),
     )
 
     reasoning: str = Field(..., description="Explanation for why this mapping was chosen")
@@ -104,6 +107,19 @@ class ControlMapping(BaseModel):
     mapping_type: Literal["exact", "partial", "conceptual", "none"] = Field(
         ...,
         description="Type of mapping relationship"
+    )
+
+    policy_category: Optional[str] = Field(
+        default=None,
+        description=(
+            "Grouping label derived from the catalog `category` of the "
+            "selected azure_policy_ids (e.g. 'Key Vault', 'Storage', "
+            "'Network'), or the external control's own domain when no policy "
+            "was selected. Always server-computed after the model responds - "
+            "never model-authored - because it is a resolvable fact about the "
+            "real catalog entries chosen, not a judgement call. Replaces the "
+            "old mcsb_domain fallback."
+        ),
     )
 
     control_type: Optional[str] = Field(
@@ -312,13 +328,11 @@ class ControlMapping(BaseModel):
         "example": {
             "external_control_id": "SAMA-AC-01",
             "external_control_name": "Strong Authentication",
-            "mcsb_control_id": "IM-6",
-            "mcsb_control_name": "Use strong authentication controls",
-            "mcsb_domain": "Identity Management",
             "confidence_score": 0.92,
             "reasoning": "Both controls focus on enforcing MFA and strong authentication mechanisms",
             "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],
             "mapping_type": "exact",
+            "policy_category": "Identity",
             "control_type": "Technical",
             "coverage_category": "A_AzurePolicy",
             "azure_enforceable": True,

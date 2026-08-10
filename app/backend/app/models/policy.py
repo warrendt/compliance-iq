@@ -291,7 +291,14 @@ class ManualControlEntry(BaseModel):
             "'Microsoft attested'"
         ),
     )
-    mcsb_control_id: str = Field("", description="Associated MCSB control ID, if any")
+    policy_category: str = Field(
+        "",
+        description=(
+            "Grouping label derived from the catalog category of any mapped "
+            "policies, or the control's own domain. Replaces the old "
+            "mcsb_control_id field."
+        ),
+    )
     responsibility: str = Field(
         "",
         description=(

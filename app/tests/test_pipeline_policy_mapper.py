@@ -74,9 +74,7 @@ class _FakeMapping:
     def __init__(self, control_id, **kwargs):
         self.external_control_id = control_id
         self.external_control_name = kwargs.get("name", f"Control {control_id}")
-        self.mcsb_control_id = kwargs.get("mcsb_id", "DP-3")
-        self.mcsb_control_name = kwargs.get("mcsb_name", "Encrypt data in transit")
-        self.mcsb_domain = kwargs.get("mcsb_domain", "Data Protection")
+        self.policy_category = kwargs.get("policy_category", "Data Protection")
         self.confidence_score = kwargs.get("confidence", 0.9)
         self.reasoning = kwargs.get("reasoning", "Relevant control")
         self.azure_policy_ids = kwargs.get("policy_ids", [])

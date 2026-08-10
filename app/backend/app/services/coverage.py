@@ -832,7 +832,7 @@ def manual_register_rows(mappings) -> List[dict]:
                 "control_type": getattr(m, "control_type", None) or "",
                 "coverage_category": category,
                 "coverage_display": coverage_display_name(category),
-                "mcsb_control_id": m.mcsb_control_id,
+                "policy_category": getattr(m, "policy_category", None) or "",
                 "responsibility": getattr(m, "responsibility", None) or "",
                 "evidence_source": getattr(m, "evidence_source", None) or "",
                 "enforcement_plane": (
@@ -1062,7 +1062,7 @@ def manual_controls_csv(mappings) -> str:
         "control_type",
         "coverage_category",
         "coverage_display",
-        "mcsb_control_id",
+        "policy_category",
         "responsibility",
         "evidence_source",
         "enforcement_plane",

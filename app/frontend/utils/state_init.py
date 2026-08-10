@@ -55,7 +55,7 @@ SESSION_DEFAULTS: Dict[str, Any] = {
     "session_uuid": None,  # lazily set to uuid4
 
     # MCSB cache
-    "mcsb_controls": None,
+    "mcsb_controls": None,  # legacy cache key, kept for backward-compat state files
 
     # Policy decisions (approve / deny per mapping, keyed by control_id)
     "policy_decisions": {},

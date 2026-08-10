@@ -336,7 +336,7 @@ elif df is not None:
         # Show navigation after controls are loaded (persists across reruns)
         if st.session_state.get('controls_loaded') and st.session_state.controls:
             st.markdown("---")
-            st.info("👉 Go to **AI Mapping** to start mapping these controls to MCSB")
+            st.info("👉 Go to **AI Mapping** to start mapping these controls to Azure Policy")
             if st.button("Continue to AI Mapping →", type="primary"):
                 st.switch_page("pages/2_AI_Mapping.py")
 

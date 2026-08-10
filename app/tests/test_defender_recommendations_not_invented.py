@@ -61,9 +61,6 @@ def test_map_control_discards_a_recommendation_the_model_invented(monkeypatch):
     """
     svc = object.__new__(AIMappingService)
     svc.catalog = None
-    svc.mcsb_service = SimpleNamespace(
-        get_controls_for_external_control=lambda *a, **k: []
-    )
     svc.control_classification = SimpleNamespace(
         classify=lambda *a, **k: _async_return(unknown_classification())
     )
@@ -81,9 +78,6 @@ def test_map_control_discards_a_recommendation_the_model_invented(monkeypatch):
     invented = ControlMapping(
         external_control_id="AC-1",
         external_control_name="Access control",
-        mcsb_control_id="IM-1",
-        mcsb_control_name="Protect identities",
-        mcsb_domain="Identity",
         confidence_score=0.9,
         reasoning="Relevant",
         mapping_type="exact",

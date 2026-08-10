@@ -19,9 +19,6 @@ def _residency_mapping() -> ControlMapping:
     return ControlMapping(
         external_control_id="RES-1",
         external_control_name="Restrict data residency",
-        mcsb_control_id="NS-1",
-        mcsb_control_name="Network segmentation",
-        mcsb_domain="Network Security",
         confidence_score=0.95,
         reasoning="Require data residency enforcement.",
         azure_policy_ids=[],

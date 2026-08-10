@@ -48,9 +48,7 @@ class _Mapping:
     def __init__(self, control_id, policy_ids=None):
         self.external_control_id = control_id
         self.external_control_name = f"Control {control_id}"
-        self.mcsb_control_id = "DP-3"
-        self.mcsb_control_name = "Encrypt data in transit"
-        self.mcsb_domain = "Data Protection"
+        self.policy_category = "Data Protection"
         self.confidence_score = 0.9
         self.reasoning = "Relevant."
         self.azure_policy_ids = list(policy_ids or [])
