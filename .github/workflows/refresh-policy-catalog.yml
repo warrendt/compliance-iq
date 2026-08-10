@@ -40,7 +40,13 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          # Dedicated identity for this workflow (see B5 in docs/BACKLOG.md),
+          # scoped to exactly what these two jobs do: Reader at the
+          # subscription (list policy/policy-set definitions) plus
+          # "Container Apps Jobs Contributor" on cj-ciq-vnet-runner alone
+          # (start it below) - not the deploy identity's subscription-wide
+          # Contributor + User Access Administrator.
+          client-id: ${{ secrets.AZURE_REFRESH_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
