@@ -35,10 +35,6 @@ def _identifier_exists(catalog, name: str) -> bool:
     return bool(catalog.exists(name))
 
 
-VALID_MCSB_PREFIXES = {    "NS", "IM", "PA", "DP", "AM", "LT", "IR", "PV", "ES", "BR", "DS", "GS",
-}
-
-
 def validate_mappings(
     extraction: ControlExtractionResult,
     mappings: list[ControlPolicyMapping],
@@ -118,17 +114,6 @@ def validate_mappings(
 
     for mapping in mappings:
         control_id = mapping.control_id
-
-        # Check MCSB control ID format
-        if mapping.mcsb_control_id:
-            parts = mapping.mcsb_control_id.split("-")
-            if len(parts) < 2 or parts[0] not in VALID_MCSB_PREFIXES:
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    control_id=control_id,
-                    message=f"MCSB control ID '{mapping.mcsb_control_id}' has unexpected format",
-                    suggestion=f"Expected format like 'NS-1', 'IM-6', 'DP-3'. Valid prefixes: {', '.join(sorted(VALID_MCSB_PREFIXES))}",
-                ))
 
         # Check confidence score
         confidence_sum += mapping.confidence_score

@@ -119,7 +119,7 @@ with st.sidebar:
 
         if health.get("status") == "healthy":
             st.success("Backend connected")
-            st.caption(f"MCSB Controls: {health.get('mcsb_controls_loaded', 0)}")
+            st.caption(f"Azure Policy catalog: {health.get('policy_catalog_count', 0)}")
 
             slz_count = health.get("slz_policy_count", 0)
             if slz_count > 0:

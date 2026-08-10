@@ -185,8 +185,6 @@ def test_static_reference_getters_are_cached():
     ``_self`` param so the cache key excludes the client instance."""
     src = API_CLIENT.read_text(encoding="utf-8")
     for method in (
-        "get_mcsb_controls",
-        "get_mcsb_domains",
         "get_sovereignty_summary",
         "get_sovereignty_objectives",
         "get_sovereignty_archetypes",

@@ -1,6 +1,6 @@
 """
 AI Mapping Service using Azure OpenAI with structured outputs.
-Maps external framework controls to MCSB controls.
+Maps external framework controls directly to Azure Policy definitions.
 Enhanced with Microsoft Learn MCP server for Azure Policy discovery.
 """
 
@@ -12,9 +12,8 @@ from typing import List, Optional
 import openai
 from pydantic import ValidationError
 
-from app.models import ExternalControl, MCSBControl, ControlMapping, MappingBatch
+from app.models import ExternalControl, ControlMapping, MappingBatch
 from app.models.sovereignty import SovereigntyMapping
-from app.services.mcsb_service import get_mcsb_service
 from app.services.microsoft_learn_client import get_microsoft_learn_client
 from app.services.policy_catalog_service import get_policy_catalog_service
 from app.services.control_intent_service import get_control_intent_service
@@ -33,34 +32,92 @@ settings = get_settings()
 
 
 # System prompt for AI mapping
-SYSTEM_PROMPT = """You are an expert cybersecurity compliance analyst specializing in mapping compliance framework controls to the Microsoft Cloud Security Benchmark (MCSB) and the Microsoft Sovereign Landing Zone (SLZ).
+SYSTEM_PROMPT = """You are an expert cybersecurity compliance analyst specializing in mapping compliance framework controls directly to Azure Policy (built-in policy definitions and the initiatives that bundle them, including Microsoft Defender for Cloud's own initiatives) and to the Microsoft Sovereign Landing Zone (SLZ).
 
 Your task is to analyze external compliance framework controls and:
-1. Map them to the most appropriate MCSB controls
+1. Map them to the Azure Policy definition(s) that genuinely enforce or evidence them
 2. Recommend the appropriate Sovereign Landing Zone (SLZ) sovereignty level and policies
 
-## MCSB Mapping Guidelines
+## Azure Policy Mapping Guidelines
 
-For each external control, you should:
-1. Understand the primary security objective and intent
-2. Identify the security domain (Identity, Network, Data Protection, etc.)
-3. Analyze technical requirements and implementation guidance
-4. Match to the most appropriate MCSB control(s)
-5. Provide a confidence score (0.0 to 1.0) based on alignment
-6. Explain your reasoning clearly
+There is no intermediate control taxonomy standing between the external control and
+Azure Policy. Map directly against the real candidates:
 
-Confidence Score Guidelines:
-- 0.9-1.0: Exact match - controls have identical or nearly identical objectives
-- 0.7-0.8: Strong match - controls address the same security goal with similar requirements
-- 0.5-0.6: Partial match - controls share some common objectives but differ in scope
-- 0.3-0.4: Conceptual match - controls are related but address different aspects
-- 0.0-0.2: Weak or no match - controls are fundamentally different
+1. Understand the primary security objective, intent, and literal wording of the
+   external control - what it actually requires, not a paraphrase of it.
+2. Review the "Azure Policy Context" section below: real built-in Azure Policy
+   definitions retrieved for THIS control from the full built-in catalog (~2,467
+   definitions), which also names the built-in initiatives that already bundle a
+   candidate (e.g. "Microsoft cloud security benchmark", "ASC Default", or another
+   Microsoft Defender for Cloud initiative) when one exists. There is no smaller
+   pre-filtered subset behind these candidates - if a real Azure Policy or Defender
+   for Cloud initiative enforces this control, it is reachable here.
+3. Select every azure_policy_ids GUID whose own display name, description, and
+   effect genuinely enforce or evidence the control's literal requirement. Azure
+   Policy definitions that back Microsoft Defender for Cloud recommendations,
+   configurations, and initiatives are valid, in-scope candidates like any other
+   built-in. A candidate initiative name shown for context is not itself a
+   selectable ID - only its GUIDs go in azure_policy_ids.
+4. Provide a confidence score and mapping type based on how closely the TEXT of
+   the control matches the TEXT of the Azure Policy definition(s) you selected -
+   never on fit to any external taxonomy. If nothing in the candidate list truly
+   enforces the control, say so honestly (empty azure_policy_ids, mapping_type
+   "none") instead of forcing a weak match to look like a successful one.
+5. Explain your reasoning clearly, citing what in the control's own wording the
+   selected policy addresses.
+
+Confidence Score Guidelines — grounded in real expert-verified mappings, not the
+abstract categories they name:
+
+- 0.9-1.0 ("exact"): the selected policy/policies enforce the control's literal
+  subject and mechanism directly.
+  Worked example: control text "...consumers shall implement it [HYOK] to retain
+  exclusive control over encryption keys and mitigate the risk of unauthorized
+  access to data" maps at ~0.95 to the built-in policies "OS and data disks should
+  be encrypted with a customer-managed key", "Storage accounts should use
+  customer-managed key for encryption", and "SQL servers should use
+  customer-managed keys to encrypt data at rest" - the control's subject
+  (customer-held encryption keys) and the policies' mechanism (CMK enforcement)
+  are the same requirement, just phrased in regulatory vs. Azure vocabulary.
+
+- 0.7-0.8 ("exact"/"partial"): the policy addresses the same security goal, but
+  only part of the control's scope, or several policies must combine to
+  approximate full coverage.
+  Worked example: a control requiring encryption "at rest ... in use ... and in
+  transmission" across "file servers, databases, and end-user devices" maps at
+  ~0.75 to a list of resource-specific CMK policies (SQL, storage, managed disks,
+  PostgreSQL, etc.) plus a transit-specific policy such as "Secure transfer to
+  storage accounts should be enabled" - each candidate covers one resource type or
+  one leg of the requirement, not the whole sentence, so no single policy is an
+  exact match even though the combination is a strong one.
+
+- 0.5-0.6 ("partial"/"conceptual"): the control's intent is achievable in Azure,
+  but primarily through configuration Azure Policy itself cannot enforce or audit
+  (Entra Conditional Access, Purview labelling, key management outside ARM).
+  Score in this band, set coverage_category to "B_AzureConfig", describe the
+  configuration step in outside_step, and only include azure_policy_ids for a
+  definition that genuinely audits some part of it.
+  Worked example: "Multi-factor authentication shall be implemented for accounts
+  with elevated privileges" is delivered through an Entra Conditional Access
+  policy, which Azure Policy (ARM) cannot itself configure or audit - score
+  around 0.5-0.6 and classify "B_AzureConfig", not "A_AzurePolicy".
+
+- 0.0-0.3 ("conceptual"/"none"): no candidate policy or initiative addresses the
+  control, or the control is process/organisational and Azure has no technical
+  means to enforce it at all.
+  Worked example: "senior leadership shall mandate the establishment of a cloud
+  security program with apparent oversight" is pure governance - score 0.0,
+  coverage_category "C_Process", empty azure_policy_ids. Do NOT reach for a
+  governance catch-all policy just to attach something.
 
 Mapping Type Guidelines:
-- "exact": Controls have identical security objectives and requirements
-- "partial": Controls share primary objectives but differ in implementation details
-- "conceptual": Controls are related conceptually but address different scopes
-- "none": No appropriate MCSB control exists for this requirement
+- "exact": the selected policy/policies enforce the control's literal subject and
+  mechanism directly (confidence typically 0.8-1.0)
+- "partial": the selected policy/policies address the same goal but cover only
+  part of the control's scope, or require several policies combined
+- "conceptual": related in intent but achieved mainly through configuration Azure
+  Policy cannot itself enforce, or only loosely related
+- "none": no Azure Policy definition or initiative can address this requirement
 
 ## Sovereign Landing Zone (SLZ) Mapping Guidelines
 
@@ -92,7 +149,7 @@ Always provide sovereignty reasoning explaining why you chose that level.
 Not every control can be enforced by Azure Policy. Many compliance frameworks
 contain process, legal, HR, contractual, and organisational-governance controls
 that Azure has no technical means to enforce. Attaching an Azure Policy to these
-(especially a catch-all MCSB "Governance & Strategy" entry) is a FALSE POSITIVE.
+just to appear complete is a FALSE POSITIVE.
 
 Classify every control into exactly one coverage_category:
 - "A_AzurePolicy": technically enforceable or auditable by an Azure Policy
@@ -113,13 +170,19 @@ technical safeguard, set coverage_category to "C_Process" (or "D_MicrosoftAttest
 for Microsoft-operated items) and return an EMPTY azure_policy_ids list. Do NOT
 reach for a governance catch-all policy just to attach something.
 
-## Defender for Cloud Recommendations
+## Defender for Cloud
 
-You have no access to a live Microsoft Defender for Cloud subscription and no
-data about actual recommendation state. ALWAYS return an EMPTY
-defender_recommendations list. Never invent or guess a Defender for Cloud
-recommendation name - an invented one is indistinguishable from a real one to
-the reader and is worse than reporting nothing.
+Microsoft Defender for Cloud's underlying built-in policies, configurations, and
+initiatives (e.g. "Microsoft cloud security benchmark", "ASC Default") are
+legitimate Azure Policy candidates and should be mapped and considered like any
+other built-in when the "Azure Policy Context" shows one enforces the control.
+
+This is distinct from Defender for Cloud RECOMMENDATIONS (free-text names such as
+"Enable MFA for all users"): you have no access to a live Defender for Cloud
+subscription and no data about actual recommendation state, so ALWAYS return an
+EMPTY defender_recommendations list. Never invent or guess a recommendation name
+- an invented one is indistinguishable from a real one to the reader and is worse
+than reporting nothing.
 
 Always be conservative with confidence scores - it's better to flag uncertain mappings for human review."""
 
@@ -135,22 +198,18 @@ class AIMappingService:
         self.control_intent = get_control_intent_service()
         self.control_classification = get_control_classification_service()
         self.policy_rerank = get_policy_rerank_service()
-        self.mcsb_service = get_mcsb_service()
         self.sovereignty_service = get_sovereignty_service()
         self.model = settings.azure_openai_deployment_name
 
     async def map_control(
         self,
         external_control: ExternalControl,
-        mcsb_controls: Optional[List[MCSBControl]] = None
     ) -> ControlMapping:
         """
-        Map a single external control to MCSB using AI.
+        Map a single external control directly to Azure Policy using AI.
 
         Args:
             external_control: External framework control to map
-            mcsb_controls: Optional list of MCSB controls to consider
-                          (if None, uses all controls)
 
         Returns:
             ControlMapping with AI-generated mapping
@@ -159,13 +218,6 @@ class AIMappingService:
             Exception: If AI mapping fails
         """
         logger.info(f"Mapping control: {external_control.control_id}")
-
-        # Get relevant MCSB controls
-        if mcsb_controls is None:
-            mcsb_controls = self.mcsb_service.get_controls_for_external_control(
-                external_control.description,
-                external_control.domain
-            )
 
         # Stage 1 — classify BLIND, before any policy candidates exist. Showing a
         # ranked candidate list first anchors the model into attaching a policy to
@@ -199,9 +251,8 @@ class AIMappingService:
         logger.debug(f"Sovereignty context ready, length: {len(sovereignty_context)} chars")
 
         # Create user prompt with policy context
-        logger.debug(f"Creating AI mapping prompt with {len(mcsb_controls)} MCSB controls")
-        user_prompt = self._create_mapping_prompt(external_control, mcsb_controls, policy_context, sovereignty_context)
-        logger.info(f"Generated prompt for AI ({len(user_prompt)} chars) with {len(mcsb_controls)} MCSB controls and policy context")
+        user_prompt = self._create_mapping_prompt(external_control, policy_context, sovereignty_context)
+        logger.info(f"Generated prompt for AI ({len(user_prompt)} chars) with policy context")
         logger.debug(f"Prompt preview: {user_prompt[:300]}...")
 
         try:
@@ -249,8 +300,17 @@ class AIMappingService:
 
             self._apply_procedural_sovereignty(mapping, external_control)
 
+            # policy_category is a resolvable fact about the real catalog
+            # entries selected, not a judgement call, so it is always computed
+            # here rather than asked of the model - same rationale as
+            # _strip_ungrounded_defender_recommendations above. This replaces
+            # the old mcsb_domain fallback, which came from a 10-control demo
+            # taxonomy rather than the actual policies chosen.
+            self._set_policy_category(mapping, external_control)
+
             logger.info(
-                f"Mapped {external_control.control_id} -> {mapping.mcsb_control_id} "
+                f"Mapped {external_control.control_id} -> {len(mapping.azure_policy_ids or [])} "
+                f"Azure Policy definition(s) "
                 f"(confidence: {mapping.confidence_score:.2f}, "
                 f"coverage: {mapping.coverage_category})"
             )
@@ -490,19 +550,39 @@ class AIMappingService:
                     desc = (c.description or "").strip().replace("\n", " ")
                     if len(desc) > 220:
                         desc = desc[:217] + "..."
+                    # Surface built-in initiatives (e.g. "Microsoft cloud security
+                    # benchmark", "ASC Default", other Defender for Cloud
+                    # initiatives) that already bundle this candidate, as context
+                    # only - initiatives are not directly selectable, only the
+                    # definition GUIDs inside azure_policy_ids are.
+                    initiative_note = ""
+                    try:
+                        initiatives = self.catalog.initiatives_containing(c.name)
+                    except Exception:
+                        initiatives = []
+                    if initiatives:
+                        names = ", ".join(
+                            i.get("display_name") or i.get("name", "")
+                            for i in initiatives[:3]
+                        )
+                        initiative_note = f"\n    Bundled in built-in initiative(s): {names}"
                     lines.append(
                         f"  - {c.display_name} [{c.category}]\n"
                         f"    ID: {c.name}\n"
                         f"    {desc}"
+                        f"{initiative_note}"
                     )
                 return (
                     "Candidate Azure Policy definitions (retrieved from the Azure "
-                    "built-in policy catalog):\n"
+                    "built-in policy catalog, including Microsoft Defender for "
+                    "Cloud's own policies where relevant):\n"
                     f"{len(candidates)} candidates ranked by relevance.\n"
                     + "\n".join(lines)
                     + "\n\nSelect azure_policy_ids ONLY from the ID (GUID) values "
                     "listed above that genuinely enforce this control. You may "
-                    "select several. Do NOT invent GUIDs or use policy names as IDs. "
+                    "select several. Do NOT invent GUIDs or use policy names or "
+                    "initiative names as IDs - only a definition GUID belongs in "
+                    "azure_policy_ids, never an initiative. "
                     "Prefer enforceable policies (Audit/Deny/DeployIfNotExists) over "
                     "'Regulatory Compliance' entries, which are manual-attestation "
                     "controls with no enforcement logic - only pick those if no "
@@ -529,7 +609,6 @@ class AIMappingService:
     def _create_mapping_prompt(
         self,
         external_control: ExternalControl,
-        mcsb_controls: List[MCSBControl],
         policy_context: str = "",
         sovereignty_context: str = ""
     ) -> str:
@@ -538,24 +617,12 @@ class AIMappingService:
 
         Args:
             external_control: External control to map
-            mcsb_controls: Available MCSB controls
             policy_context: Azure Policy search results from Microsoft Learn
             sovereignty_context: SLZ sovereignty policy context
 
         Returns:
             Formatted prompt string
         """
-        # Prepare MCSB controls context
-        mcsb_context = []
-        for ctrl in mcsb_controls:
-            mcsb_context.append({
-                "control_id": ctrl.control_id,
-                "domain": ctrl.domain,
-                "control_name": ctrl.control_name,
-                "description": ctrl.description[:200],  # Truncate for token efficiency
-                "azure_policy_ids": ctrl.azure_policy_ids
-            })
-
         prompt = f"""
 External Control to Map:
 -----------------------
@@ -565,10 +632,6 @@ Description: {external_control.description}
 Domain: {external_control.domain or 'Not specified'}
 Control Type: {external_control.control_type or 'Not specified'}
 
-Available MCSB Controls:
------------------------
-{json.dumps(mcsb_context, indent=2)}
-
 Azure Policy Context:
 --------------------
 {policy_context}
@@ -577,16 +640,17 @@ Azure Policy Context:
 
 Task:
 -----
-1. MCSB Mapping: Analyze the external control and identify the best matching MCSB control.
-   Provide a confidence score, mapping type, and detailed reasoning.
+1. Azure Policy selection: From the "Azure Policy Context" section above, select the
+   Azure Policy definition GUIDs that genuinely enforce this control's literal
+   requirement and put them in azure_policy_ids. Use ONLY the ID (GUID) values listed
+   there. Select as many as truly apply (there may be several, and a genuine match
+   may span several resource-specific definitions). Never invent GUIDs, and never put
+   a policy name or initiative name in azure_policy_ids. If none of the candidates
+   fit, return an empty list. Score confidence_score and mapping_type against how
+   closely the selected definition(s) match the control's own wording (see the
+   worked calibration examples above), and explain that match in reasoning.
 
-2. Azure Policy selection: From the "Azure Policy Context" section below, select the
-   Azure Policy definition GUIDs that genuinely enforce this control and put them in
-   azure_policy_ids. Use ONLY the ID (GUID) values listed there. Select as many as truly
-   apply (there may be several). Never invent GUIDs, and never put a policy name or MCSB
-   control ID in azure_policy_ids. If none of the candidates fit, return an empty list.
-
-3. Sovereignty Mapping: Determine the appropriate SLZ sovereignty level (L1/L2/L3),
+2. Sovereignty Mapping: Determine the appropriate SLZ sovereignty level (L1/L2/L3),
    relevant sovereignty control objectives (SO-1 through SO-5), and matching SLZ policies.
    Provide the sovereignty mapping in the 'sovereignty' field with:
    - sovereignty_level: "L1", "L2", or "L3"
@@ -616,6 +680,31 @@ Sovereignty Context above.
         """
         if getattr(mapping, "defender_recommendations", None):
             mapping.defender_recommendations = []
+
+    def _set_policy_category(self, mapping, external_control: ExternalControl) -> None:
+        """Derive ``policy_category`` from the catalog, not from the model.
+
+        Replaces the old ``mcsb_domain`` fallback. The category of a resolved
+        Azure Policy definition is a fact recorded in the catalog snapshot -
+        looking it up is strictly more accurate than asking the model to
+        restate a taxonomy label, and it stays truthful even when the model's
+        own domain guess would have been stale or invented. Falls back to the
+        external control's own extracted domain when no policy was selected
+        (process/organisational controls, or a coverage gap).
+        """
+        categories: list[str] = []
+        for policy_id in (mapping.azure_policy_ids or []):
+            entry = self.catalog.get(policy_id) if self.catalog else None
+            category = (entry or {}).get("category")
+            if category:
+                categories.append(category)
+
+        if categories:
+            # Most common category among the selected definitions; ties break
+            # on first-seen order, which is retrieval-rank order.
+            mapping.policy_category = max(set(categories), key=categories.count)
+        else:
+            mapping.policy_category = external_control.domain or None
 
     def _apply_procedural_sovereignty(self, mapping, external_control) -> None:
         """Name the Azure feature that meets a sovereignty objective with no policy.
@@ -763,13 +852,11 @@ Use these SLZ policy names in the sovereignty.slz_policy_names field if they mat
         return ControlMapping(
             external_control_id=external_control.control_id,
             external_control_name=external_control.control_name,
-            mcsb_control_id="N/A",
-            mcsb_control_name="Mapping failed - manual review required",
-            mcsb_domain="Unknown",
             confidence_score=0.0,
             reasoning=f"Automated mapping failed: {error_msg}. This control requires manual review and mapping.",
             azure_policy_ids=[],
             mapping_type="none",
+            policy_category=external_control.domain or None,
             defender_recommendations=[],
             control_type=external_control.control_type,
             coverage_category=coverage.COVERAGE_C,

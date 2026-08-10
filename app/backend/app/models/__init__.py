@@ -2,7 +2,7 @@
 Pydantic models for the AI Control Mapping Agent.
 """
 
-from app.models.control import ExternalControl, MCSBControl, FrameworkUpload
+from app.models.control import ExternalControl, FrameworkUpload
 from app.models.mapping import (
     ControlMapping,
     MappingBatch,
@@ -60,7 +60,6 @@ from app.models.purview import (
 __all__ = [
     # Control models
     "ExternalControl",
-    "MCSBControl",
     "FrameworkUpload",
     # Mapping models
     "ControlMapping",

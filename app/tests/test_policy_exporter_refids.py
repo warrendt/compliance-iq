@@ -57,9 +57,6 @@ def _mapping(control_id, policy_ids, confidence=0.9):
     return ControlMapping(
         external_control_id=control_id,
         external_control_name=f"Control {control_id}",
-        mcsb_control_id="IM-1",
-        mcsb_control_name="Protect identities",
-        mcsb_domain="Identity",
         confidence_score=confidence,
         reasoning="Relevant control",
         azure_policy_ids=policy_ids,

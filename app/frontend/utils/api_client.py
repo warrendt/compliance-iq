@@ -181,42 +181,6 @@ class APIClient:
             response.raise_for_status()
             return response.json()
     
-    @st.cache_data(ttl=3600, show_spinner=False)
-    def get_mcsb_controls(_self) -> List[Dict[str, Any]]:
-        """Get all MCSB controls.
-
-        Cached: the MCSB catalog is static reference data, so this avoids a
-        backend round-trip on every rerun/navigation. Cache keyed only on the
-        endpoint (``_self`` is excluded from the cache key by the leading
-        underscore).
-
-        Returns:
-            List of MCSB controls
-        """
-        with _self._get_client() as client:
-            response = client.get(f"{_self.base_url}/api/v1/mapping/mcsb/controls")
-            response.raise_for_status()
-            data = response.json()
-            # Backend wraps the list in {"controls": [...]}
-            if isinstance(data, dict) and "controls" in data:
-                return data["controls"]
-            return data
-    
-    @st.cache_data(ttl=3600, show_spinner=False)
-    def get_mcsb_domains(_self) -> List[str]:
-        """Get all MCSB domains (cached static reference data).
-
-        Returns:
-            List of MCSB domain names
-        """
-        with _self._get_client() as client:
-            response = client.get(f"{_self.base_url}/api/v1/mapping/mcsb/domains")
-            response.raise_for_status()
-            data = response.json()
-            if isinstance(data, dict) and "domains" in data:
-                return data["domains"]
-            return data
-    
     def map_single_control(
         self, 
         control_id: str,

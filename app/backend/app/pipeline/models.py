@@ -96,11 +96,15 @@ class ControlPolicyMapping(BaseModel):
     domain: str = Field(
         ..., description="Security domain"
     )
-    mcsb_control_id: str = Field(
-        ..., description="Best matching MCSB control ID (e.g., 'IM-1', 'NS-1', 'DP-3')"
-    )
-    mcsb_control_name: str = Field(
-        ..., description="Name of the matched MCSB control"
+    policy_category: Optional[str] = Field(
+        default=None,
+        description=(
+            "Grouping label derived from the catalog category of the mapped "
+            "Azure Policy definitions. Server-computed, never model-authored. "
+            "Replaces the old mcsb_control_id/mcsb_control_name/mcsb_domain "
+            "fields, which forced every control through a 10-control MCSB "
+            "demonstration set instead of the full ~2,467-definition catalog."
+        ),
     )
     confidence_score: float = Field(
         ..., ge=0.0, le=1.0,

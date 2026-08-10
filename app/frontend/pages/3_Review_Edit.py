@@ -44,28 +44,6 @@ if not st.session_state.mappings:
 # Get API client
 api_client = get_api_client()
 
-# Load MCSB controls for reference (cached)
-# Fix stale cache: force refetch if data is not a list-of-dicts
-_mcsb = st.session_state.mcsb_controls
-if _mcsb is not None and (isinstance(_mcsb, dict) or (isinstance(_mcsb, list) and _mcsb and not isinstance(_mcsb[0], dict))):
-    st.session_state.mcsb_controls = None
-
-if st.session_state.mcsb_controls is None:
-    with st.spinner("Loading MCSB controls..."):
-        try:
-            data = api_client.get_mcsb_controls()
-            # Unwrap {"controls": [...]} if the module cache served old code
-            if isinstance(data, dict) and "controls" in data:
-                data = data["controls"]
-            st.session_state.mcsb_controls = data
-        except Exception as e:
-            st.error(f"❌ Error loading MCSB controls: {str(e)}")
-            st.session_state.mcsb_controls = []
-
-# Create MCSB lookup dictionary
-mcsb_lookup = {c['control_id']: c for c in st.session_state.mcsb_controls} if st.session_state.mcsb_controls else {}
-mcsb_options = sorted([c['control_id'] for c in st.session_state.mcsb_controls]) if st.session_state.mcsb_controls else []
-
 # Display summary
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -103,13 +81,16 @@ with col_filter1:
     )
 
 with col_filter2:
-    # Get unique MCSB domains
-    domains = sorted(set(mcsb_lookup[m.get('mcsb_control_id', '')].get('domain', 'Unknown') 
-                        for m in st.session_state.mappings 
-                        if m.get('mcsb_control_id', '') in mcsb_lookup))
-    
+    # Get unique policy categories (server-computed from the mapped Azure
+    # Policy definitions' own catalog category - see policy_category on
+    # ControlMapping - rather than a fixed MCSB domain list).
+    domains = sorted(set(
+        m.get('policy_category') for m in st.session_state.mappings
+        if m.get('policy_category')
+    ))
+
     domain_filter = st.selectbox(
-        "MCSB Domain",
+        "Policy Category",
         options=["All"] + domains,
         index=0
     )
@@ -141,10 +122,9 @@ elif confidence_filter == "Medium (60-80%)":
 elif confidence_filter == "Low (<60%)":
     filtered_mappings = [m for m in filtered_mappings if m.get('confidence_score', 0) < 0.6]
 
-if domain_filter != "All" and mcsb_lookup:
-    filtered_mappings = [m for m in filtered_mappings 
-                         if m.get('mcsb_control_id', '') in mcsb_lookup 
-                         and mcsb_lookup[m.get('mcsb_control_id', '')].get('domain') == domain_filter]
+if domain_filter != "All":
+    filtered_mappings = [m for m in filtered_mappings
+                         if m.get('policy_category') == domain_filter]
 
 if type_filter != "All":
     filtered_mappings = [m for m in filtered_mappings if m.get('mapping_type') == type_filter]
@@ -173,7 +153,8 @@ else:
     for idx, mapping in enumerate(filtered_mappings):
         with st.expander(
             f"{'⚠️' if mapping.get('confidence_score', 0) < 0.6 else '✅'} "
-            f"{mapping.get('control_id', mapping.get('external_control_id', 'N/A'))} → {mapping.get('mcsb_control_id', 'N/A')} "
+            f"{mapping.get('control_id', mapping.get('external_control_id', 'N/A'))} → "
+            f"{len(mapping.get('azure_policy_ids') or [])} Azure Polic{'y' if len(mapping.get('azure_policy_ids') or []) == 1 else 'ies'} "
             f"({mapping.get('confidence_score', 0):.0%})",
             expanded=mapping.get('confidence_score', 0) < 0.6
         ):
@@ -190,37 +171,17 @@ else:
                     st.markdown(f"**Domain:** {mapping['domain']}")
             
             with col_edit2:
-                st.markdown("#### 🎯 MCSB Mapping")
-                
-                # Edit MCSB control
-                current_mcsb = mapping.get('mcsb_control_id', '')
-                current_idx = mcsb_options.index(current_mcsb) if current_mcsb in mcsb_options else 0
+                st.markdown("#### 🎯 Azure Policy Mapping")
+
                 control_id_key = mapping.get('control_id', mapping.get('external_control_id', f'unknown_{idx}'))
-                
-                new_mcsb = st.selectbox(
-                    "MCSB Control",
-                    options=mcsb_options,
-                    index=current_idx,
-                    key=f"mcsb_{idx}_{control_id_key}"
-                )
-                
-                if new_mcsb != current_mcsb:
-                    # Find the original mapping in session state and update it
-                    mapping_id = mapping.get('control_id', mapping.get('external_control_id'))
-                    for i, m in enumerate(st.session_state.mappings):
-                        m_id = m.get('control_id', m.get('external_control_id'))
-                        if m_id == mapping_id:
-                            st.session_state.mappings[i]['mcsb_control_id'] = new_mcsb
-                            st.session_state.mappings[i]['manual_override'] = True
-                            changes_made = True
-                            break
-                
-                # Show MCSB control details
-                if new_mcsb in mcsb_lookup:
-                    mcsb_control = mcsb_lookup[new_mcsb]
-                    st.caption(f"**Title:** {mcsb_control.get('control_name', 'N/A')}")
-                    st.caption(f"**Domain:** {mcsb_control.get('domain', 'N/A')}")
-                
+
+                # policy_category is server-computed from the catalog category
+                # of the mapped Azure Policy definitions (see policy_category
+                # on ControlMapping) - there is no fixed intermediate taxonomy
+                # to pick from anymore, so this is informational, not editable.
+                if mapping.get('policy_category'):
+                    st.caption(f"**Category:** {mapping['policy_category']}")
+
                 # Confidence score (read-only if not manually overridden)
                 st.metric("Confidence Score", f"{mapping.get('confidence_score', 0):.0%}")
                 
@@ -315,9 +276,12 @@ if st.session_state.mappings:
         st.bar_chart(confidence_dist)
     
     with col_stat2:
-        st.markdown("#### Top MCSB Controls")
-        top_mcsb = df['mcsb_control_id'].value_counts().head(10)
-        st.bar_chart(top_mcsb)
+        st.markdown("#### Top Policy Categories")
+        if 'policy_category' in df.columns:
+            top_categories = df['policy_category'].dropna().value_counts().head(10)
+            st.bar_chart(top_categories)
+        else:
+            st.caption("No policy category data available.")
     
     # Sovereignty statistics
     sov_mappings = [m for m in st.session_state.mappings if m.get('sovereignty')]

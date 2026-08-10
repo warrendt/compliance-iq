@@ -19,9 +19,6 @@ def _request() -> PolicyGenerationRequest:
             ControlMapping(
                 external_control_id="2.3.2.1",
                 external_control_name="Control 2.3.2.1",
-                mcsb_control_id="IM-1",
-                mcsb_control_name="Protect identities",
-                mcsb_domain="Identity",
                 confidence_score=0.9,
                 reasoning="Relevant",
                 azure_policy_ids=["18adea5e-f416-4d0f-8aa8-d24321e3e274"],

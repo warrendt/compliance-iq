@@ -35,13 +35,11 @@ def _to_backend_mapping(m: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "external_control_id": m.get("control_id") or m.get("external_control_id", ""),
         "external_control_name": m.get("control_name") or m.get("external_control_name", ""),
-        "mcsb_control_id": m.get("mcsb_control_id", ""),
-        "mcsb_control_name": m.get("mcsb_control_name", ""),
-        "mcsb_domain": m.get("mcsb_domain", ""),
         "confidence_score": m.get("confidence_score", 0.0),
         "reasoning": m.get("reasoning", ""),
         "azure_policy_ids": m.get("azure_policy_ids", []),
         "mapping_type": mt,
+        "policy_category": m.get("policy_category"),
         "defender_recommendations": m.get("defender_recommendations", []),
         "sovereignty": m.get("sovereignty"),
         # Carry the coverage taxonomy through so the backend can exclude
@@ -182,7 +180,7 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
         "control_type": "Type",
         "coverage_display": "Coverage",
         "coverage_category": "Category code",
-        "mcsb_control_id": "MCSB",
+        "policy_category": "Policy Category",
         # Responsibility is an independent axis from coverage, not a
         # restatement of it: a process control is frequently Microsoft-owned.
         "responsibility": "Responsibility",
@@ -385,8 +383,8 @@ with col3:
     st.metric("Avg Confidence", f"{avg_confidence:.0%}")
 
 with col4:
-    unique_mcsb = len(set(m.get('mcsb_control_id', '') for m in st.session_state.mappings if m.get('mcsb_control_id')))
-    st.metric("Unique MCSB Controls", unique_mcsb)
+    unique_categories = len(set(m.get('policy_category', '') for m in st.session_state.mappings if m.get('policy_category')))
+    st.metric("Unique Policy Categories", unique_categories)
 
 with col5:
     st.metric("Sovereignty Mapped", len(sov_mappings))
@@ -813,7 +811,7 @@ This package contains the Azure Policy Initiative for {st.session_state.framewor
 - Framework: {st.session_state.framework_name}
 - Total Mappings: {len(filtered_mappings)}
 - Average Confidence: {avg_confidence:.0%}
-- Unique MCSB Controls: {unique_mcsb}
+- Unique Policy Categories: {unique_categories}
 
 ## Quick Start
 1. Review the mappings in `*_mappings.json`

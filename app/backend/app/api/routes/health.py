@@ -8,7 +8,7 @@ import logging
 
 from app import __version__
 from app.auth import test_azure_openai_connection
-from app.services import get_mcsb_service, get_sovereignty_service, get_policy_catalog_service
+from app.services import get_sovereignty_service, get_policy_catalog_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
@@ -19,9 +19,6 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     azure_openai_connected: bool
-    mcsb_controls_loaded: bool
-    mcsb_control_count: int
-    mcsb_is_demonstration_data: bool = False
     slz_policies_loaded: bool = False
     slz_policy_count: int = 0
     policy_catalog_count: int = 0
@@ -46,19 +43,6 @@ async def health_check():
         logger.error(f"Azure OpenAI health check failed: {e}")
         azure_openai_connected = False
 
-    # Check MCSB service
-    try:
-        mcsb_service = get_mcsb_service()
-        controls = mcsb_service.get_all_controls()
-        mcsb_controls_loaded = True
-        mcsb_control_count = len(controls)
-        mcsb_is_demonstration_data = mcsb_service.is_demonstration_data
-    except Exception as e:
-        logger.error(f"MCSB service health check failed: {e}")
-        mcsb_controls_loaded = False
-        mcsb_control_count = 0
-        mcsb_is_demonstration_data = False
-
     # Check SLZ sovereignty service
     try:
         slz_service = get_sovereignty_service()
@@ -81,12 +65,9 @@ async def health_check():
         policy_catalog_source = "error"
 
     return HealthResponse(
-        status="healthy" if (azure_openai_connected and mcsb_controls_loaded) else "degraded",
+        status="healthy" if azure_openai_connected else "degraded",
         version=__version__,
         azure_openai_connected=azure_openai_connected,
-        mcsb_controls_loaded=mcsb_controls_loaded,
-        mcsb_control_count=mcsb_control_count,
-        mcsb_is_demonstration_data=mcsb_is_demonstration_data,
         slz_policies_loaded=slz_policies_loaded,
         slz_policy_count=slz_policy_count,
         policy_catalog_count=policy_catalog_count,

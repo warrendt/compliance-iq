@@ -18,7 +18,7 @@ from app.models import (
     MappingJob,
 )
 from app.models.mapping import record_mapping_activity
-from app.services import get_ai_mapping_service, get_mcsb_service
+from app.services import get_ai_mapping_service
 from app.db import cosmos_client
 from app.config import get_settings
 
@@ -266,58 +266,6 @@ async def get_mapping_status(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
     return job
-
-
-@router.get("/mcsb/controls")
-async def get_mcsb_controls(domain: Optional[str] = None):
-    """
-    Get MCSB controls, optionally filtered by domain.
-
-    Args:
-        domain: Optional domain filter
-
-    Returns:
-        List of MCSB controls. ``is_demonstration_data`` is True whenever no
-        real MCSB catalog file is loaded, in which case the returned
-        ``defender_recommendations`` are illustrative examples, not verified
-        against a live Microsoft Defender for Cloud subscription (see
-        docs/BACKLOG.md B4).
-    """
-    try:
-        mcsb_service = get_mcsb_service()
-
-        if domain:
-            controls = mcsb_service.get_controls_by_domain(domain)
-        else:
-            controls = mcsb_service.get_all_controls()
-
-        return {
-            "controls": controls,
-            "count": len(controls),
-            "is_demonstration_data": mcsb_service.is_demonstration_data,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to get MCSB controls: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/mcsb/domains")
-async def get_mcsb_domains():
-    """Get all MCSB security domains."""
-    try:
-        mcsb_service = get_mcsb_service()
-        domains = mcsb_service.get_all_domains()
-
-        return {
-            "domains": domains,
-            "count": len(domains),
-            "is_demonstration_data": mcsb_service.is_demonstration_data,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to get MCSB domains: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 async def process_mapping_job(

@@ -24,9 +24,6 @@ def _mapping(with_sovereignty: bool = False) -> ControlMapping:
     return ControlMapping(
         external_control_id="CTRL-1",
         external_control_name="Example control",
-        mcsb_control_id="IM-1",
-        mcsb_control_name="Protect identities",
-        mcsb_domain="Identity",
         confidence_score=0.9,
         reasoning="Relevant control",
         azure_policy_ids=["policy-id"],

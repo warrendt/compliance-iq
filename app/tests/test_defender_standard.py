@@ -30,9 +30,6 @@ def _initiative():
                 ControlMapping(
                     external_control_id="AC-1",
                     external_control_name="Access control",
-                    mcsb_control_id="IM-1",
-                    mcsb_control_name="Protect identities",
-                    mcsb_domain="Identity",
                     confidence_score=0.9,
                     reasoning="Relevant",
                     azure_policy_ids=[G1],

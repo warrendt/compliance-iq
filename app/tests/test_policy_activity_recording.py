@@ -26,9 +26,6 @@ def _valid_mapping(extra: dict | None = None) -> dict:
     m = {
         "external_control_id": "EXT-1",
         "external_control_name": "Encrypt data at rest",
-        "mcsb_control_id": "DP-4",
-        "mcsb_control_name": "Enable data at rest encryption by default",
-        "mcsb_domain": "Data Protection",
         "confidence_score": 0.9,
         "reasoning": "Direct match on encryption-at-rest intent.",
         "azure_policy_ids": ["4e6c27d5-a6ee-49cf-b2b4-d8fe90fa2b8b"],

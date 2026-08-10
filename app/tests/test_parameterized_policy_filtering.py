@@ -29,9 +29,6 @@ def _mapping(control_id: str, policy_ids: list[str]) -> ControlMapping:
     return ControlMapping(
         external_control_id=control_id,
         external_control_name=f"Control {control_id}",
-        mcsb_control_id="BR-1",
-        mcsb_control_name="Ensure regular backups",
-        mcsb_domain="Backup and Recovery",
         confidence_score=0.9,
         reasoning="Relevant control",
         azure_policy_ids=policy_ids,
