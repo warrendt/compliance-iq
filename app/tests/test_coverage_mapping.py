@@ -1462,3 +1462,68 @@ def test_a_process_control_still_carries_provenance_without_a_catalog():
     )
     assert mapping.verified_at
     assert mapping.provenance_blocker
+
+
+def test_dropped_rows_read_validated_models_not_only_dicts():
+    """Regression: both generate endpoints 500'd on a validated request body.
+
+    ``dropped_policy_ids`` is typed ``List[DroppedPolicyIdentifier]`` on the API
+    models but ``List[dict]`` on the pipeline models, and ``_record_drop``
+    appends plain dicts. Every test built its mappings with the constructor and
+    appended drops afterwards, so the list only ever held dicts and the readers'
+    ``.get()`` was never exercised against a model. A real request body is
+    validated whole, which coerces each entry to ``DroppedPolicyIdentifier``,
+    and ``dropped_policy_rows`` raised ``'DroppedPolicyIdentifier' object has
+    no attribute 'get'`` -> 500 from both /policy/generate and
+    /policy/generate/slz.
+    """
+    mapping = ControlMapping.model_validate(
+        {
+            "external_control_id": "API-1",
+            "external_control_name": "Arrived over HTTP",
+            "confidence_score": 0.9,
+            "reasoning": "r",
+            "mapping_type": "exact",
+            "dropped_policy_ids": [
+                {"policy_id": "bad-guid", "reason": "malformed", "detail": "why"}
+            ],
+        }
+    )
+    # Validation really does coerce, otherwise this test proves nothing.
+    assert type(mapping.dropped_policy_ids[0]).__name__ == "DroppedPolicyIdentifier"
+
+    rows = coverage.dropped_policy_rows([mapping])
+    assert rows == [
+        {
+            "control_id": "API-1",
+            "control_name": "Arrived over HTTP",
+            "policy_id": "bad-guid",
+            "reason": "malformed",
+            "detail": "why",
+        }
+    ]
+
+
+def test_dropped_rows_read_dicts_and_models_in_one_list():
+    """The list is genuinely mixed, so neither shape may be assumed.
+
+    A validated body yields models; ``_record_drop`` then appends dicts to that
+    same list, and list mutation performs no validation. Both must survive.
+    """
+    mapping = ControlMapping.model_validate(
+        {
+            "external_control_id": "MIX-1",
+            "external_control_name": "Mixed",
+            "confidence_score": 0.9,
+            "reasoning": "r",
+            "mapping_type": "exact",
+            "dropped_policy_ids": [{"policy_id": "from-model", "reason": "malformed"}],
+        }
+    )
+    mapping.dropped_policy_ids.append({"policy_id": "from-dict", "reason": "not_found"})
+
+    rows = coverage.dropped_policy_rows([mapping])
+    assert [r["policy_id"] for r in rows] == ["from-model", "from-dict"]
+    assert [r["reason"] for r in rows] == ["malformed", "not_found"]
+    # Absent optional field reads as empty string, never None or a crash.
+    assert rows[1]["detail"] == ""

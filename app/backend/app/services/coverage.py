@@ -967,6 +967,25 @@ def coverage_gap_rows(mappings) -> List[dict]:
     return rows
 
 
+def dropped_entry_field(dropped, field: str) -> str:
+    """Read one field off a dropped-policy entry, dict or model alike.
+
+    ``dropped_policy_ids`` is genuinely heterogeneous and cannot be assumed to
+    hold either shape. The API models type it as ``DroppedPolicyIdentifier``
+    (``app.models.mapping``), so anything arriving through request validation is
+    coerced to that model; the pipeline models type the same field as ``dict``
+    (``app.pipeline.models``) and ``initiative_builder._record_drop`` appends
+    plain dicts, which list mutation performs no validation on. Both shapes
+    therefore reach these shared readers, and assuming ``dict`` here returned
+    500s from every generate endpoint.
+    """
+    if dropped is None:
+        return ""
+    getter = getattr(dropped, "get", None)
+    value = getter(field, "") if callable(getter) else getattr(dropped, field, "")
+    return "" if value is None else str(value)
+
+
 def dropped_policy_rows(mappings) -> List[dict]:
     """Every candidate policy ID that was discarded, and why, per control.
 
@@ -981,9 +1000,9 @@ def dropped_policy_rows(mappings) -> List[dict]:
                 {
                     "control_id": m.external_control_id,
                     "control_name": m.external_control_name,
-                    "policy_id": dropped.get("policy_id", ""),
-                    "reason": dropped.get("reason", ""),
-                    "detail": dropped.get("detail", ""),
+                    "policy_id": dropped_entry_field(dropped, "policy_id"),
+                    "reason": dropped_entry_field(dropped, "reason"),
+                    "detail": dropped_entry_field(dropped, "detail"),
                 }
             )
     return rows
