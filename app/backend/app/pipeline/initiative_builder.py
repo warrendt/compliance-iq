@@ -607,6 +607,8 @@ def _write_mappings_csv(
     it, what completes a partial mapping, what evidences an attested one, and
     every identifier that was rejected on the way.
     """
+    from app.services.coverage import dropped_entry_field
+
     mapping_lookup = {m.control_id: m for m in mappings}
 
     fieldnames = [
@@ -665,7 +667,8 @@ def _write_mappings_csv(
 
             attestation = (getattr(m, "attestation", None) or {}) if m else {}
             dropped = _joined(
-                f"{d.get('policy_id', '')} ({d.get('reason', '')})"
+                f"{dropped_entry_field(d, 'policy_id')} "
+                f"({dropped_entry_field(d, 'reason')})"
                 for d in (getattr(m, "dropped_policy_ids", None) or [])
             ) if m else ""
 
