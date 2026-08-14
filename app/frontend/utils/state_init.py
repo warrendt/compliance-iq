@@ -52,6 +52,7 @@ SESSION_DEFAULTS: Dict[str, Any] = {
     # Policy generation
     "generated_policy": None,
     "policy_generated": False,
+    "policy_generated_at": None,
     "session_uuid": None,  # lazily set to uuid4
 
     # MCSB cache
@@ -130,6 +131,7 @@ def restore_workflow_state() -> None:
         "sovereignty_resolutions",
         "policy_decisions",
         "generated_policy",
+        "policy_generated_at",
         "selected_platform",
         "platform_display_name",
     ):
@@ -246,6 +248,7 @@ def persist_workflow_state() -> None:
                 "sovereignty_resolutions": st.session_state.get("sovereignty_resolutions", []),
                 "policy_decisions": st.session_state.get("policy_decisions", {}),
                 "generated_policy": st.session_state.get("generated_policy"),
+                "policy_generated_at": st.session_state.get("policy_generated_at"),
                 "selected_platform": st.session_state.get("selected_platform", "azure_defender"),
                 "platform_display_name": st.session_state.get("platform_display_name", ""),
             },
@@ -264,6 +267,7 @@ _WORKFLOW_KEYS = (
     "sovereignty_resolutions",
     "policy_decisions",
     "generated_policy",
+    "policy_generated_at",
     "selected_platform",
     "platform_display_name",
 )
