@@ -12,6 +12,7 @@ from utils.api_client import get_api_client
 from utils.theme import inject_azure_theme, render_sidebar, render_footer
 from utils.components import render_page_header, render_success_effect
 from utils.packaging import build_deterministic_zip
+from utils.arm_names import arm_policy_name, max_policy_name_length
 from utils.state_init import (
     init_session_state,
     persist_workflow_state,
@@ -917,12 +918,25 @@ Generated on: {generated_on}
                 selected_scope = _scopes[selected_scope_idx]["scope"]
 
             with col_d2:
+                _name_limit = max_policy_name_length(selected_scope)
                 deploy_name = st.text_input(
                     "Initiative Name (ARM)",
-                    value=initiative_name.replace(" ", "-").lower()[:128],
-                    max_chars=128,
+                    value=arm_policy_name(initiative_name, selected_scope),
+                    max_chars=_name_limit,
                     key="deploy_init_name",
+                    help=(
+                        f"ARM allows at most {_name_limit} characters for a policy "
+                        "resource name at this scope (128 applies to the display "
+                        "name only)."
+                    ),
                 )
+                # The widget key wins over `value` once the field exists, so a
+                # name kept from an earlier scope can outgrow the current limit.
+                if len(deploy_name) > _name_limit:
+                    st.warning(
+                        f"Name is {len(deploy_name)} characters; ARM allows "
+                        f"{_name_limit} at this scope. Shorten it before deploying."
+                    )
                 do_assign = st.checkbox("Also create a policy assignment", key="deploy_assign")
 
             col_val, col_dep = st.columns(2)

@@ -6,7 +6,9 @@ The service proxies ARM REST calls so the frontend never talks to ARM directly.
 """
 
 import asyncio
+import hashlib
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -24,6 +26,65 @@ _TIMEOUT = 30.0
 
 # Characters ARM rejects in a policy set definition name.
 _INVALID_NAME_CHARS = set('<>*%&:\\?/#')
+# ARM policy *resource* name limits. The 128 that appears throughout the Azure
+# docs is the **display name** limit; the resource name is capped at 64, and at
+# only 24 under a management group. Conflating the two is what made long
+# framework names fail at deploy time with an opaque error.
+# https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules#microsoftauthorization
+MAX_POLICY_NAME_LEN = 64
+MAX_POLICY_NAME_LEN_MG = 24
+# Appended when an assignment name is derived from an initiative name. It costs
+# 11 of the available characters, so the base name must be shortened to fit.
+ASSIGNMENT_NAME_SUFFIX = "-assignment"
+# Length of the discriminator appended when a name has to be truncated.
+_NAME_HASH_LEN = 6
+
+
+def is_management_group_scope(scope: str) -> bool:
+    """True when *scope* addresses a management group."""
+    return (scope or "").strip().rstrip("/").lower().startswith(_MGMT_GROUP_PREFIX)
+
+
+def max_policy_name_length(scope: str) -> int:
+    """Longest ARM policy resource name permitted at *scope*."""
+    return MAX_POLICY_NAME_LEN_MG if is_management_group_scope(scope) else MAX_POLICY_NAME_LEN
+
+
+def arm_policy_name(source: str, scope: str = "", *, suffix: str = "") -> str:
+    """Derive an ARM-valid policy resource name from *source*.
+
+    Lower-cases, replaces characters ARM rejects (and whitespace) with hyphens,
+    and guarantees the result plus *suffix* fits the limit for *scope*.
+
+    When the name has to be shortened, a short deterministic digest of the full
+    input is appended. Truncation alone would let two different frameworks
+    collapse onto the same name, and because deploying is an idempotent PUT that
+    would silently overwrite an unrelated initiative. The digest keeps the name
+    stable across redeploys of the same framework while keeping distinct
+    frameworks distinct.
+    """
+    limit = max_policy_name_length(scope) - len(suffix)
+    if limit < 1:
+        raise ValueError(
+            f"suffix {suffix!r} leaves no room for a name at scope {scope!r}"
+        )
+
+    normalized = "".join(
+        "-" if (ch in _INVALID_NAME_CHARS or ch.isspace()) else ch
+        for ch in (source or "").strip().lower()
+    )
+    slug = re.sub(r"-{2,}", "-", normalized).strip("-. ")
+    if not slug:
+        slug = "initiative"
+
+    if len(slug) > limit:
+        digest = hashlib.sha256((source or "").strip().encode()).hexdigest()[:_NAME_HASH_LEN]
+        keep = max(1, limit - _NAME_HASH_LEN - 1)
+        slug = f"{slug[:keep].rstrip('-. ')}-{digest}"
+
+    return f"{slug}{suffix}"
+
+
 # Bound on how many referenced policy definitions we resolve during validation,
 # and how many of those reads run concurrently.
 _MAX_REFERENCE_CHECKS = 200
@@ -158,8 +219,12 @@ class PolicyDeployService:
             errors.append("Initiative body is missing a 'properties' object.")
 
         # --- Initiative name ---
-        if not initiative_name or len(initiative_name) > 128:
-            errors.append("Initiative name must be 1–128 characters.")
+        name_limit = max_policy_name_length(scope)
+        if not initiative_name or len(initiative_name) > name_limit:
+            errors.append(
+                f"Initiative name must be 1–{name_limit} characters. "
+                "(128 is the display name limit, not the resource name limit.)"
+            )
         elif _INVALID_NAME_CHARS.intersection(initiative_name) or initiative_name[-1] in " .":
             errors.append(
                 "Initiative name contains characters ARM does not allow "

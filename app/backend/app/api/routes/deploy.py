@@ -10,10 +10,66 @@ import logging
 import httpx
 
 from app.auth.azure_ad_auth import User, get_current_user
-from app.services.policy_deploy_service import PolicyDeployService
+from app.services.policy_deploy_service import (
+    ASSIGNMENT_NAME_SUFFIX,
+    PolicyDeployService,
+    arm_policy_name,
+    max_policy_name_length,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/deploy", tags=["deploy"])
+
+
+def _arm_error_detail(exc: Exception) -> str:
+    """Human-readable detail for an ARM failure.
+
+    ``str(HTTPStatusError)`` only reports the status line and URL, which hid the
+    actual reason ARM rejected a request. Pull the message out of the ARM error
+    envelope so the caller sees, for example, the name-length violation.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        try:
+            payload = exc.response.json()
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            error = payload.get("error")
+            error = error if isinstance(error, dict) else {}
+            message = error.get("message") or payload.get("message")
+            if message:
+                code = error.get("code")
+                return f"{code}: {message}" if code else str(message)
+        text = (exc.response.text or "").strip()
+        if text:
+            return f"{exc} — {text[:500]}"
+    return str(exc)
+
+
+def _arm_error_status(exc: Exception) -> int:
+    """Map an ARM failure onto our status code.
+
+    A 4xx from ARM means the request itself was invalid, so reporting it as 502
+    (a gateway failure) mislabels a client error and hides the fix from the user.
+    """
+    if isinstance(exc, httpx.HTTPStatusError) and 400 <= exc.response.status_code < 500:
+        return 400
+    return 502
+
+
+def _assert_name_fits(scope: str, initiative_name: str) -> None:
+    """Reject an over-long initiative name before ARM does."""
+    limit = max_policy_name_length(scope)
+    if len(initiative_name) > limit:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Initiative name is {len(initiative_name)} characters but ARM "
+                f"allows at most {limit} for a policy resource name at this "
+                "scope (128 is the display name limit, not the resource name "
+                "limit). Shorten the name and deploy again."
+            ),
+        )
 
 
 def _svc(user: User) -> PolicyDeployService:
@@ -101,6 +157,8 @@ async def list_scopes(user: User = Depends(get_current_user)):
 
 class ValidateRequest(BaseModel):
     scope: str = Field(..., description="ARM scope path")
+    # Outer sanity bound only. The real limit is scope-dependent (64, or 24
+    # under a management group) and is enforced by validate_initiative.
     initiative_name: str = Field(..., min_length=1, max_length=128)
     initiative_body: dict[str, Any]
     check_references: bool = Field(
@@ -130,7 +188,9 @@ async def validate_initiative(
         return result
     except Exception as exc:
         logger.warning("validate_failed", exc_info=exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(
+            status_code=_arm_error_status(exc), detail=_arm_error_detail(exc)
+        )
 
 
 # ------------------------------------------------------------------
@@ -139,6 +199,8 @@ async def validate_initiative(
 
 class DeployRequest(BaseModel):
     scope: str = Field(..., description="ARM scope path")
+    # Outer sanity bound only. The real limit is scope-dependent (64, or 24
+    # under a management group) and is enforced by _assert_name_fits.
     initiative_name: str = Field(..., min_length=1, max_length=128)
     initiative_body: dict[str, Any]
     assign: bool = Field(False, description="Also create a policy assignment")
@@ -173,6 +235,7 @@ async def deploy_initiative(
 ):
     """Deploy a policy set definition (and optionally assign it)."""
     svc = _svc(user)
+    _assert_name_fits(req.scope, req.initiative_name)
     try:
         definition = await svc.deploy_initiative(
             scope=req.scope,
@@ -181,7 +244,9 @@ async def deploy_initiative(
         )
     except Exception as exc:
         logger.error("deploy_definition_failed", exc_info=exc)
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise HTTPException(
+            status_code=_arm_error_status(exc), detail=_arm_error_detail(exc)
+        )
 
     assignment = None
     if req.assign:
@@ -189,7 +254,9 @@ async def deploy_initiative(
             definition_id = definition.get("id", "")
             assignment = await svc.create_assignment(
                 scope=req.scope,
-                assignment_name=f"{req.initiative_name}-assignment",
+                assignment_name=arm_policy_name(
+                    req.initiative_name, req.scope, suffix=ASSIGNMENT_NAME_SUFFIX
+                ),
                 policy_set_definition_id=definition_id,
                 display_name=req.assignment_display_name or req.initiative_name,
                 description=req.assignment_description or "",
@@ -199,8 +266,12 @@ async def deploy_initiative(
         except Exception as exc:
             logger.error("deploy_assignment_failed", exc_info=exc)
             raise HTTPException(
-                status_code=502,
-                detail=f"Initiative created but assignment failed: {exc}",
+                status_code=_arm_error_status(exc),
+                detail=(
+                    "Initiative was created but the assignment failed, so the "
+                    "definition is left in place unassigned: "
+                    f"{_arm_error_detail(exc)}"
+                ),
             )
 
     # A compliance scan only makes sense once an assignment exists to evaluate.
