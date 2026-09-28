@@ -16,16 +16,19 @@ param resourceGroupName string = ''
 param namingPrefix string = ''
 
 @description('Azure OpenAI model name to deploy')
-param openAiModelName string = 'gpt-5.2'
+param openAiModelName string = 'gpt-5.6-luna'
 
 @description('Azure OpenAI model version')
-param openAiModelVersion string = '2025-12-11'
+param openAiModelVersion string = '2026-07-09'
 
 @description('Fallback Azure OpenAI model if primary is not available')
-param openAiFallbackModel string = 'gpt-5.4-mini'
+param openAiFallbackModel string = 'gpt-4.1'
 
 @description('Fallback model version')
-param openAiFallbackVersion string = '2026-03-17'
+param openAiFallbackVersion string = '2025-04-14'
+
+@description('Capacity for each chat model deployment (thousands of tokens per minute)')
+param openAiDeploymentCapacity int = 412
 
 @description('Azure OpenAI API version')
 param openAiApiVersion string = '2024-12-01-preview'
@@ -156,6 +159,7 @@ module openai './core/openai.bicep' = {
     modelVersion: openAiModelVersion
     fallbackModel: openAiFallbackModel
     fallbackVersion: openAiFallbackVersion
+    deploymentCapacity: openAiDeploymentCapacity
     apiVersion: openAiApiVersion
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
     privateDnsZoneId: privateDns.outputs.openaiZoneId

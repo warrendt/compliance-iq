@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "50880645118330916"
+      "templateHash": "8752208420843474736"
     }
   },
   "parameters": {
@@ -40,30 +40,37 @@
     },
     "openAiModelName": {
       "type": "string",
-      "defaultValue": "gpt-5.2",
+      "defaultValue": "gpt-5.6-luna",
       "metadata": {
         "description": "Azure OpenAI model name to deploy"
       }
     },
     "openAiModelVersion": {
       "type": "string",
-      "defaultValue": "2025-12-11",
+      "defaultValue": "2026-07-09",
       "metadata": {
         "description": "Azure OpenAI model version"
       }
     },
     "openAiFallbackModel": {
       "type": "string",
-      "defaultValue": "gpt-5.4-mini",
+      "defaultValue": "gpt-4.1",
       "metadata": {
         "description": "Fallback Azure OpenAI model if primary is not available"
       }
     },
     "openAiFallbackVersion": {
       "type": "string",
-      "defaultValue": "2026-03-17",
+      "defaultValue": "2025-04-14",
       "metadata": {
         "description": "Fallback model version"
+      }
+    },
+    "openAiDeploymentCapacity": {
+      "type": "int",
+      "defaultValue": 412,
+      "metadata": {
+        "description": "Capacity for each chat model deployment (thousands of tokens per minute)"
       }
     },
     "openAiApiVersion": {
@@ -326,7 +333,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10285706754563756363"
+              "templateHash": "11288972246343940544"
             }
           },
           "parameters": {
@@ -377,6 +384,26 @@
               }
             },
             {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-aca-infra-nsg', parameters('name'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": []
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-aca-workload-nsg', parameters('name'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": []
+              }
+            },
+            {
               "type": "Microsoft.Network/virtualNetworks",
               "apiVersion": "2023-09-01",
               "name": "[parameters('name')]",
@@ -393,6 +420,9 @@
                     "name": "aca-infra",
                     "properties": {
                       "addressPrefix": "[variables('infraPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-infra-nsg', parameters('name')))]"
+                      },
                       "delegations": [
                         {
                           "name": "Microsoft.App/environments",
@@ -406,7 +436,10 @@
                   {
                     "name": "aca-workload",
                     "properties": {
-                      "addressPrefix": "[variables('workloadPrefix')]"
+                      "addressPrefix": "[variables('workloadPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-workload-nsg', parameters('name')))]"
+                      }
                     }
                   },
                   {
@@ -422,6 +455,8 @@
                 ]
               },
               "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-infra-nsg', parameters('name')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-aca-workload-nsg', parameters('name')))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('name')))]"
               ]
             }
@@ -995,6 +1030,9 @@
           "fallbackVersion": {
             "value": "[parameters('openAiFallbackVersion')]"
           },
+          "deploymentCapacity": {
+            "value": "[parameters('openAiDeploymentCapacity')]"
+          },
           "apiVersion": {
             "value": "[parameters('openAiApiVersion')]"
           },
@@ -1018,7 +1056,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "1126036541989443451"
+              "templateHash": "13096277892497933672"
             }
           },
           "parameters": {
@@ -1035,19 +1073,37 @@
             },
             "modelName": {
               "type": "string",
-              "defaultValue": "gpt-5.2"
+              "defaultValue": "gpt-5.6-luna"
             },
             "modelVersion": {
               "type": "string",
-              "defaultValue": "2025-12-11"
+              "defaultValue": "2026-07-09"
             },
             "fallbackModel": {
               "type": "string",
-              "defaultValue": "gpt-5.4-mini"
+              "defaultValue": "gpt-4.1"
             },
             "fallbackVersion": {
               "type": "string",
-              "defaultValue": "2026-03-17"
+              "defaultValue": "2025-04-14"
+            },
+            "embeddingModel": {
+              "type": "string",
+              "defaultValue": "text-embedding-3-large",
+              "metadata": {
+                "description": "Embedding model backing semantic Azure Policy retrieval"
+              }
+            },
+            "embeddingVersion": {
+              "type": "string",
+              "defaultValue": "1"
+            },
+            "embeddingCapacity": {
+              "type": "int",
+              "defaultValue": 50,
+              "metadata": {
+                "description": "Capacity for the embedding deployment (queries are small and infrequent)"
+              }
             },
             "apiVersion": {
               "type": "string",
@@ -1066,9 +1122,23 @@
             },
             "deploymentCapacity": {
               "type": "int",
-              "defaultValue": 10,
+              "defaultValue": 412,
               "metadata": {
-                "description": "Capacity for each model deployment"
+                "description": "Capacity for each model deployment (thousands of tokens per minute)"
+              }
+            },
+            "raiPolicyName": {
+              "type": "string",
+              "defaultValue": "Microsoft.DefaultV2",
+              "metadata": {
+                "description": "Content filter for the primary model and embeddings. Newer models run on DefaultV2."
+              }
+            },
+            "fallbackRaiPolicyName": {
+              "type": "string",
+              "defaultValue": "Microsoft.Default",
+              "metadata": {
+                "description": "Content filter for the fallback model"
               }
             },
             "privateEndpointSubnetId": {
@@ -1107,6 +1177,7 @@
               },
               "properties": {
                 "customSubDomainName": "[parameters('name')]",
+                "disableLocalAuth": true,
                 "publicNetworkAccess": "[if(not(empty(parameters('devPublicIpAddress'))), 'Enabled', 'Disabled')]",
                 "networkAcls": {
                   "defaultAction": "Deny",
@@ -1131,7 +1202,7 @@
                   "version": "[parameters('modelVersion')]"
                 },
                 "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
-                "raiPolicyName": "Microsoft.Default"
+                "raiPolicyName": "[parameters('raiPolicyName')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
@@ -1153,10 +1224,33 @@
                   "version": "[parameters('fallbackVersion')]"
                 },
                 "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
-                "raiPolicyName": "Microsoft.Default"
+                "raiPolicyName": "[parameters('fallbackRaiPolicyName')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('modelName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+              ]
+            },
+            {
+              "condition": "[not(parameters('existingAccount'))]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('name'), parameters('embeddingModel'))]",
+              "sku": {
+                "name": "Standard",
+                "capacity": "[parameters('embeddingCapacity')]"
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('embeddingModel')]",
+                  "version": "[parameters('embeddingVersion')]"
+                },
+                "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+                "raiPolicyName": "[parameters('raiPolicyName')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), format('{0}-fallback', parameters('fallbackModel')))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
               ]
             },
@@ -1183,6 +1277,7 @@
                 ]
               },
               "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('embeddingModel'))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), format('{0}-fallback', parameters('fallbackModel')))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), parameters('modelName'))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
@@ -1227,6 +1322,10 @@
             "fallbackDeploymentName": {
               "type": "string",
               "value": "[if(parameters('existingAccount'), format('{0}-fallback', parameters('fallbackModel')), if(not(equals(parameters('modelName'), parameters('fallbackModel'))), format('{0}-fallback', parameters('fallbackModel')), ''))]"
+            },
+            "embeddingDeploymentName": {
+              "type": "string",
+              "value": "[parameters('embeddingModel')]"
             },
             "apiVersion": {
               "type": "string",
@@ -1938,6 +2037,10 @@
               {
                 "name": "AZURE_OPENAI_FALLBACK_MODEL",
                 "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'openai'), '2025-04-01').outputs.fallbackDeploymentName.value]"
+              },
+              {
+                "name": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedResourceGroupName')), 'Microsoft.Resources/deployments', 'openai'), '2025-04-01').outputs.embeddingDeploymentName.value]"
               },
               {
                 "name": "COSMOS_DB_ENDPOINT",
