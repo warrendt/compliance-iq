@@ -138,18 +138,21 @@ jobs:
       # runner always starts with none. If it simply creates one, every
       # parameter falls back to its default -- and the defaults do not describe
       # this deployment. Measured against the live environment's own succeeded
-      # deployment (dev-1783932737), six parameters differ:
+      # deployment (dev-1783932737), these parameters differ:
       #
       #   resourceGroupName  '' -> rg-dev          (a parallel stack)
       #   namingPrefix       '' -> unprefixed names
-      #   openAiModelName    gpt-5.6-sol -> gpt-5.2
-      #   openAiModelVersion 2026-07-09  -> 2025-12-11
-      #   openAiFallback*    gpt-4.1     -> gpt-5.4-mini
       #   authClientId       '' -> Easy Auth DISABLED
       #                           (main.bicep: !empty(authClientId) ? ...)
       #
+      # The Azure OpenAI model, version, fallback, capacity and content-filter
+      # defaults used to differ too (gpt-5.2 / capacity 10 vs gpt-5.6-luna /
+      # 412 live). They now mirror the live environment and are locked by
+      # app/tests/test_openai_iac_matches_live.py; the model variables below are
+      # still pinned so a deliberate model change is made in one place.
+      #
       # So a "successful" automated provision would have built a second stack
-      # with different models and no authentication. Refusing to run without
+      # with no authentication. Refusing to run without
       # explicit values is the only safe default: a deploy that cannot prove
       # which environment it is targeting must stop, not guess.
       - name: Require explicit environment configuration

@@ -15,7 +15,7 @@ from the external controls that no match referenced.
 
 The model is read from ``PipelineConfig.from_env()`` (``AZURE_OPENAI_DEPLOYMENT_NAME``)
 — never hardcoded — so the live deployment's model (for example,
-``gpt-5.6-sol``) is honoured.
+``gpt-5.6-luna``) is honoured.
 """
 
 import asyncio

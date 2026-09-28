@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Azure Open AI Settings
     azure_openai_endpoint: str
-    azure_openai_deployment_name: str = "gpt-5.6-sol"
+    azure_openai_deployment_name: str = "gpt-5.6-luna"
     azure_openai_fallback_model: str = "gpt-4.1-fallback"
     # Embedding deployment backing semantic policy retrieval. Must match the
     # model the shipped catalog embeddings were generated with; a mismatch

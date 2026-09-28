@@ -2,10 +2,13 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param modelName string = 'gpt-5.2'
-param modelVersion string = '2025-12-11'
-param fallbackModel string = 'gpt-5.4-mini'
-param fallbackVersion string = '2026-03-17'
+// Defaults mirror the live dev environment. When they drifted (gpt-5.2 here vs
+// gpt-5.6-luna live), `azd provision` would silently have repointed the backend
+// to a different model; app/tests/test_openai_iac_matches_live.py locks this.
+param modelName string = 'gpt-5.6-luna'
+param modelVersion string = '2026-07-09'
+param fallbackModel string = 'gpt-4.1'
+param fallbackVersion string = '2025-04-14'
 @description('Embedding model backing semantic Azure Policy retrieval')
 param embeddingModel string = 'text-embedding-3-large'
 param embeddingVersion string = '1'
@@ -15,8 +18,17 @@ param apiVersion string = '2024-12-01-preview'
 param sku string = 'S0'
 @description('SKU used for model deployments (e.g., GlobalStandard for GPT-5 family)')
 param deploymentSku string = 'GlobalStandard'
-@description('Capacity for each model deployment')
-param deploymentCapacity int = 10
+// Live deployments run at 412 (thousands of tokens per minute). The old default
+// of 10 meant a re-provision would have cut production throughput by ~97%
+// without any error. A fresh subscription lacking this quota fails loudly at
+// provision time instead, which is the safer failure; lower it via
+// AZURE_OPENAI_DEPLOYMENT_CAPACITY.
+@description('Capacity for each model deployment (thousands of tokens per minute)')
+param deploymentCapacity int = 412
+@description('Content filter for the primary model and embeddings. Newer models run on DefaultV2.')
+param raiPolicyName string = 'Microsoft.DefaultV2'
+@description('Content filter for the fallback model')
+param fallbackRaiPolicyName string = 'Microsoft.Default'
 param privateEndpointSubnetId string
 param privateDnsZoneId string
 param existingAccount bool = false
@@ -34,6 +46,10 @@ resource openai 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (!existin
   }
   properties: {
     customSubDomainName: name
+    // Entra ID only, matching the live account. Omitting this let a
+    // re-provision silently re-enable API-key auth; nothing uses keys (the app
+    // authenticates with its managed identity).
+    disableLocalAuth: true
     publicNetworkAccess: !empty(devPublicIpAddress) ? 'Enabled' : 'Disabled'
     networkAcls: {
       defaultAction: 'Deny'
@@ -69,7 +85,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
       version: modelVersion
     }
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-    raiPolicyName: 'Microsoft.Default'
+    raiPolicyName: raiPolicyName
   }
 }
 
@@ -88,7 +104,7 @@ resource fallbackDeployment 'Microsoft.CognitiveServices/accounts/deployments@20
       version: fallbackVersion
     }
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-    raiPolicyName: 'Microsoft.Default'
+    raiPolicyName: fallbackRaiPolicyName
   }
   dependsOn: [
     modelDeployment
@@ -113,7 +129,7 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
       version: embeddingVersion
     }
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-    raiPolicyName: 'Microsoft.Default'
+    raiPolicyName: raiPolicyName
   }
   dependsOn: [
     fallbackDeployment
