@@ -8,6 +8,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Static assets.
 COPY index.html platform.html frameworks.html styles.css main.js config.js /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
+COPY ksa/ /usr/share/nginx/html/ksa/
 
 # Inject the app URL at container start from COMPLIANCEIQ_APP_URL (if set).
 # nginx:alpine runs every /docker-entrypoint.d/*.sh before starting nginx.

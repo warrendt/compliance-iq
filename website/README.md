@@ -21,6 +21,11 @@ website/
 ├── styles.css            # All styling (palette matches the app sign-in card)
 ├── main.js               # Link wiring (app + GitHub) + mobile nav + footer year
 ├── config.js             # COMPLIANCEIQ_APP_URL + COMPLIANCEIQ_REPO_URL
+├── ksa/                  # Long-form guide: "Plan your migration to the Azure region in Saudi Arabia"
+│   ├── index.html        #   served at /ksa (and /ksa/) — see nginx.conf
+│   ├── article.css       #   article layout: hero, stats, sticky TOC, callouts, tables, lightbox
+│   ├── article.js        #   reading progress, TOC scrollspy, figure zoom, code copy
+│   └── images/           #   diagrams (Microsoft Learn / Azure-Samples, credited in-page) + figures
 ├── assets/
 │   ├── logo-full.png       # Full-colour lockup — Open Graph / social image
 │   ├── logo-icon.png       # Colour shield mark — favicon source
