@@ -57,6 +57,16 @@ Every link has a real `href` in the HTML (works with JS disabled); `main.js`
 then overrides the app/GitHub links from `config.js` so both destinations are
 configurable in one place.
 
+## Analytics
+
+Every page includes the Google Analytics 4 tag (`G-C453L0BSD0`) at the top of
+`<head>`. **Add it to any new page.** The measurement ID is public by design.
+
+Server-side request logs also reach Log Analytics through the Container Apps
+environment (`ContainerAppConsoleLogs_CL`, nginx access log format). Those
+logs show the ingress address rather than the visitor's IP, so use GA4 for
+audience, geography and engagement.
+
 ## Run locally
 
 Any static server works. Two options:
