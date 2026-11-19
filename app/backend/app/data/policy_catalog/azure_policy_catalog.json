@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-10T08:50:45.242068+00:00",
+  "generated_at": "2026-11-19T17:14:11.480298+00:00",
   "source": "az",
   "api_version": "2023-04-01",
-  "count": 2467,
+  "count": 2542,
   "definitions": [
     {
       "name": "0015ea4d-51ff-4ce3-8d8c-f3f8f0179a56",
@@ -97,7 +97,7 @@
     },
     {
       "name": "009259b0-12e8-42c9-94e7-7af86aa58d13",
-      "display_name": "[Preview]: Configure VMSS created with Shared Image Gallery images to install the Guest Attestation extension",
+      "display_name": "Configure VMSS created with Shared Image Gallery images to install the Guest Attestation extension",
       "description": "Configure VMSS created with Shared Image Gallery images to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -315,6 +315,21 @@
       ]
     },
     {
+      "name": "0253f0dc-b6de-4795-97ae-1ee0b4ffe3a6",
+      "display_name": "[Preview]: Container Apps environments should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage encryption at rest for Container Apps environments. Customer-managed keys enable data to be encrypted with an Azure Key Vault key created and owned by you, giving you control over the key lifecycle, including rotation and management.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "0277b2d5-6e6f-4d97-9929-a5c4eab56fd7",
       "display_name": "Enable logging by category group for Service Bus Namespaces (microsoft.servicebus/namespaces) to Log Analytics",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Log Analytics workspace for Service Bus Namespaces (microsoft.servicebus/namespaces).",
@@ -518,7 +533,6 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
-        "Deny",
         "Disabled"
       ]
     },
@@ -1550,6 +1564,20 @@
       ]
     },
     {
+      "name": "093e16cd-84e0-4332-b550-82f55cf85f28",
+      "display_name": "[Preview]: Azure Health Data Services workspaces should disable public network access",
+      "description": "Disabling public network access improves security by ensuring that Azure Health Data Services workspaces aren't exposed on the public internet. You can limit exposure of your workspaces by creating private endpoints instead.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "096a7055-30cb-2db4-3fda-41b20ac72667",
       "display_name": "Require interconnection security agreements",
       "description": "CMA_C1151 - Require interconnection security agreements",
@@ -1630,6 +1658,38 @@
         "deny",
         "Deny",
         "disabled",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "09911771-6d7f-4c4d-bee6-052b8839e9bb",
+      "display_name": "[Preview]: Configure vaulted backup with auto-protection for blobs on storage accounts with a given tag to a backup vault",
+      "description": "Enforce vaulted backup with auto-protection for blobs on all storage accounts that contain a given tag to a central backup vault. Auto-protection backs up all blob containers in the storage account, including containers created in the future. Doing this can help you manage vaulted backup of blobs contained across multiple storage accounts at scale. For more details, refer to https://aka.ms/AB-BlobBackupAzPolicies",
+      "category": "Backup",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "backupPolicyId": {
+          "type": "String",
+          "description": "Specify the ID of the backup policy to be used for configuring vaulted backup for blobs. The selected Azure Backup policy should be of type Azure Blobs (Azure Storage) and should support vaulted backup. This policy needs to be in a vault that is present in the location chosen above. For example - /subscriptions/<SubscriptionId>/resourceGroups/<resourceGroupName>/providers/Microsoft.DataProtection/vaults/<VaultName>/backupPolicies/<BackupPolicyName>. Also, make sure that this Backup vault's managed identity has the Storage Account Backup Contributor role assigned on the storage accounts for which backup is to be configured."
+        },
+        "inclusionTagName": {
+          "type": "String",
+          "description": "Name of the tag to use for including storage accounts in the scope of this policy. This should be used along with the Inclusion Tag Value parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies"
+        },
+        "inclusionTagValues": {
+          "type": "Array",
+          "description": "Value of the tag to use for including storage accounts in the scope of this policy (in case of multiple values, use a comma-separated list). This should be used along with the Inclusion Tag Name parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies."
+        },
+        "vaultLocation": {
+          "type": "String",
+          "description": "Specify the location of the storage accounts that you want to protect. Blobs in the storage accounts should be backed up to a vault in the same location. For example - CanadaCentral"
+        }
+      },
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -2149,6 +2209,26 @@
       ]
     },
     {
+      "name": "0cfd954d-079f-447f-91bf-89889e9d1de0",
+      "display_name": "[Preview]: Azure AI Services RAI policies should enforce egress baseline and endpoint restrictions",
+      "description": "Require present RAI egress policies to use enforced runtime mode, default deny, permitted FQDN actions, and source host/path scopes that are explicitly permitted and not denied. Does not validate rewrite targets or header credentials.",
+      "category": "Cognitive Services",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "permittedDestinations": {
+          "type": "Array",
+          "description": "Use host, host/path, or host/path/*; for example, api.contoso.com, api.contoso.com/public/item, or *.contoso.com/public/*. A bare hostname covers all paths. A leading *. includes the apex and subdomains. Host and path comparisons are case-insensitive. Do not include schemes, ports, queries, fragments, user information, spaces, or backslashes. An empty list permits no traffic-permitting scopes. Maximum 100 entries per list under the standard value-count iteration limit."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "0cfea604-3201-4e14-88fc-fae4c427a6c5",
       "display_name": "Blocked accounts with owner permissions on Azure resources should be removed",
       "description": "Deprecated accounts with owner permissions should be removed from your subscription.  Deprecated accounts are accounts that have been blocked from signing in.",
@@ -2484,6 +2564,25 @@
       ]
     },
     {
+      "name": "0eb02880-8961-46b2-a106-107bb2058f00",
+      "display_name": "[Preview]: Azure Key Vault Managed HSM extended regions should use allowed locations",
+      "description": "Audit Azure Key Vault Managed HSM pools when a multi-region replication extended (secondary) region is outside the list of allowed locations. This policy does not evaluate the pool's primary region.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure Key Vault Managed HSM extended (secondary) regions are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "0eb11858-8d9f-4525-b9ab-cc5eab07d27a",
       "display_name": "Enable logging by category group for Managed CCF Apps (microsoft.confidentialledger/managedccfs) to Storage",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Storage Account for Managed CCF Apps (microsoft.confidentialledger/managedccfs).",
@@ -2538,6 +2637,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "0ecbe514-db62-4284-992e-6dc3cde83d2b",
+      "display_name": "Azure Event Hub namespaces should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Event Hub namespace can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Network",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -2642,6 +2756,21 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "0f8a6cc3-040f-4b9b-8828-b37490729517",
+      "display_name": "[Preview]: Azure Managed Redis should disable public network access",
+      "description": "Disabling public network access improves security by ensuring that Azure Managed Redis isn't exposed on the public internet. Configure a private endpoint before disabling public network access.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -3118,6 +3247,26 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "11f7e854-02de-41b2-a10e-0bad91fcea42",
+      "display_name": "[Preview]: Microsoft Foundry Guardrails should satisfy an ACS policy baseline without automatic changes",
+      "description": "Check whether an ACS-format Guardrail already satisfies the whole baseline selected by its full ARM resource ID. Deny blocks a noncompliant write without changing the candidate. Audit reports noncompliance without blocking or modifying the Guardrail.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Deny",
+      "requires_parameters": true,
+      "required_parameters": {
+        "policyId": {
+          "type": "String",
+          "description": "Full ARM resource ID of the existing accounts/raiPolicies ACS baseline whose entire policy must already be satisfied. This is a resource reference, not a local manifest key or a single-point binding."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -3718,8 +3867,8 @@
     },
     {
       "name": "14b4e776-9fab-44b0-b53f-38d2458ea8be",
-      "display_name": "[Preview]: Extended Security Updates should be installed on Windows Server 2012 Arc machines.",
-      "description": "Windows Server 2012 Arc machines should have installed all the Extended Security Updates released by Microsoft. This policy requires that the Guest Configuration prerequisites have been deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol",
+      "display_name": "[Preview]: Eligible Azure Arc-enabled Windows Server 2016 (or 2012) machines should have ESUs installed.",
+      "description": "Windows Server 2016 (or 2012) Arc-enabled machines should have all applicable Extended Security Updates (ESUs) installed. This policy requires that Guest Configuration prerequisites have been deployed to the policy assignment scope. For Guest Configuration prerequisites and setup information, visit https://aka.ms/gcpol.",
       "category": "Guest Configuration",
       "mode": "Indexed",
       "effect": "AuditIfNotExists",
@@ -3820,20 +3969,6 @@
       "allowed_effects": [
         "Audit",
         "Deny",
-        "Disabled"
-      ]
-    },
-    {
-      "name": "153ab4ca-2d58-4b5d-9134-6d8c6bdd321c",
-      "display_name": "Function app slots should have Client Certificates (Incoming client certificates) enabled",
-      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to apps with Http version set to 1.1.",
-      "category": "App Service",
-      "mode": "Indexed",
-      "effect": "AuditIfNotExists",
-      "requires_parameters": false,
-      "required_parameters": {},
-      "allowed_effects": [
-        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -3955,10 +4090,10 @@
     {
       "name": "16fabb5c-7379-4433-8009-042066fa3a16",
       "display_name": "Exclude Usage Costs Resources",
-      "description": "This policy enables you to exlcude Usage Costs Resources. Usage costs include things like metered storage and Azure resources which are billed based on usage.",
+      "description": "This policy enables you to exclude Usage Costs Resources. Usage costs include things like metered storage and Azure resources which are billed based on usage.",
       "category": "General",
       "mode": "All",
-      "effect": "Deny",
+      "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
       "allowed_effects": [
@@ -4010,25 +4145,6 @@
         "Deny",
         "Disabled"
       ]
-    },
-    {
-      "name": "17763ad9-70c0-4794-9397-53d765932634",
-      "display_name": "Deploy associations for a managed application",
-      "description": "Deploys an association resource that associates selected resource types to the specified managed application.  This policy deployment does not support nested resource types.",
-      "category": "Managed Application",
-      "mode": "Indexed",
-      "effect": "deployIfNotExists",
-      "requires_parameters": true,
-      "required_parameters": {
-        "resourceTypesToAssociate": {
-          "type": "Array",
-          "description": "The list of resource types to be associated to the managed application."
-        },
-        "targetManagedApplicationId": {
-          "type": "String",
-          "description": "Resource ID of the managed application to which resources need to be associated."
-        }
-      }
     },
     {
       "name": "178c8b7e-1b6e-4289-44dd-2f1526b678a1",
@@ -4383,20 +4499,6 @@
       ]
     },
     {
-      "name": "19dd1db6-f442-49cf-a838-b0786b4401ef",
-      "display_name": "App Service apps should have Client Certificates (Incoming client certificates) enabled",
-      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to apps with Http version set to 1.1.",
-      "category": "App Service",
-      "mode": "Indexed",
-      "effect": "AuditIfNotExists",
-      "requires_parameters": false,
-      "required_parameters": {},
-      "allowed_effects": [
-        "AuditIfNotExists",
-        "Disabled"
-      ]
-    },
-    {
       "name": "19ea9d63-adee-4431-a95e-1913c6c1c75f",
       "display_name": "[Preview]: Azure Key Vault Managed HSM should disable public network access",
       "description": "Disable public network access for your Azure Key Vault Managed HSM so that it's not accessible over the public internet. This can reduce data leakage risks. Learn more at: https://docs.microsoft.com/azure/key-vault/managed-hsm/private-link#allow-trusted-services-to-access-managed-hsm.",
@@ -4514,6 +4616,25 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "1ab7fa8d-5574-4983-97ed-2a184ca9526e",
+      "display_name": "[Preview]: Log Analytics workspace replicas should use allowed locations",
+      "description": "Restrict the locations of Log Analytics workspace replicas to meet data residency and sovereignty requirements. A workspace with replication enabled is non-compliant when its replication location is missing or outside the allowed replica locations. Workspaces without replication enabled are compliant. The workspace's primary location is not evaluated.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where Log Analytics workspace replicas are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -4884,7 +5005,7 @@
     },
     {
       "name": "1c30f9cd-b84c-49cc-aa2c-9288447cc3b3",
-      "display_name": "[Preview]: vTPM should be enabled on supported virtual machines",
+      "display_name": "vTPM should be enabled on supported virtual machines",
       "description": "Enable virtual TPM device on supported virtual machines to facilitate Measured Boot and other OS security features that require a TPM. Once enabled, vTPM can be used to attest boot integrity. This assessment only applies to trusted launch enabled virtual machines.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -4940,6 +5061,20 @@
       ]
     },
     {
+      "name": "1c641ad7-3397-4594-b82a-ddc627e14582",
+      "display_name": "[Preview]: Audit Local Administrator Password Solution (LAPS)",
+      "description": "This policy audits the configuration of Local Administrator Password Solution (LAPS). For more information, see https://aka.ms/LAPS4ARC.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "1c6e92c9-99f0-4e55-9cf2-0c234dc48f99",
       "display_name": "Kubernetes clusters should not allow container privilege escalation",
       "description": "Do not allow containers to run with privilege escalation to root in a Kubernetes cluster. This recommendation is part of CIS 5.2.5 which is intended to improve the security of your Kubernetes environments. This policy is generally available for Kubernetes Service (AKS), and preview for Azure Arc enabled Kubernetes. For more information, see https://aka.ms/kubepolicydoc.",
@@ -4984,7 +5119,7 @@
     },
     {
       "name": "1cb4d9c2-f88f-4069-bee0-dba239a57b09",
-      "display_name": "[Preview]: Guest Attestation extension should be installed on supported Windows virtual machines",
+      "display_name": "Guest Attestation extension should be installed on supported Windows virtual machines",
       "description": "Install Guest Attestation extension on supported virtual machines to allow Azure Security Center to proactively attest and monitor the boot integrity. Once installed, boot integrity will be attested via Remote Attestation. This assessment applies to Trusted Launch and Confidential Windows virtual machines.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -5842,6 +5977,21 @@
       ]
     },
     {
+      "name": "215c2c77-3afb-4f55-be2f-709b60dc8d53",
+      "display_name": "[Preview]: Microsoft Foundry hosted agents should not use denied container images",
+      "description": "Helps organizations prevent hosted agents from using container images prohibited by organizational supply-chain requirements.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "21633c09-804e-7fcd-78e3-635c6bfe2be7",
       "display_name": "Provide capability to process customer-controlled audit records",
       "description": "CMA_C1126 - Provide capability to process customer-controlled audit records",
@@ -5919,7 +6069,7 @@
       "display_name": "App Service app slot configs should restrict default network access in Mission Platform products and services",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Configure App Service App Slot Configs to restrict default network access by setting IP Security Restrictions Default Action and SCM IP Security Restrictions Default Action to Deny.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -6667,6 +6817,39 @@
       ]
     },
     {
+      "name": "25ff226b-1747-454d-8ae2-0c11e0935753",
+      "display_name": "[Preview]: Azure SQL Managed Instance databases with a default secondary location should use an allowed location",
+      "description": "Audit Azure SQL Managed Instance databases with a default secondary location when that location is not in the list of allowed locations. This policy does not evaluate the managed instance or database primary location.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedDefaultSecondaryLocations": {
+          "type": "Array",
+          "description": "The list of allowed default secondary locations for Azure SQL Managed Instance databases."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "2625021b-d2ab-4e03-9de0-1b5e02f3fa02",
+      "display_name": "[Preview]: Windows machines should have Azure inventory enabled",
+      "description": "Machine inventory provides centralized visibility into details about Azure and Arc-enabled Windows machines, such as their operating systems, applications, services, and certificates. Machines are non-compliant when the Azure Machine Configuration inventory feature is not enabled. Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "2630c91f-8a20-8f43-14a2-2485b648e2a9",
       "display_name": "Configure Kubernetes clusters with Flux v2 configuration using Git repository and HTTPS CA Certificate",
       "description": "Deploy a 'fluxConfiguration' to Kubernetes clusters to assure that the clusters get their source of truth for workloads and configurations from the defined Git repository. This definition requires a HTTPS CA Certificate. For instructions, visit https://aka.ms/GitOpsFlux2Policy.",
@@ -6853,6 +7036,20 @@
       ]
     },
     {
+      "name": "27ac9ca0-9bc7-4f82-be36-a9023a132e01",
+      "display_name": "Configure selected Microsoft Defender for Cloud plans with managed extensions",
+      "description": "Configures selected Defender for Cloud plans through Microsoft.Security/batchPricings/global. Unselected plans remain unchanged. Extensions managed by this policy are enabled for selected plans.",
+      "category": "Security Center",
+      "mode": "All",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "27ce30dd-3d56-8b54-6144-e26d9a37a541",
       "display_name": "Ensure audit records are not altered",
       "description": "CMA_C1125 - Ensure audit records are not altered",
@@ -6983,6 +7180,25 @@
       "required_parameters": {},
       "allowed_effects": [
         "Modify",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "28db9b68-6637-453e-afc5-1dbb3b16df1b",
+      "display_name": "[Preview]: Azure Event Hubs geo-replication locations should use allowed regions",
+      "description": "Restrict all Azure Event Hubs geo-replication locations, including primary and secondary regions, to approved regions to meet data residency and sovereignty requirements.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedGeoReplicationLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure Event Hubs data may be actively replicated."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -7130,6 +7346,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "Manual",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "29be091c-88f9-419b-8ad9-82ce5dc452d3",
+      "display_name": "[Preview]: Azure AI Services RAI egress headers should use safe operations, references, and HTTPS",
+      "description": "Require safe header operations, reference-based header values, valid secret or managed identity references, and HTTPS for credential-bearing RAI egress rewrites. Does not validate runtime mode or network destination restrictions.",
+      "category": "Cognitive Services",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -8328,7 +8559,7 @@
       "display_name": "Restrict Site Configuration Access Rules",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restrict Site Configuration Access Rules to Specified Sources.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -8865,7 +9096,7 @@
     },
     {
       "name": "34c88cd4-5d72-4dbb-bf77-12c3cafe8791",
-      "display_name": "Must Have Anti Affinity Rules or Topology Spread Constraints Set",
+      "display_name": "[Preview]: Must Have Anti Affinity Rules or Topology Spread Constraints Set",
       "description": "This policy ensures that pods are scheduled on different nodes within the cluster. By enforcing anti-affinity rules or pod topology spread constraints, availability is maintained even if one of the nodes becomes unavailable. Pods will continue to run on other nodes, enhancing resilience.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -9274,6 +9505,20 @@
       ]
     },
     {
+      "name": "37ccbf90-57ed-4a86-b246-cece8ed746fe",
+      "display_name": "[Preview]: API Management services should use private link",
+      "description": "API Management services should have at least one approved private endpoint connection. Clients in a virtual network can securely access API Management services that have private endpoint connections through private links.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "37d5d366-8544-498a-9106-00185b29a9e3",
       "display_name": "Enable logging by category group for microsoft.cdn/cdnwebapplicationfirewallpolicies to Event Hub",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to an Event Hub for microsoft.cdn/cdnwebapplicationfirewallpolicies.",
@@ -9522,6 +9767,20 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "3978e137-4c94-4056-824c-c03c2616faad",
+      "display_name": "Function apps should have Client Certificates (Incoming client certificates) enabled",
+      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app.",
+      "category": "App Service",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -9955,6 +10214,21 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "3c2b2a2f-630f-44c5-bea3-b8f094412ea3",
+      "display_name": "Event Grid Domain should restrict external private endpoints",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restricting approved Event Grid Domain private endpoint connections to the current subscription or explicitly excluded subscriptions helps prevent unintended cross-subscription access.",
+      "category": "Mission",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -10535,7 +10809,7 @@
     },
     {
       "name": "3fc4dc25-5baf-40d8-9b05-7fe74c1bc64e",
-      "display_name": "Kubernetes clusters should use internal load balancers",
+      "display_name": "[Preview]: Kubernetes clusters should use internal load balancers",
       "description": "Use internal load balancers to make a Kubernetes service accessible only to applications running in the same virtual network as the Kubernetes cluster. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -10595,6 +10869,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "Manual",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "403594a1-5989-4edd-8ea3-cac19a8cc43a",
+      "display_name": "Azure Service Bus namespaces should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Service Bus namespace can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Network",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -10825,7 +11114,6 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
-        "Deny",
         "Disabled"
       ]
     },
@@ -10924,7 +11212,7 @@
     },
     {
       "name": "423dd1ba-798e-40e4-9c4d-b6902674b423",
-      "display_name": "Kubernetes clusters should disable automounting API credentials",
+      "display_name": "[Preview]: Kubernetes clusters should disable automounting API credentials",
       "description": "Disable automounting API credentials to prevent a potentially compromised Pod resource to run API commands against Kubernetes clusters. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -11498,6 +11786,20 @@
       ]
     },
     {
+      "name": "4583ece0-19ca-441a-b37d-0c2ad8e0e693",
+      "display_name": "App Service app slots should have Client Certificates (Incoming client certificates) enabled",
+      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to app service slots.",
+      "category": "App Service",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "4598f028-de1f-4694-8751-84dceb5f86b9",
       "display_name": "Azure Web Application Firewall on Azure Front Door should have request body inspection enabled",
       "description": "Ensure that Web Application Firewalls associated to Azure Front Doors have request body inspection enabled. This allows the WAF to inspect properties within the HTTP body that may not be evaluated in the HTTP headers, cookies, or URI.",
@@ -11605,7 +11907,7 @@
     },
     {
       "name": "46592696-4c7b-4bf3-9e45-6c2763bdc0a6",
-      "display_name": "Kubernetes cluster pods should use specified labels",
+      "display_name": "[Preview]: Kubernetes cluster pods should use specified labels",
       "description": "Use specified labels to identify the pods in a Kubernetes cluster. This policy is generally available for Kubernetes Service (AKS), and preview for Azure Arc enabled Kubernetes. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -11755,6 +12057,25 @@
       "required_parameters": {}
     },
     {
+      "name": "4778c705-6ec3-4a0e-86bb-01b7da8a5bf4",
+      "display_name": "[Preview]: Azure SQL databases with a default secondary location should use an allowed location",
+      "description": "Audit Azure SQL databases with a default secondary location when that location is not in the list of allowed locations.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedDefaultSecondaryLocations": {
+          "type": "Array",
+          "description": "The list of allowed default secondary locations for Azure SQL databases."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "477bd136-7dd9-55f8-48ac-bae096b86a07",
       "display_name": "Develop POA&M",
       "description": "CMA_C1156 - Develop POA&M",
@@ -11784,7 +12105,7 @@
     },
     {
       "name": "47a1ee2f-2a2a-4576-bf2a-e0e36709c2b8",
-      "display_name": "Kubernetes cluster containers should not share host namespaces",
+      "display_name": "[Preview]: Kubernetes cluster containers should not share host namespaces",
       "description": "Block pod containers from sharing the host process ID namespace, host IPC namespace, and host network namespace in a Kubernetes cluster. This recommendation aligns with the Kubernetes Pod Security Standards for host namespaces and is part of CIS 5.2.1, 5.2.2 and 5.2.3 which are intended to improve the security of your Kubernetes environments. This policy is generally available for Kubernetes Service (AKS), and preview for Azure Arc enabled Kubernetes. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -11900,8 +12221,8 @@
     },
     {
       "name": "4864134f-d306-4ff5-94d8-ea4553b18c97",
-      "display_name": "[Preview]: Enable Extended Security Updates (ESUs) license to keep Windows 2012 machines protected after their support lifecycle has ended.",
-      "description": "Enable Extended Security Updates (ESUs) license to keep Windows 2012 machines protected even after their support lifecycle has ended. Learn How to prepare to deliver Extended Security Updates for Windows Server 2012 through AzureArc please visit https://learn.microsoft.com/en-us/azure/azure-arc/servers/prepare-extended-security-updates. For more details on pricing please visit https://aka.ms/ArcWS2012ESUPricing",
+      "display_name": "[Preview]: Configure a Windows Server 2016 (or 2012) ESU license for eligible Azure Arc-enabled machines.",
+      "description": "Enable Extended Security Updates (ESUs) licenses to help protect Windows Server 2016 (or 2012) machines after the end of support. To learn how to prepare and enable Extended Security Updates through Azure Arc, visit https://learn.microsoft.com/azure/azure-arc/servers/prepare-extended-security-updates. For pricing information, visit https://aka.ms/ArcWS2012ESUPricing.",
       "category": "Azure Arc",
       "mode": "Indexed",
       "effect": "DeployIfNotExists",
@@ -12126,7 +12447,7 @@
     },
     {
       "name": "496e010e-fa91-4c00-be4b-92b481f67b58",
-      "display_name": "[Preview]: Configure VMs created with Shared Image Gallery images to install the Guest Attestation extension",
+      "display_name": "Configure VMs created with Shared Image Gallery images to install the Guest Attestation extension",
       "description": "Configure virtual machines created with Shared Image Gallery images to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -12186,6 +12507,21 @@
           "description": "Specify the maximum number of days a key can be valid for. Keys should be ephemeral. Using a key with a long validity period is not recommended."
         }
       },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "49af39b4-9394-4043-b153-f4a67201368b",
+      "display_name": "[Preview]: Azure Managed Lustre file systems should use customer-managed keys for encryption",
+      "description": "Use customer-managed keys to manage encryption at rest for Azure Managed Lustre file systems. Customer-managed keys enable data to be encrypted with Azure Key Vault keys that you own and manage.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
       "allowed_effects": [
         "Audit",
         "Deny",
@@ -12416,8 +12752,8 @@
     },
     {
       "name": "4c660f31-eafb-408d-a2b3-6ed2260bd26c",
-      "display_name": "[Preview]: Deny Extended Security Updates (ESUs) license creation or modification.",
-      "description": "This policy enables you to restrict the creation or modification of ESU licenses for Windows Server 2012 Arc machines. For more details on pricing please visit https://aka.ms/ArcWS2012ESUPricing",
+      "display_name": "[Preview]: Deny creation or modification of Windows Server 2016 (or 2012) ESU licenses.",
+      "description": "This policy enables you to restrict the creation or modification of Extended Security Updates (ESU) licenses for Windows Server 2016 (or 2012) Arc-enabled machines. For details about Windows Server ESUs and associated pricing, visit https://aka.ms/ArcWS2012ESUPricing.",
       "category": "Azure Arc",
       "mode": "Indexed",
       "effect": "Deny",
@@ -13630,6 +13966,20 @@
       ]
     },
     {
+      "name": "5204629f-8140-4a58-90a7-de4e04957a97",
+      "display_name": "[Preview]: Azure Application Gateway should use private link",
+      "description": "Azure Application Gateway instances should have at least one approved private endpoint connection. Clients in a virtual network can securely access resources that have private endpoint connections through private links.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "52152f42-0dda-40d9-976e-abb1acdd611e",
       "display_name": "Bot Service should have isolated mode enabled",
       "description": "Bots should be set to 'isolated only' mode. This setting configures Bot Service channels that require traffic over the public internet to be disabled.",
@@ -13852,6 +14202,20 @@
       ]
     },
     {
+      "name": "53ed4ed6-59b1-4f85-b6b3-36178fe76759",
+      "display_name": "[Preview]: Azure Stream Analytics clusters should have a fully configured managed private endpoint connection",
+      "description": "Managed private endpoints enable private outbound connectivity from Azure Stream Analytics clusters to supported input and output resources. This policy audits clusters that do not have at least one managed private endpoint with a completed setup.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "53fc1282-0ee3-2764-1319-e20143bb0ea5",
       "display_name": "Review contingency plan",
       "description": "CMA_C1247 - Review contingency plan",
@@ -13941,6 +14305,20 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "54e3763b-72a6-4c12-af2e-544b39d6bfee",
+      "display_name": "[Preview]: Azure Migrate projects should use private endpoints",
+      "description": "Azure Private Link lets you connect your virtual networks to Azure services without a public IP address at the source or destination. By requiring an approved private endpoint connection for Azure Migrate projects, you can reduce data leakage risks.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -14396,7 +14774,7 @@
     },
     {
       "name": "57c2e3f0-98cf-4c3b-aa6b-e8f70726e74e",
-      "display_name": "[Preview]: Configure supported Linux virtual machine scale sets to automatically install the Guest Attestation extension",
+      "display_name": "Configure supported Linux virtual machine scale sets to automatically install the Guest Attestation extension",
       "description": "Configure supported Linux virtual machines scale sets to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -14905,20 +15283,6 @@
       ]
     },
     {
-      "name": "5b0bd968-5cb5-4513-8987-27786c6f0df8",
-      "display_name": "App Service app slots should have Client Certificates (Incoming client certificates) enabled",
-      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to apps with Http version set to 1.1.",
-      "category": "App Service",
-      "mode": "Indexed",
-      "effect": "AuditIfNotExists",
-      "requires_parameters": false,
-      "required_parameters": {},
-      "allowed_effects": [
-        "AuditIfNotExists",
-        "Disabled"
-      ]
-    },
-    {
       "name": "5b1213e4-06e4-4ccc-81de-4201f2f7131a",
       "display_name": "Configure Azure Web PubSub Service to disable public network access",
       "description": "Disable public network access for your Azure Web PubSub resource so that it's not accessible over the public internet. This can reduce data leakage risks. Learn more at: https://aka.ms/awps/networkacls.",
@@ -15085,6 +15449,20 @@
       "required_parameters": {},
       "allowed_effects": [
         "Modify",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "5c8eef54-2020-4bd6-921c-7470989dee37",
+      "display_name": "App Service apps should have Client Certificates (Incoming client certificates) enabled",
+      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app.",
+      "category": "App Service",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -15826,7 +16204,7 @@
     },
     {
       "name": "6074e9a3-c711-4856-976d-24d51f9e065b",
-      "display_name": "[Preview]: Configure supported Linux virtual machines to automatically install the Guest Attestation extension",
+      "display_name": "Configure supported Linux virtual machines to automatically install the Guest Attestation extension",
       "description": "Configure supported Linux virtual machines to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -16475,6 +16853,21 @@
       ]
     },
     {
+      "name": "6313cbe8-6fb7-451b-a9e3-3f23b59843ca",
+      "display_name": "Azure Application Gateway should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS protocol version to 1.2 or newer improves security by ensuring your Azure Application Gateway only negotiates TLS 1.2 or newer with clients. This policy evaluates the gateway-wide TLS policy as well as the listener-specific TLS policies configured on SSL profiles, for both predefined and custom TLS policies. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Network",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "63594bb8-43bb-4bf0-bbf8-c67e5c28cb65",
       "display_name": "[Preview]: Linux machines should meet STIG compliance requirement for Azure compute",
       "description": "Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol. Machines are non-compliant if the machine is not configured correctly for one of the recommendations in STIG compliance requirement for Azure compute. DISA (Defense Information Systems Agency) provides technical guides STIG (Security Technical Implementation Guide) to secure compute OS as required by Department of Defense (DoD). For more details, https://public.cyber.mil/stigs/.",
@@ -16641,6 +17034,21 @@
       ]
     },
     {
+      "name": "648d76a0-e52b-474b-a6a5-930a82afda30",
+      "display_name": "Event Grid Topic should restrict external private endpoints",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restricting approved Event Grid Topic private endpoint connections to the current subscription or explicitly excluded subscriptions helps prevent unintended cross-subscription access.",
+      "category": "Mission",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "64948b6b-409d-4af2-970f-3b80fea408c1",
       "display_name": "Enable logging by category group for microsoft.networkcloud/clusters to Event Hub",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to an Event Hub for microsoft.networkcloud/clusters.",
@@ -16661,6 +17069,26 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "64a15c51-9797-4d6b-93a5-16b19e7de23b",
+      "display_name": "[Preview]: Azure AI Services RAI policy rewrites should target permitted destinations",
+      "description": "Require explicit and inherited RAI egress rewrite targets to use valid host and path syntax, remain within permitted destination scopes, and avoid denied destinations. Does not validate source endpoint restrictions or header credentials.",
+      "category": "Cognitive Services",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "permittedDestinations": {
+          "type": "Array",
+          "description": "Use host, host/path, or host/path/*; for example, api.contoso.com, api.contoso.com/public/item, or *.contoso.com/public/*. A bare hostname covers all paths. A leading *. includes the apex and subdomains. Host and path comparisons are case-insensitive. Do not include schemes, ports, queries, fragments, user information, spaces, or backslashes. An empty list permits no traffic-permitting scopes. Maximum 100 entries per list under the standard value-count iteration limit."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -16695,7 +17123,7 @@
     },
     {
       "name": "65280eef-c8b4-425e-9aec-af55e55bf581",
-      "display_name": "Kubernetes cluster should not use naked pods",
+      "display_name": "[Preview]: Kubernetes cluster should not use naked pods",
       "description": "Block usage of naked Pods. Naked Pods will not be rescheduled in the event of a node failure. Pods should be managed by Deployment, Replicset, Daemonset or Jobs",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -16767,26 +17195,6 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
-        "Disabled"
-      ]
-    },
-    {
-      "name": "65a1573e-cc90-412b-8db2-ba60731b0ea6",
-      "display_name": "Enable logging by category group for microsoft.customproviders/resourceproviders to Log Analytics",
-      "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Log Analytics workspace for microsoft.customproviders/resourceproviders.",
-      "category": "Monitoring",
-      "mode": "Indexed",
-      "effect": "DeployIfNotExists",
-      "requires_parameters": true,
-      "required_parameters": {
-        "logAnalytics": {
-          "type": "String",
-          "description": "Log Analytics Workspace"
-        }
-      },
-      "allowed_effects": [
-        "DeployIfNotExists",
-        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -16918,7 +17326,7 @@
     },
     {
       "name": "672fe5a1-2fcd-42d7-b85d-902b6e28c6ff",
-      "display_name": "[Preview]: Guest Attestation extension should be installed on supported Linux virtual machines",
+      "display_name": "Guest Attestation extension should be installed on supported Linux virtual machines",
       "description": "Install Guest Attestation extension on supported Linux virtual machines to allow Azure Security Center to proactively attest and monitor the boot integrity. Once installed, boot integrity will be attested via Remote Attestation. This assessment applies to Trusted Launch and Confidential Linux virtual machines.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -17347,7 +17755,7 @@
       "display_name": "Container Registry should restrict external private endpoints.",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. It blocks approval of private endpoint connections to Container Registries from subscriptions outside the mission tenant (unless explicitly excluded) to preserve enclave boundaries and reduce data exposure risk. Learn more at https://learn.microsoft.com/azure/container-registry/container-registry-private-link.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -17743,6 +18151,20 @@
       ]
     },
     {
+      "name": "6ba69446-e019-4750-a1be-c3f05871b99b",
+      "display_name": "[Preview]: Azure HorizonDB clusters should use private endpoints",
+      "description": "Private endpoints enable private connectivity to Azure HorizonDB clusters from a virtual network using Azure Private Link. An approved connection is required for private access; public network access must be disabled separately to restrict access to private endpoints.",
+      "category": "HorizonDB",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "6ba6d016-e7c3-4842-b8f2-4992ebc0d72d",
       "display_name": "SQL servers on machines should have vulnerability findings resolved",
       "description": "SQL vulnerability assessment scans your database for security vulnerabilities, and exposes any deviations from best practices such as misconfigurations, excessive permissions, and unprotected sensitive data. Resolving the vulnerabilities found can greatly improve your database security posture.",
@@ -17995,14 +18417,33 @@
       ]
     },
     {
-      "name": "6dcfa239-b481-4de9-a03f-980f24f3b0bb",
-      "display_name": "[Preview]: Official CIS Security Benchmarks for Windows Server",
-      "description": "This policy provides you the ability to customize and deploy CIS Security Benchmarks for audit purposes to your Windows Server across Azure, on-premises and hybrid environments. The contents of the CIS Security Benchmarks are in parity with the benchmarks published at https://cisecurity.org. Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol.",
+      "name": "6d86b8b7-3ede-4904-a398-51148422ee4d",
+      "display_name": "[Preview]: Linux machines should have Azure inventory enabled",
+      "description": "Machine inventory provides centralized visibility into details about Azure and Arc-enabled Linux machines, such as their software and daemons. Machines are non-compliant when the Azure Machine Configuration inventory feature is not enabled. Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol.",
       "category": "Guest Configuration",
       "mode": "Indexed",
       "effect": "AuditIfNotExists",
       "requires_parameters": false,
       "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "6dcfa239-b481-4de9-a03f-980f24f3b0bb",
+      "display_name": "Center for Internet Security (CIS) Benchmarks for Windows Server",
+      "description": "This policy provides you the ability to customize and deploy CIS Security Benchmarks for audit purposes to your Windows Server across Azure, on-premises and hybrid environments. The contents of the CIS Security Benchmarks are in parity with the benchmarks published at https://cisecurity.org. Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "BaselineSettings": {
+          "type": "String",
+          "description": "A customized Baseline Security JSON payload, for customizing security rules"
+        }
+      },
       "allowed_effects": [
         "AuditIfNotExists",
         "Disabled"
@@ -18365,6 +18806,25 @@
       ]
     },
     {
+      "name": "6fc286ae-f918-435b-b8ad-47640eb5dc40",
+      "display_name": "[Preview]: Deploy Diagnostic Settings for Azure HorizonDB clusters to Log Analytics workspace",
+      "description": "Deploys the diagnostic settings for Azure HorizonDB clusters to stream to a regional Log Analytics workspace when any Azure HorizonDB cluster which is missing this diagnostic settings is created or updated.",
+      "category": "HorizonDB",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "logAnalytics": {
+          "type": "String",
+          "description": "Select Log Analytics workspace from dropdown list. If this workspace is outside of the scope of the assignment you must manually grant 'Log Analytics Contributor' permissions (or similar) to the policy assignment's principal ID."
+        }
+      },
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "6fc8115b-2008-441f-8c61-9b722c1e537f",
       "display_name": "Workbooks should be saved to storage accounts that you control",
       "description": "With bring your own storage (BYOS), your workbooks are uploaded into a storage account that you control. That means you control the encryption-at-rest policy, the lifetime management policy, and network access. You will, however, be responsible for the costs associated with that storage account. For more information, visit https://aka.ms/workbooksByos",
@@ -18662,6 +19122,7 @@
       "requires_parameters": false,
       "required_parameters": {},
       "allowed_effects": [
+        "DeployIfNotExists",
         "AuditIfNotExists",
         "Disabled"
       ]
@@ -19077,6 +19538,21 @@
       ]
     },
     {
+      "name": "74d00793-ec3a-4504-94e3-0ec66963833b",
+      "display_name": "Azure IoT Hub should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure IoT Hub can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Internet of Things",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "7509877f-d414-4d79-8d1f-d600ea78d087",
       "display_name": "Resources should not be created in West Europe",
       "description": "This policy definition blocks resource creation and updates in West Europe.",
@@ -19276,30 +19752,6 @@
       ]
     },
     {
-      "name": "7646801f-46d5-48d0-9e18-efb884944f3e",
-      "display_name": "Enable logging by category group for microsoft.customproviders/resourceproviders to Storage",
-      "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Storage Account for microsoft.customproviders/resourceproviders.",
-      "category": "Monitoring",
-      "mode": "Indexed",
-      "effect": "DeployIfNotExists",
-      "requires_parameters": true,
-      "required_parameters": {
-        "resourceLocation": {
-          "type": "String",
-          "description": "Resource Location must be in the same location as the Storage Account."
-        },
-        "storageAccount": {
-          "type": "String",
-          "description": "Full path (resourceId) to the storage account."
-        }
-      },
-      "allowed_effects": [
-        "DeployIfNotExists",
-        "AuditIfNotExists",
-        "Disabled"
-      ]
-    },
-    {
       "name": "76539a09-021e-4300-953b-4c6018ac26dc",
       "display_name": "Enable logging by category group for Front Door and CDN profiles (microsoft.cdn/profiles) to Event Hub",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to an Event Hub for Front Door and CDN profiles (microsoft.cdn/profiles).",
@@ -19348,6 +19800,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "Modify",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "7671c803-6fb1-4a5f-a127-1eb7cf83bea2",
+      "display_name": "Key Vault should restrict external private endpoints in mission platforms",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restrict approved Key Vault private endpoint connections with missing endpoint IDs or endpoints in other subscriptions unless those subscriptions are explicitly excluded. This reduces access through unapproved private network paths.",
+      "category": "Mission",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -19442,6 +19909,21 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "7740c22b-07ef-4bac-9f5a-e38d188f80b7",
+      "display_name": "[Preview]: Microsoft Foundry agents and toolboxes should not use denied tools",
+      "description": "Prevents Microsoft Foundry agents and toolboxes from using tool types, MCP endpoints, and MCP connectors denied by your organization.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -19735,6 +20217,21 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "786761a8-5b7f-4b82-bfb1-df2d008c16fc",
+      "display_name": "Azure Event Grid namespaces should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Event Grid namespace can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Event Grid",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -20286,7 +20783,7 @@
     },
     {
       "name": "7cb1b219-61c6-47e0-b80c-4472cadeeb5f",
-      "display_name": "[Preview]: Configure supported Windows virtual machines to automatically enable Secure Boot",
+      "display_name": "Configure supported Windows virtual machines to automatically enable Secure Boot",
       "description": "Configure supported Windows virtual machines to automatically enable Secure Boot to mitigate against malicious and unauthorized changes to the boot chain. Once enabled, only trusted bootloaders, kernel and kernel drivers will be allowed to run.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -20351,7 +20848,6 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
-        "Deny",
         "Disabled"
       ]
     },
@@ -20986,7 +21482,7 @@
     },
     {
       "name": "82985f06-dc18-4a48-bc1c-b9f4f0098cfe",
-      "display_name": "Kubernetes cluster pods should only use approved host network and port list",
+      "display_name": "[Preview]: Kubernetes cluster pods should only use approved host network and port list",
       "description": "Restrict pod access to the host network and the allowable host ports in a Kubernetes cluster. This recommendation is part of CIS 5.2.4 which is intended to improve the security of your Kubernetes environments and aligns with Pod Security Standards (PSS) for hostPorts. This policy is generally available for Kubernetes Service (AKS), and preview for Azure Arc enabled Kubernetes. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -21541,6 +22037,21 @@
       ]
     },
     {
+      "name": "85455646-5d02-433e-a42d-265151140427",
+      "display_name": "[Preview]: Microsoft Foundry agents should only use allowed agent kinds",
+      "description": "Helps organizations govern Microsoft Foundry agent creation by restricting agents to explicitly allowed kinds.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "856331d3-0169-4dd9-9b04-cbb2ad3d1cf2",
       "display_name": "Enable logging by category group for Attestation providers (microsoft.attestation/attestationproviders) to Log Analytics",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Log Analytics workspace for Attestation providers (microsoft.attestation/attestationproviders).",
@@ -21606,6 +22117,26 @@
       "allowed_effects": [
         "Audit",
         "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "85b009e3-163c-4132-bba0-8b471c658587",
+      "display_name": "[Preview]: Linux Workloads should comply with the Official STIG Technical Implementation Guides",
+      "description": "This policy provides you the ability to customize and deploy STIG Guides for audit purposes to your Linux workloads across Azure, on-premises and hybrid environments. The contents of the STIG Guides  are in parity with the benchmarks published at https://www.cyber.mil/stigs/. The policy is powered by kompli - https://github.com/microsoft/kompli. Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "BaselineSettings": {
+          "type": "String",
+          "description": "A customized Baseline Security JSON payload, for customizing security rules"
+        }
+      },
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -21892,7 +22423,7 @@
     },
     {
       "name": "8791d062-ba96-4c34-b604-8538f7e30ca0",
-      "display_name": "[Preview]: Foundry model deployments should meet eligibility requirements",
+      "display_name": "Foundry model deployments should meet eligibility requirements",
       "description": "Ensures that model deployments in Microsoft Foundry comply with organizational eligibility requirements based on model attributes, such as availability status (preview or GA) and distribution source",
       "category": "Cognitive Services",
       "mode": "Microsoft.CognitiveServices.Data",
@@ -21953,10 +22484,39 @@
       ]
     },
     {
+      "name": "87ed7fc8-023e-45fa-8315-a1e54c60188f",
+      "display_name": "[Preview]: Configure Local Administrator Password Solution (LAPS)",
+      "description": "This policy configures Local Administrator Password Solution (LAPS). For more information, see https://aka.ms/LAPS4ARC.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "882e19a6-996f-400e-a30f-c090887254f4",
       "display_name": "Migrate WAF from WAF Config to WAF Policy on Application Gateway",
       "description": "If you have WAF Config instead of WAF Policy, then you may want to move to the new WAF Policy. Going forward, the firewall policy will support WAF policy settings, managed rulesets, exclusions, and disabled rule-groups.",
       "category": "Network",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "8855a114-45dd-4bb9-9953-4cc527764c90",
+      "display_name": "[Preview]: Azure NetApp Files accounts should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage encryption at rest for Azure NetApp Files accounts. Customer-managed keys enable data to be encrypted with an Azure Key Vault key created and owned by you, giving you control over the key lifecycle, including rotation and management.",
+      "category": "Sovereignty",
       "mode": "Indexed",
       "effect": "Audit",
       "requires_parameters": false,
@@ -23205,6 +23765,21 @@
       ]
     },
     {
+      "name": "91de0ea5-83b9-4110-a7dd-3d5053465b11",
+      "display_name": "Redis Cache should restrict external private endpoints in mission platforms",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restricting approved Redis Cache private endpoint connections to the current or explicitly excluded subscriptions helps prevent unauthorized cross-subscription access and data exfiltration.",
+      "category": "Mission",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "92012204-a7e4-4a95-bbe5-90d0d3e12735",
       "display_name": "Enable logging by category group for Application gateways (microsoft.network/applicationgateways) to Log Analytics",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Log Analytics workspace for Application gateways (microsoft.network/applicationgateways).",
@@ -23307,6 +23882,25 @@
       "allowed_effects": [
         "Audit",
         "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "92af37fe-f8ff-4ebd-883d-2f80cd765f8f",
+      "display_name": "[Preview]: IoT Hub Device Provisioning Service linked IoT Hub locations should use allowed locations",
+      "description": "Restrict the locations of IoT hubs linked to Azure IoT Hub Device Provisioning Service to approved regions to meet data residency and sovereignty requirements. This policy evaluates linked IoT Hub allocation destinations and does not evaluate the provisioning service's primary location.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where IoT hubs linked to Device Provisioning Service are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -23510,6 +24104,25 @@
       "required_parameters": {},
       "allowed_effects": [
         "Manual",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "93fc07ef-f4b9-418a-9190-6e2628e72856",
+      "display_name": "[Preview]: Azure IoT Hub disaster recovery secondary locations should use allowed locations",
+      "description": "Audit Azure IoT hubs when their Microsoft-managed disaster recovery secondary location is outside the list of allowed locations. This policy does not evaluate the hub's primary location.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedSecondaryLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure IoT Hub disaster recovery secondaries are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -23756,7 +24369,7 @@
     },
     {
       "name": "95406fc3-1f69-47b0-8105-4c03b276ec5c",
-      "display_name": "[Preview]: Configure supported Linux virtual machines to automatically enable Secure Boot",
+      "display_name": "Configure supported Linux virtual machines to automatically enable Secure Boot",
       "description": "Configure supported Linux virtual machines to automatically enable Secure Boot to mitigate against malicious and unauthorized changes to the boot chain. Once enabled, only trusted bootloaders, kernel and kernel drivers will be allowed to run.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -24131,8 +24744,22 @@
       ]
     },
     {
+      "name": "973a0211-4dcc-42ea-87eb-e9be5db0e585",
+      "display_name": "[Preview]: Azure Kubernetes Service clusters should use private endpoints",
+      "description": "Azure Private Link lets you connect your virtual networks to Azure services without a public IP address at the source or destination. By requiring an approved private endpoint connection for Azure Kubernetes Service clusters, you can reduce exposure of the API server to the public internet.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "97566dd7-78ae-4997-8b36-1c7bfe0d8121",
-      "display_name": "[Preview]: Secure Boot should be enabled on supported Windows virtual machines",
+      "display_name": "Secure Boot should be enabled on supported Windows virtual machines",
       "description": "Enable Secure Boot on supported Windows virtual machines to mitigate against malicious and unauthorized changes to the boot chain. Once enabled, only trusted bootloaders, kernel and kernel drivers will be allowed to run. This assessment applies to Trusted Launch and Confidential Windows virtual machines.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -24350,6 +24977,25 @@
       ]
     },
     {
+      "name": "9860282b-3c80-4538-8bd7-dbc8cf012c6e",
+      "display_name": "[Preview]: Azure NetApp Files volumes should replicate only with volumes in allowed locations",
+      "description": "Restrict the locations of Azure NetApp Files replication partners to meet data residency and sovereignty requirements. A volume in a replication relationship is non-compliant when the remote volume's region is outside the allowed replica locations, or when the volume is a replication destination outside the allowed replica locations. Volumes without replication are not evaluated. A source volume's own location is not evaluated.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure NetApp Files volume replicas and their replication partners are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "98728c90-32c7-4049-8429-847dc0f4fe37",
       "display_name": "Key Vault secrets should have an expiration date",
       "description": "Secrets should have a defined expiration date and not be permanent. Secrets that are valid forever provide a potential attacker with more time to compromise them. It is a recommended security practice to set expiration dates on secrets.",
@@ -24417,6 +25063,38 @@
       ]
     },
     {
+      "name": "98d99685-d085-4b73-b584-c4f1c631c78b",
+      "display_name": "[Preview]: Configure vaulted backup with auto-protection for ADLS blobs on storage accounts without a given tag to a backup vault",
+      "description": "Enforce vaulted backup with auto-protection for Azure Data Lake Storage (hierarchical namespace) blobs on all storage accounts that do not contain a given tag to a central backup vault. Auto-protection backs up all blob containers in the storage account, including containers created in the future. Doing this can help you manage vaulted backup of blobs contained across multiple storage accounts at scale. For more details, refer to https://aka.ms/AB-BlobBackupAzPolicies",
+      "category": "Backup",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "backupPolicyId": {
+          "type": "String",
+          "description": "Specify the ID of the backup policy to be used for configuring vaulted backup for ADLS blobs. The selected Azure Backup policy should be of type Azure Data Lake Storage and should support vaulted backup. This policy needs to be in a vault that is present in the location chosen above. For example - /subscriptions/<SubscriptionId>/resourceGroups/<resourceGroupName>/providers/Microsoft.DataProtection/vaults/<VaultName>/backupPolicies/<BackupPolicyName>. Also, make sure that this Backup vault's managed identity has the Storage Account Backup Contributor role assigned on the storage accounts for which backup is to be configured."
+        },
+        "exclusionTagName": {
+          "type": "String",
+          "description": "Name of the tag to use for excluding storage accounts in the scope of this policy. This should be used along with the Exclusion Tag Value parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies"
+        },
+        "exclusionTagValues": {
+          "type": "Array",
+          "description": "Value of the tag to use for excluding storage accounts in the scope of this policy (in case of multiple values, use a comma-separated list). This should be used along with the Exclusion Tag Name parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies."
+        },
+        "vaultLocation": {
+          "type": "String",
+          "description": "Specify the location of the storage accounts that you want to protect. Blobs in the storage accounts should be backed up to a vault in the same location. For example - CanadaCentral"
+        }
+      },
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "98e33927-8d7f-6d5f-44f5-2469b40b7215",
       "display_name": "Implement Incident handling capability",
       "description": "CMA_C1367 - Implement Incident handling capability",
@@ -24432,7 +25110,7 @@
     },
     {
       "name": "98ea2fc7-6fc6-4fd1-9d8d-6331154da071",
-      "display_name": "[Preview]: Configure supported Windows virtual machines to automatically install the Guest Attestation extension",
+      "display_name": "Configure supported Windows virtual machines to automatically install the Guest Attestation extension",
       "description": "Configure supported Windows virtual machines to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -24469,7 +25147,25 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
-        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "99645d66-5f63-4f02-b947-46de4e9a040e",
+      "display_name": "[Preview]: SQL Managed Instance databases should use failover groups with partner regions in allowed locations",
+      "description": "Restrict the partner regions of failover groups referenced by Azure SQL Managed Instance databases to meet data residency and sovereignty requirements. Databases without a failover-group reference are not evaluated. A referenced failover group that cannot be found is non-compliant. The database and local region are not restricted.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "listOfAllowedLocations": {
+          "type": "Array",
+          "description": "The list of locations that can be specified when deploying resources."
+        }
+      },
+      "allowed_effects": [
+        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -24589,7 +25285,7 @@
     },
     {
       "name": "9a5f4e39-e427-4d5d-ae73-93db00328bec",
-      "display_name": "Kubernetes resources should have required annotations",
+      "display_name": "[Preview]: Kubernetes resources should have required annotations",
       "description": "Ensure that required annotations are attached on a given Kubernetes resource kind for improved resource management of your Kubernetes resources. This policy is generally available for Kubernetes Service (AKS), and preview for Azure Arc enabled Kubernetes. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -24795,6 +25491,25 @@
       ]
     },
     {
+      "name": "9bf20ff2-0f28-47ea-ab41-0d070cf1d73b",
+      "display_name": "[Preview]: Azure Service Bus geo-replication locations should use allowed regions",
+      "description": "Restrict the Azure regions where Service Bus data is actively replicated, including primary and secondary regions, to meet data residency and sovereignty requirements.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedGeoReplicationLocations": {
+          "type": "Array",
+          "description": "The list of Azure regions where Service Bus data may be actively replicated."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "9c014953-ef68-4a98-82af-fd0f6b2306c8",
       "display_name": "App Service app slots that use Python should use a specified 'Python version'",
       "description": "Periodically, newer versions are released for Python software either due to security flaws or to include additional functionality. Using the latest Python version for App Service apps is recommended in order to take advantage of security fixes, if any, and/or new functionalities of the latest version. This policy only applies to Linux apps. This policy requires you to specify a Python version that meets your requirements.",
@@ -24975,6 +25690,21 @@
       "display_name": "[Preview]: Container Registry should be Zone Redundant",
       "description": "Container Registry can be configured to be Zone Redundant or not. When the zoneRedundancy property for a Container Registry is set to 'Disabled', it means the registry is not Zone Redundant. Enforcing this policy helps ensure that your Container Registry is appropriately configured for zone resilience, reducing the risk of downtime during zone outages.",
       "category": "Resilience",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "9d35b50d-a1a5-4d67-a7ab-5115442bbfbb",
+      "display_name": "[Preview]: Restrict resource types to Azure services supported in Azure Local",
+      "description": "Restrict the use of Azure services to those that run on Azure Local or have a supported migration path to Azure Local.",
+      "category": "Sovereignty",
       "mode": "Indexed",
       "effect": "Audit",
       "requires_parameters": false,
@@ -25305,8 +26035,28 @@
       ]
     },
     {
+      "name": "9edf9b13-68ea-4cf8-8ac4-4e29ff113bdf",
+      "display_name": "[Preview]: Microsoft Foundry Guardrails should automatically enforce an ACS policy baseline",
+      "description": "For ACS-format Guardrails, automatically enforce the whole baseline selected by its full ARM resource ID alongside the customer policy. Enforced Deny requests service-managed composition before the final check and blocks the write if the baseline cannot be enforced. Audit reports compliance without changes.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Deny",
+      "requires_parameters": true,
+      "required_parameters": {
+        "policyId": {
+          "type": "String",
+          "description": "Full ARM resource ID of the existing accounts/raiPolicies ACS baseline whose entire policy must be satisfied. This is a resource reference, not a local manifest key or a single-point binding."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "9f061a12-e40d-4183-a00e-171812443373",
-      "display_name": "Kubernetes clusters should not use the default namespace",
+      "display_name": "[Preview]: Kubernetes clusters should not use the default namespace",
       "description": "Prevent usage of the default namespace in Kubernetes clusters to protect against unauthorized access for ConfigMap, Pod, Secret, Service, and ServiceAccount resource types. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -25865,7 +26615,7 @@
     },
     {
       "name": "a21f8c92-9e22-4f09-b759-50500d1d2dda",
-      "display_name": "[Preview]: Guest Attestation extension should be installed on supported Linux virtual machines scale sets",
+      "display_name": "Guest Attestation extension should be installed on supported Linux virtual machines scale sets",
       "description": "Install Guest Attestation extension on supported Linux virtual machines scale sets to allow Azure Security Center to proactively attest and monitor the boot integrity. Once installed, boot integrity will be attested via Remote Attestation.  This assessment applies to Trusted Launch and Confidential Linux virtual machine scale sets.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -26021,6 +26771,25 @@
       "allowed_effects": [
         "DeployIfNotExists",
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "a2713d30-18dc-48a3-8e2f-0966c2133989",
+      "display_name": "[Preview]: Azure API Management additional gateway locations should use allowed locations",
+      "description": "Restrict Azure API Management additional gateway locations to approved regions to meet data residency and sovereignty requirements. This policy evaluates secondary multi-region deployments and does not evaluate the service's primary location.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure API Management additional gateways are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -26219,6 +26988,7 @@
         }
       },
       "allowed_effects": [
+        "DeployIfNotExists",
         "AuditIfNotExists",
         "Disabled"
       ]
@@ -26947,7 +27717,7 @@
       "display_name": "App network configuration should deny link to external private endpoints",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Deny external private endpoints linked to apps in this tenant.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -27006,6 +27776,20 @@
       "display_name": "SQL Managed Instance should have the minimal TLS version of 1.2",
       "description": "Setting minimal TLS version to 1.2 improves security by ensuring your SQL Managed Instance can only be accessed from clients using TLS 1.2. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
       "category": "SQL",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "a88d4a2c-216a-4fdb-8df0-b8ad54354f57",
+      "display_name": "[Preview]: Azure Red Hat OpenShift clusters should disable public network access",
+      "description": "Disabling public access to the API server and ingress endpoints improves security by ensuring that Azure Red Hat OpenShift clusters aren't exposed on the public internet.",
+      "category": "Sovereignty",
       "mode": "Indexed",
       "effect": "Audit",
       "requires_parameters": false,
@@ -27274,7 +28058,7 @@
     {
       "name": "a9b99dd8-06c5-4317-8629-9d86a3c6e7d9",
       "display_name": "Deploy network watcher when virtual networks are created",
-      "description": "This policy creates a network watcher resource in regions with virtual networks. You need to ensure existence of a resource group named networkWatcherRG, which will be used to deploy network watcher instances.",
+      "description": "Ensures that each Azure region containing virtual networks has a Network Watcher. An existing Network Watcher in any resource group within the subscription satisfies the policy; otherwise, remediation deploys one to networkWatcherRG, which must already exist.",
       "category": "Network",
       "mode": "Indexed",
       "effect": "DeployIfNotExists",
@@ -27464,16 +28248,17 @@
       ]
     },
     {
-      "name": "ab6a902f-9493-453b-928d-62c30b11b5a6",
-      "display_name": "Function apps should have Client Certificates (Incoming client certificates) enabled",
-      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to apps with Http version set to 1.1.",
-      "category": "App Service",
-      "mode": "Indexed",
-      "effect": "AuditIfNotExists",
+      "name": "ab9b6e43-da27-48c4-9928-bfe2bb7ef790",
+      "display_name": "Restrict Azure Resources for Risk-Restricted Subscriptions",
+      "description": "This policy limits a subscription that was approved with restrictions to a defined set of resource types and blocks all other resource types.",
+      "category": "System Policy",
+      "mode": "All",
+      "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
       "allowed_effects": [
-        "AuditIfNotExists",
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -28580,7 +29365,7 @@
     },
     {
       "name": "b1bb3592-47b8-4150-8db0-bfdcc2c8965b",
-      "display_name": "[Preview]: Linux virtual machines should use Secure Boot",
+      "display_name": "Linux virtual machines should use Secure Boot",
       "description": "To protect against the installation of malware-based rootkits and boot kits, enable Secure Boot on supported Linux virtual machines. Secure Boot ensures that only signed operating systems and drivers will be allowed to run. This assessment only applies to Linux virtual machines that have the Azure Monitor Agent installed.",
       "category": "Security Center",
       "mode": "All",
@@ -29091,6 +29876,20 @@
       ]
     },
     {
+      "name": "b51aacd8-e77a-4ac9-b6a5-26149b091e89",
+      "display_name": "[Preview]: Azure HorizonDB clusters should have a Microsoft Entra administrator provisioned",
+      "description": "Using a Microsoft Entra administrator for Azure HorizonDB clusters simplifies permission management and centralizes identity management for database users.",
+      "category": "HorizonDB",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "b52376f7-9612-48a1-81cd-1ffe4b61032c",
       "display_name": "Public network access should be disabled for PostgreSQL servers",
       "description": "Disable the public network access property to improve security and ensure your Azure Database for PostgreSQL can only be accessed from a private endpoint. This configuration disables access from any public address space outside of Azure IP range, and denies all logins that match IP or virtual network-based firewall rules.",
@@ -29152,7 +29951,7 @@
       "display_name": "App Service app configs should restrict default network access in Mission Platform products and services",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Configure App Service App Configs to restrict default network access by setting IP Security Restrictions Default Action and SCM IP Security Restrictions Default Action to Deny.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -29421,6 +30220,21 @@
       ]
     },
     {
+      "name": "b6ca2367-8597-4a3f-ab19-48f58d6d9278",
+      "display_name": "[Preview]: Microsoft Foundry agents should not use denied agent kinds",
+      "description": "Helps organizations prevent Microsoft Foundry agent kinds that are prohibited by organizational requirements.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "b6e2945c-0b7b-40f5-9233-7a5323b5cdc6",
       "display_name": "Network Watcher should be enabled",
       "description": "Network Watcher is a regional service that enables you to monitor and diagnose conditions at a network scenario level in, to, and from Azure. Scenario level monitoring enables you to diagnose problems at an end to end network level view. It is required to have a network watcher resource group to be created in every region where a virtual network is present. An alert is enabled if a network watcher resource group is not available in a particular region.",
@@ -29641,6 +30455,21 @@
       ]
     },
     {
+      "name": "b7a590ab-7d17-46fa-b4f3-d6f6eca3c3ba",
+      "display_name": "Resource requests should not use preview API versions",
+      "description": "Using generally available (GA) API versions helps ensure that resources are created and updated through stable, supported APIs. Create and update (PUT and PATCH) requests that specify an API version ending in '-preview' are evaluated at request time.",
+      "category": "General",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "b81f454c-eebb-4e4f-9dfe-dca060e8a8fd",
       "display_name": "[Preview]: Kubernetes clusters should restrict creation of given resource type",
       "description": "Given Kubernetes resource type should not be deployed in certain namespace.",
@@ -29786,6 +30615,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "Manual",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "b89ebd51-73f9-4e3e-a1ac-c1c143aaa500",
+      "display_name": "[Preview]: Kubernetes clusters should use unique ingress hostnames",
+      "description": "Ensure Ingress resources have unique hostnames across the cluster. Duplicate ingress hostnames can cause routing conflicts where traffic intended for one service is incorrectly routed to another. This policy syncs Ingress resources into OPA via Gatekeeper. Before applying, verify Gatekeeper pods memory capacity won't be exceeded. Parameters apply to specific namespaces, but it syncs all resources of that type across all namespaces. Currently in preview for Kubernetes Service (AKS).",
+      "category": "Kubernetes",
+      "mode": "Microsoft.Kubernetes.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -30052,6 +30896,21 @@
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. It blocks approval of SQL private endpoint connections from subscriptions outside the mission tenant to preserve enclave boundaries and prevent data exfiltration (see https://learn.microsoft.com/azure/private-link/private-link-overview).",
       "category": "Mission",
       "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "b9f8555f-abee-4709-be6b-cc34789f6cc8",
+      "display_name": "SRE Agents should not be configured in Autonomous mode",
+      "description": "Require human approval before SRE Agents perform write actions on Azure resources, reducing the risk of unintended autonomous changes.",
+      "category": "SRE Agent",
+      "mode": "Indexed",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -30424,6 +31283,20 @@
       },
       "allowed_effects": [
         "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "bc5c669d-8fe7-4b64-b570-4ee0a86aa5a8",
+      "display_name": "Azure App Configuration resources should be associated with an NSP (Network Security Perimeter)",
+      "description": "Associating Azure App Configuration resources with an NSP improves the security by ensuring its access is controlled only via NSP access rules.",
+      "category": "App Configuration",
+      "mode": "Indexed",
+      "effect": "AuditIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -31163,6 +32036,21 @@
       ]
     },
     {
+      "name": "c089a722-0fbf-4a16-ab4f-1f5065291844",
+      "display_name": "Azure Event Grid domains should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Event Grid domain can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Event Grid",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "c0c3130e-7dda-4187-aed0-ee4a472eaa60",
       "display_name": "Configure private endpoint connections on Azure Automation accounts",
       "description": "Private endpoint connections allow secure communication by enabling private connectivity to Azure Automation accounts without a need for public IP addresses at the source or destination. Learn more about private endpoints in Azure Automation at https://docs.microsoft.com/azure/automation/how-to/private-link-security.",
@@ -31269,25 +32157,6 @@
         "Manual",
         "Disabled"
       ]
-    },
-    {
-      "name": "c15c281f-ea5c-44cd-90b8-fc3c14d13f0c",
-      "display_name": "Deploy associations for a custom provider",
-      "description": "Deploys an association resource that associates selected resource types to the specified custom provider. This policy deployment does not support nested resource types.",
-      "category": "Custom Provider",
-      "mode": "Indexed",
-      "effect": "deployIfNotExists",
-      "requires_parameters": true,
-      "required_parameters": {
-        "resourceTypesToAssociate": {
-          "type": "Array",
-          "description": "The list of resource types to be associated to the custom provider."
-        },
-        "targetCustomProviderId": {
-          "type": "String",
-          "description": "Resource ID of the Custom provider to which resources need to be associated."
-        }
-      }
     },
     {
       "name": "c15dcc82-b93c-4dcb-9332-fbf121685b54",
@@ -31691,6 +32560,21 @@
       ]
     },
     {
+      "name": "c4225fe7-a11b-4e6b-8f9c-989dd2907bd2",
+      "display_name": "[Preview]: Azure Communication Services should disable public network access",
+      "description": "Disabling public network access helps reduce exposure of Azure Communication Services resources to the public internet.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "c423e64d-995c-9f67-0403-b540f65ba42a",
       "display_name": "Assess Security Controls",
       "description": "CMA_C1145 - Assess Security Controls",
@@ -31867,6 +32751,25 @@
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "c58f681b-52c4-4935-820b-e2ced188a98c",
+      "display_name": "[Preview]: Azure Machine Learning registry replica locations should use allowed locations",
+      "description": "Restrict the regions where Azure Machine Learning registries provision replicated backing resources to meet data residency and sovereignty requirements. This policy evaluates the locations configured in the registry region details.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedReplicaLocations": {
+          "type": "Array",
+          "description": "The list of locations where Azure Machine Learning registries are allowed to provision replicated backing resources."
+        }
+      },
       "allowed_effects": [
         "Audit",
         "Disabled"
@@ -32216,6 +33119,20 @@
       ]
     },
     {
+      "name": "c6d24366-daf2-401a-bfd5-73cd3d3a01dc",
+      "display_name": "Configure Azure App Configuration resources to associate with NSP (Network Security Perimeter)",
+      "description": "Associating Azure App Configuration resources with an NSP improves the security by ensuring its access is controlled only via NSP access rules.",
+      "category": "App Configuration",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "c6fe3856-4635-36b6-983c-070da12a953b",
       "display_name": "Implement the risk management strategy",
       "description": "CMA_C1744 - Implement the risk management strategy",
@@ -32466,6 +33383,21 @@
       ]
     },
     {
+      "name": "c8656c68-eb4e-4f72-a90a-54b6bfbd3c33",
+      "display_name": "[Preview]: API Management gateway hostname configurations should use TLS version 1.2 or newer",
+      "description": "Enforcing TLS 1.2 or newer improves security by ensuring API Management gateway hostname configurations do not accept connections over TLS 1.0 or 1.1, which have well documented security vulnerabilities. This policy audits gateway hostname configurations where TLS 1.0 or TLS 1.1 is explicitly enabled.",
+      "category": "Network",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "c873b3ba-c605-42e4-a64b-a142a93826fc",
       "display_name": "Mutate K8s Container to drop all capabilities",
       "description": "Mutates securityContext.capabilities.drop to add in \"ALL\". This drops all capabilities for k8s linux containers",
@@ -32616,7 +33548,7 @@
     },
     {
       "name": "c9b2ae08-09e2-4f0e-bb43-b60bf0135bdf",
-      "display_name": "[Preview]: Configure supported Windows virtual machine scale sets to automatically install the Guest Attestation extension",
+      "display_name": "Configure supported Windows virtual machine scale sets to automatically install the Guest Attestation extension",
       "description": "Configure supported Windows virtual machines scale sets to automatically install the Guest Attestation extension to allow Azure Security Center to proactively attest and monitor the boot integrity. Boot integrity is attested via Remote Attestation.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -33725,6 +34657,21 @@
       ]
     },
     {
+      "name": "d0d9ac6c-628b-46c1-a177-eb22b12ce588",
+      "display_name": "[Preview]: Microsoft Foundry hosted agents should only use allowed container images",
+      "description": "Helps organizations govern hosted agent supply-chain sources by restricting container images to allowed image references or registry patterns.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "d111f33e-5cb3-414e-aec4-427e7d1080c9",
       "display_name": "Enable logging by category group for Data Lake Analytics (microsoft.datalakeanalytics/accounts) to Log Analytics",
       "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to a Log Analytics workspace for Data Lake Analytics (microsoft.datalakeanalytics/accounts).",
@@ -33974,6 +34921,26 @@
       "required_parameters": {},
       "allowed_effects": [
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "d279dbb1-e60e-4ca0-8c2f-cc7a0f46166b",
+      "display_name": "[Preview]: Microsoft Foundry hosted agents should enforce resolved RAI egress restrictions",
+      "description": "Limit outbound destinations and credential injection for Microsoft Foundry hosted agents. Require resolved RAI egress in Enforced mode with default Deny, permitted destinations/actions, reference-based headers, and explicit managed-identity audiences. Reject numeric/IP-like sources for credential-bearing Transform rules and routing-header injection. Require HTTPS for credential-bearing rewrites. Evaluates resolved configuration without exposing credentials. Does not revoke running sessions.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "permittedDestinations": {
+          "type": "Array",
+          "description": "Use host, host/path, or host/path/*; for example, api.contoso.com, api.contoso.com/public/item, or *.contoso.com/public/*. A bare hostname covers all paths. A leading *. includes the apex and subdomains. Hostnames are case-insensitive; permitted paths are case-sensitive. Do not include schemes, ports, queries, or fragments. An empty list permits no traffic-permitting scopes. Maximum 100 entries per list under the standard value-count iteration limit."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -34321,7 +35288,7 @@
     },
     {
       "name": "d46c275d-1680-448d-b2ec-e495a3b6cc89",
-      "display_name": "Kubernetes cluster services should only use allowed external IPs",
+      "display_name": "[Preview]: Kubernetes cluster services should only use allowed external IPs",
       "description": "Use allowed external IPs to avoid the potential attack (CVE-2020-8554) in a Kubernetes cluster. For more information, see https://aka.ms/kubepolicydoc.",
       "category": "Kubernetes",
       "mode": "Microsoft.Kubernetes.Data",
@@ -34854,7 +35821,7 @@
     },
     {
       "name": "d855fd7a-9be5-4d84-8b75-28d41aadc158",
-      "display_name": "[Preview]: Load tests using Azure Load Testing should be run only against private endpoints from within a virtual network.",
+      "display_name": "Load tests using Azure Load Testing should be run only against private endpoints from within a virtual network.",
       "description": "Azure Load Testing engine instances should use virtual network injection for the following purposes: 1. Isolate Azure Load Testing engines to a virtual network. 2. Enable Azure Load Testing engines to interact with systems in either on premises data centers or Azure service in other virtual networks. 3. Empower customers to control inbound and outbound network communications for Azure Load Testing engines.",
       "category": "Azure Load Testing",
       "mode": "Microsoft.LoadTestService.Data",
@@ -35582,6 +36549,21 @@
       ]
     },
     {
+      "name": "db98217a-80f5-4cbd-bc9c-91640765ed90",
+      "display_name": "Key Vault should restrict IP and virtual network rules in mission platforms",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restrict Key Vault firewall IP and virtual network rules to approved entries to reduce access from unapproved networks. Only entries explicitly included in the configured allowlists are permitted.",
+      "category": "Mission",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "dbbdc317-9734-4dd8-9074-993b29c69008",
       "display_name": "Azure Kubernetes Clusters should enable Key Management Service (KMS)",
       "description": "Use Key Management Service (KMS) to encrypt secret data at rest in etcd for Kubernetes cluster security. Learn more at: https://aka.ms/aks/kmsetcdencryption.",
@@ -36305,6 +37287,20 @@
       ]
     },
     {
+      "name": "e117c61a-cbc6-4f07-9c63-e9f93e5c0b69",
+      "display_name": "[Preview]: Configure Quick Machine Recovery (QMR) on Windows machines",
+      "description": "Creates a Guest Configuration assignment to configure Quick Machine Recovery (QMR) on Windows machines. Important: Currently, only wired and WPA/WPA2 password-based Wi-Fi networks are supported. Ensure that your network uses this configuration for compatibility.",
+      "category": "Guest Configuration",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
       "name": "e1352e44-d34d-4e4d-a22e-451a15f759a1",
       "display_name": "Deploy Planned Maintenance to schedule and control upgrades for your Azure Kubernetes Service (AKS) cluster",
       "description": "Planned Maintenance allows you to schedule weekly maintenance windows to perform updates and minimize workload impact. Once scheduled, upgrades occur only during the window you selected. Learn more at: https://aka.ms/aks/planned-maintenance",
@@ -36468,6 +37464,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "e1d59f09-0884-4a5b-80cc-5ec5ed5cb984",
+      "display_name": "[Preview]: Azure Managed Instance for Apache Cassandra data centers should use customer-managed keys to encrypt disks and backup storage",
+      "description": "Use customer-managed keys to manage encryption at rest for managed disks and backup storage in Azure Managed Instance for Apache Cassandra data centers. Customer-managed keys enable data to be encrypted with Azure Key Vault keys that you own and manage.",
+      "category": "Sovereignty",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -36668,6 +37679,20 @@
       ]
     },
     {
+      "name": "e312c3b8-c565-45aa-9ddf-bec26b618285",
+      "display_name": "[Preview]: Azure Migrate projects should disable public network access",
+      "description": "Disabling public network access improves security by ensuring that Azure Migrate projects and assessment projects aren't exposed on the public internet.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "e336d5f4-4d8f-0059-759c-ae10f63d1747",
       "display_name": "Enforce user uniqueness",
       "description": "CMA_0250 - Enforce user uniqueness",
@@ -36825,7 +37850,7 @@
     },
     {
       "name": "e494853f-93c3-4e44-9210-d12f61a64b34",
-      "display_name": "[Preview]: Configure supported virtual machines to automatically enable vTPM",
+      "display_name": "Configure supported virtual machines to automatically enable vTPM",
       "description": "Configure supported virtual machines to automatically enable vTPM to facilitate Measured Boot and other OS security features that require a TPM. Once enabled, vTPM can be used to attest boot integrity.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -36862,6 +37887,25 @@
       "required_parameters": {},
       "allowed_effects": [
         "Manual",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "e4bff06e-8af8-455b-8bec-58515205f65b",
+      "display_name": "[Preview]: Azure SQL Database failover groups should use allowed partner locations",
+      "description": "Keep Azure SQL Database failover-group partners within approved regions to help meet data residency requirements. Only configured partner server locations are evaluated; database default secondary locations, standalone active geo-replication links, and backup locations are not evaluated.",
+      "category": "Sovereignty",
+      "mode": "All",
+      "effect": "Audit",
+      "requires_parameters": true,
+      "required_parameters": {
+        "allowedPartnerLocations": {
+          "type": "Array",
+          "description": "The list of Azure regions where Azure SQL Database failover-group partner servers are allowed."
+        }
+      },
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -37035,6 +38079,21 @@
       ]
     },
     {
+      "name": "e687207c-8d66-460e-a8a5-12f95256116c",
+      "display_name": "[Preview]: Azure Databricks workspaces should use customer-managed keys for managed services",
+      "description": "Use customer-managed keys to manage encryption for Azure Databricks managed services. Customer-managed keys enable data to be encrypted with an Azure Key Vault key created and owned by you, giving you control over the key lifecycle, including rotation and management.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "e6955644-301c-44b5-a4c4-528577de6861",
       "display_name": "Audit Linux machines that do not have the passwd file permissions set to 0644",
       "description": "Requires that prerequisites are deployed to the policy assignment scope. For details, visit https://aka.ms/gcpol. Machines are non-compliant if Linux machines that do not have the passwd file permissions set to 0644",
@@ -37140,6 +38199,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "e7352ad2-6c86-4a07-9573-47f67b557ba8",
+      "display_name": "[Preview]: Microsoft Foundry agents and toolboxes should only use approved tools",
+      "description": "Restricts Microsoft Foundry agents and toolboxes to tool types, MCP endpoints, and MCP connectors approved by your organization.",
+      "category": "Cognitive Services",
+      "mode": "Microsoft.CognitiveServices.Data",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -37331,6 +38405,38 @@
       "required_parameters": {},
       "allowed_effects": [
         "Modify",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "e876c60c-da8a-46eb-a85e-54d791446f6b",
+      "display_name": "[Preview]: Configure vaulted backup with auto-protection for blobs on storage accounts without a given tag to a backup vault",
+      "description": "Enforce vaulted backup with auto-protection for blobs on all storage accounts that do not contain a given tag to a central backup vault. Auto-protection backs up all blob containers in the storage account, including containers created in the future. Doing this can help you manage vaulted backup of blobs contained across multiple storage accounts at scale. For more details, refer to https://aka.ms/AB-BlobBackupAzPolicies",
+      "category": "Backup",
+      "mode": "Indexed",
+      "effect": "DeployIfNotExists",
+      "requires_parameters": true,
+      "required_parameters": {
+        "backupPolicyId": {
+          "type": "String",
+          "description": "Specify the ID of the backup policy to be used for configuring vaulted backup for blobs. The selected Azure Backup policy should be of type Azure Blobs (Azure Storage) and should support vaulted backup. This policy needs to be in a vault that is present in the location chosen above. For example - /subscriptions/<SubscriptionId>/resourceGroups/<resourceGroupName>/providers/Microsoft.DataProtection/vaults/<VaultName>/backupPolicies/<BackupPolicyName>. Also, make sure that this Backup vault's managed identity has the Storage Account Backup Contributor role assigned on the storage accounts for which backup is to be configured."
+        },
+        "exclusionTagName": {
+          "type": "String",
+          "description": "Name of the tag to use for excluding storage accounts in the scope of this policy. This should be used along with the Exclusion Tag Value parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies"
+        },
+        "exclusionTagValues": {
+          "type": "Array",
+          "description": "Value of the tag to use for excluding storage accounts in the scope of this policy (in case of multiple values, use a comma-separated list). This should be used along with the Exclusion Tag Name parameter. Learn more at https://aka.ms/AB-BlobBackupAzPolicies."
+        },
+        "vaultLocation": {
+          "type": "String",
+          "description": "Specify the location of the storage accounts that you want to protect. Blobs in the storage accounts should be backed up to a vault in the same location. For example - CanadaCentral"
+        }
+      },
+      "allowed_effects": [
+        "DeployIfNotExists",
+        "AuditIfNotExists",
         "Disabled"
       ]
     },
@@ -37787,6 +38893,21 @@
       }
     },
     {
+      "name": "ea4d0edd-1555-4917-8d8f-042f98fa6a0e",
+      "display_name": "[Preview]: Azure Red Hat OpenShift clusters should use customer-managed keys to encrypt data at rest",
+      "description": "Use customer-managed keys to manage encryption at rest for Azure Red Hat OpenShift clusters. Customer-managed keys enable data to be encrypted using a disk encryption set that you control, including key rotation and management. Existing clusters created without customer-managed keys for master nodes cannot enable them later and must be recreated to comply.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "ea4d6841-2173-4317-9747-ff522a45120f",
       "display_name": "Key Vault should use a virtual network service endpoint",
       "description": "This policy audits any Key Vault not configured to use a virtual network service endpoint.",
@@ -37849,7 +38970,7 @@
       "display_name": "CosmosDB should restrict external private endpoints access",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. This policy enforces restrictions on external private endpoints linked to Cosmos DB to maintain network isolation and prevent unauthorized cross-tenant access.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -37940,7 +39061,7 @@
       "display_name": "Storage Account should restrict external private endpoints linking to this tenant.",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. This policy enforces tenant-level network isolation by denying the creation of private endpoints that link storage accounts to external tenants. It helps prevent unintended data exposure and ensures that private connectivity remains within approved boundaries of the organization.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -38248,30 +39369,6 @@
       ]
     },
     {
-      "name": "ec51b91e-e03d-4435-b6e7-dcaffe6ba5c0",
-      "display_name": "Enable logging by category group for microsoft.customproviders/resourceproviders to Event Hub",
-      "description": "Resource logs should be enabled to track activities and events that take place on your resources and give you visibility and insights into any changes that occur. This policy deploys a diagnostic setting using a category group to route logs to an Event Hub for microsoft.customproviders/resourceproviders.",
-      "category": "Monitoring",
-      "mode": "Indexed",
-      "effect": "DeployIfNotExists",
-      "requires_parameters": true,
-      "required_parameters": {
-        "eventHubAuthorizationRuleId": {
-          "type": "String",
-          "description": "Event Hub Authorization Rule Id - the authorization rule needs to be at Event Hub namespace level. e.g. /subscriptions/{subscription Id}/resourceGroups/{resource group}/providers/Microsoft.EventHub/namespaces/{Event Hub namespace}/authorizationrules/{authorization rule}"
-        },
-        "resourceLocation": {
-          "type": "String",
-          "description": "Resource Location must be in the same location as the Event Hub Namespace."
-        }
-      },
-      "allowed_effects": [
-        "DeployIfNotExists",
-        "AuditIfNotExists",
-        "Disabled"
-      ]
-    },
-    {
       "name": "ec621e21-8b48-403d-a549-fc9023d4747f",
       "display_name": "Windows Arc-enabled machines should have Azure Monitor Agent installed",
       "description": "Windows Arc-enabled machines should be monitored and secured through the deployed Azure Monitor Agent. The Azure Monitor Agent collects telemetry data from the guest OS. Windows Arc-enabled machines in supported regions are monitored for Azure Monitor Agent deployment. Learn more: https://aka.ms/AMAOverview.",
@@ -38324,6 +39421,20 @@
       "required_parameters": {},
       "allowed_effects": [
         "DeployIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "ec9fea60-a9ec-4efb-8115-3c3c5e061510",
+      "display_name": "[Preview]: Azure Container Apps environments should use private endpoints",
+      "description": "Azure Private Link lets you connect your virtual networks to Azure services without a public IP address at the source or destination. By mapping private endpoints to Azure Container Apps environments, you can reduce data leakage risks.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -39092,6 +40203,20 @@
       ]
     },
     {
+      "name": "f123aa67-1877-4e49-9aa6-33b38fa0bfe4",
+      "display_name": "Function app slots should have Client Certificates (Incoming client certificates) enabled",
+      "description": "Client certificates allow for the app to request a certificate for incoming requests. Only clients that have a valid certificate will be able to reach the app. This policy applies to function app slots.",
+      "category": "App Service",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Disabled"
+      ]
+    },
+    {
       "name": "f131c8c5-a54a-4888-1efc-158928924bc1",
       "display_name": "Require developers to build security architecture",
       "description": "CMA_C1612 - Require developers to build security architecture",
@@ -39270,6 +40395,21 @@
       ]
     },
     {
+      "name": "f241cc0d-68e6-413b-8235-f7490ef17294",
+      "display_name": "Playwright Workspaces should use virtual network injection",
+      "description": "Require Playwright Workspaces to specify a subnet for virtual network injection. This enables cloud-hosted browsers to access applications on private networks and allows network traffic to be controlled through the virtual network. The subnet cannot be changed after workspace creation; existing workspaces without a subnet must be recreated to comply.",
+      "category": "Playwright Workspaces",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "f26af0b1-65b6-689a-a03f-352ad2d00f98",
       "display_name": "Audit privileged functions",
       "description": "CMA_0019 - Audit privileged functions",
@@ -39410,6 +40550,21 @@
       "display_name": "Function app slots should enable configuration routing to Azure Virtual Network",
       "description": "By default, configuration traffic (image pull, content share, backup/restore) is not routed through regional VNET integration. For API < 2024-11-01, set 'vnetImagePullEnabled', 'vnetContentShareEnabled', 'vnetBackupRestoreEnabled' to true. For API >= 2024-11-01, set the corresponding 'outboundVnetRouting' properties or 'outboundVnetRouting.allTraffic' to true. Not for Flex/Consumption plans. Learn more: https://aka.ms/appservice-vnet-configuration-routing.",
       "category": "App Service",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "f38646be-b908-491a-bc9b-fd507154f709",
+      "display_name": "Azure Cache for Redis should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Cache for Redis can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Network",
       "mode": "Indexed",
       "effect": "Audit",
       "requires_parameters": false,
@@ -39779,6 +40934,21 @@
       ]
     },
     {
+      "name": "f5727640-3711-4df4-bce5-3ba3ad4bad85",
+      "display_name": "[Preview]: Azure Container Instances container groups should disable public network access",
+      "description": "Disabling public network access on Azure Container Instances container groups improves security by preventing the deployment of public inbound IP endpoints.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
+        "Disabled"
+      ]
+    },
+    {
       "name": "f58e8c0a-3c79-431a-abf8-cd1b895478e8",
       "display_name": "[Preview]: Container Instances should be Zone Aligned",
       "description": "Container Instances can be configured to be Zone Aligned or not. They are considered Zone Aligned if they have only one entry in their zones array. This policy ensures that they are configured to operate within a single availability zone.",
@@ -39910,7 +41080,7 @@
     },
     {
       "name": "f655e522-adff-494d-95c2-52d4f6d56a42",
-      "display_name": "[Preview]: Guest Attestation extension should be installed on supported Windows virtual machines scale sets",
+      "display_name": "Guest Attestation extension should be installed on supported Windows virtual machines scale sets",
       "description": "Install Guest Attestation extension on supported virtual machines scale sets to allow Azure Security Center to proactively attest and monitor the boot integrity. Once installed, boot integrity will be attested via Remote Attestation. This assessment applies to Trusted Launch and Confidential Windows virtual machine scale sets.",
       "category": "Security Center",
       "mode": "Indexed",
@@ -39967,6 +41137,20 @@
       "allowed_effects": [
         "AuditAction",
         "DenyAction",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "f6c2ab23-7f3b-47db-a0dc-24fc64d658fa",
+      "display_name": "[Preview]: Azure Kubernetes Service clusters should disable public network access",
+      "description": "Disabling public network access improves security by preventing Azure Kubernetes Service cluster API servers from being accessed over public networks. Ensure that a private access path is configured before disabling public network access.",
+      "category": "Sovereignty",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
         "Disabled"
       ]
     },
@@ -40621,7 +41805,7 @@
       "display_name": "Restrict Slot Configuration Access Rules",
       "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restrict Slot Configuration Access Rules to Specified Sources.",
       "category": "Mission",
-      "mode": "Indexed",
+      "mode": "All",
       "effect": "Audit",
       "requires_parameters": false,
       "required_parameters": {},
@@ -40765,6 +41949,20 @@
       "required_parameters": {},
       "allowed_effects": [
         "Audit",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "fb759c06-d992-42c0-b099-9e09cf902093",
+      "display_name": "Configure key vaults to disable unrestricted public network access in Mission Platform products and services",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Disable public network access to Key Vaults in Mission Platforms only when the firewall default action is Allow. Vaults restricted to selected virtual networks and IP addresses are left unchanged. Existing firewall rules and trusted-service bypass settings are preserved. Configure required private connectivity and service access before remediation to avoid disrupting workloads.",
+      "category": "Mission",
+      "mode": "Indexed",
+      "effect": "Modify",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Modify",
         "Disabled"
       ]
     },
@@ -41003,6 +42201,7 @@
       "requires_parameters": false,
       "required_parameters": {},
       "allowed_effects": [
+        "DeployIfNotExists",
         "AuditIfNotExists",
         "Disabled"
       ]
@@ -41076,6 +42275,21 @@
       "required_parameters": {},
       "allowed_effects": [
         "AuditIfNotExists",
+        "Disabled"
+      ]
+    },
+    {
+      "name": "fd7fab04-d4f7-4991-aacd-b6bbd2557ff2",
+      "display_name": "Azure Event Grid topics should be running TLS version 1.2 or newer",
+      "description": "Setting the minimum TLS version to 1.2 or newer improves security by ensuring your Azure Event Grid topic can only be accessed from clients using TLS 1.2 or newer. Using versions of TLS less than 1.2 is not recommended since they have well documented security vulnerabilities.",
+      "category": "Event Grid",
+      "mode": "Indexed",
+      "effect": "Audit",
+      "requires_parameters": false,
+      "required_parameters": {},
+      "allowed_effects": [
+        "Audit",
+        "Deny",
         "Disabled"
       ]
     },
@@ -41528,7 +42742,7 @@
       ]
     }
   ],
-  "initiative_count": 150,
+  "initiative_count": 157,
   "initiatives": [
     {
       "name": "03055927-78bd-4236-86c0-f36125a10dc9",
@@ -41652,7 +42866,6 @@
         "098fc59e-46c7-4d99-9b16-64990e543d75",
         "0820b7b9-23aa-4725-a1ce-ae4558f718e5",
         "0a15ec92-a229-4763-bb14-0ea34a568f8d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "e6955644-301c-44b5-a4c4-528577de6861",
         "da0f98fe-a24b-4ad5-af69-bd0400233661",
         "0a075868-4c26-42ef-914c-5bc007359560",
@@ -41970,7 +43183,7 @@
         "86ecd378-a3a0-5d5b-207c-05e6aaca43fc",
         "07b42fb5-027e-5a3c-4915-9d9ef3020ec7"
       ],
-      "policy_definition_count": 433
+      "policy_definition_count": 432
     },
     {
       "name": "03de05a4-c324-4ccd-882f-a814ea8ab9ea",
@@ -42319,7 +43532,6 @@
         "0e4325e3-228b-40f0-83ae-9c03276858c1",
         "85779c9a-7fdf-4294-937c-ded183166fa8",
         "56288eb2-4350-461d-9ece-2bb242269dce",
-        "65a1573e-cc90-412b-8db2-ba60731b0ea6",
         "167dbbbc-a03a-4ebe-8e46-c34cc67f7d9d",
         "d98f63ed-e319-4dc3-898f-600953a05f7e",
         "454c7d4b-c141-43f1-8c81-975ebb15a9b5",
@@ -42428,7 +43640,7 @@
         "9dc3e252-1cff-4ae5-bcad-5a92b7167d43",
         "1568dd08-cca0-4073-bfd8-e08a7fdc543e"
       ],
-      "policy_definition_count": 140
+      "policy_definition_count": 139
     },
     {
       "name": "095e4ed9-c835-4ab6-9439-b5644362a06c",
@@ -43783,7 +44995,6 @@
         "4b90e17e-8448-49db-875e-bd83fb6f804f",
         "fb893a29-21bb-418c-a157-e99480ec364c",
         "a1ad735a-e96f-45d2-a7b2-9a4932cab7ec",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "6edd7eda-6dd8-40f7-810d-67160c639cd9",
         "7698e800-9299-47a6-b3b6-5a0fee576eed",
         "051cba44-2429-45b9-9649-46cec11c7119",
@@ -44284,7 +45495,7 @@
         "c2cb4658-44dc-9d11-3dad-7c6802dd5ba3",
         "20762f1e-85fb-31b0-a600-e833633f10fe"
       ],
-      "policy_definition_count": 694
+      "policy_definition_count": 693
     },
     {
       "name": "184a0e05-7b06-4a68-bbbe-13b8353bc613",
@@ -44380,7 +45591,6 @@
         "c95c74d9-38fe-4f0d-af86-0c7d626a315c",
         "b954148f-4c11-4c38-8221-be76711e194a",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "1f90fc71-a595-4066-8974-d4d0802e8ef0",
         "f85bf3e0-d513-442e-89c3-1784ad63382b",
@@ -44396,7 +45606,7 @@
         "6ba6d016-e7c3-4842-b8f2-4992ebc0d72d",
         "1bc02227-0cb6-4e11-8f53-eb0b22eab7e8"
       ],
-      "policy_definition_count": 103
+      "policy_definition_count": 102
     },
     {
       "name": "1a5bb27d-173f-493e-9568-eb56638dde4d",
@@ -44460,7 +45670,6 @@
         "a4af4a39-4135-47fb-b175-47fbdf85311d",
         "f9d614c5-c173-4d56-95a7-b4437057d193",
         "f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "0da106f2-4ca3-48e8-bc85-c638fe6aea8f",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "e2c1c086-2d84-4019-bff3-c44ccd95113c",
@@ -44550,7 +45759,7 @@
         "1d39b5d9-0392-8954-8359-575ce1957d1a",
         "6f1de470-79f3-1572-866e-db0771352fc8"
       ],
-      "policy_definition_count": 145
+      "policy_definition_count": 144
     },
     {
       "name": "1bb84455-9e6e-434c-8db6-fa6d03a67e87",
@@ -44729,7 +45938,6 @@
         "fc9b3da7-8347-4380-8e70-0a0361d8dedd",
         "383856f8-de7f-44a2-81fc-e5135b5c2aa4",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "f0308946-498a-43fd-8d44-a75b47cd2aef",
         "a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
         "f9be5368-9bf5-4b84-9e0a-7850da98bb46",
         "404c3081-a854-4457-ae30-26a93ef643f9",
@@ -44820,7 +46028,6 @@
         "0ec47710-77ff-4a3d-9181-6aa50af424d0",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "48af4db5-9b8b-401c-8e74-076be876a430",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "82339799-d096-41ae-8538-b108becf0970",
         "91a78b24-f231-4a8a-8da9-02c35b2b6510",
         "d158790f-bfb0-486c-8631-2dc6b4e8e6af",
@@ -44833,7 +46040,6 @@
         "89099bee-89e0-4b26-a5f4-165451757743",
         "399b2637-a50f-4f95-96f8-3a145476eb15",
         "4d24b6d4-5e53-4a4f-a7f4-618fa573ee4b",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "67121cc7-ff39-4ab8-b7e3-95b84dab487d",
         "1f905d99-2ab7-462c-a6b0-f709acca6c8f",
         "5450f5bd-9c72-4390-a9c4-a7aba4edfdd2",
@@ -44841,10 +46047,7 @@
         "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "6fac406b-40ca-413b-bf8e-0bf964659c25",
-        "f5c8be13-ecfa-4ed7-beee-fcd8a6d9519d",
         "2a1a9cdf-e04d-429a-8416-3bfb72a1b26f",
-        "ed9bd083-7bfb-4fec-bbb4-12635e096a09",
-        "db4f9b05-5ffd-4b34-b714-3c710dbb3fd6",
         "5b9159ae-1701-4a6f-9a7a-aa9c8ddd0580",
         "d0793b48-0edc-4296-a390-4c75d1bdfd71",
         "e8eef0a8-67cf-4eb4-9386-14b0e78733d4",
@@ -44869,8 +46072,6 @@
         "6e2593d9-add6-4083-9c9b-4b7d2188c899",
         "0b15565f-aa9e-48ba-8619-45960f2c314d",
         "6edd7eda-6dd8-40f7-810d-67160c639cd9",
-        "18ac0011-fb88-42b6-a025-b33b6f0d2cb3",
-        "1604f626-4d8d-4124-8bb8-b1e5f95562de",
         "630c64f9-8b6b-4c64-b511-6544ceff6fd6",
         "7698e800-9299-47a6-b3b6-5a0fee576eed",
         "1b8ca024-1d5c-4dec-8995-b1a932b41780",
@@ -44936,8 +46137,6 @@
         "32e6bbec-16b6-44c2-be37-c5b672d103cf",
         "9dfea752-dd46-4766-aed1-c355fa93fb91",
         "8c6a50c6-9ffd-4ae7-986f-5fa6111f9a54",
-        "05f95bb8-8ef8-4cef-8cad-5d30f9912850",
-        "fd9903f1-38c2-4d36-8e44-5c1c20c561e8",
         "1dc2fc00-2245-4143-99f4-874c937f13ef",
         "5e6bf724-0154-49bc-985f-27b2e07e636b",
         "dad3a6b9-4451-492f-a95c-69efc6f3fada",
@@ -44946,7 +46145,33 @@
         "fa498b91-8a7e-4710-9578-da944c68d1fe",
         "12d4fa5e-1f9f-4c21-97a9-b99b3c6611b5"
       ],
-      "policy_definition_count": 226
+      "policy_definition_count": 216
+    },
+    {
+      "name": "24665578-506e-4c90-bb62-702323fdea76",
+      "display_name": "Control the use of Event Grid in Mission Platforms",
+      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. These guardrails reduce unintended network exposure and local-authentication risks for Azure Event Grid resources. Learn more at https://aka.ms/privateendpoints.",
+      "category": "Mission",
+      "policy_definition_names": [
+        "3c2b2a2f-630f-44c5-bea3-b8f094412ea3",
+        "648d76a0-e52b-474b-a6a5-930a82afda30",
+        "8bfadddb-ee1c-4639-8911-a38cb8e0b3bd",
+        "8632b003-3545-4b29-85e6-b2b96773df1e",
+        "ae9fb87f-8a17-4428-94a4-8135d431055c",
+        "f8f774be-6aee-492a-9e29-486ef81f3a68",
+        "1adadefe-5f21-44f7-b931-a59b54ccdb45"
+      ],
+      "policy_definition_count": 7
+    },
+    {
+      "name": "24da7f6e-ca7a-4ede-bef4-25f158872a36",
+      "display_name": "[Preview]: Assess workload readiness for continuity on Azure Local",
+      "description": "Assess whether the Azure resource types used by a workload are supported on connected Azure Local to help determine continuity readiness if Azure Public access is disrupted. Use Audit to report unsupported resource types, Deny to prevent their creation, or Disabled to turn off the assessment.",
+      "category": "Sovereignty",
+      "policy_definition_names": [
+        "9d35b50d-a1a5-4d67-a7ab-5115442bbfbb"
+      ],
+      "policy_definition_count": 1
     },
     {
       "name": "27272c0b-c225-4cc3-b8b0-f2534b093077",
@@ -45333,6 +46558,29 @@
       "policy_definition_count": 13
     },
     {
+      "name": "35877bcb-9bd2-49fc-8a00-4614b3a0e73a",
+      "display_name": "[Preview]: Data Residency for Replication across Azure Services",
+      "description": "Help restrict replication, replicated backups, and data processing to approved locations and security boundaries across supported Azure services.",
+      "category": "Sovereignty",
+      "policy_definition_names": [
+        "0473574d-2d43-4217-aefe-941fcdf7e684",
+        "4778c705-6ec3-4a0e-86bb-01b7da8a5bf4",
+        "9bf20ff2-0f28-47ea-ab41-0d070cf1d73b",
+        "28db9b68-6637-453e-afc5-1dbb3b16df1b",
+        "a2713d30-18dc-48a3-8e2f-0966c2133989",
+        "25ff226b-1747-454d-8ae2-0c11e0935753",
+        "92af37fe-f8ff-4ebd-883d-2f80cd765f8f",
+        "93fc07ef-f4b9-418a-9190-6e2628e72856",
+        "0eb02880-8961-46b2-a106-107bb2058f00",
+        "c58f681b-52c4-4935-820b-e2ced188a98c",
+        "99645d66-5f63-4f02-b947-46de4e9a040e",
+        "1ab7fa8d-5574-4983-97ed-2a184ca9526e",
+        "9860282b-3c80-4538-8bd7-dbc8cf012c6e",
+        "e4bff06e-8af8-455b-8bec-58515205f65b"
+      ],
+      "policy_definition_count": 14
+    },
+    {
       "name": "38916c43-6876-4971-a4b1-806aa7e55ccc",
       "display_name": "NIST 800-171 R3",
       "description": "Guidelines for protecting Controlled Unclassified Information (CUI) in non-federal systems and organizations.",
@@ -45515,7 +46763,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -45545,7 +46792,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 206
+      "policy_definition_count": 205
     },
     {
       "name": "3937f550-eedd-4639-9c5e-294358be442e",
@@ -45887,7 +47134,6 @@
         "8c122334-9d20-4eb8-89ea-ac9a705b74ae",
         "82985f06-dc18-4a48-bc1c-b9f4f0098cfe",
         "6b2122c1-8120-4ff5-801b-17625a355590",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "5744710e-cc2f-4ee8-8809-3b11e89f4bc9",
         "511f5417-5d12-434d-ab2e-816901e72a5e",
         "47a1ee2f-2a2a-4576-bf2a-e0e36709c2b8",
@@ -45998,7 +47244,7 @@
         "c2cb4658-44dc-9d11-3dad-7c6802dd5ba3",
         "4f23967c-a74b-9a09-9dc2-f566f61a87b9"
       ],
-      "policy_definition_count": 307
+      "policy_definition_count": 306
     },
     {
       "name": "42346945-b531-41d8-9e46-f95057672e88",
@@ -46105,7 +47351,6 @@
         "1c6e92c9-99f0-4e55-9cf2-0c234dc48f99",
         "ca91455f-eace-4f96-be59-e6e2c35b4816",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
         "009a0c92-f5b4-4776-9b66-4ed2b4775563",
@@ -46165,7 +47410,6 @@
         "0a1302fb-a631-4106-9753-f3d494733990",
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
         "1f90fc71-a595-4066-8974-d4d0802e8ef0",
@@ -46188,7 +47432,7 @@
         "7bdb79ea-16b8-453e-4ca4-ad5b16012414",
         "013e242c-8828-4970-87b3-ab247555486d"
       ],
-      "policy_definition_count": 181
+      "policy_definition_count": 179
     },
     {
       "name": "42b8ef37-b724-4e24-bbc8-7a7708edfe00",
@@ -46285,7 +47529,6 @@
         "f4826e5f-6a27-407c-ae3e-9582eb39891d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "37e0d2fe-28a5-43d6-a273-67d37d1f5606",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
@@ -46423,7 +47666,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 209
+      "policy_definition_count": 208
     },
     {
       "name": "470a962c-86a0-433b-803a-3c176b5ce79c",
@@ -46486,6 +47729,22 @@
         "0e60b895-3786-45da-8377-9c6b4b6ac5f9"
       ],
       "policy_definition_count": 53
+    },
+    {
+      "name": "48da5be7-5507-4c72-99a3-7b74141147c1",
+      "display_name": "[Preview]: Azure Baseline Security Mode",
+      "description": "Azure Baseline Security Mode (https://aka.ms/AzureBSM) helps you secure your Azure environment with a curated set of Microsoft-recommended security controls. It simplifies the adoption of high-impact security protections, helping reduce risk and strengthen your security posture with minimal effort.",
+      "category": "General",
+      "policy_definition_names": [
+        "4fa4b6c0-31ca-4c0d-b10d-24b96f62a751",
+        "0b60c0b2-2dc2-4e1c-b5c9-abbed971de53",
+        "8c6a50c6-9ffd-4ae7-986f-5fa6111f9a54",
+        "fe83a0eb-a853-422d-aac2-1bffd182c5d0",
+        "405c5871-3e91-4644-8a63-58e19d68ff5b",
+        "404c3081-a854-4457-ae30-26a93ef643f9",
+        "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d"
+      ],
+      "policy_definition_count": 7
     },
     {
       "name": "496eeda9-8f2f-4d5e-8dfd-204f0a92ed41",
@@ -46692,7 +47951,6 @@
         "1c6e92c9-99f0-4e55-9cf2-0c234dc48f99",
         "c26596ff-4d70-4e6a-9a30-c2506bd2f80c",
         "098fc59e-46c7-4d99-9b16-64990e543d75",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "e6955644-301c-44b5-a4c4-528577de6861",
         "630c64f9-8b6b-4c64-b511-6544ceff6fd6",
         "152b15f7-8e1f-4c1f-ab71-8c010ba5dbc0",
@@ -46810,7 +48068,7 @@
         "a2d0e922-65d0-40c4-8f87-ea6da2d307a2",
         "48af4db5-9b8b-401c-8e74-076be876a430"
       ],
-      "policy_definition_count": 215
+      "policy_definition_count": 214
     },
     {
       "name": "4f4dba0f-a5ee-494b-8df7-f9727dea6f37",
@@ -46925,9 +48183,6 @@
         "e2c1c086-2d84-4019-bff3-c44ccd95113c",
         "9d0b6ea4-93e2-4578-bf2f-6bb17d22b4bc",
         "7238174a-fd10-4ef0-817e-fc820a951d73",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
-        "5b0bd968-5cb5-4513-8987-27786c6f0df8",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "abda6d70-9778-44e7-84a8-06713e6db027",
         "5450f5bd-9c72-4390-a9c4-a7aba4edfdd2",
@@ -47038,7 +48293,7 @@
         "c6283572-73bb-4deb-bf2c-7a2b8f7462cb",
         "afe0c3be-ba3b-4544-ba52-0c99672a8ad6"
       ],
-      "policy_definition_count": 208
+      "policy_definition_count": 205
     },
     {
       "name": "4fcabc2a-30b2-4ba5-9fbb-b1a4e08fb721",
@@ -47118,7 +48373,6 @@
         "f4826e5f-6a27-407c-ae3e-9582eb39891d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "37e0d2fe-28a5-43d6-a273-67d37d1f5606",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
@@ -47229,7 +48483,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -47260,7 +48513,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 213
+      "policy_definition_count": 211
     },
     {
       "name": "4fd005fd-51be-478f-a8fb-149d48b20d48",
@@ -47439,7 +48692,6 @@
         "f4826e5f-6a27-407c-ae3e-9582eb39891d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "37e0d2fe-28a5-43d6-a273-67d37d1f5606",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
@@ -47555,7 +48807,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -47586,7 +48837,7 @@
         "deeddb44-9f94-4903-9fa0-081d524406e3",
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9"
       ],
-      "policy_definition_count": 221
+      "policy_definition_count": 219
     },
     {
       "name": "55634457-45e5-473f-b5c5-55cef2b20b52",
@@ -47678,7 +48929,6 @@
         "0a1302fb-a631-4106-9753-f3d494733990",
         "3ff60f98-7fa4-410a-9f7f-0b00f5afdbdd",
         "0fea8f8a-4169-495d-8307-30ec335f387d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
         "1f90fc71-a595-4066-8974-d4d0802e8ef0",
@@ -47698,7 +48948,7 @@
         "deeddb44-9f94-4903-9fa0-081d524406e3",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 90
+      "policy_definition_count": 89
     },
     {
       "name": "5e4ee281-95a3-442a-bb2a-5ef68cf5181a",
@@ -47875,7 +49125,6 @@
         "f4826e5f-6a27-407c-ae3e-9582eb39891d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "37e0d2fe-28a5-43d6-a273-67d37d1f5606",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
@@ -47993,7 +49242,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -48026,7 +49274,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 221
+      "policy_definition_count": 219
     },
     {
       "name": "612b5213-9160-4969-8578-1518bd2a000c",
@@ -48095,7 +49343,6 @@
         "a4af4a39-4135-47fb-b175-47fbdf85311d",
         "f9d614c5-c173-4d56-95a7-b4437057d193",
         "f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "0da106f2-4ca3-48e8-bc85-c638fe6aea8f",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "e2c1c086-2d84-4019-bff3-c44ccd95113c",
@@ -48196,7 +49443,7 @@
         "1d39b5d9-0392-8954-8359-575ce1957d1a",
         "b8dad106-6444-5f55-307e-1e1cc9723e39"
       ],
-      "policy_definition_count": 161
+      "policy_definition_count": 160
     },
     {
       "name": "62329546-775b-4a3d-a4cb-eb4bb990d2c0",
@@ -48490,7 +49737,6 @@
         "83a214f7-d01a-484b-91a9-ed54470c9a6a",
         "ae89ebca-1c92-4898-ac2c-9f63decb045c",
         "b4330a05-a843-4bc8-bf9a-cacce50c67f4",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "b6e2945c-0b7b-40f5-9233-7a5323b5cdc6",
         "c95c74d9-38fe-4f0d-af86-0c7d626a315c",
         "cf820ca0-f99e-4f3e-84fb-66e913812d21",
@@ -48508,7 +49754,7 @@
         "679da822-78a7-4eff-8fff-a899454a9970",
         "9d0b6ea4-93e2-4578-bf2f-6bb17d22b4bc"
       ],
-      "policy_definition_count": 228
+      "policy_definition_count": 227
     },
     {
       "name": "6d220abf-cf6f-4b17-8f7e-0644c4cc84b4",
@@ -48545,7 +49791,6 @@
         "abfb4388-5bf4-4ad7-ba82-2cd2f41ceae9",
         "3bc8a0d5-38e0-4a3d-a657-2cb64468fc34",
         "ca91455f-eace-4f96-be59-e6e2c35b4816",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "e96a9a5f-07ca-471b-9bc5-6a0f33cbd68f",
         "4ceb8dc2-559c-478b-a15b-733fbf1e3738",
@@ -48576,7 +49821,6 @@
         "abda6d70-9778-44e7-84a8-06713e6db027",
         "b954148f-4c11-4c38-8221-be76711e194a",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
         "78215662-041e-49ed-a9dd-5385911b3a1f",
         "df73bd95-24da-4a4f-96b9-4e8b94b402bd",
@@ -48590,7 +49834,7 @@
         "0a075868-4c26-42ef-914c-5bc007359560",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 73
+      "policy_definition_count": 71
     },
     {
       "name": "7326812a-86a4-40c8-af7c-8945de9c4913",
@@ -48688,7 +49932,6 @@
         "f4826e5f-6a27-407c-ae3e-9582eb39891d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "37e0d2fe-28a5-43d6-a273-67d37d1f5606",
         "3d9f5e4c-9947-4579-9539-2a7695fbc187",
         "f6de0be7-9a8a-4b8a-b349-43cf02d22f7c",
@@ -48834,7 +50077,6 @@
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
         "7595c971-233d-4bcf-bd18-596129188c49",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "72d11df1-dd8a-41f7-8925-b05b960ebafc",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
@@ -48880,7 +50122,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "501541f7-f7e7-4cd6-868c-4190fdad3ac9"
       ],
-      "policy_definition_count": 281
+      "policy_definition_count": 279
     },
     {
       "name": "7379ef4c-89b0-48b6-a5cc-fd3a75eaef93",
@@ -49091,7 +50333,6 @@
         "b954148f-4c11-4c38-8221-be76711e194a",
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -49119,7 +50360,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 193
+      "policy_definition_count": 192
     },
     {
       "name": "770977b7-fceb-4c16-9d09-b7484fb8eef2",
@@ -49601,7 +50842,6 @@
         "eb6f77b9-bd53-4e35-a23d-7f65d5f0e442",
         "b02aacc0-b073-424e-8298-42b22829ee0a",
         "94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "cee51871-e572-4576-855c-047c820360f0",
         "bd78111f-4953-4367-9fd5-7e08808b54bf",
         "425bea59-a659-4cbb-8d31-34499bd030b8",
@@ -49633,7 +50873,7 @@
         "56fd377d-098c-4f02-8406-81eb055902b8",
         "564feb30-bf6a-4854-b4bb-0d2d2d1e6c66"
       ],
-      "policy_definition_count": 113
+      "policy_definition_count": 112
     },
     {
       "name": "80307b86-ab81-45ab-bf4f-4e0b93cf3dd5",
@@ -49698,7 +50938,6 @@
         "2d8b0f41-9850-4bac-b63b-96a882a0e683",
         "60ad0a9f-f760-45ff-ab94-4c64d7439f18",
         "9ba29e83-863d-4fec-81d0-16dd87067cc3",
-        "ec51b91e-e03d-4435-b6e7-dcaffe6ba5c0",
         "f3977509-4420-4dfa-b1c9-2ab38dfd530f",
         "f48c1843-fc88-47c1-9b01-4527c76c890a",
         "6248cb7c-e485-42ad-ba20-b1ee8fba7674",
@@ -49807,7 +51046,7 @@
         "58cb2d8e-623c-4557-bb4e-0b64cb41ec55",
         "ffe49e3d-50dd-4137-8fe5-6877c4384b69"
       ],
-      "policy_definition_count": 140
+      "policy_definition_count": 139
     },
     {
       "name": "8791506a-dec4-497a-a83f-3abfde37c400",
@@ -49989,7 +51228,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -50018,7 +51256,7 @@
         "deeddb44-9f94-4903-9fa0-081d524406e3",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 202
+      "policy_definition_count": 201
     },
     {
       "name": "8827e48e-f234-408b-9c00-22f6b54c8b79",
@@ -50576,8 +51814,8 @@
     },
     {
       "name": "8d844a0d-ea22-48f3-a6f2-07e6e2111a27",
-      "display_name": "Control the use of App Service for Cloud in Mission Platforms",
-      "description": "This policy applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. This initiative deploys Azure policies for App Service ensuring boundary protection of this resource while it operates within the logically separated structure of Mission Platform.",
+      "display_name": "App Service resources should enforce boundary protection in mission platforms",
+      "description": "This policy set applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Apply App Service security controls to protect network boundaries, restrict access, and configure secure application settings within Mission Platform deployments.",
       "category": "Mission",
       "policy_definition_names": [
         "1b5ef780-c53c-4a64-87f3-bb9c8c8094ba",
@@ -50625,6 +51863,10 @@
         "df42d971-b39b-43a4-a987-b29d1bfbffba",
         "86b1d4f9-358c-407c-9bb0-52bf287b222f",
         "41c4164d-a848-48d3-b10f-c3076787f0f5",
+        "801543d1-1953-4a90-b8b0-8cf6d41473a5",
+        "5747353b-1ca9-42c1-a4dd-b874b894f3d4",
+        "a691eacb-474d-47e4-b287-b4813ca44222",
+        "f5c0bfb3-acea-47b1-b477-b0edcdf6edc1",
         "73aa9838-1906-4490-aa32-f7b89a8f4554",
         "3235e3fc-9982-4886-9346-2dc3535b1496",
         "a83269e2-b4f7-4a3f-b5ed-897c787cbc7c",
@@ -50641,7 +51883,7 @@
         "f9fd212a-5a3c-4754-a9af-560ec3b1ae13",
         "21c2b371-0891-40a0-82e6-629defc1f36a"
       ],
-      "policy_definition_count": 60
+      "policy_definition_count": 64
     },
     {
       "name": "8fcdb3f1-1369-426d-9917-81edfee903ab",
@@ -50755,7 +51997,6 @@
         "399b2637-a50f-4f95-96f8-3a145476eb15",
         "4d24b6d4-5e53-4a4f-a7f4-618fa573ee4b",
         "5744710e-cc2f-4ee8-8809-3b11e89f4bc9",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "6d555dd1-86f2-4f1c-8ed7-5abae7c6cbab",
         "8c122334-9d20-4eb8-89ea-ac9a705b74ae",
         "91a78b24-f231-4a8a-8da9-02c35b2b6510",
@@ -50929,7 +52170,7 @@
         "bf045164-79ba-4215-8f95-f8048dc1780b",
         "c9d007d0-c057-4772-b18c-01e546713bcd"
       ],
-      "policy_definition_count": 183
+      "policy_definition_count": 182
     },
     {
       "name": "9b8d8228-e8cc-4c95-8d98-47f32df40b5e",
@@ -51123,7 +52364,6 @@
         "e345b6c3-24bd-4c93-9bbb-7e5e49a17b78",
         "1c30f9cd-b84c-49cc-aa2c-9288447cc3b3",
         "f2143251-70de-4e81-87a8-36cee5a2f29d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "81e74cea-30fd-40d5-802f-d72103c2aaaa",
         "3dc5edcd-002d-444c-b216-e123bbfa37c0",
         "18adea5e-f416-4d0f-8aa8-d24321e3e274",
@@ -51176,7 +52416,7 @@
         "fc26e2fd-3149-74b4-5988-d64bb90f8ef7",
         "7bdb79ea-16b8-453e-4ca4-ad5b16012414"
       ],
-      "policy_definition_count": 202
+      "policy_definition_count": 201
     },
     {
       "name": "a169a624-5599-4385-a696-c8d643089fab",
@@ -51440,7 +52680,6 @@
         "79f081c7-1634-01a1-708e-376197999289",
         "f7eb1d0b-6d4f-2d59-1591-7563e11a9313",
         "2f204e72-1896-3bf8-75c9-9128b8683a36",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "1ecb79d7-1a06-9a3b-3be8-f434d04d1ec1",
         "b5a4be05-3997-1731-3260-98be653610f6",
         "c6b877a6-5d6d-1862-4b7f-3ccc30b25b63",
@@ -51772,7 +53011,7 @@
         "e6955644-301c-44b5-a4c4-528577de6861",
         "bf16e0bb-31e1-4646-8202-60a235cc7e74"
       ],
-      "policy_definition_count": 587
+      "policy_definition_count": 586
     },
     {
       "name": "a3d07baa-2640-4810-9814-c8c4bbfc21a6",
@@ -51823,9 +53062,25 @@
         "5e8168db-69e3-4beb-9822-57cb59202a9d",
         "5e7e928c-8693-4a23-9bf3-1c77b9a8fe97",
         "a46d869a-f759-4404-8289-7737e7a1f79e",
-        "c5f34731-7ab9-42ff-922d-ef4920068b74"
+        "c5f34731-7ab9-42ff-922d-ef4920068b74",
+        "df73bd95-24da-4a4f-96b9-4e8b94b402bd",
+        "701a595d-38fb-4a66-ae6d-fb3735217622",
+        "d074ddf8-01a5-4b5e-a2b8-964aed452c0a",
+        "c9299215-ae47-4f50-9c54-8a392f68a052",
+        "6a92fe1f-0b86-44ae-843d-2db3d2b571ae",
+        "8405fdab-1faf-48aa-b702-999c9c172094",
+        "6c53d030-cc64-46f0-906d-2bc061cd1334",
+        "c4225fe7-a11b-4e6b-8f9c-989dd2907bd2",
+        "093e16cd-84e0-4332-b550-82f55cf85f28",
+        "f6c2ab23-7f3b-47db-a0dc-24fc64d658fa",
+        "0f8a6cc3-040f-4b9b-8828-b37490729517",
+        "e312c3b8-c565-45aa-9ddf-bec26b618285",
+        "1bc02227-0cb6-4e11-8f53-eb0b22eab7e8",
+        "a88d4a2c-216a-4fdb-8df0-b8ad54354f57",
+        "9dfea752-dd46-4766-aed1-c355fa93fb91",
+        "f5727640-3711-4df4-bce5-3ba3ad4bad85"
       ],
-      "policy_definition_count": 44
+      "policy_definition_count": 60
     },
     {
       "name": "a4087154-2edb-4329-b56a-1cc986807f3c",
@@ -52006,7 +53261,6 @@
         "0fea8f8a-4169-495d-8307-30ec335f387d",
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "e0a2b1a3-f7f9-4569-807f-2a9edebdf4d9",
         "ee984370-154a-4ee8-9726-19d900e56fc0",
@@ -52034,7 +53288,7 @@
         "abfb7388-5bf4-4ad7-ba99-2cd2f41cebb9",
         "9f061a12-e40d-4183-a00e-171812443373"
       ],
-      "policy_definition_count": 200
+      "policy_definition_count": 199
     },
     {
       "name": "a55e4a7e-1b9c-43ef-b4b3-642f303804d6",
@@ -52115,7 +53369,6 @@
         "e9ac8f8e-ce22-4355-8f04-99b911d6be52",
         "94e1c2ac-cbbe-4cac-a2b5-389c812dee87",
         "32e6bbec-16b6-44c2-be37-c5b672d103cf",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "e6955644-301c-44b5-a4c4-528577de6861",
         "5752e6d6-1206-46d8-8ab1-ecc2f71a8112",
         "e802a67a-daf5-4436-9ea6-f6d821dd0c5d",
@@ -52185,7 +53438,7 @@
         "0b15565f-aa9e-48ba-8619-45960f2c314d",
         "89099bee-89e0-4b26-a5f4-165451757743"
       ],
-      "policy_definition_count": 117
+      "policy_definition_count": 116
     },
     {
       "name": "af28bf8b-c669-4dd3-9137-1e68fdc61bd6",
@@ -52516,7 +53769,6 @@
         "18009236-18d3-48e3-bd21-4e7630153611",
         "c600af08-49ff-4f7a-b5c9-0686749387b7",
         "106cd3bd-50a1-466c-869f-f9c2d310477b",
-        "7646801f-46d5-48d0-9e18-efb884944f3e",
         "4c67a1c0-8e77-4f4b-b572-5c11695aae2d",
         "a78631da-8506-4113-96f4-2805de193083",
         "50ca36f4-5306-4275-ad42-a40ca2805c77",
@@ -52625,7 +53877,7 @@
         "bfc6b185-2af1-4998-a32e-c0144792eeb2",
         "5164fdc7-cfcd-4bd8-a3e9-f4be93166cde"
       ],
-      "policy_definition_count": 140
+      "policy_definition_count": 139
     },
     {
       "name": "b71f6054-d890-4c78-b809-2ae9dc6a0cfc",
@@ -52672,9 +53924,23 @@
         "ad5621d6-a877-4407-aa93-a950b428315e",
         "7b256a2d-058b-41f8-bed9-3f870541c40a",
         "cb26889c-214c-4b29-811e-6f2109a1959f",
-        "d9b2d63d-a233-4123-847a-7f7e5f5d7e7a"
+        "d9b2d63d-a233-4123-847a-7f7e5f5d7e7a",
+        "12e7176a-4919-47ef-922b-34eda4c7f0ce",
+        "efa3f296-ff2b-4f38-bc0d-5ef12c965b68",
+        "1abc5157-29f8-4dbd-b28e-ff99526cb8b7",
+        "64528841-2f92-43f6-a137-d52e5c3dbeac",
+        "f39f5f49-4abf-44de-8c70-0756997bfb51",
+        "960e650e-9ce3-4316-9590-8ee2c016ca2f",
+        "0fc55270-f8bf-4feb-b7b8-5e7e7eacc6a6",
+        "c8cc2f85-e019-4065-9fa3-5e6a2b2dde56",
+        "37ccbf90-57ed-4a86-b246-cece8ed746fe",
+        "5204629f-8140-4a58-90a7-de4e04957a97",
+        "ec9fea60-a9ec-4efb-8115-3c3c5e061510",
+        "973a0211-4dcc-42ea-87eb-e9be5db0e585",
+        "54e3763b-72a6-4c12-af2e-544b39d6bfee",
+        "53ed4ed6-59b1-4f85-b6b3-36178fe76759"
       ],
-      "policy_definition_count": 40
+      "policy_definition_count": 54
     },
     {
       "name": "b8df66eb-3653-44cf-b445-d5b38cc73d20",
@@ -52767,12 +54033,11 @@
       "policy_definition_names": [
         "e56962a6-4747-49cd-b67b-bf8b01975c4c",
         "e765b5de-1225-4ba3-bd56-1ac6695af988",
-        "0473574d-2d43-4217-aefe-941fcdf7e684",
         "93c45b74-42a1-4967-b25d-82c4dc630921",
         "c707daa0-b93b-454d-9e1e-8ac59866316c",
         "92a89a79-6c52-4a7e-a03f-61306fc49312"
       ],
-      "policy_definition_count": 6
+      "policy_definition_count": 5
     },
     {
       "name": "c047ea8e-9c78-49b2-958b-37e56d291a44",
@@ -53009,7 +54274,6 @@
         "a4af4a39-4135-47fb-b175-47fbdf85311d",
         "f9d614c5-c173-4d56-95a7-b4437057d193",
         "f0e6e85b-9b9f-4a4b-b67b-f730d42f1b0b",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "0da106f2-4ca3-48e8-bc85-c638fe6aea8f",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "e2c1c086-2d84-4019-bff3-c44ccd95113c",
@@ -53018,7 +54282,7 @@
         "4d24b6d4-5e53-4a4f-a7f4-618fa573ee4b",
         "b8dad106-6444-5f55-307e-1e1cc9723e39"
       ],
-      "policy_definition_count": 160
+      "policy_definition_count": 159
     },
     {
       "name": "c4a70814-96be-461c-889f-2b27429120dc",
@@ -53374,6 +54638,16 @@
       "policy_definition_count": 2
     },
     {
+      "name": "cde006e8-1f6a-487f-94dd-1b40bb200cfa",
+      "display_name": "[Preview]: Assess workload readiness for continuity on Azure Local disconnected operations",
+      "description": "Assess whether the Azure resource types used by a workload are supported in Azure Local disconnected operations, so that the workload can continue to operate if it must move off public Azure into a disconnected environment. Set the effect to Audit to report resource types that are not supported, to Deny to prevent those resource types from being created so that the migration path stays open, or to Disabled to turn the assessment off.",
+      "category": "Sovereignty",
+      "policy_definition_names": [
+        "dabf7c7f-5354-42de-a92a-8367f538dd71"
+      ],
+      "policy_definition_count": 1
+    },
+    {
       "name": "cf25b9c1-bd23-4eb6-bd2c-f4f3ac644a5f",
       "display_name": "NIST SP 800-53 Rev. 4",
       "description": "National Institute of Standards and Technology (NIST) SP 800-53 R4 provides a standardized approach for assessing, monitoring and authorizing cloud computing products and services to manage information security risk.These policies address a subset of NIST SP 800-53 R4 controls. Additional policies will be added in upcoming releases. For more information, visit https://aka.ms/nist800-53r4-initiative",
@@ -53681,7 +54955,6 @@
         "098fc59e-46c7-4d99-9b16-64990e543d75",
         "0820b7b9-23aa-4725-a1ce-ae4558f718e5",
         "0a15ec92-a229-4763-bb14-0ea34a568f8d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "5c33538e-02f8-0a7f-998b-a4c1e22076d3",
         "0123edae-3567-a05a-9b05-b53ebe9d3e7e",
         "043c1e56-5a16-52f8-6af8-583098ff3e60",
@@ -54089,7 +55362,7 @@
         "c2cb4658-44dc-9d11-3dad-7c6802dd5ba3",
         "20762f1e-85fb-31b0-a600-e833633f10fe"
       ],
-      "policy_definition_count": 709
+      "policy_definition_count": 708
     },
     {
       "name": "d0d5578d-cc08-2b22-31e3-f525374f235a",
@@ -54167,7 +55440,6 @@
         "5e1de0e3-42cb-4ebc-a86d-61d0c619ca48",
         "6d02d2f7-e38b-4bdc-96f3-adc0a8726abc",
         "339353f6-2387-4a45-abe4-7f529d121046",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "0b15565f-aa9e-48ba-8619-45960f2c314d",
         "0e6763cc-5078-4e64-889d-ff4d9a839047",
         "6581d072-105e-4418-827f-bd446d56421b",
@@ -54245,7 +55517,7 @@
         "057ef27e-665e-4328-8ea3-04b3122bd9fb",
         "b2982f36-99f2-4db5-8eff-283140c09693"
       ],
-      "policy_definition_count": 147
+      "policy_definition_count": 146
     },
     {
       "name": "d300338e-65d1-4be3-b18e-fb4ce5715a8f",
@@ -54463,8 +55735,6 @@
         "4b90e17e-8448-49db-875e-bd83fb6f804f",
         "fb893a29-21bb-418c-a157-e99480ec364c",
         "a1ad735a-e96f-45d2-a7b2-9a4932cab7ec",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "6edd7eda-6dd8-40f7-810d-67160c639cd9",
         "7698e800-9299-47a6-b3b6-5a0fee576eed",
         "051cba44-2429-45b9-9649-46cec11c7119",
@@ -54980,7 +56250,7 @@
         "c2cb4658-44dc-9d11-3dad-7c6802dd5ba3",
         "20762f1e-85fb-31b0-a600-e833633f10fe"
       ],
-      "policy_definition_count": 709
+      "policy_definition_count": 707
     },
     {
       "name": "d64f0787-1470-495d-b747-8534ff151e05",
@@ -55053,6 +56323,21 @@
         "cbdd12e1-193a-445c-9926-560118c6daaa"
       ],
       "policy_definition_count": 9
+    },
+    {
+      "name": "d7e9a08c-cb4e-4f50-9c66-4ec2e5c47596",
+      "display_name": "Key Vault should enforce network and access guardrails in mission platforms",
+      "description": "This policy set applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Apply Key Vault network restrictions, soft-delete checks, and RBAC permission-model checks to reduce unintended access and data loss. The modifier disables unrestricted public access while audit policies report configurations that require review.",
+      "category": "Mission",
+      "policy_definition_names": [
+        "fb759c06-d992-42c0-b099-9e09cf902093",
+        "db98217a-80f5-4cbd-bc9c-91640765ed90",
+        "7671c803-6fb1-4a5f-a127-1eb7cf83bea2",
+        "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
+        "405c5871-3e91-4644-8a63-58e19d68ff5b",
+        "12d4fa5e-1f9f-4c21-97a9-b99b3c6611b5"
+      ],
+      "policy_definition_count": 6
     },
     {
       "name": "d8b2ffbe-c6a8-4622-965d-4ade11d1d2ee",
@@ -55291,7 +56576,6 @@
         "5450f5bd-9c72-4390-a9c4-a7aba4edfdd2",
         "92bb331d-ac71-416a-8c91-02f2cb734ce4",
         "c15dcc82-b93c-4dcb-9332-fbf121685b54",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "89099bee-89e0-4b26-a5f4-165451757743",
         "0c28c3fb-c244-42d5-a9bf-f35f2999577b",
         "2158ddbe-fefa-408e-b43f-d4faef8ff3b8",
@@ -55339,7 +56623,7 @@
         "1b4d1c4e-934c-4703-944c-27c82c06bebb",
         "6b2122c1-8120-4ff5-801b-17625a355590"
       ],
-      "policy_definition_count": 278
+      "policy_definition_count": 277
     },
     {
       "name": "de01d381-bae9-4670-8870-786f89f49e26",
@@ -55776,10 +57060,9 @@
         "a7211477-c970-446b-b4af-062f37461147",
         "6d8d492c-dd7a-46f7-a723-fa66a425b87c",
         "46aa9b05-0e60-4eae-a88b-1e9d374fa515",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "1d478a74-21ba-4b9f-9d8f-8e6fced0eec5"
       ],
-      "policy_definition_count": 414
+      "policy_definition_count": 413
     },
     {
       "name": "e0d47b75-5d99-442a-9d60-07f2595ab095",
@@ -55994,7 +57277,6 @@
         "f110a506-2dcb-422e-bcea-d533fc8c35e2",
         "f85bf3e0-d513-442e-89c3-1784ad63382b",
         "6ba6d016-e7c3-4842-b8f2-4992ebc0d72d",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "f71be03e-e25b-4d0f-b8bc-9b3e309b66c0",
         "caf2d518-f029-4f6b-833b-d7081702f253",
         "6b2122c1-8120-4ff5-801b-17625a355590",
@@ -56004,7 +57286,7 @@
         "1dc2fc00-2245-4143-99f4-874c937f13ef",
         "4f4f78b8-e367-4b10-a341-d9a4ad5cf1c7"
       ],
-      "policy_definition_count": 216
+      "policy_definition_count": 215
     },
     {
       "name": "e20d08c5-6d64-656d-6465-ce9e37fd0ebc",
@@ -56259,7 +57541,6 @@
         "6164527b-e1ee-4882-8673-572f425f5e0a",
         "679da822-78a7-4eff-8fff-a899454a9970",
         "4733ea7b-a883-42fe-8cac-97454c2a9e4a",
-        "f87b2739-92be-4121-af7f-39c0a5a24f20",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
         "d8cf8476-a2ec-4916-896e-992351803c44",
         "49a22571-d204-4c91-a7b6-09b1a586fbc9",
@@ -56378,7 +57659,6 @@
         "fc9b3da7-8347-4380-8e70-0a0361d8dedd",
         "383856f8-de7f-44a2-81fc-e5135b5c2aa4",
         "34c877ad-507e-4c82-993e-3452a6e0ad3c",
-        "f0308946-498a-43fd-8d44-a75b47cd2aef",
         "a451c1ef-c6ca-483d-87ed-f49761e3ffb5",
         "f9be5368-9bf5-4b84-9e0a-7850da98bb46",
         "404c3081-a854-4457-ae30-26a93ef643f9",
@@ -56469,7 +57749,6 @@
         "0ec47710-77ff-4a3d-9181-6aa50af424d0",
         "2b9ad585-36bc-4615-b300-fd4435808332",
         "48af4db5-9b8b-401c-8e74-076be876a430",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "82339799-d096-41ae-8538-b108becf0970",
         "91a78b24-f231-4a8a-8da9-02c35b2b6510",
         "d158790f-bfb0-486c-8631-2dc6b4e8e6af",
@@ -56482,7 +57761,6 @@
         "89099bee-89e0-4b26-a5f4-165451757743",
         "399b2637-a50f-4f95-96f8-3a145476eb15",
         "4d24b6d4-5e53-4a4f-a7f4-618fa573ee4b",
-        "ab6a902f-9493-453b-928d-62c30b11b5a6",
         "67121cc7-ff39-4ab8-b7e3-95b84dab487d",
         "1f905d99-2ab7-462c-a6b0-f709acca6c8f",
         "5450f5bd-9c72-4390-a9c4-a7aba4edfdd2",
@@ -56490,10 +57768,7 @@
         "1e66c121-a66a-4b1f-9b83-0fd99bf0fc2d",
         "7803067c-7d34-46e3-8c79-0ca68fc4036d",
         "6fac406b-40ca-413b-bf8e-0bf964659c25",
-        "f5c8be13-ecfa-4ed7-beee-fcd8a6d9519d",
         "2a1a9cdf-e04d-429a-8416-3bfb72a1b26f",
-        "ed9bd083-7bfb-4fec-bbb4-12635e096a09",
-        "db4f9b05-5ffd-4b34-b714-3c710dbb3fd6",
         "5b9159ae-1701-4a6f-9a7a-aa9c8ddd0580",
         "d0793b48-0edc-4296-a390-4c75d1bdfd71",
         "e8eef0a8-67cf-4eb4-9386-14b0e78733d4",
@@ -56517,8 +57792,6 @@
         "6e2593d9-add6-4083-9c9b-4b7d2188c899",
         "0b15565f-aa9e-48ba-8619-45960f2c314d",
         "6edd7eda-6dd8-40f7-810d-67160c639cd9",
-        "18ac0011-fb88-42b6-a025-b33b6f0d2cb3",
-        "1604f626-4d8d-4124-8bb8-b1e5f95562de",
         "630c64f9-8b6b-4c64-b511-6544ceff6fd6",
         "7698e800-9299-47a6-b3b6-5a0fee576eed",
         "1b8ca024-1d5c-4dec-8995-b1a932b41780",
@@ -56584,8 +57857,6 @@
         "32e6bbec-16b6-44c2-be37-c5b672d103cf",
         "9dfea752-dd46-4766-aed1-c355fa93fb91",
         "8c6a50c6-9ffd-4ae7-986f-5fa6111f9a54",
-        "05f95bb8-8ef8-4cef-8cad-5d30f9912850",
-        "fd9903f1-38c2-4d36-8e44-5c1c20c561e8",
         "1dc2fc00-2245-4143-99f4-874c937f13ef",
         "5e6bf724-0154-49bc-985f-27b2e07e636b",
         "dad3a6b9-4451-492f-a95c-69efc6f3fada",
@@ -56597,7 +57868,6 @@
         "24b7a1c6-44fe-40cc-a2e6-242d2ef70e98",
         "5747353b-1ca9-42c1-a4dd-b874b894f3d4",
         "f5c0bfb3-acea-47b1-b477-b0edcdf6edc1",
-        "5b0bd968-5cb5-4513-8987-27786c6f0df8",
         "a08ae1ab-8d1d-422b-a123-df82b307ba61",
         "d639b3af-a535-4bef-8dcf-15078cddf5e2",
         "cae7c12e-764b-4c87-841a-fdc6675d196f",
@@ -56907,7 +58177,7 @@
         "ee8a7be2-e9b5-47b9-9d37-d9b141ea78a4",
         "b66ab71c-582d-4330-adfd-ac162e78691e"
       ],
-      "policy_definition_count": 727
+      "policy_definition_count": 715
     },
     {
       "name": "e77fc0b3-f7e9-4c58-bc13-cb753ed8e46e",
@@ -57122,7 +58392,6 @@
         "4b90e17e-8448-49db-875e-bd83fb6f804f",
         "fb893a29-21bb-418c-a157-e99480ec364c",
         "a1ad735a-e96f-45d2-a7b2-9a4932cab7ec",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "6edd7eda-6dd8-40f7-810d-67160c639cd9",
         "7698e800-9299-47a6-b3b6-5a0fee576eed",
         "051cba44-2429-45b9-9649-46cec11c7119",
@@ -57569,7 +58838,18 @@
         "c2cb4658-44dc-9d11-3dad-7c6802dd5ba3",
         "20762f1e-85fb-31b0-a600-e833633f10fe"
       ],
-      "policy_definition_count": 639
+      "policy_definition_count": 638
+    },
+    {
+      "name": "ea051ed8-5972-4f02-8879-5a154fa519f1",
+      "display_name": "Control the use of Redis Cache in Mission Platforms",
+      "description": "This policy set applies exclusively to Mission Platform products and services; usage outside of these scopes is not supported. Restricting public network access and external private endpoint connections helps protect Redis cached data and maintain subscription boundaries.",
+      "category": "Mission",
+      "policy_definition_names": [
+        "470baccb-7e51-4549-8b1a-3e5be069f663",
+        "91de0ea5-83b9-4110-a7dd-3d5053465b11"
+      ],
+      "policy_definition_count": 2
     },
     {
       "name": "ee6f9c39-ca6c-4937-b5b7-f6d9775a6f17",
@@ -57745,9 +59025,15 @@
         "46388f67-373c-4018-98d3-2b83172dd13a",
         "7698f4ed-80ce-4e13-b408-ee135fa400a5",
         "413923f0-ff16-41ae-8583-90c5c5d9fa8f",
-        "9c376cb6-0545-4233-a22c-074540d4d935"
+        "9c376cb6-0545-4233-a22c-074540d4d935",
+        "0253f0dc-b6de-4795-97ae-1ee0b4ffe3a6",
+        "e687207c-8d66-460e-a8a5-12f95256116c",
+        "49af39b4-9394-4043-b153-f4a67201368b",
+        "8855a114-45dd-4bb9-9953-4cc527764c90",
+        "ea4d0edd-1555-4917-8d8f-042f98fa6a0e",
+        "e1d59f09-0884-4a5b-80cc-5ec5ed5cb984"
       ],
-      "policy_definition_count": 49
+      "policy_definition_count": 55
     },
     {
       "name": "f1fe6a81-eee9-47b8-9f7f-80685141209e",
@@ -57774,9 +59060,18 @@
         "828ba269-bf7f-4082-83dd-633417bc391d",
         "5752e6d6-1206-46d8-8ab1-ecc2f71a8112",
         "a8793640-60f7-487c-b5c3-1d37215905c4",
-        "bb3c7464-033e-41ee-81dc-480fde675b20"
+        "bb3c7464-033e-41ee-81dc-480fde675b20",
+        "f38646be-b908-491a-bc9b-fd507154f709",
+        "c089a722-0fbf-4a16-ab4f-1f5065291844",
+        "786761a8-5b7f-4b82-bfb1-df2d008c16fc",
+        "fd7fab04-d4f7-4991-aacd-b6bbd2557ff2",
+        "74d00793-ec3a-4504-94e3-0ec66963833b",
+        "c8656c68-eb4e-4f72-a90a-54b6bfbd3c33",
+        "403594a1-5989-4edd-8ea3-cac19a8cc43a",
+        "0ecbe514-db62-4284-992e-6dc3cde83d2b",
+        "6313cbe8-6fb7-451b-a9e3-3f23b59843ca"
       ],
-      "policy_definition_count": 20
+      "policy_definition_count": 29
     },
     {
       "name": "f48ecfa6-581c-43f9-8141-cd4adc72cf26",
@@ -57865,7 +59160,6 @@
         "c95c74d9-38fe-4f0d-af86-0c7d626a315c",
         "b954148f-4c11-4c38-8221-be76711e194a",
         "bfecdea6-31c4-4045-ad42-71b9dc87247d",
-        "19dd1db6-f442-49cf-a838-b0786b4401ef",
         "d9844e8a-1437-4aeb-a32c-0c992f056095",
         "df73bd95-24da-4a4f-96b9-4e8b94b402bd",
         "051cba44-2429-45b9-9649-46cec11c7119",
@@ -57877,7 +59171,7 @@
         "21a6bc25-125e-4d13-b82d-2e19b7208ab7",
         "1bc02227-0cb6-4e11-8f53-eb0b22eab7e8"
       ],
-      "policy_definition_count": 92
+      "policy_definition_count": 91
     },
     {
       "name": "f58a876c-ec25-417e-9634-58d2a93e3fe2",
@@ -58363,7 +59657,7 @@
       "policy_definition_count": 31
     }
   ],
-  "deprecated_count": 377,
+  "deprecated_count": 386,
   "deprecated": [
     {
       "name": "001802d1-4969-4c82-a700-c29c6c6f9bbd",
@@ -58506,6 +59800,10 @@
       "display_name": "[Deprecated]: Configure supported Windows machines to automatically install the Azure Security agent"
     },
     {
+      "name": "153ab4ca-2d58-4b5d-9134-6d8c6bdd321c",
+      "display_name": "[Deprecated]: Function app slots should have Client Certificates (Incoming client certificates) enabled"
+    },
+    {
       "name": "16390df4-2f73-4b42-af13-c801066763df",
       "display_name": "[Deprecated]: Deploy prerequisites to audit Windows VMs that do not have a minimum password age of 1 day"
     },
@@ -58516,6 +59814,14 @@
     {
       "name": "16f9b37c-4408-4c30-bc17-254958f2e2d6",
       "display_name": "[Deprecated]: Show audit results from Windows VMs that do not have the specified Windows PowerShell modules installed"
+    },
+    {
+      "name": "17763ad9-70c0-4794-9397-53d765932634",
+      "display_name": "[Deprecated]: Deploy associations for a managed application"
+    },
+    {
+      "name": "19dd1db6-f442-49cf-a838-b0786b4401ef",
+      "display_name": "[Deprecated]: App Service apps should have Client Certificates (Incoming client certificates) enabled"
     },
     {
       "name": "1a833ff1-d297-4a0f-9944-888428f8e0ff",
@@ -58858,6 +60164,10 @@
       "display_name": "[Deprecated]: Show audit results from Windows VMs that do not restrict the minimum password length to 14 characters"
     },
     {
+      "name": "5b0bd968-5cb5-4513-8987-27786c6f0df8",
+      "display_name": "[Deprecated]: App Service app slots should have Client Certificates (Incoming client certificates) enabled"
+    },
+    {
       "name": "5b842acb-0fe7-41b0-9f40-880ec4ad84d8",
       "display_name": "[Deprecated]: Show audit results from Linux VMs that have the specified applications installed"
     },
@@ -58966,6 +60276,10 @@
       "display_name": "[Deprecated]: Audit missing blob encryption for storage accounts"
     },
     {
+      "name": "65a1573e-cc90-412b-8db2-ba60731b0ea6",
+      "display_name": "[Deprecated]: Enable logging by category group for microsoft.customproviders/resourceproviders to Log Analytics"
+    },
+    {
       "name": "664346d9-be92-43fb-a219-d595eeb76a90",
       "display_name": "[Deprecated]: Audit IP restrictions configuration for a Function App"
     },
@@ -59056,6 +60370,10 @@
     {
       "name": "760a85ff-6162-42b3-8d70-698e268f648c",
       "display_name": "[Deprecated]: Vulnerabilities should be remediated by a Vulnerability Assessment solution"
+    },
+    {
+      "name": "7646801f-46d5-48d0-9e18-efb884944f3e",
+      "display_name": "[Deprecated]: Enable logging by category group for microsoft.customproviders/resourceproviders to Storage"
     },
     {
       "name": "765266ab-e40e-4c61-bcb2-5a5275d0b7c0",
@@ -59358,6 +60676,10 @@
       "display_name": "[Deprecated]: Ensure that Register with Azure Active Directory is enabled on WEB App"
     },
     {
+      "name": "ab6a902f-9493-453b-928d-62c30b11b5a6",
+      "display_name": "[Deprecated]: Function apps should have Client Certificates (Incoming client certificates) enabled"
+    },
+    {
       "name": "ab965db2-d2bf-4b64-8b39-c38ec8179461",
       "display_name": "[Deprecated]: Ensure that 'PHP version' is the latest, if used as a part of the Function app"
     },
@@ -59496,6 +60818,10 @@
     {
       "name": "c04255ee-1b9f-42c1-abaa-bf1553f79930",
       "display_name": "[Deprecated]: Deploy prerequisites to audit Windows VMs configurations in 'System Audit Policies - Logon-Logoff'"
+    },
+    {
+      "name": "c15c281f-ea5c-44cd-90b8-fc3c14d13f0c",
+      "display_name": "[Deprecated]: Deploy associations for a custom provider"
     },
     {
       "name": "c15c5978-ab6e-4599-a1c3-90a7918f5371",
@@ -59772,6 +61098,10 @@
     {
       "name": "ec49586f-4939-402d-a29e-6ff502b20592",
       "display_name": "[Deprecated]: Deploy prerequisites to audit Linux VMs that allow remote connections from accounts without passwords"
+    },
+    {
+      "name": "ec51b91e-e03d-4435-b6e7-dcaffe6ba5c0",
+      "display_name": "[Deprecated]: Enable logging by category group for microsoft.customproviders/resourceproviders to Event Hub"
     },
     {
       "name": "ec7ac234-2af5-4729-94d2-c557c071799d",
