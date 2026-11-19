@@ -20,7 +20,7 @@
 # deregisters and exits. Nothing persists between runs, and no idle runner sits
 # holding a live registration waiting to be used by something else.
 
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ARG RUNNER_VERSION=2.338.2
 ENV DEBIAN_FRONTEND=noninteractive
