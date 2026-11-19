@@ -13,6 +13,7 @@ from app.monitoring.app_insights import (
     AppInsights,
     resolve_settings,
     sampler_env,
+    service_env,
 )
 
 CONN = "InstrumentationKey=00000000-0000-0000-0000-000000000000"
@@ -40,6 +41,15 @@ def test_operator_sampler_override_is_preserved():
     }
 
 
+def test_service_name_defaults_but_operator_value_wins():
+    assert service_env({}) == {"OTEL_SERVICE_NAME": "complianceiq-backend"}
+    assert service_env({"OTEL_SERVICE_NAME": "x"}) == {}
+    assert service_env({"OTEL_RESOURCE_ATTRIBUTES": "a=b,service.name=y"}) == {}
+    assert service_env({"OTEL_RESOURCE_ATTRIBUTES": "a=b"}) == {
+        "OTEL_SERVICE_NAME": "complianceiq-backend"
+    }
+
+
 @pytest.fixture
 def recorded(monkeypatch):
     calls = {"distro": [], "instrument": []}
@@ -49,7 +59,12 @@ def recorded(monkeypatch):
         "instrument_app",
         staticmethod(lambda app, **kw: calls["instrument"].append((app, kw))),
     )
-    for name in ("APPLICATIONINSIGHTS_CONNECTION_STRING", "OTEL_TRACES_SAMPLER", "OTEL_TRACES_SAMPLER_ARG"):
+    for name in (
+        "APPLICATIONINSIGHTS_CONNECTION_STRING",
+        "OTEL_TRACES_SAMPLER",
+        "OTEL_TRACES_SAMPLER_ARG",
+        "OTEL_SERVICE_NAME",
+    ):
         # setenv first so monkeypatch restores the variable initialize() writes.
         monkeypatch.setenv(name, "")
         monkeypatch.delenv(name)

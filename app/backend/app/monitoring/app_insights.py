@@ -21,6 +21,7 @@ from typing import Any, Mapping, Optional
 EXCLUDED_URLS = "api/v1/health/ping"
 APP_LOGGER_NAME = "app"
 SAMPLER = "microsoft.fixed_percentage"
+SERVICE_NAME = "complianceiq-backend"
 
 _logger = logging.getLogger(__name__)
 
@@ -57,6 +58,13 @@ def sampler_env(settings: TelemetrySettings, env: Mapping[str, str]) -> dict[str
     }
 
 
+def service_env(env: Mapping[str, str]) -> dict[str, str]:
+    """Default service.name (App Insights cloud_RoleName), unless already set (pure)."""
+    if "OTEL_SERVICE_NAME" in env or "service.name=" in env.get("OTEL_RESOURCE_ATTRIBUTES", ""):
+        return {}
+    return {"OTEL_SERVICE_NAME": SERVICE_NAME}
+
+
 class AppInsights:
     """Configures the distro once and instruments the FastAPI app."""
 
@@ -72,6 +80,7 @@ class AppInsights:
             return True
 
         os.environ.update(sampler_env(settings, os.environ))
+        os.environ.update(service_env(os.environ))
 
         from microsoft.opentelemetry import use_microsoft_opentelemetry
 
