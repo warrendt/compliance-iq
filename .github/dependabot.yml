@@ -1,0 +1,37 @@
+# Keeps pinned dependencies, base images and workflow actions current.
+# Every pin in this repo is exact, so nothing moves without a reviewed PR.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories:
+      - /app/backend
+      - /app/frontend
+      - /app/tests
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      python-minor-patch:
+        update-types: [minor, patch]
+    # Streamlit upgrades can change rendered CSS; review them on their own
+    # (see docs/visual-design-system.md).
+    ignore:
+      - dependency-name: streamlit
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: docker
+    directories:
+      - /app/backend
+      - /app/frontend
+      - /app/runner
+      - /website
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

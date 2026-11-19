@@ -1,59 +1,100 @@
 """
-Application Insights integration for monitoring and telemetry
+Application Insights telemetry via the Microsoft OpenTelemetry Distro.
+
+Replaces the retired opencensus integration, which built a tracer that was
+never attached to any request and so exported nothing.
+
+Telemetry is a no-op unless ``APPLICATIONINSIGHTS_CONNECTION_STRING`` is set,
+so local runs and tests never export. Only stdlib log records from the
+``app`` logger hierarchy are exported, which keeps third-party SDK chatter out
+of App Insights. Request and response bodies are never recorded.
 """
-import os
-from typing import Optional
-from opencensus.ext.azure.trace_exporter import AzureExporter
-from opencensus.trace.samplers import ProbabilitySampler
-from opencensus.trace.tracer import Tracer
+from __future__ import annotations
+
 import logging
+import os
+from dataclasses import dataclass
+from typing import Any, Mapping, Optional
 
-class AppInsightsConfig:
-    """Configuration for Application Insights"""
-    
-    def __init__(self):
-        self.connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
-        self.enabled = bool(self.connection_string)
-        self.environment = os.getenv("ENVIRONMENT", "development")
-        self.service_name = "compliance-iq-backend"
-        
-        # Sampling rate: 100% for dev, 10% for production
-        self.sampling_rate = 1.0 if self.environment == "development" else 0.1
-        
-        self.tracer: Optional[Tracer] = None
-        
-    def initialize(self) -> None:
-        """Initialize Application Insights exporters"""
-        if not self.enabled:
-            print("Application Insights: connection string not set. Telemetry disabled.")
-            return
-            
-        try:
-            # Initialize trace exporter
-            trace_exporter = AzureExporter(
-                connection_string=self.connection_string
-            )
-            
-            # Create tracer with sampling
-            self.tracer = Tracer(
-                exporter=trace_exporter,
-                sampler=ProbabilitySampler(self.sampling_rate)
-            )
-            
-            # NOTE: AzureLogHandler is intentionally not added — it is incompatible
-            # with Python 3.14 due to the logging lock laziness change. Trace
-            # exporting still works; log forwarding to App Insights is skipped locally.
-            
-            print(f"[INFO] Application Insights initialized (service={self.service_name}, env={self.environment})")
-            
-        except Exception as e:
-            print(f"[WARN] Failed to initialize Application Insights: {e}")
-            self.enabled = False
-    
-    def get_tracer(self) -> Optional[Tracer]:
-        """Get the configured tracer"""
-        return self.tracer
+# Container Apps health probes hit this path constantly; tracing it would
+# drown real requests and cost ingestion for no diagnostic value.
+EXCLUDED_URLS = "api/v1/health/ping"
+APP_LOGGER_NAME = "app"
+SAMPLER = "microsoft.fixed_percentage"
+
+_logger = logging.getLogger(__name__)
 
 
-# Global instance
-app_insights = AppInsightsConfig()
+@dataclass(frozen=True)
+class TelemetrySettings:
+    connection_string: Optional[str]
+    environment: str
+    sampling_ratio: float
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.connection_string)
+
+
+def resolve_settings(env: Mapping[str, str]) -> TelemetrySettings:
+    """Derive telemetry settings from an environment mapping (pure)."""
+    environment = env.get("ENVIRONMENT", "development")
+    return TelemetrySettings(
+        connection_string=env.get("APPLICATIONINSIGHTS_CONNECTION_STRING") or None,
+        environment=environment,
+        # Keep every trace while developing; sample 10% everywhere else.
+        sampling_ratio=1.0 if environment == "development" else 0.1,
+    )
+
+
+def sampler_env(settings: TelemetrySettings, env: Mapping[str, str]) -> dict[str, str]:
+    """Sampler variables to apply, leaving any operator override in place (pure)."""
+    if "OTEL_TRACES_SAMPLER" in env:
+        return {}
+    return {
+        "OTEL_TRACES_SAMPLER": SAMPLER,
+        "OTEL_TRACES_SAMPLER_ARG": str(settings.sampling_ratio),
+    }
+
+
+class AppInsights:
+    """Configures the distro once and instruments the FastAPI app."""
+
+    def __init__(self) -> None:
+        self.enabled = False
+
+    def initialize(self, app: Any = None) -> bool:
+        settings = resolve_settings(os.environ)
+        if not settings.enabled:
+            _logger.info("Application Insights connection string not set; telemetry disabled")
+            return False
+        if self.enabled:
+            return True
+
+        os.environ.update(sampler_env(settings, os.environ))
+
+        from microsoft.opentelemetry import use_microsoft_opentelemetry
+
+        use_microsoft_opentelemetry(
+            enable_azure_monitor=True,
+            azure_monitor_connection_string=settings.connection_string,
+            logger_name=APP_LOGGER_NAME,
+            # The app object already exists by the time this runs, so the
+            # import-time FastAPI patch would miss it; instrument it directly.
+            instrumentation_options={"fastapi": {"enabled": False}},
+        )
+        if app is not None:
+            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+            FastAPIInstrumentor.instrument_app(app, excluded_urls=EXCLUDED_URLS)
+
+        self.enabled = True
+        _logger.info(
+            "Application Insights telemetry enabled (env=%s, sampling=%s)",
+            settings.environment,
+            settings.sampling_ratio,
+        )
+        return True
+
+
+app_insights = AppInsights()

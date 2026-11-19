@@ -20,19 +20,20 @@
 # deregisters and exits. Nothing persists between runs, and no idle runner sits
 # holding a live registration waiting to be used by something else.
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
-ARG RUNNER_VERSION=2.336.0
+ARG RUNNER_VERSION=2.338.2
 ENV DEBIAN_FRONTEND=noninteractive
 
-# libicu70 is not optional -- the runner is .NET and fails at startup without it.
+# libicu74 is not optional -- the runner is .NET and fails at startup without it.
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends \
       ca-certificates \
       curl \
       git \
       jq \
-      libicu70 \
+      libicu74 \
       python3 \
       python3-pip \
       python3-venv \
@@ -47,6 +48,13 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 RUN useradd -m -s /bin/bash runner \
  && mkdir -p /actions-runner \
  && chown runner:runner /actions-runner
+
+# Ubuntu 24.04 marks the system Python as externally managed (PEP 668), so a
+# bare `python3 -m pip install` in a workflow step fails. Give the runner its
+# own venv first on PATH; workflow steps keep calling python3 unchanged.
+RUN python3 -m venv /opt/venv \
+ && chown -R runner:runner /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
 
 USER runner
 WORKDIR /actions-runner

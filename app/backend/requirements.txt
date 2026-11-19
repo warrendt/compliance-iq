@@ -1,46 +1,36 @@
-# FastAPI and web framework
-fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-python-multipart>=0.0.12
+# Runtime dependencies for the ComplianceIQ backend.
+# Pinned to exact versions for reproducible, auditable builds; Dependabot
+# (.github/dependabot.yml) proposes upgrades. Test-only packages live in
+# requirements-dev.txt so they never ship in the production image.
 
-# Pydantic for data validation (Python 3.14 compatible)
-pydantic>=2.10.0
-pydantic-settings>=2.6.0
+# Web framework
+fastapi==0.162.5
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+
+# Validation / settings
+pydantic==2.14.3
+pydantic-settings==2.16.2
+python-dotenv==1.2.4
 
 # Azure SDKs
-azure-identity>=1.19.0
-openai>=1.68.0
-azure-mgmt-policyinsights>=1.1.0b4
-azure-cosmos>=4.7.0
-azure-mgmt-cognitiveservices>=13.5.0
+azure-identity==1.27.0
+azure-cosmos==4.17.1
+openai==3.49.0
 
-# Authentication
-fastapi-azure-auth>=5.0.0
-python-jose[cryptography]>=3.3.0
+# Authentication (Entra ID JWT validation)
+python-jose[cryptography]==3.5.0
 
-# PDF extraction
-pypdf>=4.0.0
+# Document parsing / data processing
+pypdf==7.0.1
+pandas==3.1.1
+openpyxl==3.1.5
+numpy==2.5.4
 
-# Data processing
-pandas>=2.2.0
-openpyxl>=3.1.5
-numpy>=2.0.0
+# HTTP client
+httpx==0.28.1
 
-# Utilities
-python-dotenv>=1.0.1
-httpx>=0.27.0
-aiohttp>=3.10.0
-aiofiles>=24.1.0
-
-# Testing
-pytest>=8.3.0
-pytest-asyncio>=0.24.0
-pytest-cov>=6.0.0
-
-# Logging and monitoring
-python-json-logger>=3.1.0
-structlog>=24.1.0
-opencensus-ext-azure>=1.1.13
-opencensus-ext-logging>=0.1.1
-opencensus-ext-requests>=0.8.0
-opencensus-ext-flask>=0.8.0
+# Logging and telemetry
+python-json-logger==4.2.0
+structlog==26.1.0
+microsoft-opentelemetry==1.6.0

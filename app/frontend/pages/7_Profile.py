@@ -87,13 +87,13 @@ ws_user_key = (auth_user.email if auth_user else "anon")
 
 # ── Quick actions ──────────────────────────────────────────────────────────
 qa1, qa2, qa3, qa4 = st.columns(4)
-if qa1.button("📁 Upload controls", use_container_width=True):
+if qa1.button("📁 Upload controls", width="stretch"):
     st.switch_page("pages/1_Upload_Controls.py")
-if qa2.button("🤖 AI mapping", use_container_width=True):
+if qa2.button("🤖 AI mapping", width="stretch"):
     st.switch_page("pages/2_AI_Mapping.py")
-if qa3.button("🎯 Gap analysis", use_container_width=True):
+if qa3.button("🎯 Gap analysis", width="stretch"):
     st.switch_page("pages/8_Diff_Compare.py")
-if qa4.button("📦 Export policy", use_container_width=True):
+if qa4.button("📦 Export policy", width="stretch"):
     st.switch_page("pages/4_Export_Policy.py")
 
 st.markdown("---")

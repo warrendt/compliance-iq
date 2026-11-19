@@ -151,7 +151,7 @@ def _render_version(v: dict) -> None:
                         [{"File": f.get("name"), "Size (chars)": len(f.get("content") or "")}
                          for f in files]
                     ),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 

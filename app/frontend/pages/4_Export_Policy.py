@@ -199,7 +199,7 @@ def _render_manual_register(policy: Dict[str, Any]) -> None:
     df = pd.DataFrame(manual)
     ordered = [c for c in _labels if c in df.columns]
     df = df[ordered].rename(columns=_labels)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width="stretch", hide_index=True)
 
     st.download_button(
         label="📥 Download Manual Controls CSV",
@@ -492,7 +492,7 @@ with col_enforce2:
 st.markdown("---")
 
 # Generate policy button
-if st.button("🚀 Generate Azure Policy Initiative", type="primary", use_container_width=True):
+if st.button("🚀 Generate Azure Policy Initiative", type="primary", width="stretch"):
     with st.spinner("Generating Azure Policy Initiative..."):
         try:
             # Call API
@@ -778,7 +778,7 @@ if st.session_state.generated_policy:
                     "Description": d.get("description", "")[:120],
                     "Learn URL": d.get("learn_url", ""),
                 })
-            st.dataframe(pd.DataFrame(_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(_rows), width="stretch", hide_index=True)
         else:
             st.info("No Azure Policy GUIDs in the included mappings.")
 
@@ -942,7 +942,7 @@ Generated on: {generated_on}
             col_val, col_dep = st.columns(2)
 
             with col_val:
-                if st.button("✅ Validate", use_container_width=True, key="btn_validate_deploy"):
+                if st.button("✅ Validate", width="stretch", key="btn_validate_deploy"):
                     with st.spinner("Validating (read-only — no changes made)..."):
                         try:
                             if _param_values:
@@ -990,7 +990,7 @@ Generated on: {generated_on}
                             st.error(f"❌ Validation failed: {_e}")
 
             with col_dep:
-                if st.button("🚀 Deploy", type="primary", use_container_width=True, key="btn_deploy"):
+                if st.button("🚀 Deploy", type="primary", width="stretch", key="btn_deploy"):
                     with st.spinner("Deploying initiative..."):
                         try:
                             if _param_values:
@@ -1197,7 +1197,7 @@ else:
     if 'slz_generated' not in st.session_state:
         st.session_state.slz_generated = None
 
-    if st.button("🏛️ Generate SLZ Initiatives", type="primary", use_container_width=True):
+    if st.button("🏛️ Generate SLZ Initiatives", type="primary", width="stretch"):
         if not locations_list:
             st.warning(
                 "Select permitted Azure locations to create enforceable residency guardrails. "
@@ -1363,11 +1363,11 @@ st.markdown("---")
 col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
-    if st.button("← Back to Review", use_container_width=True):
+    if st.button("← Back to Review", width="stretch"):
         st.switch_page("pages/3_Review_Edit.py")
 
 with col_action2:
-    if st.button("🔄 Start New Mapping", use_container_width=True):
+    if st.button("🔄 Start New Mapping", width="stretch"):
         # Clear session state
         st.session_state.controls = []
         st.session_state.mappings = []
@@ -1376,7 +1376,7 @@ with col_action2:
         st.switch_page("pages/1_Upload_Controls.py")
 
 with col_action3:
-    if st.button("🏠 Go to Home", use_container_width=True):
+    if st.button("🏠 Go to Home", width="stretch"):
         st.switch_page("app.py")
 
 # Sidebar

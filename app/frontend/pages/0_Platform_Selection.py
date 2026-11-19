@@ -59,7 +59,7 @@ with col1:
     - Infrastructure compliance
     - Cloud security posture
     """)
-    if st.button("Select Azure Defender", key="select_azure", use_container_width=True, type="primary"):
+    if st.button("Select Azure Defender", key="select_azure", width="stretch", type="primary"):
         st.session_state.selected_platform = "azure_defender"
         st.session_state.platform_display_name = "Microsoft Defender for Cloud"
         st.success("Platform selected: Microsoft Defender for Cloud")
@@ -84,7 +84,7 @@ with col2:
     - Identity & access management
     - Endpoint compliance
     """)
-    if st.button("Select Microsoft 365", key="select_m365", use_container_width=True):
+    if st.button("Select Microsoft 365", key="select_m365", width="stretch"):
         st.session_state.selected_platform = "microsoft_365"
         st.session_state.platform_display_name = "Microsoft 365 Compliance"
         st.success("Platform selected: Microsoft 365 Compliance")
@@ -109,7 +109,7 @@ with col3:
     - Data lifecycle management
     - Regulatory record keeping
     """)
-    if st.button("Select Microsoft Purview", key="select_purview", use_container_width=True):
+    if st.button("Select Microsoft Purview", key="select_purview", width="stretch"):
         st.session_state.selected_platform = "microsoft_purview"
         st.session_state.platform_display_name = "Microsoft Purview"
         st.success("Platform selected: Microsoft Purview")

@@ -479,7 +479,7 @@ st.markdown("---")
 col_action1, col_action2, col_action3 = st.columns(3)
 
 with col_action1:
-    if st.button("← Back to Mapping", use_container_width=True):
+    if st.button("← Back to Mapping", width="stretch"):
         st.switch_page("pages/2_AI_Mapping.py")
 
 with col_action2:
@@ -491,12 +491,12 @@ with col_action2:
         data=json.dumps(st.session_state.mappings, indent=2),
         file_name=f"{st.session_state.framework_name.replace(' ', '_')}_mappings_reviewed.json",
         mime="application/json",
-        use_container_width=True
+        width="stretch"
     ):
         st.success("✅ Mappings downloaded!")
 
 with col_action3:
-    if st.button("Continue to Export →", type="primary", use_container_width=True):
+    if st.button("Continue to Export →", type="primary", width="stretch"):
         st.switch_page("pages/4_Export_Policy.py")
 
 # Sidebar

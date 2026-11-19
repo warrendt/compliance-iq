@@ -98,7 +98,7 @@ uploaded = st.file_uploader(
 )
 
 run_disabled = uploaded is None or st.session_state.cmp_status in ("pending", "running")
-if st.button("🔀 Run comparison", type="primary", use_container_width=True, disabled=run_disabled):
+if st.button("🔀 Run comparison", type="primary", width="stretch", disabled=run_disabled):
     try:
         with st.spinner("Submitting comparison job..."):
             resp = api.run_comparison(uploaded.getvalue(), uploaded.name, selected_key)
@@ -208,7 +208,7 @@ if cmp_id:
                 }
                 for m in rows
             ])
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width="stretch", hide_index=True)
             st.download_button(
                 "⬇️ Download as CSV",
                 df.to_csv(index=False).encode("utf-8"),
@@ -285,7 +285,7 @@ if cmp_id:
             )
         elif build_status == "failed":
             st.error(f"❌ Initiative build failed: {build_error or 'Unknown error'}")
-            if st.button("🔁 Retry build", use_container_width=True):
+            if st.button("🔁 Retry build", width="stretch"):
                 try:
                     api.build_initiative(cmp_id)
                     st.session_state[paused_key] = False
@@ -298,7 +298,7 @@ if cmp_id:
             pass
         else:
             if st.button("🏗️ Build initiative (full union)", type="primary",
-                         use_container_width=True):
+                         width="stretch"):
                 try:
                     resp = api.build_initiative(cmp_id)
                     st.session_state[paused_key] = False

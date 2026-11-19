@@ -1,21 +1,16 @@
-# Streamlit framework
-streamlit==1.37.0
+# Runtime dependencies for the ComplianceIQ Streamlit frontend.
+# Pinned to exact versions; Dependabot (.github/dependabot.yml) proposes
+# upgrades. Streamlit upgrades need a visual check: utils/theme.py styles
+# Streamlit's internal data-testid selectors (docs/visual-design-system.md).
 
-# Interactive components
-streamlit-aggrid==0.3.4
-plotly==5.18.0
+streamlit==1.67.0
 
-# Data processing
-pandas==2.2.0
-numpy==1.26.3
-openpyxl==3.1.2
+# Data processing (spreadsheet upload / export)
+pandas==3.1.1
+openpyxl==3.1.5
 
-# API client
-requests==2.31.0
-httpx==0.26.0
+# Backend API client
+httpx==0.28.1
 
-# Authentication
-msal>=1.28.0
-
-# Utilities
-python-dotenv==1.0.0
+# Entra ID sign-in
+msal==1.39.0

@@ -105,9 +105,13 @@ fixtures).
 
 ## Guarding the result
 
-- **Streamlit is pinned** (`streamlit==1.37.0` in `frontend/requirements.txt`) —
-  the theme depends on `data-testid` / Base Web selectors that can drift between
-  Streamlit versions.
+- **Streamlit is pinned** (exact version in `frontend/requirements.txt`) — the
+  theme depends on `data-testid` / Base Web selectors that can drift between
+  Streamlit versions. Dependabot proposes upgrades; review every Streamlit bump
+  visually before merging. On the 1.37 → 1.67 upgrade, Streamlit's markdown
+  container started styling `p`/`hN` via `.st-emotion-cache-* p` rules, so the
+  theme's type ramp and `.ciq-*` text classes are scoped under
+  `[data-testid="stMarkdownContainer"]` to keep their specificity ahead.
 - **Design-guard tests** (`app/tests/test_frontend_design_guard.py`) assert,
   deterministically: page filenames and sidebar nav labels stay emoji-free, no
   source/test file references an old emoji page path, and the brand navy/blue

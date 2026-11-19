@@ -15,7 +15,7 @@ def test_upload_example_uses_a_responsive_dataframe():
     source = UPLOAD_PAGE.read_text()
 
     assert 'st.dataframe(' in source
-    assert "use_container_width=True" in source
+    assert 'width="stretch"' in source
     assert "| SAMA-AC-01 |" not in source
 
 
