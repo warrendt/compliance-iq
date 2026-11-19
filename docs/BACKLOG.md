@@ -224,3 +224,24 @@ this exact code path and all passed against a double that couldn't have caught t
 the real interface it stands in for.
 
 **Status.** Fixed on `main`. Live-retested after redeploy (see the run report).
+
+---
+
+## B9 — Weekly catalogue refresh failed every run since 2026-10-19 — FIXED
+
+**Observed.** `refresh-policy-catalog.yml` failed five consecutive weekly runs. The snapshot aged to
+101 days, which tripped `test_catalog_snapshot_is_not_stale` (90-day limit) and would have failed CI
+on every PR.
+
+**Root cause.** Starting the in-VNet runner sets the `runner-token` secret on `cj-ciq-vnet-runner`
+(`Microsoft.App/jobs/write`). ARM also checks the linked action
+`Microsoft.App/managedEnvironments/join/action` on the job's Container Apps environment, and
+`ciq-catalog-refresh-reader` (B5) only held `Container Apps Jobs Contributor` on the job itself →
+`LinkedAuthorizationFailed`.
+
+**Fix.** A custom role, `ComplianceIQ Container Apps Environment Joiner`, containing only
+`Microsoft.App/managedEnvironments/join/action` (assignable within the resource group), assigned to
+`ciq-catalog-refresh-reader` at the `cae-complianceiq-dev-kz2jze` resource scope only. Created
+out-of-band, like the other B5 grants, because the refresh identity is not provisioned by IaC.
+
+**Status.** Fixed; refresh re-run after the grant (see `docs/deps-security-refresh-2026-11.md`).
