@@ -106,7 +106,7 @@ with st.expander("📋 File Format Requirements", expanded=True):
                 },
             ]
         ),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -250,7 +250,7 @@ elif df is not None:
         # Show preview
         st.dataframe(
             preview_df.head(10),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -273,7 +273,7 @@ elif df is not None:
         col_load, col_clear = st.columns([1, 1])
 
         with col_load:
-            if st.button("✅ Load Controls", type="primary", use_container_width=True):
+            if st.button("✅ Load Controls", type="primary", width="stretch"):
                 if not framework_name:
                     st.error("❌ Please enter a framework name")
                 else:
@@ -329,7 +329,7 @@ elif df is not None:
         with col_clear:
             st.button(
                 "🗑️ Clear Upload",
-                use_container_width=True,
+                width="stretch",
                 on_click=clear_upload_state,
             )
 

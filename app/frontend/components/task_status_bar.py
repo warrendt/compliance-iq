@@ -131,13 +131,13 @@ def _render_notification(notification: dict) -> None:
         if st.button(
             "View",
             key=f"view_notification_{notification['id']}",
-            use_container_width=True,
+            width="stretch",
         ):
             _view_task(task, page)
     if st.button(
         "Dismiss",
         key=f"dismiss_notification_{notification['id']}",
-        use_container_width=True,
+        width="stretch",
     ):
         dismiss_task_notification(notification["id"])
         st.rerun()

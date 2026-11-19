@@ -30,15 +30,15 @@ jobs:
     name: Regenerate catalog snapshot
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           # Dedicated identity for this workflow (see B5 in docs/BACKLOG.md),
           # scoped to exactly what these two jobs do: Reader at the
@@ -64,7 +64,7 @@ jobs:
       # The embeddings half runs on a different machine (see the `embeddings`
       # job), so the catalog is handed over as an artifact.
       - name: Hand the catalog to the in-VNet runner
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: policy-catalog
           path: app/backend/app/data/policy_catalog/azure_policy_catalog.json
@@ -151,10 +151,10 @@ jobs:
     runs-on: [self-hosted, ciq-vnet]
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Take the catalog from the previous job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: policy-catalog
           path: app/backend/app/data/policy_catalog/
@@ -211,7 +211,7 @@ jobs:
             ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:+--deployment "$AZURE_OPENAI_EMBEDDING_DEPLOYMENT"}
 
       - name: Hand both artifacts back
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: policy-catalog-with-embeddings
           path: |
@@ -225,15 +225,15 @@ jobs:
     needs: embeddings
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
 
       - name: Collect the refreshed pair
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: policy-catalog-with-embeddings
           path: app/backend/app/data/policy_catalog/
@@ -243,7 +243,7 @@ jobs:
       # had failed at the endpoint probe long before reaching it -- a step that
       # has never once executed carries no evidence that it works.
       - name: Install backend dependencies
-        run: pip install -r app/backend/requirements.txt
+        run: pip install -r app/backend/requirements-dev.txt
 
       - name: Verify the two artifacts agree
         env:
@@ -259,7 +259,7 @@ jobs:
             --noconftest -q
 
       - name: Open PR if the catalog changed
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore: refresh Azure Policy catalog snapshot"
           title: "chore: refresh Azure Policy catalog snapshot"

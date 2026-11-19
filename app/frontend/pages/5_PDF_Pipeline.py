@@ -459,7 +459,7 @@ if file_bytes:
     extract_button = st.button(
         "🔍 Extract Controls from PDF",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=st.session_state.pdf_extraction is not None or extraction_in_progress,
     )
 
@@ -531,7 +531,7 @@ if extraction:
         edited_df = st.data_editor(
             df,
             num_rows="dynamic",
-            use_container_width=True,
+            width="stretch",
             key="pdf_controls_editor",
             column_config={
                 "control_id": st.column_config.TextColumn("Control ID", width="small"),
@@ -558,7 +558,7 @@ if extraction:
         col_load, col_clear = st.columns([1, 1])
 
         with col_load:
-            if st.button("✅ Load Controls into Mapping Flow", type="primary", use_container_width=True):
+            if st.button("✅ Load Controls into Mapping Flow", type="primary", width="stretch"):
                 if not framework_name:
                     st.error("❌ Please enter a framework name")
                 elif len(edited_df) == 0:
@@ -609,14 +609,14 @@ if extraction:
         with col_clear:
             st.button(
                 "🗑️ Clear & Start Over",
-                use_container_width=True,
+                width="stretch",
                 on_click=_clear_pdf_workflow,
             )
     else:
         st.warning("No controls were extracted from the PDF. The document may not contain structured controls.")
         st.button(
             "🗑️ Clear & Try Again",
-            use_container_width=True,
+            width="stretch",
             on_click=_clear_pdf_workflow,
         )
 

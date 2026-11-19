@@ -1,50 +1,50 @@
-# Multi-stage build for smaller image size
-# Use MCR devcontainer image to avoid Docker Hub dependency
-FROM mcr.microsoft.com/devcontainers/python:3.11 as builder
+# syntax=docker/dockerfile:1
+# Backend API image.
+#
+# Built on the official slim Python image. The previous base
+# (mcr.microsoft.com/devcontainers/python) is a development image: it ships
+# git, compilers and a `vscode` user with passwordless sudo, so any code
+# execution in the API was one `sudo` away from root.
 
-# Set working directory
-WORKDIR /build
+ARG PYTHON_IMAGE=python:3.14-slim-trixie
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+FROM ${PYTHON_IMAGE} AS builder
 
-# Copy requirements first for better caching
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN python -m venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+
 COPY requirements.txt .
+RUN pip install --upgrade pip==26.3 \
+    && pip install -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --user -r requirements.txt
+FROM ${PYTHON_IMAGE}
 
-# Final stage
-FROM mcr.microsoft.com/devcontainers/python:3.11
+# Pick up Debian security fixes released after the base image was published.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin appuser
 
-# Set working directory
+COPY --from=builder /opt/venv /opt/venv
+
 WORKDIR /app
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /home/vscode/.local
-
-# Copy application code
+# Application code stays root-owned so the runtime user cannot modify it.
 COPY app/ ./app/
+RUN test -d /app/app/pipeline
 
-# Ensure pipeline package is available
-RUN test -d /app/app/pipeline && echo 'Pipeline package present' || echo 'WARNING: pipeline package missing'
-
-# Set environment variables
-ENV PATH=/home/vscode/.local/bin:$PATH \
+ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
-# Switch to non-root user (provided by devcontainer base)
-USER vscode
+USER appuser
 
-# Expose port
 EXPOSE 8000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ping')"
 
-# Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

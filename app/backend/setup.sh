@@ -59,9 +59,9 @@ echo -e "${BLUE}→ Upgrading pip...${NC}"
 pip install --upgrade pip --quiet
 
 # Install dependencies
-echo -e "${BLUE}→ Installing dependencies from requirements.txt...${NC}"
+echo -e "${BLUE}→ Installing dependencies from requirements-dev.txt...${NC}"
 echo -e "${YELLOW}  (This may take a few minutes on first run)${NC}"
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 echo -e "${GREEN}✓ Dependencies installed successfully${NC}\n"
 

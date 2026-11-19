@@ -115,8 +115,8 @@ cd app
 
 # Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt   # runtime pins + pytest
 cp .env.template .env   # Edit with your Azure OpenAI endpoint
 az login
 uvicorn app.main:app --reload --port 8000

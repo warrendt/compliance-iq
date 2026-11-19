@@ -126,7 +126,7 @@ with tab_defs:
                 "Mode": props.get("mode", ""),
                 "Description": (props.get("description") or "")[:100],
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     else:
         st.info("No policy definitions found at this scope.")
 
@@ -148,7 +148,7 @@ with tab_inits:
                 "Policies": len(props.get("policyDefinitions", [])),
                 "Description": (props.get("description") or "")[:100],
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
         # Expandable details
         for i in inits:
@@ -185,7 +185,7 @@ with tab_assigns:
                 "Enforcement": props.get("enforcementMode", "Default"),
                 "Policy ID": (props.get("policyDefinitionId") or "").split("/")[-1],
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     else:
         st.info("No policy assignments found at this scope.")
 

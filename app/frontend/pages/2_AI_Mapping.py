@@ -556,7 +556,7 @@ else:
         if st.button(
             "▶️ Start Batch Mapping",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=has_other_mapping_task,
         ):
             try:
@@ -616,7 +616,7 @@ if st.session_state.mappings and not st.session_state.mapping_in_progress:
     
     st.dataframe(
         mappings_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
     
@@ -659,10 +659,10 @@ with st.sidebar:
     
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
-        if st.button("← Upload", use_container_width=True):
+        if st.button("← Upload", width="stretch"):
             st.switch_page("pages/1_Upload_Controls.py")
     with col_nav2:
-        if st.button("Review →", use_container_width=True):
+        if st.button("Review →", width="stretch"):
             st.switch_page("pages/3_Review_Edit.py")
 
 render_footer()

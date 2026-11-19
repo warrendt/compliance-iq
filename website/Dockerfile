@@ -1,6 +1,6 @@
 # ComplianceIQ marketing website — static site served by nginx.
 # No build step: plain HTML/CSS/JS copied into the image.
-FROM nginx:alpine
+FROM nginx:1.31-alpine
 
 # Site config (listens on :8080).
 COPY nginx.conf /etc/nginx/nginx.conf

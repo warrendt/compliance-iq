@@ -114,14 +114,16 @@ FLUENT_CSS = """
     }
     .stApp { background-color: var(--app-canvas); }
 
-    /* Type ramp — keep corners crisp, Fluent weights */
-    h1 { font-size: 1.75rem; font-weight: 600; line-height: 2.25rem;
+    /* Type ramp — keep corners crisp, Fluent weights. The scoped selectors
+       outrank Streamlit's own `.st-emotion-cache-* hN` markdown rules. */
+    h1, .stApp [data-testid="stMarkdownContainer"] h1 { font-size: 1.75rem; font-weight: 600; line-height: 2.25rem;
          color: var(--neutral-fg-1); letter-spacing: -0.01em; }
-    h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.75rem;
+    h2, .stApp [data-testid="stMarkdownContainer"] h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.75rem;
          color: var(--neutral-fg-1); }
-    h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.5rem;
+    h3, .stApp [data-testid="stMarkdownContainer"] h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.5rem;
          color: var(--neutral-fg-1); }
-    h4, h5, h6 { font-weight: 600; color: var(--neutral-fg-2); }
+    h4, h5, h6,
+    .stApp [data-testid="stMarkdownContainer"] :is(h4, h5, h6) { font-weight: 600; color: var(--neutral-fg-2); }
     p, li, label, .stMarkdown { color: var(--neutral-fg-2); }
 
     /* ───────────── Suite header (ComplianceIQ brand bar) ───────────── */
@@ -250,6 +252,9 @@ FLUENT_CSS = """
         border-left: 3px solid transparent;
         color: var(--neutral-fg-2) !important;
         transition: background-color 0.1s ease-in, border-color 0.1s ease-in;
+    }
+    [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] p {
+        font-size: 1rem;
     }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a:hover,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]:hover {
@@ -495,7 +500,7 @@ FLUENT_CSS = """
         font-size: 1.9rem; font-weight: 600; line-height: 2.3rem;
         color: var(--neutral-fg-1); letter-spacing: -0.01em; margin: 0 0 0.3rem 0;
     }
-    .ciq-page-desc {
+    [data-testid="stMarkdownContainer"] p.ciq-page-desc {
         font-size: 0.95rem; color: var(--neutral-fg-3);
         margin: 0; max-width: 68ch; line-height: 1.5;
     }
@@ -537,21 +542,22 @@ FLUENT_CSS = """
     .ciq-step.done .num { background: var(--brand-navy); color: #FFFFFF; }
     .ciq-step-sep { color: var(--neutral-fg-disabled); font-size: 0.9rem; }
 
-    /* Metric / KPI card */
+    /* Metric / KPI card. Text classes on <p> are scoped to the markdown
+       container so they outrank Streamlit's own `.st-emotion-cache-* p` rule. */
     .ciq-metric-card {
         background: var(--neutral-bg-1); border: 1px solid var(--neutral-stroke-2);
         border-radius: var(--radius-lg); padding: 1rem 1.1rem;
         box-shadow: var(--elevation-2); height: 100%;
     }
-    .ciq-metric-label {
+    [data-testid="stMarkdownContainer"] p.ciq-metric-label {
         font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
         text-transform: uppercase; color: var(--neutral-fg-3); margin: 0;
     }
-    .ciq-metric-value {
+    [data-testid="stMarkdownContainer"] p.ciq-metric-value {
         font-size: 2rem; font-weight: 600; line-height: 2.3rem;
         color: var(--neutral-fg-1); margin: 0.2rem 0;
     }
-    .ciq-metric-sub { font-size: 0.82rem; color: var(--neutral-fg-3); margin: 0; }
+    [data-testid="stMarkdownContainer"] p.ciq-metric-sub { font-size: 0.82rem; color: var(--neutral-fg-3); margin: 0; }
 
     /* Selection card (framework / platform choices) */
     .ciq-select-card {
@@ -563,11 +569,11 @@ FLUENT_CSS = """
         border-color: var(--brand-primary); background: var(--brand-tint);
         box-shadow: 0 0 0 1px var(--brand-primary), var(--elevation-4);
     }
-    .ciq-select-title {
+    [data-testid="stMarkdownContainer"] p.ciq-select-title {
         font-size: 1rem; font-weight: 600; color: var(--neutral-fg-1);
         margin: 0 0 0.25rem 0;
     }
-    .ciq-select-desc { font-size: 0.85rem; color: var(--neutral-fg-3); margin: 0; }
+    [data-testid="stMarkdownContainer"] p.ciq-select-desc { font-size: 0.85rem; color: var(--neutral-fg-3); margin: 0; }
 
     /* Empty state */
     .ciq-empty {
@@ -575,7 +581,7 @@ FLUENT_CSS = """
         border: 1px dashed var(--neutral-stroke-1); border-radius: var(--radius-lg);
         background: var(--neutral-bg-3); color: var(--neutral-fg-3);
     }
-    .ciq-empty h4 { color: var(--neutral-fg-1); margin: 0 0 0.4rem 0; }
+    .stApp .ciq-empty h4 { color: var(--neutral-fg-1); margin: 0 0 0.4rem 0; }
     .ciq-empty p { margin: 0; font-size: 0.9rem; }
 
     /* ───────────── Links ───────────── */
@@ -726,7 +732,7 @@ def render_sidebar():
                     st.link_button(
                         "Sign out",
                         get_logout_url(),
-                        use_container_width=True,
+                        width="stretch",
                     )
                 elif st.button("Sign out", key="sidebar_signout"):
                     logout()

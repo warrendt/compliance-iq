@@ -146,7 +146,7 @@ with st.sidebar:
     st.markdown("#### Target platform")
     platform_name = st.session_state.get('platform_display_name', 'Microsoft Defender for Cloud')
     st.info(platform_name)
-    if st.button("Change platform", key="change_platform", use_container_width=True):
+    if st.button("Change platform", key="change_platform", width="stretch"):
         st.switch_page("pages/0_Platform_Selection.py")
 
 # ── Control-tower dashboard ────────────────────────────────────────────────

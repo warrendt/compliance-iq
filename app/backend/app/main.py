@@ -38,6 +38,13 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Application Insights must instrument the app before it starts serving:
+# Starlette refuses new middleware once the app has started.
+try:
+    app_insights.initialize(app)
+except Exception as e:
+    logger.warning("application_insights_init_failed", error=str(e))
+
 # Add custom middleware
 app.add_middleware(LoggingMiddleware)
 
@@ -81,14 +88,8 @@ async def startup_event():
         environment=settings.environment
     )
     
-    # Initialize Application Insights
-    try:
-        app_insights.initialize()
-        logger.info("application_insights_initialized")
-    except Exception as e:
-        # opencensus is incompatible with Python 3.14 — skip gracefully
-        print(f"[WARN] Application Insights init skipped: {e}")
-    
+    logger.info("application_insights_status", enabled=app_insights.enabled)
+
     # Initialize Cosmos DB client
     if settings.cosmos_db_endpoint:
         try:

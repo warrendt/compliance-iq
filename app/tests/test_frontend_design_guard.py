@@ -75,9 +75,9 @@ def test_sidebar_nav_labels_are_emoji_free():
 
 
 def test_no_st_image_with_use_container_width():
-    """`st.image(use_container_width=...)` crashes on the pinned Streamlit 1.37.0
-    (the arg was added to st.image later). Logos must render via HTML data URIs,
-    not st.image. Guard against reintroducing the incompatible call."""
+    """`use_container_width` is deprecated in Streamlit (use `width=`), and logos
+    must render via HTML data URIs, not st.image. Guard against reintroducing
+    the old call."""
     root = FRONTEND
     pattern = re.compile(r"st\.image\((?:[^()]*|\([^()]*\))*use_container_width", re.DOTALL)
     offenders: list[str] = []
@@ -88,7 +88,7 @@ def test_no_st_image_with_use_container_width():
         if pattern.search(text):
             offenders.append(str(path.relative_to(root)))
     assert not offenders, (
-        "st.image(..., use_container_width=...) is unsupported on Streamlit 1.37.0: "
+        "st.image(..., use_container_width=...) is deprecated; use HTML data URIs: "
         + ", ".join(offenders)
     )
 

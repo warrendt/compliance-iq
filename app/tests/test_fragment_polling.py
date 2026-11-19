@@ -1,5 +1,6 @@
 """Regression tests for isolated workflow progress polling."""
 
+import re
 from pathlib import Path
 
 
@@ -12,7 +13,11 @@ MAPPING_PAGE = FRONTEND_ROOT / "pages" / "2_AI_Mapping.py"
 def test_streamlit_version_supports_fragments():
     requirements = (FRONTEND_ROOT / "requirements.txt").read_text()
 
-    assert "streamlit==1.37.0" in requirements
+    pin = re.search(r"^streamlit==(\d+)\.(\d+)", requirements, re.MULTILINE)
+
+    # st.fragment(run_every=...) became stable in Streamlit 1.37.
+    assert pin, "streamlit must be pinned to an exact version"
+    assert (int(pin.group(1)), int(pin.group(2))) >= (1, 37)
 
 
 def test_pdf_progress_uses_fragment_without_blocking_sleep():
