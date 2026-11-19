@@ -244,4 +244,12 @@ on every PR.
 `ciq-catalog-refresh-reader` at the `cae-complianceiq-dev-kz2jze` resource scope only. Created
 out-of-band, like the other B5 grants, because the refresh identity is not provisioned by IaC.
 
-**Status.** Fixed; refresh re-run after the grant (see `docs/deps-security-refresh-2026-11.md`).
+**Second blocker, found on the re-run.** With RBAC fixed, the runner registered and then exited:
+`Runner version v2.336.0 is deprecated and cannot receive messages`. The job's image
+`ciq-vnet-runner:v1` predates this refresh. Rebuilt from `app/runner/Dockerfile` (runner 2.338.2,
+Ubuntu 24.04), pushed as `ciq-vnet-runner:v2`, and the job now points at it. The runner image is
+built and rolled manually; Dependabot (docker) now flags base-image updates, but the
+`RUNNER_VERSION` arg still needs a manual bump. GitHub deprecates runner versions roughly 30 days
+after a newer one ships.
+
+**Status.** Fixed; refresh re-run after both fixes (see `docs/deps-security-refresh-2026-11.md`).

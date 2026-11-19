@@ -49,7 +49,11 @@ moved to `app/backend/requirements-dev.txt`, so pytest no longer ships in the pr
   `use_container_width=True` (deprecated) → `width="stretch"` (45 call sites).
 - **Catalogue refresh RBAC** (BACKLOG B9): the weekly refresh had been failing since October on
   `LinkedAuthorizationFailed`. Fixed with a single-action custom role on the Container Apps
-  environment. A stale catalogue would otherwise fail CI on every PR.
+  environment. A stale catalogue would otherwise fail CI on every PR. The re-run then exposed that
+  the deployed runner image (`v1`, runner 2.336.0) is rejected by GitHub as deprecated; the new
+  image is live as `ciq-vnet-runner:v2`. Keep `RUNNER_VERSION` current by hand. To roll a new one:
+  `az acr build -r <acr> -t ciq-vnet-runner:vN app/runner` then
+  `az containerapp job update -n cj-ciq-vnet-runner -g <rg> --image <acr>.azurecr.io/ciq-vnet-runner:vN`.
 
 ## Known residuals (not acted on)
 
