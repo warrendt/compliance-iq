@@ -4,28 +4,28 @@
 # requirements-dev.txt so they never ship in the production image.
 
 # Web framework
-fastapi==0.162.5
+fastapi==0.165.0
 uvicorn[standard]==0.54.0
-python-multipart==0.0.33
+python-multipart==0.0.34
 
 # Validation / settings
-pydantic==2.14.3
-pydantic-settings==2.16.2
+pydantic==2.14.4
+pydantic-settings==2.16.3
 python-dotenv==1.2.4
 
 # Azure SDKs
 azure-identity==1.27.0
 azure-cosmos==4.17.1
-openai==3.49.0
+openai==3.57.0
 
 # Authentication (Entra ID JWT validation)
 python-jose[cryptography]==3.5.0
 
 # Document parsing / data processing
-pypdf==7.0.1
+pypdf==7.1.1
 pandas==3.1.1
 openpyxl==3.1.5
-numpy==2.5.4
+numpy==2.5.5
 
 # HTTP client
 httpx==0.28.1

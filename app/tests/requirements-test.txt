@@ -1,4 +1,4 @@
 # Test dependencies for Playwright E2E tests
 pytest==9.2.0
 pytest-playwright==0.10.0
-playwright==1.65.1
+playwright==1.65.2
